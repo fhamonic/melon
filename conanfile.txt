@@ -1,5 +1,6 @@
 [requires]
 range-v3/0.11.0
+gtest/cci.20210126
 
 [generators]
 cmake
