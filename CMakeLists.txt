@@ -48,7 +48,7 @@ target_link_libraries(main_test CONAN_PKG::gtest)
 target_link_libraries(main_test melon)
 
 include(GoogleTest)
-gtest_discover_tests(test_test)
+gtest_discover_tests(main_test)
 
 # ################## EXEC target ####################
 add_executable(main test/main.cpp)
