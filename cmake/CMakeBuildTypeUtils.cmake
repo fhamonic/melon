@@ -1,0 +1,37 @@
+set(UPPERCASE_CMAKE_BUILD_TYPES "RELEASE;DEBUG;RELWITHDEBINFO;MINSIZEREL")
+if(NOT DEFINED CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+    string(TOUPPER ${CMAKE_BUILD_TYPE} UPPERCASE_CMAKE_BUILD_TYPE)
+else()
+    string(TOUPPER ${CMAKE_BUILD_TYPE} UPPERCASE_CMAKE_BUILD_TYPE)
+    if(NOT ${UPPERCASE_CMAKE_BUILD_TYPE} IN_LIST UPPERCASE_CMAKE_BUILD_TYPES)
+        message(
+            FATAL_ERROR
+                "Invalid value for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+    endif()
+endif()
+
+include(CheckCXXCompilerFlag)
+function(target_compile_options_if_exists _target _scope _is_activated)
+    string(TOUPPER ${_is_activated} uppercase_is_activated)
+    if(uppercase_is_activated STREQUAL "OFF")
+        return()
+    endif()
+    if(NOT uppercase_is_activated STREQUAL "ON")
+        message(
+            FATAL_ERROR
+                "Invalid value of target_compile_options_if_exists parameter _is_activated: ${_is_activated}"
+        )
+    endif()
+    foreach(option ${ARGN})
+        string(TOUPPER ${option} uppercase_option)
+        string(CONCAT uppercase_option "CXX_COMPILER_HAS" ${uppercase_option})
+        string(REPLACE "-" "_" uppercase_option ${uppercase_option})
+        if(NOT DEFINED ${uppercase_option})
+            check_cxx_compiler_flag(${option} ${uppercase_option})
+        endif()
+        if(${${uppercase_option}})
+            target_compile_options(${_target} ${_scope} ${option})
+        endif()
+    endforeach()
+endfunction()
