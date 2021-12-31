@@ -17,6 +17,7 @@ public:
     std::vector<Node> arc_target;
 
 public:
+    // todo bulk constructor : rvalue ranges::random_access_range
     StaticDigraph(std::vector<Arc> && begins, std::vector<Node> && targets)
         : out_arc_begin(std::move(begins)), arc_target(std::move(targets)) {}
 
