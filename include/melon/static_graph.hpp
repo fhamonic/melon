@@ -44,9 +44,7 @@ public:
     }
     template <std::ranges::range Arcs>
     StaticDigraph(const std::size_t nb_nodes, Arcs && arcs)
-        : StaticDigraph(nb_nodes, ArcList(arcs)) {
-            std::cout << "makes copy" << std::endl;
-        }
+        : StaticDigraph(nb_nodes, ArcList(arcs)) {}
 
     std::size_t nb_nodes() const { return out_arc_begin.size(); }
     std::size_t nb_arcs() const { return arc_target.size(); }
