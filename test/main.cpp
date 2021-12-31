@@ -20,37 +20,37 @@ auto fill_arcs() {
 }
 
 int main(int argc, char ** argv) {
-    const melon::StaticDigraph::ArcList arcs = fill_arcs();
+    melon::StaticDigraph::ArcList arcs = fill_arcs();
 
-    melon::StaticDigraph graph(8, arcs);
+    melon::StaticDigraph graph(8, std::move(arcs));
 
-    // for(const auto u : graph.nodes()) {
-    //     std::cout << u << std::endl;
-    // }
-    // for(const auto a : graph.arcs()) {
-    //     std::cout << a << std::endl;
-    // }
-
-
-    // std::cout << "out begins: " << std::endl;
-    // for(const auto & begin : graph.out_arc_begin) {
-    //     std::cout << begin << std::endl;
-    // }
-    // std::cout << "out targets: " << std::endl;
-    // for(const auto & target : graph.arc_target) {
-    //     std::cout << target << std::endl;
-    // }
+    for(const auto u : graph.nodes()) {
+        std::cout << u << std::endl;
+    }
+    for(const auto a : graph.arcs()) {
+        std::cout << a << std::endl;
+    }
 
 
+    std::cout << "out begins: " << std::endl;
+    for(const auto & begin : graph.out_arc_begin) {
+        std::cout << begin << std::endl;
+    }
+    std::cout << "out targets: " << std::endl;
+    for(const auto & target : graph.arc_target) {
+        std::cout << target << std::endl;
+    }
 
-    // std::cout << "out neighbors of 1: " << std::endl;
-    // for(const auto & a : graph.out_neighbors(1)) {
-    //     std::cout << a << std::endl;
-    // }
-    // std::cout << "pairs: " << std::endl;
-    // for(const auto & [u,v] : graph.arcs_pairs()) {
-    //     std::cout << u << " " << v << std::endl;
-    // }
+
+
+    std::cout << "out neighbors of 1: " << std::endl;
+    for(const auto & a : graph.out_neighbors(1)) {
+        std::cout << a << std::endl;
+    }
+    std::cout << "pairs: " << std::endl;
+    for(const auto & [u,v] : graph.arcs_pairs()) {
+        std::cout << u << " " << v << std::endl;
+    }
 
     return 0;
 }
