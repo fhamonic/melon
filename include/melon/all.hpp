@@ -12,5 +12,6 @@
 #define MELON_HPP
 
 #include "melon/static_graph.hpp"
+#include "melon/dijkstra.hpp"
 
 #endif //MELON_HPP

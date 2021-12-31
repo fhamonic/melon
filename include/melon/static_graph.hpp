@@ -5,6 +5,8 @@
 #include <ranges>
 #include <vector>
 
+namespace melon {
+
 class StaticDigraph {
 public:
     using Node = std::size_t;
@@ -72,9 +74,11 @@ public:
 
         // fill begins
         std::size_t u = 0;
+        begins[0] = 0;
         for(auto it = arcs.begin(); it != arcs.end(); ++it) {
             if(u == it->first) continue;
-            std::fill(begins.begin() + u + 1, begins.begin() + it->first + 1, std::distance(arcs.begin(), it));
+            std::fill(begins.begin() + u + 1, begins.begin() + it->first + 1,
+                      std::distance(arcs.begin(), it));
             u = it->first;
         }
         std::fill(begins.begin() + u + 1, begins.end(), arcs.size());
@@ -88,5 +92,7 @@ public:
     void setNbNodes(std::size_t n) { nb_nodes = n; }
     void add(Node u, Node v) { arcs.emplace_back(u, v); }
 };
+
+}  // namespace lemon
 
 #endif  // STATIC_GRAPH_HPP
