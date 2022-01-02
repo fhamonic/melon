@@ -5,12 +5,18 @@
 #include <ranges>
 #include <vector>
 
+namespace fhamonic {
 namespace melon {
 
 class StaticDigraph {
 public:
     using Node = std::size_t;
     using Arc = std::size_t;
+
+    template <typename T>
+    using NodeMap = std::vector<T>;
+    template <typename T>
+    using ArcMap = std::vector<T>;
 
 public:
     std::vector<Arc> out_arc_begin;
@@ -56,5 +62,6 @@ public:
 };
 
 }  // namespace melon
+}  // namespace fhamonic
 
 #endif  // STATIC_DIGRAPH_HPP

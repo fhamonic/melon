@@ -8,6 +8,7 @@
 
 #include "melon/static_digraph.hpp"
 
+namespace fhamonic {
 namespace melon {
 
 template <typename GR, typename LM>
@@ -57,6 +58,7 @@ public:
 };
 
 } // namespace melon
+} // namespace fhamonic
 
 
 #endif  // STATIC_GRAPH_HPP
