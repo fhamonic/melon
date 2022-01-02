@@ -27,8 +27,6 @@ private:
     std::vector<Arc> nb_out_arcs;
     std::vector<Node> arc_sources;
     std::vector<Node> arc_targets;
-
-public:
     PropertyMaps arc_property_maps;
 
 public:
@@ -36,12 +34,14 @@ public:
     StaticDigraphBuilder(std::size_t nb_nodes)
         : nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
 
+private:
     template <class Maps, class Properties, size_t... Is>
     void addProperties(Maps && maps, Properties && properties,
                        std::index_sequence<Is...>) {
         (get<Is>(maps).push_back(get<Is>(properties)), ...);
     }
 
+public:
     void addArc(Node u, Node v, ArcProperty... properties) {
         assert(nb_nodes > std::max(u, v));
         ++nb_out_arcs[u];
@@ -55,7 +55,7 @@ public:
     auto build() {
         // sort arc_sources, arc_tagrets and arc_property_maps
         auto arcs_zipped_view = std::apply(
-            [&](auto &&... property_map) {
+            [this](auto &&... property_map) {
                 return ranges::view::zip(arc_sources, arc_targets,
                                          property_map...);
             },
@@ -71,7 +71,7 @@ public:
         // create graph
         StaticDigraph graph(std::move(nb_out_arcs), std::move(arc_targets));
         return std::apply(
-            [&](auto &&... property_map) {
+            [this, &graph](auto &&... property_map) {
                 return std::make_tuple(graph, property_map...);
             },
             arc_property_maps);

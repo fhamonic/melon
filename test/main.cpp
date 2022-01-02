@@ -8,11 +8,6 @@ using namespace fhamonic;
 // #include "lemon/static_graph.h"
 // #include "lemon/smart_graph.h"
 
-template <class T>
-void printType(const T &) {
-    std::cout << __PRETTY_FUNCTION__ << "\n";
-}
-
 int main(int argc, char ** argv) {
     melon::StaticDigraphBuilder<double, int> builder(8);
 
@@ -25,8 +20,6 @@ int main(int argc, char ** argv) {
     builder.addArc(1, 2, 3.1415, 5.12);
     builder.addArc(1, 6, 3.14, 5.12);
     builder.addArc(2, 3, 3.14, 5.12);
-
-    printType(builder.arc_property_maps);
 
     auto [graph, map1, map2] = builder.build();
 
