@@ -3,6 +3,8 @@
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
 
+using namespace fhamonic;
+
 // #include "lemon/static_graph.h"
 // #include "lemon/smart_graph.h"
 

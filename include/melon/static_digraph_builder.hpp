@@ -11,6 +11,7 @@
 
 #include "melon/static_digraph.hpp"
 
+namespace fhamonic {
 namespace melon {
 
 template <typename... ArcProperty>
@@ -55,7 +56,8 @@ public:
         // sort arc_sources, arc_tagrets and arc_property_maps
         auto arcs_zipped_view = std::apply(
             [&](auto &&... property_map) {
-                return ranges::view::zip(arc_sources, arc_targets, property_map...);
+                return ranges::view::zip(arc_sources, arc_targets,
+                                         property_map...);
             },
             arc_property_maps);
         ranges::sort(arcs_zipped_view, [](const auto & a, const auto & b) {
@@ -77,5 +79,6 @@ public:
 };
 
 }  // namespace melon
+}  // namespace fhamonic
 
 #endif  // STATIC_DIGRAPH_BUILDER_HPP

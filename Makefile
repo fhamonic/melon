@@ -20,7 +20,7 @@ clean:
 	@rm -rf $(BUILD_DIR)
 
 single-header: 
-	@python3 -m quom --include_directory include include/all.hpp melon.hpp.tmp && \
+	@python3 -m quom --include_directory include include/melon/all.hpp melon.hpp.tmp && \
 	mkdir -p single-header && \
 	echo "/*" > single-header/melon.hpp && \
 	cat LICENSE >> single-header/melon.hpp && \
