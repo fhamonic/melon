@@ -57,7 +57,7 @@ public:
     }
     auto arcs_pairs() const {
         return std::views::join(std::views::transform(
-            nodes(), [&](auto u) { return out_arcs_pairs(u); }));
+            nodes(), [this](auto u) { return out_arcs_pairs(u); }));
     }
 };
 
