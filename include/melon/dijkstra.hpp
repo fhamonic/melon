@@ -6,7 +6,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/static_graph.hpp"
+#include "melon/static_digraph.hpp"
 
 namespace melon {
 

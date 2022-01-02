@@ -1,28 +1,34 @@
 #include <iostream>
 
-#include "melon/static_graph.hpp"
+#include "melon/static_digraph.hpp"
+#include "melon/static_digraph_builder.hpp"
 
 // #include "lemon/static_graph.h"
 // #include "lemon/smart_graph.h"
 
-auto fill_arcs() {
-    melon::StaticDigraph::ArcList arcs;
-    arcs.emplace_back(1,2);
-    arcs.emplace_back(1,6);
-    arcs.emplace_back(1,7);
-    arcs.emplace_back(2,3);
-    arcs.emplace_back(2,4);
-    arcs.emplace_back(3,4);
-    arcs.emplace_back(5,2);
-    arcs.emplace_back(5,3);
-    arcs.emplace_back(6,5);
-    return arcs;
+template <class T>
+void printType(const T &) {
+    std::cout << __PRETTY_FUNCTION__ << "\n";
 }
 
 int main(int argc, char ** argv) {
-    melon::StaticDigraph::ArcList arcs = fill_arcs();
+    melon::StaticDigraphBuilder<double, int> builder(8);
 
-    melon::StaticDigraph graph(8, std::move(arcs));
+    builder.addArc(3, 4, 3.14, 5.12);
+    builder.addArc(1, 7, 3.14, 5.12);
+    builder.addArc(5, 2, 3.14, 5.12);
+    builder.addArc(2, 4, 3.14, 5.12);
+    builder.addArc(5, 3, 3.14, 5.12);
+    builder.addArc(6, 5, 3.14, 5.12);
+    builder.addArc(1, 2, 3.1415, 5.12);
+    builder.addArc(1, 6, 3.14, 5.12);
+    builder.addArc(2, 3, 3.14, 5.12);
+
+    printType(builder.arc_property_maps);
+
+    auto [graph, map1, map2] = builder.build();
+
+    std::cout << map1[0] << std::endl;
 
     for(const auto u : graph.nodes()) {
         std::cout << u << std::endl;
@@ -30,7 +36,6 @@ int main(int argc, char ** argv) {
     for(const auto a : graph.arcs()) {
         std::cout << a << std::endl;
     }
-
 
     std::cout << "out begins: " << std::endl;
     for(const auto & begin : graph.out_arc_begin) {
@@ -41,14 +46,12 @@ int main(int argc, char ** argv) {
         std::cout << target << std::endl;
     }
 
-
-
     std::cout << "out neighbors of 1: " << std::endl;
     for(const auto & a : graph.out_neighbors(1)) {
         std::cout << a << std::endl;
     }
     std::cout << "pairs: " << std::endl;
-    for(const auto & [u,v] : graph.arcs_pairs()) {
+    for(const auto & [u, v] : graph.arcs_pairs()) {
         std::cout << u << " " << v << std::endl;
     }
 
