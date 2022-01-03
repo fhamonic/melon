@@ -8,16 +8,10 @@
 
 #include "melon/binary_heap.hpp"
 #include "melon/static_digraph.hpp"
+#include "melon/dijkstra_semirings.hpp"
 
 namespace fhamonic {
 namespace melon {
-
-template <typename T>
-struct DijkstraShortestPathSemiring {
-    static T zero() { return static_cast<T>(0); }
-    static const std::plus<T> plus;
-    static const std::less<T> less;
-};
 
 template <typename GR, typename LM,
           typename TR = DijkstraShortestPathSemiring<typename LM::value_type>>
@@ -40,7 +34,7 @@ private:
 public:
     Dijkstra(const GR & g, const LM & l) : graph(g), length_map(l), heap(g.nb_nodes()) {}
 
-    void init(Node s, Value dist = DijkstraSemiringTraits::zero()) {
+    void init(Node s, Value dist = DijkstraSemiringTraits::zero) {
         assert(!heap.contains(s));
         heap.push(s, dist);
     }
