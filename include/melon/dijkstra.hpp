@@ -12,14 +12,16 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename GR, typename LM>
+template <typename GR, typename LM, typename TR>
 class Dijkstra {
 public:
     using Node = typename GR::Node;
     using Arc = typename GR::Arc;
-    using Heap = BinaryHeap;
 
     using Value = LM::value_type;
+    using SemiringTraits = TR;
+
+    using Heap = BinaryHeap<Node, Value, SemiringTraits>;
 
 private:
     const GR & graph;
@@ -49,7 +51,7 @@ public:
                 continue;
             }
             if(s == Heap::POST_HEAP) continue;
-            _heap->push(w, SemiringTraits::plus(p.second, length_map[a]));
+            heap.push(w, SemiringTraits::plus(p.second, length_map[a]));
         }
         return p;
     }

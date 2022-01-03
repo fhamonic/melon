@@ -35,7 +35,7 @@ public:
     bool empty() const { return heap_array.empty(); }
     bool contains(Node u) const { return indices_map[u] > 0; }
     void clear() { 
-        heap.clear();
+        heap_array.clear();
         std::ranges::fill(indices_map, State::PRE_HEAP);
     }
 
