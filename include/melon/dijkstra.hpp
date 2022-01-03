@@ -34,7 +34,7 @@ public:
         : graph(g), length_map(l) {}
 
     void init(Node s, Value dist = static_cast<Value>(0)) {
-        assert(!heap.contains(s)):
+        assert(!heap.contains(s));
         heap.push(s, dist);
     }
     bool emptyQueue() const { return heap.empty(); }

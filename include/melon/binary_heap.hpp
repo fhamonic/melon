@@ -26,7 +26,7 @@ private:
 
 public:
     BinaryHeap(const unsigned int nb_nodes)
-        : heap(), indices_map(nb_nodes, State::PRE_HEAP) {}
+        : heap_array(), indices_map(nb_nodes, State::PRE_HEAP) {}
 
     BinaryHeap(const BinaryHeap & bin) = default;
     BinaryHeap(BinaryHeap && bin) = default;
@@ -83,7 +83,7 @@ private:
 
     void move(const Pair & p, unsigned int i) {
         heap_array[i] = p;
-        indices_map.set(p.first, i);
+        indices_map[p.first] = i;
     }
 
 public:
@@ -98,11 +98,9 @@ public:
         Pair p = heap_array[0];
         const unsigned int n = heap_array.size() - 1;
         indices_map[p.first] = POST_HEAP;
-        if(n == 0) {
-            heap_array.pop_back();
-            return;
+        if(n > 0) {
+            bubbleDown(0, heap_array[n], n);
         }
-        bubbleDown(0, heap_array[n], n);
         heap_array.pop_back();
         return p;
     }
