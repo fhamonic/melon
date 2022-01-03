@@ -23,7 +23,7 @@ int main(int argc, char ** argv) {
 
     auto [graph, map1, map2] = builder.build();
 
-    std::cout << map1[0] << std::endl;
+    std::cout << sizeof(std::size_t) << std::endl;
 
     for(const auto u : graph.nodes()) {
         std::cout << u << std::endl;
