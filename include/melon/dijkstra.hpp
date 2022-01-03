@@ -1,5 +1,5 @@
-#ifndef STATIC_GRAPH_HPP
-#define STATIC_GRAPH_HPP
+#ifndef MELON_DIJKSTRA_HPP
+#define MELON_DIJKSTRA_HPP
 
 #include <algorithm>
 #include <queue>
@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "melon/static_digraph.hpp"
+#include "melon/binary_heap.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -16,7 +17,9 @@ class Dijkstra {
 public:
     using Node = typename GR::Node;
     using Arc = typename GR::Arc;
-    using Heap = std::priority_queue;
+    using Heap = BinaryHeap;
+
+    using Value = LM::value_type;
 
 private:
     const GR & graph;
@@ -28,37 +31,32 @@ public:
     Dijkstra(const GR & g, const LM & l)
         : graph(g), length_map(l) {}
 
-    // void init(Node s) {
-    //     _heap->clear();
-    //     for(NodeIt u(*G); u != INVALID; ++u)
-    //         _heap_cross_ref->set(u, Heap::PRE_HEAP);
-    //     if(_heap->state(s) != Heap::IN_HEAP)
-    //         _heap->push(s, OperationTraits::zero());
-    // }
+    void init(Node s, Value dist = static_cast<Value>(0)) {
+        assert(!heap.contains(s)):
+        heap.push(s, dist);
+    }
+    bool emptyQueue() const { return heap.empty(); }
 
-    // bool emptyQueue() const { return _heap->empty(); }
-
-    // std::pair<typename GR::Node, double> processNextNode() {        
-    //     const auto p = _heap->p_top();
-    //     _heap->pop();
-    //     for(OutArcIt e(*G, p.first); e != INVALID; ++e) {
-    //         Node w = G->target(e);
-    //         const auto s = _heap->state(w);
-    //         if(s == Heap::IN_HEAP) {
-    //             Value newvalue = OperationTraits::plus(p.second, (*_length)[e]);
-    //             if(OperationTraits::less(newvalue, (*_heap)[w]))
-    //                 _heap->decrease(w, newvalue);
-    //             continue;
-    //         }
-    //         if(s == Heap::POST_HEAP) continue;
-    //         _heap->push(w, OperationTraits::plus(p.second, (*_length)[e]));
-    //     }
-    //     return p;
-    // }
+    std::pair<Node, Value> processNextNode() {        
+        const auto p = heap.pop();
+        for(Arc a : graph.out_arcs(p.first)) {
+            Node w = graph.target(a);
+            const auto s = heap.state(w);
+            if(s == Heap::IN_HEAP) {
+                Value new_dist = SemiringTraits::plus(p.second, length_map[a]);
+                if(SemiringTraits::less(new_dist, heap.prio(w)))
+                    heap.decrease(w, new_dist);
+                continue;
+            }
+            if(s == Heap::POST_HEAP) continue;
+            _heap->push(w, SemiringTraits::plus(p.second, length_map[a]));
+        }
+        return p;
+    }
 };
 
 } // namespace melon
 } // namespace fhamonic
 
 
-#endif  // STATIC_GRAPH_HPP
+#endif  // MELON_DIJKSTRA_HPP

@@ -1,5 +1,5 @@
-#ifndef STATIC_DIGRAPH_HPP
-#define STATIC_DIGRAPH_HPP
+#ifndef MELON_STATIC_DIGRAPH_HPP
+#define MELON_STATIC_DIGRAPH_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -10,8 +10,9 @@ namespace melon {
 
 class StaticDigraph {
 public:
-    using Node = std::size_t;
-    using Arc = std::size_t;
+    using size_t = unsigned int;
+    using Node = size_t;
+    using Arc = size_t;
 
     template <typename T>
     using NodeMap = std::vector<T>;
@@ -29,14 +30,14 @@ public:
     StaticDigraph(const StaticDigraph & graph) = default;
     StaticDigraph(StaticDigraph && graph) = default;
 
-    std::size_t nb_nodes() const { return out_arc_begin.size(); }
-    std::size_t nb_arcs() const { return arc_target.size(); }
+    size_t nb_nodes() const { return out_arc_begin.size(); }
+    size_t nb_arcs() const { return arc_target.size(); }
 
     auto nodes() const {
-        return std::views::iota(static_cast<std::size_t>(0), nb_nodes());
+        return std::views::iota(static_cast<Node>(0), nb_nodes());
     }
     auto arcs() const {
-        return std::views::iota(static_cast<std::size_t>(0), nb_arcs());
+        return std::views::iota(static_cast<Arc>(0), nb_arcs());
     }
     auto out_arcs(const Node u) const {
         return std::views::iota(
@@ -64,4 +65,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // STATIC_DIGRAPH_HPP
+#endif  // MELON_STATIC_DIGRAPH_HPP

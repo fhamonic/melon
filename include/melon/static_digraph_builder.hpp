@@ -1,5 +1,5 @@
-#ifndef STATIC_DIGRAPH_BUILDER_HPP
-#define STATIC_DIGRAPH_BUILDER_HPP
+#ifndef MELON_STATIC_DIGRAPH_BUILDER_HPP
+#define MELON_STATIC_DIGRAPH_BUILDER_HPP
 
 #include <algorithm>
 #include <numeric>
@@ -17,25 +17,26 @@ namespace melon {
 template <typename... ArcProperty>
 class StaticDigraphBuilder {
 public:
-    using Node = std::size_t;
-    using Arc = std::size_t;
+    using size_t = StaticDigraph::size_t;
+    using Node = StaticDigraph::Node;
+    using Arc = StaticDigraph::Arc;
 
     using PropertyMaps = std::tuple<std::vector<ArcProperty>...>;
 
 private:
-    std::size_t nb_nodes;
-    std::vector<Arc> nb_out_arcs;
+    size_t nb_nodes;
+    std::vector<size_t> nb_out_arcs;
     std::vector<Node> arc_sources;
     std::vector<Node> arc_targets;
     PropertyMaps arc_property_maps;
 
 public:
     StaticDigraphBuilder() : nb_nodes(0) {}
-    StaticDigraphBuilder(std::size_t nb_nodes)
+    StaticDigraphBuilder(size_t nb_nodes)
         : nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
 
 private:
-    template <class Maps, class Properties, size_t... Is>
+    template <class Maps, class Properties, std::size_t... Is>
     void addProperties(Maps && maps, Properties && properties,
                        std::index_sequence<Is...>) {
         (get<Is>(maps).push_back(get<Is>(properties)), ...);
@@ -81,4 +82,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // STATIC_DIGRAPH_BUILDER_HPP
+#endif  // MELON_STATIC_DIGRAPH_BUILDER_HPP
