@@ -51,5 +51,7 @@ int main(int argc, char ** argv) {
         std::cout << u << " " << v << std::endl;
     }
 
+    melon::Dijkstra<melon::StaticDigraph, melon::StaticDigraph::ArcMap<double>> dijkstra(graph, map1);
+
     return 0;
 }

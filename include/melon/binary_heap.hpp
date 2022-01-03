@@ -26,7 +26,7 @@ private:
 
 public:
     BinaryHeap(const unsigned int nb_nodes)
-        : heap_array(), indices_map(nb_nodes, State::PRE_HEAP) {}
+        : heap_array(), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
 
     BinaryHeap(const BinaryHeap & bin) = default;
     BinaryHeap(BinaryHeap && bin) = default;
