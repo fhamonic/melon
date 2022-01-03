@@ -2,6 +2,7 @@
 
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
+#include "melon/dijkstra.hpp"
 
 using namespace fhamonic;
 
