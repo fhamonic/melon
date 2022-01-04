@@ -51,6 +51,12 @@ public:
             out_arc_begin[u],
             (u + 1 < nb_nodes() ? out_arc_begin[u + 1] : nb_arcs()));
     }
+    Node source(Arc a) const {  // O(\log |V|)
+        assert(is_valid_arc(a));
+        auto it =
+            std::ranges::lower_bound(out_arc_begin, a, std::less_equal<Arc>());
+        return std::distance(out_arc_begin.begin(), --it);
+    }
     Node target(Arc a) const {
         assert(is_valid_arc(a));
         return arc_target[a];

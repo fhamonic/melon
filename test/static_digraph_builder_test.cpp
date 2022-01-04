@@ -6,7 +6,7 @@
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(StaticDigraphBuilder, build_no_maps) {
+GTEST_TEST(StaticDigraphBuilder, build_without_map) {
     StaticDigraphBuilder<> builder(8);
 
     builder.addArc(3, 4);
@@ -33,4 +33,35 @@ GTEST_TEST(StaticDigraphBuilder, build_no_maps) {
              {5, 2},
              {5, 3},
              {6, 5}}));
+}
+
+GTEST_TEST(StaticDigraphBuilder, build_with_map) {
+    StaticDigraphBuilder<double> builder(8);
+
+    std::vector<std::pair<StaticDigraph::Node, StaticDigraph::Node>> pairs{
+        {3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3}, {6, 5}, {1, 2}, {1, 6}, {2, 3}};
+
+    for(auto & [u, v] : pairs)
+        builder.addArc(u, v, u*pairs.size() + v);
+
+    auto [graph, map] = builder.build();
+
+    AssertRangesAreEqual(
+        graph.arcs_pairs(),
+        std::vector<std::pair<StaticDigraph::Node, StaticDigraph::Node>>(
+            {{1, 2},
+             {1, 6},
+             {1, 7},
+             {2, 3},
+             {2, 4},
+             {3, 4},
+             {5, 2},
+             {5, 3},
+             {6, 5}}));
+
+    for(StaticDigraph::Arc a : graph.arcs()) {
+        auto u = graph.source(a);
+        auto v = graph.target(a);
+        ASSERT_EQ(map[a], u*pairs.size() + v);
+    }
 }

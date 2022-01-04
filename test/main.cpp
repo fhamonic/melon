@@ -40,13 +40,18 @@ int main() {
         std::cout << u << " " << v << std::endl;
     }
 
-    std::cout << "dijkstra" << std::endl;
-    melon::Dijkstra<melon::StaticDigraph, melon::StaticDigraph::ArcMap<double>> dijkstra(graph, map1);
-    dijkstra.init(1);
-    while(!dijkstra.emptyQueue()) {
-        auto [u, dist] = dijkstra.processNextNode();
-        std::cout << u << " at " << dist << std::endl;
+    std::cout << "sources: " << std::endl;
+    for(const auto a : graph.arcs()) {
+        std::cout << graph.source(a) << std::endl;
     }
 
+    // std::cout << "dijkstra" << std::endl;
+    // melon::Dijkstra<melon::StaticDigraph, melon::StaticDigraph::ArcMap<double>> dijkstra(graph, map1);
+    // dijkstra.init(1);
+    // while(!dijkstra.emptyQueue()) {
+    //     auto [u, dist] = dijkstra.processNextNode();
+    //     std::cout << u << " at " << dist << std::endl;
+    // }
+    
     return 0;
 }
