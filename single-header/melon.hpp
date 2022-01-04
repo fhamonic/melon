@@ -35,10 +35,11 @@ DEALINGS IN THE SOFTWARE.*/
 #ifndef FHAMONIC_MELON_HPP
 #define FHAMONIC_MELON_HPP
 
-#ifndef STATIC_DIGRAPH_HPP
-#define STATIC_DIGRAPH_HPP
+#ifndef MELON_STATIC_DIGRAPH_HPP
+#define MELON_STATIC_DIGRAPH_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <ranges>
 #include <vector>
 
@@ -47,15 +48,15 @@ namespace melon {
 
 class StaticDigraph {
 public:
-    using Node = std::size_t;
-    using Arc = std::size_t;
+    using Node = unsigned int;
+    using Arc = unsigned int;
 
     template <typename T>
     using NodeMap = std::vector<T>;
     template <typename T>
     using ArcMap = std::vector<T>;
 
-public:
+private:
     std::vector<Arc> out_arc_begin;
     std::vector<Node> arc_target;
 
@@ -63,25 +64,36 @@ public:
     StaticDigraph(std::vector<Arc> && begins, std::vector<Node> && targets)
         : out_arc_begin(std::move(begins)), arc_target(std::move(targets)) {}
 
+    StaticDigraph() = default;
     StaticDigraph(const StaticDigraph & graph) = default;
     StaticDigraph(StaticDigraph && graph) = default;
 
-    std::size_t nb_nodes() const { return out_arc_begin.size(); }
-    std::size_t nb_arcs() const { return arc_target.size(); }
+    auto nb_nodes() const { return out_arc_begin.size(); }
+    auto nb_arcs() const { return arc_target.size(); }
+
+    bool is_valid_node(Node u) const { return u < nb_nodes(); }
+    bool is_valid_arc(Arc u) const { return u < nb_arcs(); }
 
     auto nodes() const {
-        return std::views::iota(static_cast<std::size_t>(0), nb_nodes());
+        return std::views::iota(static_cast<Node>(0),
+                                static_cast<Node>(nb_nodes()));
     }
     auto arcs() const {
-        return std::views::iota(static_cast<std::size_t>(0), nb_arcs());
+        return std::views::iota(static_cast<Arc>(0),
+                                static_cast<Arc>(nb_arcs()));
     }
     auto out_arcs(const Node u) const {
+        assert(is_valid_node(u));
         return std::views::iota(
             out_arc_begin[u],
             (u + 1 < nb_nodes() ? out_arc_begin[u + 1] : nb_arcs()));
     }
-    Node target(Arc a) const { return arc_target[a]; }
+    Node target(Arc a) const {
+        assert(is_valid_arc(a));
+        return arc_target[a];
+    }
     auto out_neighbors(const Node u) const {
+        assert(is_valid_node(u));
         return std::ranges::subrange(
             arc_target.begin() + out_arc_begin[u],
             (u + 1 < nb_nodes() ? arc_target.begin() + out_arc_begin[u + 1]
@@ -89,21 +101,22 @@ public:
     }
 
     auto out_arcs_pairs(const Node u) const {
+        assert(is_valid_node(u));
         return std::views::transform(
             out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
     }
     auto arcs_pairs() const {
         return std::views::join(std::views::transform(
-            nodes(), [&](auto u) { return out_arcs_pairs(u); }));
+            nodes(), [this](auto u) { return out_arcs_pairs(u); }));
     }
 };
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // STATIC_DIGRAPH_HPP
-#ifndef STATIC_DIGRAPH_BUILDER_HPP
-#define STATIC_DIGRAPH_BUILDER_HPP
+#endif  // MELON_STATIC_DIGRAPH_HPP
+#ifndef MELON_STATIC_DIGRAPH_BUILDER_HPP
+#define MELON_STATIC_DIGRAPH_BUILDER_HPP
 
 #include <algorithm>
 #include <numeric>
@@ -119,33 +132,33 @@ namespace melon {
 template <typename... ArcProperty>
 class StaticDigraphBuilder {
 public:
-    using Node = std::size_t;
-    using Arc = std::size_t;
+    using Node = StaticDigraph::Node;
+    using Arc = StaticDigraph::Arc;
 
     using PropertyMaps = std::tuple<std::vector<ArcProperty>...>;
 
 private:
-    std::size_t nb_nodes;
+    std::size_t _nb_nodes;
     std::vector<Arc> nb_out_arcs;
     std::vector<Node> arc_sources;
     std::vector<Node> arc_targets;
-
-public:
     PropertyMaps arc_property_maps;
 
 public:
-    StaticDigraphBuilder() : nb_nodes(0) {}
+    StaticDigraphBuilder() : _nb_nodes(0) {}
     StaticDigraphBuilder(std::size_t nb_nodes)
-        : nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
+        : _nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
 
-    template <class Maps, class Properties, size_t... Is>
+private:
+    template <class Maps, class Properties, std::size_t... Is>
     void addProperties(Maps && maps, Properties && properties,
                        std::index_sequence<Is...>) {
         (get<Is>(maps).push_back(get<Is>(properties)), ...);
     }
 
+public:
     void addArc(Node u, Node v, ArcProperty... properties) {
-        assert(nb_nodes > std::max(u, v));
+        assert(_nb_nodes > std::max(u, v));
         ++nb_out_arcs[u];
         arc_sources.push_back(u);
         arc_targets.push_back(v);
@@ -157,7 +170,7 @@ public:
     auto build() {
         // sort arc_sources, arc_tagrets and arc_property_maps
         auto arcs_zipped_view = std::apply(
-            [&](auto &&... property_map) {
+            [this](auto &&... property_map) {
                 return ranges::view::zip(arc_sources, arc_targets,
                                          property_map...);
             },
@@ -173,7 +186,7 @@ public:
         // create graph
         StaticDigraph graph(std::move(nb_out_arcs), std::move(arc_targets));
         return std::apply(
-            [&](auto &&... property_map) {
+            [this, &graph](auto &&... property_map) {
                 return std::make_tuple(graph, property_map...);
             },
             arc_property_maps);
@@ -183,25 +196,227 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // STATIC_DIGRAPH_BUILDER_HPP
+#endif  // MELON_STATIC_DIGRAPH_BUILDER_HPP
 
-#ifndef STATIC_GRAPH_HPP
-#define STATIC_GRAPH_HPP
+#ifndef MELON_DIJKSTRA_HPP
+#define MELON_DIJKSTRA_HPP
 
 #include <algorithm>
 #include <queue>
 #include <ranges>
 #include <vector>
 
+#ifndef LEMON_MY_BIN_HEAP_H
+#define LEMON_MY_BIN_HEAP_H
+
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <vector>
+
 namespace fhamonic {
 namespace melon {
 
-template <typename GR, typename LM>
+template <typename ND, typename PR, typename CMP = std::less<PR>>
+class BinaryHeap {
+public:
+    using Node = ND;
+    using Prio = PR;
+    using Compare = CMP;
+    using Pair = std::pair<Node, Prio>;
+
+    enum State { IN_HEAP = 0, PRE_HEAP = -1, POST_HEAP = -2 };
+
+private:
+    std::vector<Pair> heap_array;
+    std::vector<int> indices_map;
+    Compare cmp;
+
+public:
+    BinaryHeap(const std::size_t nb_nodes)
+        : heap_array(), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
+
+    BinaryHeap(const BinaryHeap & bin) = default;
+    BinaryHeap(BinaryHeap && bin) = default;
+
+    int size() const { return heap_array.size(); }
+    bool empty() const { return heap_array.empty(); }
+    void clear() {
+        heap_array.clear();
+        std::ranges::fill(indices_map, State::PRE_HEAP);
+    }
+
+private:
+    static int parent(const unsigned int i) { return (i - 1) / 2; }
+    static int secondChild(const unsigned int i) { return (i + 1) * 2; }
+
+    bool less(const Pair & p1, const Pair & p2) const {
+        return cmp(p1.second, p2.second);
+    }
+
+    int bubbleUp(unsigned int hole, Pair p) {
+        int par = parent(hole);
+        while(hole > 0 && less(p, heap_array[par])) {
+            move(heap_array[par], hole);
+            hole = par;
+            par = parent(hole);
+        }
+        move(p, hole);
+        return hole;
+    }
+
+    int bubbleDown(unsigned int hole, Pair p, unsigned int length) {
+        unsigned int child = secondChild(hole);
+        while(child < length) {
+            if(less(heap_array[child - 1], heap_array[child])) {
+                --child;
+            }
+            if(!less(heap_array[child], p)) {
+                move(p, hole);
+                return hole;
+            }
+            move(heap_array[child], hole);
+            hole = child;
+            child = secondChild(hole);
+        }
+        --child;
+        if(child < length && less(heap_array[child], p)) {
+            move(heap_array[child], hole);
+            hole = child;
+        }
+        move(p, hole);
+        return hole;
+    }
+
+    void move(const Pair & p, unsigned int i) {
+        heap_array[i] = p;
+        indices_map[p.first] = i;
+    }
+
+public:
+    void push(const Pair & p) {
+        const int n = heap_array.size();
+        heap_array.resize(n + 1);
+        bubbleUp(n, p);
+    }
+    void push(const Node i, const Prio p) { push(Pair(i, p)); }
+    bool contains(Node u) const { return indices_map[u] > 0; }
+    bool prio(Node u) const { return heap_array[indices_map[u]].second; }
+    Pair top() const { return heap_array[0]; }
+    Pair pop() {
+        Pair p = heap_array[0];
+        const unsigned int n = heap_array.size() - 1;
+        indices_map[p.first] = POST_HEAP;
+        if(n > 0) {
+            bubbleDown(0, heap_array[n], n);
+        }
+        heap_array.pop_back();
+        return p;
+    }
+    // void erase(const Item & i) {
+    //     const int h = indices_map[i];
+    //     const int n = heap_array.size() - 1;
+    //     indices_map.set(heap_array[h].first, POST_HEAP);
+    //     if(h < n) {
+    //         if(bubbleUp(h, heap_array[n]) == h) {
+    //             bubbleDown(h, heap_array[n], n);
+    //         }
+    //     }
+    //     heap_array.pop_back();
+    // }
+    // void set(const Item & i, const Prio & p) {
+    //     const int idx = indices_map[i];
+    //     if(idx < 0) {
+    //         push(i, p);
+    //         return;
+    //     }
+    //     if(_comp(p, heap_array[idx].second)) {
+    //         bubbleUp(idx, Pair(i, p));
+    //         return;
+    //     }
+    //     bubbleDown(idx, Pair(i, p), heap_array.size());
+    // }
+    void decrease(const Node u, const Prio p) {
+        bubbleUp(indices_map[u], Pair(u, p));
+    }
+    // void increase(const Item & i, const Prio & p) {
+    //     const int idx = indices_map[i];
+    //     bubbleDown(idx, Pair(i, p), heap_array.size());
+    // }
+
+    State state(const Node u) const {
+        return State(std::min(indices_map[u], 0));
+    }
+
+    // void replace(const Item & i, const Item & j) {
+    //     const int idx = indices_map[i];
+    //     indices_map.set(i, indices_map[j]);
+    //     indices_map.set(j, idx);
+    //     heap_array[idx].first = j;
+    // }
+
+};  // class BinHeap
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // LEMON_MY_BIN_HEAP_H
+
+#ifndef MELON_DIJKSTRA_SEMIRINGS_HPP
+#define MELON_DIJKSTRA_SEMIRINGS_HPP
+
+#include <functional>
+
+namespace fhamonic {
+namespace melon {
+
+template <typename T>
+struct DijkstraShortestPathSemiring {
+    static constexpr T zero = static_cast<T>(0);
+    static constexpr std::plus<T> plus{};
+    static constexpr std::less<T> less{};
+};
+
+template <typename T>
+struct DijkstraMostProbablePathSemiring {
+    static constexpr T zero = static_cast<T>(1);
+    static constexpr std::multiplies<T> plus{};
+    static constexpr std::greater<T> less{};
+};
+
+template <typename T>
+struct DijkstraMaxFlowPathSemiring {
+    static constexpr T zero = std::numeric_limits<T>::max();
+    static constexpr auto plus = [](const T & a, const T & b){ return std::min(a, b); };
+    static constexpr std::greater<T> less{};
+};
+
+template <typename T>
+struct DijkstraSpanningTreeSemiring {
+    static constexpr T zero = static_cast<T>(0);
+    static constexpr auto plus = [](const T & a, const T & b){ return b; };
+    static constexpr std::less<T> less{};
+};
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // MELON_DIJKSTRA_SEMIRINGS_HPP
+
+namespace fhamonic {
+namespace melon {
+
+template <typename GR, typename LM,
+          typename TR = DijkstraShortestPathSemiring<typename LM::value_type>>
 class Dijkstra {
 public:
     using Node = typename GR::Node;
     using Arc = typename GR::Arc;
-    using Heap = std::priority_queue;
+
+    using Value = LM::value_type;
+    using DijkstraSemiringTraits = TR;
+
+    using Heap = BinaryHeap<Node, Value, decltype(DijkstraSemiringTraits::less)>;
 
 private:
     const GR & graph;
@@ -210,41 +425,36 @@ private:
     Heap heap;
 
 public:
-    Dijkstra(const GR & g, const LM & l)
-        : graph(g), length_map(l) {}
+    Dijkstra(const GR & g, const LM & l) : graph(g), length_map(l), heap(g.nb_nodes()) {}
 
-    // void init(Node s) {
-    //     _heap->clear();
-    //     for(NodeIt u(*G); u != INVALID; ++u)
-    //         _heap_cross_ref->set(u, Heap::PRE_HEAP);
-    //     if(_heap->state(s) != Heap::IN_HEAP)
-    //         _heap->push(s, OperationTraits::zero());
-    // }
+    void init(Node s, Value dist = DijkstraSemiringTraits::zero) {
+        assert(!heap.contains(s));
+        heap.push(s, dist);
+    }
+    bool emptyQueue() const { return heap.empty(); }
 
-    // bool emptyQueue() const { return _heap->empty(); }
-
-    // std::pair<typename GR::Node, double> processNextNode() {        
-    //     const auto p = _heap->p_top();
-    //     _heap->pop();
-    //     for(OutArcIt e(*G, p.first); e != INVALID; ++e) {
-    //         Node w = G->target(e);
-    //         const auto s = _heap->state(w);
-    //         if(s == Heap::IN_HEAP) {
-    //             Value newvalue = OperationTraits::plus(p.second, (*_length)[e]);
-    //             if(OperationTraits::less(newvalue, (*_heap)[w]))
-    //                 _heap->decrease(w, newvalue);
-    //             continue;
-    //         }
-    //         if(s == Heap::POST_HEAP) continue;
-    //         _heap->push(w, OperationTraits::plus(p.second, (*_length)[e]));
-    //     }
-    //     return p;
-    // }
+    std::pair<Node, Value> processNextNode() {
+        const auto p = heap.pop();
+        for(Arc a : graph.out_arcs(p.first)) {
+            Node w = graph.target(a);
+            const auto s = heap.state(w);
+            if(s == Heap::IN_HEAP) {
+                Value new_dist =
+                    DijkstraSemiringTraits::plus(p.second, length_map[a]);
+                if(DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
+                    heap.decrease(w, new_dist);
+                continue;
+            }
+            if(s == Heap::POST_HEAP) continue;
+            heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
+        }
+        return p;
+    }
 };
 
-} // namespace melon
-} // namespace fhamonic
+}  // namespace melon
+}  // namespace fhamonic
 
-#endif  // STATIC_GRAPH_HPP
+#endif  // MELON_DIJKSTRA_HPP
 
 #endif //FHAMONIC_MELON_HPP

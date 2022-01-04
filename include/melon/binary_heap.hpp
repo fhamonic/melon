@@ -104,49 +104,13 @@ public:
         }
         heap_array.pop_back();
         return p;
-    }
-    // void erase(const Item & i) {
-    //     const int h = indices_map[i];
-    //     const int n = heap_array.size() - 1;
-    //     indices_map.set(heap_array[h].first, POST_HEAP);
-    //     if(h < n) {
-    //         if(bubbleUp(h, heap_array[n]) == h) {
-    //             bubbleDown(h, heap_array[n], n);
-    //         }
-    //     }
-    //     heap_array.pop_back();
-    // }
-    // void set(const Item & i, const Prio & p) {
-    //     const int idx = indices_map[i];
-    //     if(idx < 0) {
-    //         push(i, p);
-    //         return;
-    //     }
-    //     if(_comp(p, heap_array[idx].second)) {
-    //         bubbleUp(idx, Pair(i, p));
-    //         return;
-    //     }
-    //     bubbleDown(idx, Pair(i, p), heap_array.size());
-    // }
+    }    
     void decrease(const Node u, const Prio p) {
         bubbleUp(indices_map[u], Pair(u, p));
     }
-    // void increase(const Item & i, const Prio & p) {
-    //     const int idx = indices_map[i];
-    //     bubbleDown(idx, Pair(i, p), heap_array.size());
-    // }
-
     State state(const Node u) const {
         return State(std::min(indices_map[u], 0));
     }
-
-    // void replace(const Item & i, const Item & j) {
-    //     const int idx = indices_map[i];
-    //     indices_map.set(i, indices_map[j]);
-    //     indices_map.set(j, idx);
-    //     heap_array[idx].first = j;
-    // }
-
 };  // class BinHeap
 
 }  // namespace melon
