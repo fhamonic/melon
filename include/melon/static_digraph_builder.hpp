@@ -17,23 +17,22 @@ namespace melon {
 template <typename... ArcProperty>
 class StaticDigraphBuilder {
 public:
-    using size_t = StaticDigraph::size_t;
     using Node = StaticDigraph::Node;
     using Arc = StaticDigraph::Arc;
 
     using PropertyMaps = std::tuple<std::vector<ArcProperty>...>;
 
 private:
-    size_t nb_nodes;
-    std::vector<size_t> nb_out_arcs;
+    std::size_t _nb_nodes;
+    std::vector<Arc> nb_out_arcs;
     std::vector<Node> arc_sources;
     std::vector<Node> arc_targets;
     PropertyMaps arc_property_maps;
 
 public:
-    StaticDigraphBuilder() : nb_nodes(0) {}
-    StaticDigraphBuilder(size_t nb_nodes)
-        : nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
+    StaticDigraphBuilder() : _nb_nodes(0) {}
+    StaticDigraphBuilder(std::size_t nb_nodes)
+        : _nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
@@ -44,7 +43,7 @@ private:
 
 public:
     void addArc(Node u, Node v, ArcProperty... properties) {
-        assert(nb_nodes > std::max(u, v));
+        assert(_nb_nodes > std::max(u, v));
         ++nb_out_arcs[u];
         arc_sources.push_back(u);
         arc_targets.push_back(v);
