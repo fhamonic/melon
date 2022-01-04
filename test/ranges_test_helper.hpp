@@ -5,10 +5,10 @@
 
 #include <range/v3/view/zip.hpp>
 
-template <typename R, typename T>
-void range_equals(R && range, std::initializer_list<T> l) {
-    EXPECT_EQ(std::ranges::size(range), std::ranges::size(l));
-    for(const auto & [e1, e2] : ranges::views::zip(range, l)) {
+template <typename R1, typename R2>
+void AssertRangesAreEqual(R1 && r1, R2 && r2) {
+    EXPECT_EQ(std::ranges::distance(r1), std::ranges::distance(r2));
+    for(const auto & [e1, e2] : ranges::views::zip(r1, r2)) {
         EXPECT_EQ(e1, e2);
     }
 }
