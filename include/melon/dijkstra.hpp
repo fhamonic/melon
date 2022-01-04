@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "melon/binary_heap.hpp"
-#include "melon/static_digraph.hpp"
 #include "melon/dijkstra_semirings.hpp"
+#include "melon/static_digraph.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -23,7 +23,8 @@ public:
     using Value = LM::value_type;
     using DijkstraSemiringTraits = TR;
 
-    using Heap = BinaryHeap<Node, Value, decltype(DijkstraSemiringTraits::less)>;
+    using Heap =
+        BinaryHeap<Node, Value, decltype(DijkstraSemiringTraits::less)>;
 
 private:
     const GR & graph;
@@ -32,7 +33,8 @@ private:
     Heap heap;
 
 public:
-    Dijkstra(const GR & g, const LM & l) : graph(g), length_map(l), heap(g.nb_nodes()) {}
+    Dijkstra(const GR & g, const LM & l)
+        : graph(g), length_map(l), heap(g.nb_nodes()) {}
 
     void init(Node s, Value dist = DijkstraSemiringTraits::zero) {
         assert(!heap.contains(s));
@@ -48,8 +50,9 @@ public:
             if(s == Heap::IN_HEAP) {
                 Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, length_map[a]);
-                if(DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
-                    heap.decrease(w, new_dist);
+                if(!DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
+                    continue;
+                heap.decrease(w, new_dist);
                 continue;
             }
             if(s == Heap::POST_HEAP) continue;

@@ -2,6 +2,7 @@
 #define LEMON_MY_BIN_HEAP_H
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <utility>
 #include <vector>
@@ -46,7 +47,12 @@ private:
         return cmp(p1.second, p2.second);
     }
 
-    int bubbleUp(unsigned int hole, Pair p) {
+    void move(const Pair & p, const unsigned int i) {
+        heap_array[i] = p;
+        indices_map[p.first] = i;
+    }
+
+    int bubbleUp(int hole, const Pair p) {
         int par = parent(hole);
         while(hole > 0 && less(p, heap_array[par])) {
             move(heap_array[par], hole);
@@ -57,8 +63,8 @@ private:
         return hole;
     }
 
-    int bubbleDown(unsigned int hole, Pair p, unsigned int length) {
-        unsigned int child = secondChild(hole);
+    int bubbleDown(int hole, Pair p, const int length) {
+        int child = secondChild(hole);
         while(child < length) {
             if(less(heap_array[child - 1], heap_array[child])) {
                 --child;
@@ -80,11 +86,6 @@ private:
         return hole;
     }
 
-    void move(const Pair & p, unsigned int i) {
-        heap_array[i] = p;
-        indices_map[p.first] = i;
-    }
-
 public:
     void push(const Pair & p) {
         const int n = heap_array.size();
@@ -92,23 +93,24 @@ public:
         bubbleUp(n, p);
     }
     void push(const Node i, const Prio p) { push(Pair(i, p)); }
-    bool contains(Node u) const { return indices_map[u] > 0; }
-    bool prio(Node u) const { return heap_array[indices_map[u]].second; }
+    bool contains(const Node u) const { return indices_map[u] > 0; }
+    Prio prio(const Node u) const { return heap_array[indices_map[u]].second; }
     Pair top() const { return heap_array[0]; }
     Pair pop() {
-        Pair p = heap_array[0];
+        assert(!heap_array.empty());
         const unsigned int n = heap_array.size() - 1;
+        Pair p = heap_array[0];
         indices_map[p.first] = POST_HEAP;
         if(n > 0) {
             bubbleDown(0, heap_array[n], n);
         }
         heap_array.pop_back();
         return p;
-    }    
-    void decrease(const Node u, const Prio p) {
+    }
+    void decrease(const Node & u, const Prio & p) {
         bubbleUp(indices_map[u], Pair(u, p));
     }
-    State state(const Node u) const {
+    State state(const Node & u) const {
         return State(std::min(indices_map[u], 0));
     }
 };  // class BinHeap
