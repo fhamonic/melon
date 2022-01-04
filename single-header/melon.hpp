@@ -88,6 +88,12 @@ public:
             out_arc_begin[u],
             (u + 1 < nb_nodes() ? out_arc_begin[u + 1] : nb_arcs()));
     }
+    Node source(Arc a) const {  // O(\log |V|)
+        assert(is_valid_arc(a));
+        auto it =
+            std::ranges::lower_bound(out_arc_begin, a, std::less_equal<Arc>());
+        return std::distance(out_arc_begin.begin(), --it);
+    }
     Node target(Arc a) const {
         assert(is_valid_arc(a));
         return arc_target[a];
@@ -254,11 +260,6 @@ private:
         return cmp(p1.second, p2.second);
     }
 
-    void move(const Pair & p, const unsigned int i) {
-        heap_array[i] = p;
-        indices_map[p.first] = i;
-    }
-
     int bubbleUp(unsigned int hole, Pair p) {
         int par = parent(hole);
         while(hole > 0 && less(p, heap_array[par])) {
@@ -270,7 +271,7 @@ private:
         return hole;
     }
 
-    int bubbleDown(unsigned int hole, Pair p, const unsigned int length) {
+    int bubbleDown(unsigned int hole, Pair p, unsigned int length) {
         unsigned int child = secondChild(hole);
         while(child < length) {
             if(less(heap_array[child - 1], heap_array[child])) {
@@ -291,6 +292,11 @@ private:
         }
         move(p, hole);
         return hole;
+    }
+
+    void move(const Pair & p, unsigned int i) {
+        heap_array[i] = p;
+        indices_map[p.first] = i;
     }
 
 public:

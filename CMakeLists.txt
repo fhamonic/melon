@@ -42,7 +42,9 @@ target_compile_options_if_exists(melon INTERFACE ${HARDCORE_WARNINGS}
 # ################## TEST target ####################
 enable_testing()
 
-add_executable(melon_test test/main_test.cpp test/static_digraph_test.cpp test/static_digraph_builder_test.cpp)
+add_executable(
+    melon_test test/main_test.cpp test/static_digraph_test.cpp
+               test/static_digraph_builder_test.cpp test/dijkstra_test.cpp)
 target_link_libraries(melon_test CONAN_PKG::gtest)
 target_link_libraries(melon_test melon)
 
