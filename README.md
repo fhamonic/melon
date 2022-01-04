@@ -1,6 +1,8 @@
 # MELON
 
-Modern and Effeicient Library for Optimization in Networks.
+Modern and Efficient Library for Optimization in Networks.
+The goal of this project is to provide a graph library using modern C ++ functionalities in order to be more user-friendly than the [Boost.Graph](https://www.boost.org/doc/libs/release/libs/graph/) library while being as efficient as the [LEMON](https://lemon.cs.elte.hu/trac/lemon) graph library which is unfortunately not maintained and does not compile with C ++ 20.
+
 Work in progress.
 
 [![Generic badge](https://img.shields.io/badge/C++-20-blue.svg?style=flat&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
