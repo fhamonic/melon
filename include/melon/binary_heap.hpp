@@ -25,7 +25,7 @@ private:
     Compare cmp;
 
 public:
-    BinaryHeap(const unsigned int nb_nodes)
+    BinaryHeap(const std::size_t nb_nodes)
         : heap_array(), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
 
     BinaryHeap(const BinaryHeap & bin) = default;
@@ -33,8 +33,7 @@ public:
 
     int size() const { return heap_array.size(); }
     bool empty() const { return heap_array.empty(); }
-    bool contains(Node u) const { return indices_map[u] > 0; }
-    void clear() { 
+    void clear() {
         heap_array.clear();
         std::ranges::fill(indices_map, State::PRE_HEAP);
     }
@@ -93,6 +92,8 @@ public:
         bubbleUp(n, p);
     }
     void push(const Node i, const Prio p) { push(Pair(i, p)); }
+    bool contains(Node u) const { return indices_map[u] > 0; }
+    bool prio(Node u) const { return heap_array[indices_map[u]].second; }
     Pair top() const { return heap_array[0]; }
     Pair pop() {
         Pair p = heap_array[0];
