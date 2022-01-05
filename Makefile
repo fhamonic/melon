@@ -31,4 +31,3 @@ single-header:
 	echo "*/" >> single-header/melon.hpp && \
 	cat melon.hpp.tmp >> single-header/melon.hpp && \
 	rm melon.hpp.tmp
-

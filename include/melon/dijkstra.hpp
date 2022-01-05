@@ -53,10 +53,12 @@ public:
                 if(!DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
                     continue;
                 heap.decrease(w, new_dist);
+                // pred_map[w] = p.first;
                 continue;
             }
             if(s == Heap::POST_HEAP) continue;
             heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
+            // pred_map[w] = p.first;
         }
         return p;
     }
