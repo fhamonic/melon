@@ -55,7 +55,7 @@ public:
         assert(is_valid_arc(a));
         auto it =
             std::ranges::lower_bound(out_arc_begin, a, std::less_equal<Arc>());
-        return std::distance(out_arc_begin.begin(), --it);
+        return static_cast<Node>(std::distance(out_arc_begin.begin(), --it));
     }
     Node target(Arc a) const {
         assert(is_valid_arc(a));
