@@ -33,7 +33,7 @@ GTEST_TEST(Dijkstra, test) {
 
     Dijkstra dijkstra(graph, length_map);
 
-    dijkstra.init(0);
+    dijkstra.addSource(0);
     ASSERT_FALSE(dijkstra.emptyQueue());
     ASSERT_EQ(dijkstra.processNextNode(), std::make_pair(0u, 0));
     ASSERT_FALSE(dijkstra.emptyQueue());

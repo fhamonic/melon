@@ -31,16 +31,19 @@ private:
     const LM & length_map;
 
     Heap heap;
+    typename GR::ArcMap<Node> pred_map;
 
 public:
     Dijkstra(const GR & g, const LM & l)
-        : graph(g), length_map(l), heap(g.nb_nodes()) {}
+        : graph(g), length_map(l), heap(g.nb_nodes()), pred_map(g.nb_nodes()) {}
 
-    void init(Node s, Value dist = DijkstraSemiringTraits::zero) {
+    void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) {
         assert(!heap.contains(s));
         heap.push(s, dist);
+        pred_map[s] = s;
     }
     bool emptyQueue() const { return heap.empty(); }
+    void reset() { heap.clear(); }
 
     std::pair<Node, Value> processNextNode() {
         const auto p = heap.pop();
@@ -53,12 +56,12 @@ public:
                 if(!DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
                     continue;
                 heap.decrease(w, new_dist);
-                // pred_map[w] = p.first;
+                pred_map[w] = p.first;
                 continue;
             }
             if(s == Heap::POST_HEAP) continue;
             heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
-            // pred_map[w] = p.first;
+            pred_map[w] = p.first;
         }
         return p;
     }
