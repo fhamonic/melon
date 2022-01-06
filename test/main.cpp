@@ -42,7 +42,7 @@ int main() {
 
     Dijkstra dijkstra(graph, length_map);
 
-    dijkstra.init(0);
+    dijkstra.addSource(0);
     while(!dijkstra.emptyQueue()) dijkstra.processNextNode();
 
     return 0;
