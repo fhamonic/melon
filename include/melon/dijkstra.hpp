@@ -14,17 +14,17 @@ namespace fhamonic {
 namespace melon {
 
 template <typename GR, typename LM,
-          typename TR = DijkstraShortestPathSemiring<typename LM::value_type>>
+          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
+          typename HP = BinaryHeap<typename GR::Node, typename LM::value_type,
+                                   decltype(SR::less)>>
 class Dijkstra {
 public:
-    using Node = typename GR::Node;
-    using Arc = typename GR::Arc;
+    using Node = GR::Node;
+    using Arc = GR::Arc;
 
     using Value = LM::value_type;
-    using DijkstraSemiringTraits = TR;
-
-    using Heap =
-        BinaryHeap<Node, Value, decltype(DijkstraSemiringTraits::less)>;
+    using DijkstraSemiringTraits = SR;
+    using Heap = HP;
 
 private:
     const GR & graph;
