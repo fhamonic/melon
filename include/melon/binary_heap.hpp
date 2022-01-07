@@ -18,11 +18,19 @@ public:
     using Compare = CMP;
     using Pair = std::pair<Node, Prio>;
 
-    enum State { IN_HEAP = 0, PRE_HEAP = -1, POST_HEAP = -2 };
-
 private:
+    using Iterator = std::vector<Pair>::iterator;
+    using Difference = std::vector<Pair>::difference_type;
+
+public:
+    enum State {
+        IN_HEAP = Difference(0),
+        PRE_HEAP = Difference(-1),
+        POST_HEAP = Difference(-2)
+    };
+
     std::vector<Pair> heap_array;
-    std::vector<int> indices_map;
+    std::vector<Difference> indices_map;
     Compare cmp;
 
 public:
@@ -40,78 +48,65 @@ public:
     }
 
 private:
-    static int parent(const unsigned int i) { return (i - 1) / 2; }
-    static int secondChild(const unsigned int i) { return (i + 1) * 2; }
-
-    bool less(const Pair & p1, const Pair & p2) const {
-        return cmp(p1.second, p2.second);
+    void heap_move(Difference index, Pair && p) {
+        indices_map[p.first] = index;
+        heap_array[index] = std::move(p);
     }
 
-    void move(const Pair & p, const unsigned int i) {
-        heap_array[i] = p;
-        indices_map[p.first] = i;
-    }
-
-    int bubbleUp(int hole, const Pair p) {
-        int par = parent(hole);
-        while(hole > 0 && less(p, heap_array[par])) {
-            move(heap_array[par], hole);
-            hole = par;
-            par = parent(hole);
+    void push_heap(Difference holeIndex, Pair && p) {
+        Difference parent = (holeIndex - 1) / 2;
+        while(holeIndex > 0 && cmp(p.second, heap_array[parent].second)) {
+            heap_move(holeIndex, std::move(heap_array[parent]));
+            holeIndex = parent;
+            parent = (holeIndex - 1) / 2;
         }
-        move(p, hole);
-        return hole;
+        heap_move(holeIndex, std::move(p));
     }
 
-    int bubbleDown(int hole, Pair p, const int length) {
-        int child = secondChild(hole);
-        while(child < length) {
-            if(less(heap_array[child - 1], heap_array[child])) {
-                --child;
+    void adjust_heap(Difference holeIndex, const Difference len, Pair && p) {
+        Difference child = 2 * (holeIndex + 1);
+        while(child < len) {
+            child -=
+                cmp(heap_array[child - 1].second, heap_array[child].second);
+            if(!cmp(heap_array[child].second, p.second)) {
+                return heap_move(holeIndex, std::move(p));
             }
-            if(!less(heap_array[child], p)) {
-                move(p, hole);
-                return hole;
-            }
-            move(heap_array[child], hole);
-            hole = child;
-            child = secondChild(hole);
+            heap_move(holeIndex, std::move(heap_array[child]));
+            holeIndex = child;
+            child = 2 * (holeIndex + 1);
         }
         --child;
-        if(child < length && less(heap_array[child], p)) {
-            move(heap_array[child], hole);
-            hole = child;
+        if(child < len && cmp(heap_array[child].second, p.second)) {
+            heap_move(holeIndex, std::move(heap_array[child]));
+            holeIndex = child;
         }
-        move(p, hole);
-        return hole;
+        heap_move(holeIndex, std::move(p));
     }
 
 public:
-    void push(const Pair & p) {
-        const int n = heap_array.size();
+    void push(Pair && p) {
+        auto n = heap_array.size();
         heap_array.resize(n + 1);
-        bubbleUp(n, p);
+        push_heap(Difference(n), std::move(p));
     }
     void push(const Node i, const Prio p) { push(Pair(i, p)); }
     bool contains(const Node u) const { return indices_map[u] > 0; }
     Prio prio(const Node u) const { return heap_array[indices_map[u]].second; }
-    Pair top() const { return heap_array[0]; }
+    Pair top() const { return heap_array.front(); }
     Pair pop() {
         assert(!heap_array.empty());
-        const unsigned int n = heap_array.size() - 1;
-        Pair p = heap_array[0];
+        const Difference n = heap_array.size() - 1;
+        Pair p = heap_array.front();
         indices_map[p.first] = POST_HEAP;
-        if(n > 0) {
-            bubbleDown(0, heap_array[n], n);
-        }
+        if(n > 0) adjust_heap(Difference(0), n, std::move(heap_array.back()));
         heap_array.pop_back();
         return p;
     }
     void decrease(const Node & u, const Prio & p) {
-        bubbleUp(indices_map[u], Pair(u, p));
+        push_heap(indices_map[u], Pair(u, p));
     }
     State state(const Node & u) const {
-        return State(std::min(indices_map[u], 0));
+        return State(std::min(indices_map[u], Difference(0)));
     }
 };  // class BinHeap
 

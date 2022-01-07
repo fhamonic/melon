@@ -37,7 +37,7 @@ GTEST_TEST(StaticDigraphBuilder, build_without_map) {
 
 GTEST_TEST(StaticDigraphBuilder, build_with_map) {
     constexpr std::size_t n = 8;
-    StaticDigraphBuilder<double> builder(n);
+    StaticDigraphBuilder<int> builder(n);
 
     std::vector<std::pair<StaticDigraph::Node, StaticDigraph::Node>> pairs{
         {3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3}, {6, 5}, {1, 2}, {1, 6}, {2, 3}};
