@@ -232,231 +232,6 @@ public:
     using Compare = CMP;
     using Pair = std::pair<Node, Prio>;
 
-    enum State { IN_HEAP = 0, PRE_HEAP = -1, POST_HEAP = -2 };
-
-private:
-    std::vector<Pair> heap_array;
-    std::vector<int> indices_map;
-    Compare cmp;
-
-public:
-    BinaryHeap(const std::size_t nb_nodes)
-        : heap_array(), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
-
-    BinaryHeap(const BinaryHeap & bin) = default;
-    BinaryHeap(BinaryHeap && bin) = default;
-
-    int size() const { return heap_array.size(); }
-    bool empty() const { return heap_array.empty(); }
-    void clear() {
-        heap_array.clear();
-        std::ranges::fill(indices_map, State::PRE_HEAP);
-    }
-
-private:
-    static int parent(const unsigned int i) { return (i - 1) / 2; }
-    static int secondChild(const unsigned int i) { return (i + 1) * 2; }
-
-    bool less(const Pair & p1, const Pair & p2) const {
-        return cmp(p1.second, p2.second);
-    }
-
-    void move(const Pair & p, const unsigned int i) {
-        heap_array[i] = p;
-        indices_map[p.first] = i;
-    }
-
-    int bubbleUp(int hole, const Pair p) {
-        int par = parent(hole);
-        while(hole > 0 && less(p, heap_array[par])) {
-            move(heap_array[par], hole);
-            hole = par;
-            par = parent(hole);
-        }
-        move(p, hole);
-        return hole;
-    }
-
-    int bubbleDown(int hole, Pair p, const int length) {
-        int child = secondChild(hole);
-        while(child < length) {
-            if(less(heap_array[child - 1], heap_array[child])) {
-                --child;
-            }
-            if(!less(heap_array[child], p)) {
-                move(p, hole);
-                return hole;
-            }
-            move(heap_array[child], hole);
-            hole = child;
-            child = secondChild(hole);
-        }
-        --child;
-        if(child < length && less(heap_array[child], p)) {
-            move(heap_array[child], hole);
-            hole = child;
-        }
-        move(p, hole);
-        return hole;
-    }
-
-public:
-    void push(const Pair & p) {
-        const int n = heap_array.size();
-        heap_array.resize(n + 1);
-        bubbleUp(n, p);
-    }
-    void push(const Node i, const Prio p) { push(Pair(i, p)); }
-    bool contains(const Node u) const { return indices_map[u] > 0; }
-    Prio prio(const Node u) const { return heap_array[indices_map[u]].second; }
-    Pair top() const { return heap_array[0]; }
-    Pair pop() {
-        assert(!heap_array.empty());
-        const unsigned int n = heap_array.size() - 1;
-        Pair p = heap_array[0];
-        indices_map[p.first] = POST_HEAP;
-        if(n > 0) {
-            bubbleDown(0, heap_array[n], n);
-        }
-        heap_array.pop_back();
-        return p;
-    }
-    void decrease(const Node & u, const Prio & p) {
-        bubbleUp(indices_map[u], Pair(u, p));
-    }
-    State state(const Node & u) const {
-        return State(std::min(indices_map[u], 0));
-    }
-};  // class BinHeap
-
-}  // namespace melon
-}  // namespace fhamonic
-
-#endif  // MELON_BINARY_HEAP_HPP
-
-#ifndef MELON_DIJKSTRA_SEMIRINGS_HPP
-#define MELON_DIJKSTRA_SEMIRINGS_HPP
-
-#include <functional>
-
-namespace fhamonic {
-namespace melon {
-
-template <typename T>
-struct DijkstraShortestPathSemiring {
-    static constexpr T zero = static_cast<T>(0);
-    static constexpr std::plus<T> plus{};
-    static constexpr std::less<T> less{};
-};
-
-template <typename T>
-struct DijkstraMostProbablePathSemiring {
-    static constexpr T zero = static_cast<T>(1);
-    static constexpr std::multiplies<T> plus{};
-    static constexpr std::greater<T> less{};
-};
-
-template <typename T>
-struct DijkstraMaxFlowPathSemiring {
-    static constexpr T zero = std::numeric_limits<T>::max();
-    static constexpr auto plus = [](const T & a, const T & b){ return std::min(a, b); };
-    static constexpr std::greater<T> less{};
-};
-
-template <typename T>
-struct DijkstraSpanningTreeSemiring {
-    static constexpr T zero = static_cast<T>(0);
-    static constexpr auto plus = [](const T & a, const T & b){ return b; };
-    static constexpr std::less<T> less{};
-};
-
-}  // namespace melon
-}  // namespace fhamonic
-
-#endif  // MELON_DIJKSTRA_SEMIRINGS_HPP
-
-namespace fhamonic {
-namespace melon {
-
-template <typename GR, typename LM,
-          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
-          typename HP = BinaryHeap<typename GR::Node, typename LM::value_type,
-                                   decltype(SR::less)>>
-class Dijkstra {
-public:
-    using Node = GR::Node;
-    using Arc = GR::Arc;
-
-    using Value = LM::value_type;
-    using DijkstraSemiringTraits = SR;
-    using Heap = HP;
-
-private:
-    const GR & graph;
-    const LM & length_map;
-
-    Heap heap;
-    typename GR::ArcMap<Node> pred_map;
-
-public:
-    Dijkstra(const GR & g, const LM & l)
-        : graph(g), length_map(l), heap(g.nb_nodes()), pred_map(g.nb_nodes()) {}
-
-    void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) {
-        assert(!heap.contains(s));
-        heap.push(s, dist);
-        pred_map[s] = s;
-    }
-    bool emptyQueue() const { return heap.empty(); }
-    void reset() { heap.clear(); }
-
-    std::pair<Node, Value> processNextNode() {
-        const auto p = heap.pop();
-        for(Arc a : graph.out_arcs(p.first)) {
-            Node w = graph.target(a);
-            const auto s = heap.state(w);
-            if(s == Heap::IN_HEAP) {
-                Value new_dist =
-                    DijkstraSemiringTraits::plus(p.second, length_map[a]);
-                if(!DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
-                    continue;
-                heap.decrease(w, new_dist);
-                pred_map[w] = p.first;
-                continue;
-            }
-            if(s == Heap::POST_HEAP) continue;
-            heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
-            pred_map[w] = p.first;
-        }
-        return p;
-    }
-};
-
-}  // namespace melon
-}  // namespace fhamonic
-
-#endif  // MELON_DIJKSTRA_HPP
-
-#ifndef MELON_IT_BINARY_HEAP_HPP
-#define MELON_IT_BINARY_HEAP_HPP
-
-#include <algorithm>
-#include <cassert>
-#include <functional>
-#include <utility>
-#include <vector>
-
-namespace fhamonic {
-namespace melon {
-
-template <typename ND, typename PR, typename CMP = std::less<PR>>
-class ItBinaryHeap {
-public:
-    using Node = ND;
-    using Prio = PR;
-    using Compare = CMP;
-    using Pair = std::pair<Node, Prio>;
-
     enum State { IN_HEAP = 0l, PRE_HEAP = -1l, POST_HEAP = -2l };
 
 private:
@@ -468,11 +243,11 @@ private:
     Compare cmp;
 
 public:
-    ItBinaryHeap(const std::size_t nb_nodes)
+    BinaryHeap(const std::size_t nb_nodes)
         : heap_array(), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
 
-    ItBinaryHeap(const ItBinaryHeap & bin) = default;
-    ItBinaryHeap(ItBinaryHeap && bin) = default;
+    BinaryHeap(const BinaryHeap & bin) = default;
+    BinaryHeap(BinaryHeap && bin) = default;
 
     int size() const { return heap_array.size(); }
     bool empty() const { return heap_array.empty(); }
@@ -605,6 +380,109 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_IT_BINARY_HEAP_HPP
+#endif  // MELON_BINARY_HEAP_HPP
+
+#ifndef MELON_DIJKSTRA_SEMIRINGS_HPP
+#define MELON_DIJKSTRA_SEMIRINGS_HPP
+
+#include <functional>
+
+namespace fhamonic {
+namespace melon {
+
+template <typename T>
+struct DijkstraShortestPathSemiring {
+    static constexpr T zero = static_cast<T>(0);
+    static constexpr std::plus<T> plus{};
+    static constexpr std::less<T> less{};
+};
+
+template <typename T>
+struct DijkstraMostProbablePathSemiring {
+    static constexpr T zero = static_cast<T>(1);
+    static constexpr std::multiplies<T> plus{};
+    static constexpr std::greater<T> less{};
+};
+
+template <typename T>
+struct DijkstraMaxFlowPathSemiring {
+    static constexpr T zero = std::numeric_limits<T>::max();
+    static constexpr auto plus = [](const T & a, const T & b){ return std::min(a, b); };
+    static constexpr std::greater<T> less{};
+};
+
+template <typename T>
+struct DijkstraSpanningTreeSemiring {
+    static constexpr T zero = static_cast<T>(0);
+    static constexpr auto plus = [](const T & a, const T & b){ return b; };
+    static constexpr std::less<T> less{};
+};
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // MELON_DIJKSTRA_SEMIRINGS_HPP
+
+namespace fhamonic {
+namespace melon {
+
+template <typename GR, typename LM,
+          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
+          typename HP = BinaryHeap<typename GR::Node, typename LM::value_type,
+                                   decltype(SR::less)>>
+class Dijkstra {
+public:
+    using Node = GR::Node;
+    using Arc = GR::Arc;
+
+    using Value = LM::value_type;
+    using DijkstraSemiringTraits = SR;
+    using Heap = HP;
+
+private:
+    const GR & graph;
+    const LM & length_map;
+
+    Heap heap;
+    typename GR::ArcMap<Node> pred_map;
+
+public:
+    Dijkstra(const GR & g, const LM & l)
+        : graph(g), length_map(l), heap(g.nb_nodes()), pred_map(g.nb_nodes()) {}
+
+    void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) {
+        assert(!heap.contains(s));
+        heap.push(s, dist);
+        pred_map[s] = s;
+    }
+    bool emptyQueue() const { return heap.empty(); }
+    void reset() { heap.clear(); }
+
+    std::pair<Node, Value> processNextNode() {
+        const auto p = heap.pop();
+        for(Arc a : graph.out_arcs(p.first)) {
+            Node w = graph.target(a);
+            const auto s = heap.state(w);
+            if(s == Heap::IN_HEAP) {
+                Value new_dist =
+                    DijkstraSemiringTraits::plus(p.second, length_map[a]);
+                if(!DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
+                    continue;
+                heap.decrease(w, new_dist);
+                pred_map[w] = p.first;
+                continue;
+            }
+            if(s == Heap::POST_HEAP) continue;
+            heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
+            pred_map[w] = p.first;
+        }
+        return p;
+    }
+};
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // MELON_DIJKSTRA_HPP
 
 #endif //FHAMONIC_MELON_HPP
