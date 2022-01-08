@@ -37,15 +37,15 @@ public:
     Dijkstra(const GR & g, const LM & l)
         : graph(g), length_map(l), heap(g.nb_nodes()), pred_map(g.nb_nodes()) {}
 
-    void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) {
+    void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(!heap.contains(s));
         heap.push(s, dist);
         pred_map[s] = s;
     }
-    bool emptyQueue() const { return heap.empty(); }
-    void reset() { heap.clear(); }
+    bool emptyQueue() const noexcept { return heap.empty(); }
+    void reset() noexcept { heap.clear(); }
 
-    std::pair<Node, Value> processNextNode() {
+    std::pair<Node, Value> processNextNode() noexcept {
         const auto p = heap.pop();
         for(Arc a : graph.out_arcs(p.first)) {
             Node w = graph.target(a);
@@ -53,15 +53,16 @@ public:
             if(s == Heap::IN_HEAP) {
                 Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, length_map[a]);
-                if(!DijkstraSemiringTraits::less(new_dist, heap.prio(w)))
-                    continue;
-                heap.decrease(w, new_dist);
-                pred_map[w] = p.first;
+                if(DijkstraSemiringTraits::less(new_dist, heap.prio(w))) {
+                    heap.decrease(w, new_dist);
+                    pred_map[w] = p.first;
+                }
                 continue;
             }
-            if(s == Heap::POST_HEAP) continue;
-            heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
-            pred_map[w] = p.first;
+            if(s == Heap::PRE_HEAP) {
+                heap.push(w, DijkstraSemiringTraits::plus(p.second, length_map[a]));
+                pred_map[w] = p.first;
+            }
         }
         return p;
     }

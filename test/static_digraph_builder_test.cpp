@@ -43,11 +43,10 @@ GTEST_TEST(StaticDigraphBuilder, build_with_map) {
         {3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3}, {6, 5}, {1, 2}, {1, 6}, {2, 3}};
 
     auto weight = [n](StaticDigraph::Node u, StaticDigraph::Node v) {
-        return u * n + v;
+        return static_cast<int>(u * n + v);
     };
 
-    for(auto & [u, v] : pairs)
-        builder.addArc(u, v, weight(u,v));
+    for(auto & [u, v] : pairs) builder.addArc(u, v, weight(u, v));
 
     auto [graph, map] = builder.build();
 
@@ -67,6 +66,6 @@ GTEST_TEST(StaticDigraphBuilder, build_with_map) {
     for(StaticDigraph::Arc a : graph.arcs()) {
         auto u = graph.source(a);
         auto v = graph.target(a);
-        ASSERT_EQ(map[a], weight(u,v));
+        ASSERT_EQ(map[a], weight(u, v));
     }
 }
