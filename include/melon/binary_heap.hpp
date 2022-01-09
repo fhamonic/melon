@@ -39,7 +39,7 @@ public:
     BinaryHeap(const BinaryHeap & bin) = default;
     BinaryHeap(BinaryHeap && bin) = default;
 
-    int size() const noexcept { return heap_array.size() - 1; }
+    Index size() const noexcept { return heap_array.size() - 1; }
     bool empty() const noexcept { return size() == 0; }
     void clear() noexcept {
         heap_array.resize(1);
@@ -72,8 +72,7 @@ private:
         heap_move(holeIndex, std::move(p));
     }
 
-    void adjust_heap(Index holeIndex, const Index len,
-                     Pair && p) noexcept {
+    void adjust_heap(Index holeIndex, const Index len, Pair && p) noexcept {
         Index child = 2 * holeIndex;
         while(child < len) {
             child += sizeof(Pair) * cmp(pair_ref(child + sizeof(Pair)).second,
@@ -102,7 +101,7 @@ public:
     Prio prio(const Node u) const noexcept {
         return pair_ref(indices_map[u]).second;
     }
-    Pair top() const noexcept { 
+    Pair top() const noexcept {
         assert(!empty());
         return heap_array[1];
     }
