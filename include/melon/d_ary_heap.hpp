@@ -136,20 +136,21 @@ private:
 
     void adjust_heap(Index holeIndex, const Index end, Pair && p) noexcept {
         Index child_end;
-        if constexpr(D == 2)
-            child_end = end - (D - 1) * sizeof(Pair);
-        else
+        if constexpr(D > 2)
             child_end =
                 end > D * sizeof(Pair) ? end - (D - 1) * sizeof(Pair) : 0;
+        else
+            child_end = end - (D - 1) * sizeof(Pair);
         Index child = first_child_of(holeIndex);
         while(child < child_end) {
             child = minimum_child(child);
-            if(cmp(p.second, pair_ref(child).second)) {
-                return heap_move(holeIndex, std::move(p));
+            if(cmp(pair_ref(child).second, p.second)) {
+                heap_move(holeIndex, std::move(pair_ref(child)));
+                holeIndex = child;
+                child = first_child_of(child);
+                continue;
             }
-            heap_move(holeIndex, std::move(pair_ref(child)));
-            holeIndex = child;
-            child = first_child_of(child);
+            goto ok;
         }
         if(child < end) {
             child =
@@ -159,6 +160,7 @@ private:
                 holeIndex = child;
             }
         }
+    ok:
         heap_move(holeIndex, std::move(p));
     }
 

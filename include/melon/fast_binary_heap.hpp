@@ -10,7 +10,6 @@
 namespace fhamonic {
 namespace melon {
 
-
 template <typename ND, typename PR, typename CMP = std::less<PR>>
 class FastBinaryHeap {
 public:
@@ -71,23 +70,25 @@ private:
         }
         heap_move(holeIndex, std::move(p));
     }
-    
+
     void adjust_heap(Index holeIndex, const Index end, Pair && p) noexcept {
         Index child = 2 * holeIndex;
         while(child < end) {
             child += sizeof(Pair) * cmp(pair_ref(child + sizeof(Pair)).second,
                                         pair_ref(child).second);
-            if(!cmp(pair_ref(child).second, p.second)) {
-                return heap_move(holeIndex, std::move(p));
+            if(cmp(pair_ref(child).second, p.second)) {
+                heap_move(holeIndex, std::move(pair_ref(child)));
+                holeIndex = child;
+                child = 2 * holeIndex;
+                continue;
             }
-            heap_move(holeIndex, std::move(pair_ref(child)));
-            holeIndex = child;
-            child = 2 * holeIndex;
+            goto ok;
         }
         if(child == end && cmp(pair_ref(child).second, p.second)) {
             heap_move(holeIndex, std::move(pair_ref(child)));
             holeIndex = child;
         }
+    ok:
         heap_move(holeIndex, std::move(p));
     }
 
