@@ -6,7 +6,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/binary_heap.hpp"
+#include "melon/d_ary_heap.hpp"
 #include "melon/dijkstra_semirings.hpp"
 #include "melon/static_digraph.hpp"
 
@@ -38,7 +38,7 @@ public:
         : graph(g), length_map(l), heap(g.nb_nodes()), pred_map(g.nb_nodes()) {}
 
     void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) noexcept {
-        assert(!heap.contains(s));
+        assert(heap.state(s) != Heap::IN_HEAP);
         heap.push(s, dist);
         pred_map[s] = s;
     }
