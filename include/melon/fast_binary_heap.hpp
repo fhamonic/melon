@@ -1,5 +1,5 @@
-#ifndef MELON_BINARY_HEAP_HPP
-#define MELON_BINARY_HEAP_HPP
+#ifndef MELON_FAST_BINARY_HEAP_HPP
+#define MELON_FAST_BINARY_HEAP_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -10,8 +10,9 @@
 namespace fhamonic {
 namespace melon {
 
+
 template <typename ND, typename PR, typename CMP = std::less<PR>>
-class BinaryHeap {
+class FastBinaryHeap {
 public:
     using Node = ND;
     using Prio = PR;
@@ -33,11 +34,11 @@ public:
     Compare cmp;
 
 public:
-    BinaryHeap(const std::size_t nb_nodes)
+    FastBinaryHeap(const std::size_t nb_nodes)
         : heap_array(1), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
 
-    BinaryHeap(const BinaryHeap & bin) = default;
-    BinaryHeap(BinaryHeap && bin) = default;
+    FastBinaryHeap(const FastBinaryHeap & bin) = default;
+    FastBinaryHeap(FastBinaryHeap && bin) = default;
 
     Index size() const noexcept { return heap_array.size() - 1; }
     bool empty() const noexcept { return size() == 0; }
@@ -62,19 +63,18 @@ private:
     }
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
-        Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
-        while(holeIndex > sizeof(Pair) &&
-              cmp(p.second, pair_ref(parent).second)) {
+        while(holeIndex > sizeof(Pair)) {
+            Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
+            if(!cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;
-            parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
         }
         heap_move(holeIndex, std::move(p));
     }
-
-    void adjust_heap(Index holeIndex, const Index len, Pair && p) noexcept {
+    
+    void adjust_heap(Index holeIndex, const Index end, Pair && p) noexcept {
         Index child = 2 * holeIndex;
-        while(child < len) {
+        while(child < end) {
             child += sizeof(Pair) * cmp(pair_ref(child + sizeof(Pair)).second,
                                         pair_ref(child).second);
             if(!cmp(pair_ref(child).second, p.second)) {
@@ -84,7 +84,7 @@ private:
             holeIndex = child;
             child = 2 * holeIndex;
         }
-        if(child < len && cmp(pair_ref(child).second, p.second)) {
+        if(child == end && cmp(pair_ref(child).second, p.second)) {
             heap_move(holeIndex, std::move(pair_ref(child)));
             holeIndex = child;
         }
@@ -107,9 +107,9 @@ public:
     }
     Pair pop() noexcept {
         assert(!empty());
+        const Index n = heap_array.size() - 1;
         const Pair p = std::move(heap_array[1]);
         indices_map[p.first] = POST_HEAP;
-        const Index n = Index(size());
         if(n > 1)
             adjust_heap(Index(sizeof(Pair)), n * sizeof(Pair),
                         std::move(heap_array.back()));
@@ -122,9 +122,9 @@ public:
     State state(const Node & u) const noexcept {
         return State(std::min(indices_map[u], Index(sizeof(Pair))));
     }
-};  // class BinaryHeap
+};  // class BinHeap
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_BINARY_HEAP_HPP
+#endif  // MELON_FAST_BINARY_HEAP_HPP
