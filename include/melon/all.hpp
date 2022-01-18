@@ -14,5 +14,6 @@
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
 #include "melon/dijkstra.hpp"
+#include "melon/fast_binary_heap.hpp"
 
 #endif //FHAMONIC_MELON_HPP
