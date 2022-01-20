@@ -22,6 +22,7 @@ private:
     using Index = std::vector<Pair>::size_type;
 
 public:
+    static_assert(sizeof(Pair) >= 2, "std::pair<Node, Prio> is too small");
     enum State : Index {
         PRE_HEAP = Index(0),
         POST_HEAP = Index(1),
