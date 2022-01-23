@@ -60,10 +60,10 @@ GTEST_TEST(StaticDigraph, vectors_constructor_1) {
                          std::vector<StaticDigraph::Arc>({0, 1, 2, 3, 4}));
 
     for(auto u : graph.nodes()) ASSERT_TRUE(graph.is_valid_node(u));
-    ASSERT_FALSE(graph.is_valid_node(graph.nb_nodes()));
+    ASSERT_FALSE(graph.is_valid_node(StaticDigraph::Node(graph.nb_nodes())));
 
     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
-    ASSERT_FALSE(graph.is_valid_arc(graph.nb_arcs()));
+    ASSERT_FALSE(graph.is_valid_arc(StaticDigraph::Arc(graph.nb_arcs())));
 
     AssertRangesAreEqual(graph.out_neighbors(0),
                          std::vector<StaticDigraph::Node>({1, 2}));
@@ -104,10 +104,10 @@ GTEST_TEST(StaticDigraph, vectors_constructor_2) {
                                            {0, 1, 2, 3, 4, 5, 6, 7, 8}));
 
     for(auto u : graph.nodes()) ASSERT_TRUE(graph.is_valid_node(u));
-    ASSERT_FALSE(graph.is_valid_node(graph.nb_nodes()));
+    ASSERT_FALSE(graph.is_valid_node(StaticDigraph::Node(graph.nb_nodes())));
 
     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
-    ASSERT_FALSE(graph.is_valid_arc(graph.nb_arcs()));
+    ASSERT_FALSE(graph.is_valid_arc(StaticDigraph::Arc(graph.nb_arcs())));
 
     AssertRangesAreEqual(graph.out_neighbors(0),
                          std::ranges::empty_view<StaticDigraph::Node>());

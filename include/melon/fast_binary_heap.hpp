@@ -24,9 +24,9 @@ private:
 public:
     static_assert(sizeof(Pair) >= 2, "std::pair<Node, Prio> is too small");
     enum State : Index {
-        PRE_HEAP = Index(0),
-        POST_HEAP = Index(1),
-        IN_HEAP = Index(sizeof(Pair))
+        PRE_HEAP = static_cast<Index>(0),
+        POST_HEAP = static_cast<Index>(1),
+        IN_HEAP = static_cast<Index>(2)
     };
 
     std::vector<Pair> heap_array;
@@ -96,7 +96,7 @@ private:
 public:
     void push(Pair && p) noexcept {
         heap_array.emplace_back();
-        heap_push(Index(size() * sizeof(Pair)), std::move(p));
+        heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
     }
     void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
     bool contains(const Node u) const noexcept { return indices_map[u] > 0; }
@@ -113,7 +113,7 @@ public:
         const Pair p = std::move(heap_array[1]);
         indices_map[p.first] = POST_HEAP;
         if(n > 1)
-            adjust_heap(Index(sizeof(Pair)), n * sizeof(Pair),
+            adjust_heap(static_cast<Index>(sizeof(Pair)), n * sizeof(Pair),
                         std::move(heap_array.back()));
         heap_array.pop_back();
         return p;
@@ -122,9 +122,9 @@ public:
         heap_push(indices_map[u], Pair(u, p));
     }
     State state(const Node & u) const noexcept {
-        return State(std::min(indices_map[u], Index(sizeof(Pair))));
+        return State(std::min(indices_map[u], static_cast<Index>(IN_HEAP)));
     }
-};  // class BinHeap
+};  // class FastBinaryHeap
 
 }  // namespace melon
 }  // namespace fhamonic
