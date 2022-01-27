@@ -114,22 +114,17 @@ public:
             processNextNode();
         }
     }
-
-    template <typename Dummy = void>
-    Node pred_node(const Node u) const noexcept {
-        static_assert(track_predecessor_nodes, "Dijkstra behavior must specify to track predecessor nodes.");
+    
+    Node pred_node(const Node u) const noexcept
+        requires(track_predecessor_nodes) {
         assert(heap.state(u) != Heap::PRE_HEAP);
         return pred_nodes_map[u];
     }
-    template <typename Dummy = void>
-    Arc pred_arc(const Node u) const noexcept {
-        static_assert(track_predecessor_nodes, "Dijkstra behavior must specify to track predecessor arcs.");
+    Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
         assert(heap.state(u) != Heap::PRE_HEAP);
         return pred_arcs_map[u];
     }
-    template <typename Dummy = void>
-    Value dist(const Node u) const noexcept {
-        static_assert(track_distances, "Dijkstra behavior must specify to track distances.");
+    Value dist(const Node u) const noexcept requires(track_distances) {
         assert(heap.state(u) == Heap::POST_HEAP);
         return dist_map[u];
     }
