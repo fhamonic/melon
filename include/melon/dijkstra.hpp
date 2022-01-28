@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "melon/d_ary_heap.hpp"
-#include "melon/fast_binary_heap.hpp"
 #include "melon/dijkstra_semirings.hpp"
+#include "melon/fast_binary_heap.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -22,13 +22,13 @@ enum DijkstraBehavior : unsigned char {
     TRACK_DISTANCES = 0b00000100
 };
 
-template <
-    typename GR, typename LM,
-    std::underlying_type_t<DijkstraBehavior> BH =
-        (DijkstraBehavior::TRACK_PRED_NODES | DijkstraBehavior::TRACK_DISTANCES),
-    typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
-    typename HP = FastBinaryHeap<typename GR::Node, typename LM::value_type,
-                                 decltype(SR::less)>>
+template <typename GR, typename LM,
+          std::underlying_type_t<DijkstraBehavior> BH =
+              (DijkstraBehavior::TRACK_PRED_NODES |
+               DijkstraBehavior::TRACK_DISTANCES),
+          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
+          typename HP = FastBinaryHeap<
+              typename GR::Node, typename LM::value_type, decltype(SR::less)>>
 class Dijkstra {
 public:
     using Node = GR::Node;
@@ -114,7 +114,7 @@ public:
             processNextNode();
         }
     }
-    
+
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
         assert(heap.state(u) != Heap::PRE_HEAP);

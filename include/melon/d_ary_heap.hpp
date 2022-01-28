@@ -54,7 +54,7 @@ private:
         return i * D + sizeof(Pair);
     }
     template <int I = D>
-    constexpr Index minimum_child(const Index first_child) {
+    constexpr Index minimum_child(const Index first_child) const {
         if constexpr(I == 1)
             return first_child;
         else if constexpr(I == 2)
@@ -63,8 +63,8 @@ private:
                        cmp(pair_ref(first_child + sizeof(Pair)).second,
                            pair_ref(first_child).second);
         else {
-            Index first_half_minimum = minimum_child<I / 2>(first_child);
-            Index second_half_minimum =
+            const Index first_half_minimum = minimum_child<I / 2>(first_child);
+            const Index second_half_minimum =
                 minimum_child<I - I / 2>(first_child + (I / 2) * sizeof(Pair));
             return cmp(pair_ref(second_half_minimum).second,
                        pair_ref(first_half_minimum).second)
@@ -73,7 +73,7 @@ private:
         }
     }
     constexpr Index minimum_remaining_child(const Index first_child,
-                                            const Index nb_children) {
+                                            const Index nb_children) const {
         if constexpr(D == 2)
             return first_child;
         else if constexpr(D == 4) {
