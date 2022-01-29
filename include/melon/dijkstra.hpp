@@ -12,6 +12,8 @@
 #include "melon/fast_binary_heap.hpp"
 #include "melon/dijkstra_semirings.hpp"
 
+#include "melon/future_std/generator.hpp"
+
 namespace fhamonic {
 namespace melon {
 
@@ -109,9 +111,9 @@ public:
         return p;
     }
 
-    void run() noexcept {
-        while(!emptyQueue) {
-            processNextNode();
+    generator<std::pair<Node, Value>> run() noexcept {
+        while(!emptyQueue()) {
+            co_yield processNextNode();
         }
     }
     
