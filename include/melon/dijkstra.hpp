@@ -2,7 +2,6 @@
 #define MELON_DIJKSTRA_HPP
 
 #include <algorithm>
-#include <queue>
 #include <ranges>
 #include <type_traits>
 #include <variant>

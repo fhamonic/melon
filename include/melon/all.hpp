@@ -13,7 +13,7 @@
 
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
-#include "melon/fast_binary_heap.hpp"
+#include "melon/bfs.hpp"
 #include "melon/dijkstra.hpp"
 #include "melon/utils/node_search_span.hpp"
 
