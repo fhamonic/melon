@@ -1,3 +1,6 @@
+#ifndef MELON_NODE_SEARCH_SPAN_HPP
+#define MELON_NODE_SEARCH_SPAN_HPP
+
 #include <concepts>
 #include <iterator>
 
@@ -10,7 +13,6 @@ concept node_search_algorithm = requires(Algo alg) {
     { alg.processNextNode() } -> std::default_initializable;
 };
 
-// TODO requires members
 template <typename Algo>
 requires node_search_algorithm<Algo>
 struct node_search_span {
@@ -55,3 +57,5 @@ public:
 
 }  // namespace melon
 }  // namespace fhamonic
+
+#endif  // MELON_NODE_SEARCH_SPAN_HPP
