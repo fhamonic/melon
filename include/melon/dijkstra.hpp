@@ -18,8 +18,7 @@ namespace melon {
 
 template <typename GR, typename LM,
           std::underlying_type_t<NodeSeachBehavior> BH =
-              (NodeSeachBehavior::TRACK_PRED_NODES |
-               NodeSeachBehavior::TRACK_DISTANCES),
+              NodeSeachBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
           typename HP = FastBinaryHeap<
               typename GR::Node, typename LM::value_type, decltype(SR::less)>>
