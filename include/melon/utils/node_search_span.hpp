@@ -1,9 +1,18 @@
+#include <concepts>
+#include <iterator>
 
 namespace fhamonic {
 namespace melon {
 
+template <typename Algo>
+concept node_search_algorithm = requires(Algo alg) {
+    { alg.emptyQueue() } -> std::convertible_to<bool>;
+    { alg.processNextNode() } -> std::default_initializable;
+};
+
 // TODO requires members
 template <typename Algo>
+requires node_search_algorithm<Algo>
 struct node_search_span {
     struct end_iterator {};
     class iterator {
