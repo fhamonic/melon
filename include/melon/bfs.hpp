@@ -51,8 +51,12 @@ private:
     DistancesMap dist_map;
 
 public:
-    BFS(const GR & g) : graph(g), queue(), queued_map(g.nb_nodes(), false) {
-        queue.reserve(g.nb_nodes());
+    BFS(const GR & g)
+        : graph(g)
+        , queue(g.nb_nodes())
+        , front(queue.begin())
+        , back(queue.begin())
+        , queued_map(g.nb_nodes(), false) {
         front = back = queue.begin();
         if constexpr(track_predecessor_nodes)
             pred_nodes_map.resize(g.nb_nodes());
@@ -69,6 +73,7 @@ public:
         assert(!queued_map[s]);
         pushNode(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
+        if constexpr(track_distances) dist_map[s] = 0;
         return *this;
     }
 
