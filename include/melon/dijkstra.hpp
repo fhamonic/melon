@@ -12,8 +12,6 @@
 #include "melon/dijkstra_semirings.hpp"
 #include "melon/fast_binary_heap.hpp"
 
-#include "melon/future_std/generator.hpp"
-
 namespace fhamonic {
 namespace melon {
 
@@ -75,12 +73,15 @@ public:
         if constexpr(track_distances) dist_map.resize(g.nb_nodes());
     }
 
-    void reset() noexcept { heap.clear(); }
-    void addSource(Node s, Value dist = DijkstraSemiringTraits::zero) noexcept {
+    Dijkstra & reset() noexcept { heap.clear(); return *this; }
+    Dijkstra & addSource(Node s, Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(heap.state(s) != Heap::IN_HEAP);
         heap.push(s, dist);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
+        return *this;
     }
+
+
     bool emptyQueue() const noexcept { return heap.empty(); }
 
     std::pair<Node, Value> processNextNode() noexcept {
@@ -111,9 +112,9 @@ public:
         return p;
     }
 
-    generator<std::pair<Node, Value>> run() noexcept {
+    void run() noexcept {
         while(!emptyQueue()) {
-            co_yield processNextNode();
+            processNextNode();
         }
     }
 
