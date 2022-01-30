@@ -8,19 +8,13 @@
 #include <variant>      // monostate
 #include <vector>
 
+#include "melon/node_search_behavior.hpp"
+
 namespace fhamonic {
 namespace melon {
 
-enum BFSBehavior : unsigned char {
-    TRACK_NONE = 0b00000000,
-    TRACK_PRED_NODES = 0b00000001,
-    TRACK_PRED_ARCS = 0b00000010,
-    TRACK_DISTANCES = 0b00000100
-};
-
-template <typename GR,
-          std::underlying_type_t<BFSBehavior> BH =
-              (BFSBehavior::TRACK_PRED_NODES | BFSBehavior::TRACK_DISTANCES)>
+template <typename GR, std::underlying_type_t<NodeSeachBehavior> BH =
+                           NodeSeachBehavior::TRACK_NONE>
 class BFS {
 public:
     using Node = GR::Node;
@@ -29,11 +23,11 @@ public:
     using VisitedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & BFSBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & BFSBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & BFSBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -42,7 +36,7 @@ public:
         std::conditional<track_predecessor_arcs, typename GR::NodeMap<Arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::NodeMap<Value>,
+        std::conditional<track_distances, typename GR::NodeMap<std::size_t>,
                          std::monostate>::type;
 
 private:
@@ -71,7 +65,7 @@ public:
         std::ranges::fill(queued_map, false);
         return *this;
     }
-    BFS & addSource(Node s, Value dist = BFSSemiringTraits::zero) noexcept {
+    BFS & addSource(Node s) noexcept {
         assert(!queued_map[s]);
         pushNode(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
@@ -80,7 +74,7 @@ public:
 
     bool emptyQueue() const noexcept { return front == back; }
     void pushNode(Node u) noexcept {
-        *back = s;
+        *back = u;
         ++back;
         queued_map[u] = true;
     }
@@ -118,7 +112,7 @@ public:
         assert(queued_map[u]);
         return pred_arcs_map[u];
     }
-    Value dist(const Node u) const noexcept requires(track_distances) {
+    std::size_t dist(const Node u) const noexcept requires(track_distances) {
         assert(queued_map[u]);
         return dist_map[u];
     }
