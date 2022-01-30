@@ -204,143 +204,151 @@ public:
 
 #endif  // MELON_STATIC_DIGRAPH_BUILDER_HPP
 
-#ifndef MELON_FAST_BINARY_HEAP_HPP
-#define MELON_FAST_BINARY_HEAP_HPP
+#ifndef MELON_BFS_HPP
+#define MELON_BFS_HPP
 
 #include <algorithm>
 #include <cassert>
-#include <functional>
-#include <utility>
+#include <ranges>
+#include <type_traits>  // underlying_type, conditional
+#include <variant>      // monostate
 #include <vector>
+
+#ifndef MELON_NODE_SEARCH_BEHAVIOR
+#define MELON_NODE_SEARCH_BEHAVIOR
 
 namespace fhamonic {
 namespace melon {
 
-template <typename ND, typename PR, typename CMP = std::less<PR>>
-class FastBinaryHeap {
-public:
-    using Node = ND;
-    using Prio = PR;
-    using Compare = CMP;
-    using Pair = std::pair<Node, Prio>;
-
-private:
-    using Index = std::vector<Pair>::size_type;
-
-public:
-    static_assert(sizeof(Pair) >= 2, "std::pair<Node, Prio> is too small");
-    enum State : Index {
-        PRE_HEAP = static_cast<Index>(0),
-        POST_HEAP = static_cast<Index>(1),
-        IN_HEAP = static_cast<Index>(2)
-    };
-
-    std::vector<Pair> heap_array;
-    std::vector<Index> indices_map;
-    Compare cmp;
-
-public:
-    FastBinaryHeap(const std::size_t nb_nodes)
-        : heap_array(1), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
-
-    FastBinaryHeap(const FastBinaryHeap & bin) = default;
-    FastBinaryHeap(FastBinaryHeap && bin) = default;
-
-    Index size() const noexcept { return heap_array.size() - 1; }
-    bool empty() const noexcept { return size() == 0; }
-    void clear() noexcept {
-        heap_array.resize(1);
-        std::ranges::fill(indices_map, State::PRE_HEAP);
-    }
-
-private:
-    constexpr Pair & pair_ref(Index i) {
-        return *(reinterpret_cast<Pair *>(
-            reinterpret_cast<std::byte *>(heap_array.data()) + i));
-    }
-    constexpr const Pair & pair_ref(Index i) const {
-        return *(reinterpret_cast<const Pair *>(
-            reinterpret_cast<const std::byte *>(heap_array.data()) + i));
-    }
-
-    void heap_move(Index index, Pair && p) noexcept {
-        indices_map[p.first] = index;
-        pair_ref(index) = std::move(p);
-    }
-
-    void heap_push(Index holeIndex, Pair && p) noexcept {
-        while(holeIndex > sizeof(Pair)) {
-            Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
-            if(!cmp(p.second, pair_ref(parent).second)) break;
-            heap_move(holeIndex, std::move(pair_ref(parent)));
-            holeIndex = parent;
-        }
-        heap_move(holeIndex, std::move(p));
-    }
-
-    void adjust_heap(Index holeIndex, const Index end, Pair && p) noexcept {
-        Index child = 2 * holeIndex;
-        while(child < end) {
-            child += sizeof(Pair) * cmp(pair_ref(child + sizeof(Pair)).second,
-                                        pair_ref(child).second);
-            if(cmp(pair_ref(child).second, p.second)) {
-                heap_move(holeIndex, std::move(pair_ref(child)));
-                holeIndex = child;
-                child = 2 * holeIndex;
-                continue;
-            }
-            goto ok;
-        }
-        if(child == end && cmp(pair_ref(child).second, p.second)) {
-            heap_move(holeIndex, std::move(pair_ref(child)));
-            holeIndex = child;
-        }
-    ok:
-        heap_move(holeIndex, std::move(p));
-    }
-
-public:
-    void push(Pair && p) noexcept {
-        heap_array.emplace_back();
-        heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
-    }
-    void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
-    bool contains(const Node u) const noexcept { return indices_map[u] > 0; }
-    Prio prio(const Node u) const noexcept {
-        return pair_ref(indices_map[u]).second;
-    }
-    Pair top() const noexcept {
-        assert(!empty());
-        return heap_array[1];
-    }
-    Pair pop() noexcept {
-        assert(!empty());
-        const Index n = heap_array.size() - 1;
-        const Pair p = std::move(heap_array[1]);
-        indices_map[p.first] = POST_HEAP;
-        if(n > 1)
-            adjust_heap(static_cast<Index>(sizeof(Pair)), n * sizeof(Pair),
-                        std::move(heap_array.back()));
-        heap_array.pop_back();
-        return p;
-    }
-    void decrease(const Node & u, const Prio & p) noexcept {
-        heap_push(indices_map[u], Pair(u, p));
-    }
-    State state(const Node & u) const noexcept {
-        return State(std::min(indices_map[u], static_cast<Index>(IN_HEAP)));
-    }
-};  // class FastBinaryHeap
+enum NodeSeachBehavior : unsigned char {
+    TRACK_NONE = 0b00000000,
+    TRACK_PRED_NODES = 0b00000001,
+    TRACK_PRED_ARCS = 0b00000010,
+    TRACK_DISTANCES = 0b00000100
+};
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_FAST_BINARY_HEAP_HPP
+#endif  // MELON_NODE_SEARCH_BEHAVIOR
+
+namespace fhamonic {
+namespace melon {
+
+template <typename GR, std::underlying_type_t<NodeSeachBehavior> BH =
+                           NodeSeachBehavior::TRACK_NONE>
+class BFS {
+public:
+    using Node = GR::Node;
+    using Arc = GR::Arc;
+
+    using VisitedMap = typename GR::NodeMap<bool>;
+
+    static constexpr bool track_predecessor_nodes =
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+    static constexpr bool track_predecessor_arcs =
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+    static constexpr bool track_distances =
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
+
+    using PredNodesMap =
+        std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
+                         std::monostate>::type;
+    using PredArcsMap =
+        std::conditional<track_predecessor_arcs, typename GR::NodeMap<Arc>,
+                         std::monostate>::type;
+    using DistancesMap =
+        std::conditional<track_distances, typename GR::NodeMap<std::size_t>,
+                         std::monostate>::type;
+
+private:
+    const GR & graph;
+    std::vector<Node> queue;
+    std::vector<Node>::iterator front, back;
+
+    VisitedMap queued_map;
+
+    PredNodesMap pred_nodes_map;
+    PredArcsMap pred_arcs_map;
+    DistancesMap dist_map;
+
+public:
+    BFS(const GR & g) : graph(g), queue(), queued_map(g.nb_nodes(), false) {
+        queue.reserve(g.nb_nodes());
+        front = back = queue.begin();
+        if constexpr(track_predecessor_nodes)
+            pred_nodes_map.resize(g.nb_nodes());
+        if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
+        if constexpr(track_distances) dist_map.resize(g.nb_nodes());
+    }
+
+    BFS & reset() noexcept {
+        queue.resize(0);
+        std::ranges::fill(queued_map, false);
+        return *this;
+    }
+    BFS & addSource(Node s) noexcept {
+        assert(!queued_map[s]);
+        pushNode(s);
+        if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
+        return *this;
+    }
+
+    bool emptyQueue() const noexcept { return front == back; }
+    void pushNode(Node u) noexcept {
+        *back = u;
+        ++back;
+        queued_map[u] = true;
+    }
+    Node popNode() noexcept {
+        Node u = *front;
+        ++front;
+        return u;
+    }
+
+    Node processNextNode() noexcept {
+        const Node u = popNode();
+        for(Arc a : graph.out_arcs(u)) {
+            Node w = graph.target(a);
+            if(queued_map[w]) continue;
+            pushNode(w);
+            if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
+            if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
+            if constexpr(track_distances) dist_map[w] = dist_map[u] + 1;
+        }
+        return u;
+    }
+
+    void run() noexcept {
+        while(!emptyQueue()) {
+            processNextNode();
+        }
+    }
+
+    Node pred_node(const Node u) const noexcept
+        requires(track_predecessor_nodes) {
+        assert(queued_map[u]);
+        return pred_nodes_map[u];
+    }
+    Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
+        assert(queued_map[u]);
+        return pred_arcs_map[u];
+    }
+    std::size_t dist(const Node u) const noexcept requires(track_distances) {
+        assert(queued_map[u]);
+        return dist_map[u];
+    }
+};
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // MELON_BFS_HPP
+
 #ifndef MELON_DIJKSTRA_HPP
 #define MELON_DIJKSTRA_HPP
 
 #include <algorithm>
-#include <queue>
 #include <ranges>
 #include <type_traits>
 #include <variant>
@@ -592,20 +600,146 @@ struct DijkstraSpanningTreeSemiring {
 
 #endif  // MELON_DIJKSTRA_SEMIRINGS_HPP
 
+#ifndef MELON_FAST_BINARY_HEAP_HPP
+#define MELON_FAST_BINARY_HEAP_HPP
+
+#include <algorithm>
+#include <cassert>
+#include <functional>
+#include <utility>
+#include <vector>
+
 namespace fhamonic {
 namespace melon {
 
-enum DijkstraBehavior : unsigned char {
-    TRACK_NONE = 0b00000000,
-    TRACK_PRED_NODES = 0b00000001,
-    TRACK_PRED_ARCS = 0b00000010,
-    TRACK_DISTANCES = 0b00000100
-};
+template <typename ND, typename PR, typename CMP = std::less<PR>>
+class FastBinaryHeap {
+public:
+    using Node = ND;
+    using Prio = PR;
+    using Compare = CMP;
+    using Pair = std::pair<Node, Prio>;
+
+private:
+    using Index = std::vector<Pair>::size_type;
+
+public:
+    static_assert(sizeof(Pair) >= 2, "std::pair<Node, Prio> is too small");
+    enum State : Index {
+        PRE_HEAP = static_cast<Index>(0),
+        POST_HEAP = static_cast<Index>(1),
+        IN_HEAP = static_cast<Index>(2)
+    };
+
+    std::vector<Pair> heap_array;
+    std::vector<Index> indices_map;
+    Compare cmp;
+
+public:
+    FastBinaryHeap(const std::size_t nb_nodes)
+        : heap_array(1), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
+
+    FastBinaryHeap(const FastBinaryHeap & bin) = default;
+    FastBinaryHeap(FastBinaryHeap && bin) = default;
+
+    Index size() const noexcept { return heap_array.size() - 1; }
+    bool empty() const noexcept { return size() == 0; }
+    void clear() noexcept {
+        heap_array.resize(1);
+        std::ranges::fill(indices_map, State::PRE_HEAP);
+    }
+
+private:
+    constexpr Pair & pair_ref(Index i) {
+        return *(reinterpret_cast<Pair *>(
+            reinterpret_cast<std::byte *>(heap_array.data()) + i));
+    }
+    constexpr const Pair & pair_ref(Index i) const {
+        return *(reinterpret_cast<const Pair *>(
+            reinterpret_cast<const std::byte *>(heap_array.data()) + i));
+    }
+
+    void heap_move(Index index, Pair && p) noexcept {
+        indices_map[p.first] = index;
+        pair_ref(index) = std::move(p);
+    }
+
+    void heap_push(Index holeIndex, Pair && p) noexcept {
+        while(holeIndex > sizeof(Pair)) {
+            Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
+            if(!cmp(p.second, pair_ref(parent).second)) break;
+            heap_move(holeIndex, std::move(pair_ref(parent)));
+            holeIndex = parent;
+        }
+        heap_move(holeIndex, std::move(p));
+    }
+
+    void adjust_heap(Index holeIndex, const Index end, Pair && p) noexcept {
+        Index child = 2 * holeIndex;
+        while(child < end) {
+            child += sizeof(Pair) * cmp(pair_ref(child + sizeof(Pair)).second,
+                                        pair_ref(child).second);
+            if(cmp(pair_ref(child).second, p.second)) {
+                heap_move(holeIndex, std::move(pair_ref(child)));
+                holeIndex = child;
+                child = 2 * holeIndex;
+                continue;
+            }
+            goto ok;
+        }
+        if(child == end && cmp(pair_ref(child).second, p.second)) {
+            heap_move(holeIndex, std::move(pair_ref(child)));
+            holeIndex = child;
+        }
+    ok:
+        heap_move(holeIndex, std::move(p));
+    }
+
+public:
+    void push(Pair && p) noexcept {
+        heap_array.emplace_back();
+        heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
+    }
+    void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
+    bool contains(const Node u) const noexcept { return indices_map[u] > 0; }
+    Prio prio(const Node u) const noexcept {
+        return pair_ref(indices_map[u]).second;
+    }
+    Pair top() const noexcept {
+        assert(!empty());
+        return heap_array[1];
+    }
+    Pair pop() noexcept {
+        assert(!empty());
+        const Index n = heap_array.size() - 1;
+        const Pair p = std::move(heap_array[1]);
+        indices_map[p.first] = POST_HEAP;
+        if(n > 1)
+            adjust_heap(static_cast<Index>(sizeof(Pair)), n * sizeof(Pair),
+                        std::move(heap_array.back()));
+        heap_array.pop_back();
+        return p;
+    }
+    void decrease(const Node & u, const Prio & p) noexcept {
+        heap_push(indices_map[u], Pair(u, p));
+    }
+    State state(const Node & u) const noexcept {
+        return State(std::min(indices_map[u], static_cast<Index>(IN_HEAP)));
+    }
+};  // class FastBinaryHeap
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // MELON_FAST_BINARY_HEAP_HPP
+
+namespace fhamonic {
+namespace melon {
 
 template <typename GR, typename LM,
-          std::underlying_type_t<DijkstraBehavior> BH =
-              (DijkstraBehavior::TRACK_PRED_NODES |
-               DijkstraBehavior::TRACK_DISTANCES),
+          std::underlying_type_t<NodeSeachBehavior> BH =
+              (NodeSeachBehavior::TRACK_PRED_NODES |
+               NodeSeachBehavior::TRACK_DISTANCES),
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
           typename HP = FastBinaryHeap<
               typename GR::Node, typename LM::value_type, decltype(SR::less)>>
@@ -619,11 +753,11 @@ public:
     using Heap = HP;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & DijkstraBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & DijkstraBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & DijkstraBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -653,8 +787,12 @@ public:
         if constexpr(track_distances) dist_map.resize(g.nb_nodes());
     }
 
-    Dijkstra & reset() noexcept { heap.clear(); return *this; }
-    Dijkstra & addSource(Node s, Value dist = DijkstraSemiringTraits::zero) noexcept {
+    Dijkstra & reset() noexcept {
+        heap.clear();
+        return *this;
+    }
+    Dijkstra & addSource(Node s,
+                         Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(heap.state(s) != Heap::IN_HEAP);
         heap.push(s, dist);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
@@ -717,11 +855,23 @@ public:
 
 #endif  // MELON_DIJKSTRA_HPP
 
+#ifndef MELON_NODE_SEARCH_SPAN_HPP
+#define MELON_NODE_SEARCH_SPAN_HPP
+
+#include <concepts>
+#include <iterator>
+
 namespace fhamonic {
 namespace melon {
 
-// TODO requires members
 template <typename Algo>
+concept node_search_algorithm = requires(Algo alg) {
+    { alg.emptyQueue() } -> std::convertible_to<bool>;
+    { alg.processNextNode() } -> std::default_initializable;
+};
+
+template <typename Algo>
+requires node_search_algorithm<Algo>
 struct node_search_span {
     struct end_iterator {};
     class iterator {
@@ -764,5 +914,7 @@ public:
 
 }  // namespace melon
 }  // namespace fhamonic
+
+#endif  // MELON_NODE_SEARCH_SPAN_HPP
 
 #endif //FHAMONIC_MELON_HPP

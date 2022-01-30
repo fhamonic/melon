@@ -11,20 +11,15 @@
 #include "melon/dijkstra_semirings.hpp"
 #include "melon/fast_binary_heap.hpp"
 
+#include "melon/node_search_behavior.hpp"
+
 namespace fhamonic {
 namespace melon {
 
-enum DijkstraBehavior : unsigned char {
-    TRACK_NONE = 0b00000000,
-    TRACK_PRED_NODES = 0b00000001,
-    TRACK_PRED_ARCS = 0b00000010,
-    TRACK_DISTANCES = 0b00000100
-};
-
 template <typename GR, typename LM,
-          std::underlying_type_t<DijkstraBehavior> BH =
-              (DijkstraBehavior::TRACK_PRED_NODES |
-               DijkstraBehavior::TRACK_DISTANCES),
+          std::underlying_type_t<NodeSeachBehavior> BH =
+              (NodeSeachBehavior::TRACK_PRED_NODES |
+               NodeSeachBehavior::TRACK_DISTANCES),
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
           typename HP = FastBinaryHeap<
               typename GR::Node, typename LM::value_type, decltype(SR::less)>>
@@ -38,11 +33,11 @@ public:
     using Heap = HP;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & DijkstraBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & DijkstraBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & DijkstraBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -72,14 +67,17 @@ public:
         if constexpr(track_distances) dist_map.resize(g.nb_nodes());
     }
 
-    Dijkstra & reset() noexcept { heap.clear(); return *this; }
-    Dijkstra & addSource(Node s, Value dist = DijkstraSemiringTraits::zero) noexcept {
+    Dijkstra & reset() noexcept {
+        heap.clear();
+        return *this;
+    }
+    Dijkstra & addSource(Node s,
+                         Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(heap.state(s) != Heap::IN_HEAP);
         heap.push(s, dist);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         return *this;
     }
-
 
     bool emptyQueue() const noexcept { return heap.empty(); }
 
