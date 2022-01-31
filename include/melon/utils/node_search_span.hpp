@@ -44,7 +44,7 @@ struct node_search_span {
     iterator begin() {
         iterator it{algorithm};
         if(!algorithm.emptyQueue()) ++it;
-        return ++it;
+        return it;
     }
     end_iterator end() noexcept { return {}; }
 
