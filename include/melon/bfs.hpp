@@ -83,7 +83,7 @@ public:
         ++queue_current;
         return u;
     }
-    bood reached(const Node u) const noexcept { return reached_map[u]; }
+    bool reached(const Node u) const noexcept { return reached_map[u]; }
 
     Node processNextNode() noexcept {
         const Node u = popNode();
