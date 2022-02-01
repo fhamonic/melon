@@ -6,6 +6,8 @@
 #include <ranges>
 #include <vector>
 
+#include "melon/static_map.hpp"
+
 namespace fhamonic {
 namespace melon {
 
@@ -15,9 +17,9 @@ public:
     using Arc = unsigned int;
 
     template <typename T>
-    using NodeMap = std::vector<T>;
+    using NodeMap = StaticMap<T>;
     template <typename T>
-    using ArcMap = std::vector<T>;
+    using ArcMap = StaticMap<T>;
 
 private:
     std::vector<Arc> out_arc_begin;
