@@ -242,7 +242,7 @@ public:
     using Node = GR::Node;
     using Arc = GR::Arc;
 
-    using VisitedMap = typename GR::NodeMap<bool>;
+    using ReachedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
         static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
@@ -266,17 +266,14 @@ private:
     std::vector<Node> queue;
     std::vector<Node>::iterator queue_current;
 
-    VisitedMap queued_map;
+    ReachedMap reached_map;
 
     PredNodesMap pred_nodes_map;
     PredArcsMap pred_arcs_map;
     DistancesMap dist_map;
 
 public:
-    BFS(const GR & g)
-        : graph(g)
-        , queue()
-        , queued_map(g.nb_nodes(), false) {
+    BFS(const GR & g) : graph(g), queue(), reached_map(g.nb_nodes(), false) {
         queue.reserve(g.nb_nodes());
         queue_current = queue.begin();
         if constexpr(track_predecessor_nodes)
@@ -287,11 +284,11 @@ public:
 
     BFS & reset() noexcept {
         queue.resize(0);
-        std::ranges::fill(queued_map, false);
+        std::ranges::fill(reached_map, false);
         return *this;
     }
     BFS & addSource(Node s) noexcept {
-        assert(!queued_map[s]);
+        assert(!reached_map[s]);
         pushNode(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         if constexpr(track_distances) dist_map[s] = 0;
@@ -301,19 +298,20 @@ public:
     bool emptyQueue() const noexcept { return queue_current == queue.end(); }
     void pushNode(Node u) noexcept {
         queue.push_back(u);
-        queued_map[u] = true;
+        reached_map[u] = true;
     }
     Node popNode() noexcept {
         Node u = *queue_current;
         ++queue_current;
         return u;
     }
+    bood reached(const Node u) const noexcept { return reached_map[u]; }
 
     Node processNextNode() noexcept {
         const Node u = popNode();
         for(Arc a : graph.out_arcs(u)) {
             Node w = graph.target(a);
-            if(queued_map[w]) continue;
+            if(reached_map[w]) continue;
             pushNode(w);
             if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
             if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
@@ -330,15 +328,15 @@ public:
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
-        assert(queued_map[u]);
+        assert(reached(u));
         return pred_nodes_map[u];
     }
     Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
-        assert(queued_map[u]);
+        assert(reached(u));
         return pred_arcs_map[u];
     }
     std::size_t dist(const Node u) const noexcept requires(track_distances) {
-        assert(queued_map[u]);
+        assert(reached(u));
         return dist_map[u];
     }
 };
@@ -354,9 +352,9 @@ public:
 #include <algorithm>
 #include <cassert>
 #include <ranges>
+#include <stack>
 #include <type_traits>  // underlying_type, conditional
 #include <variant>      // monostate
-#include <stack>
 #include <vector>
 
 namespace fhamonic {
@@ -369,7 +367,7 @@ public:
     using Node = GR::Node;
     using Arc = GR::Arc;
 
-    using VisitedMap = typename GR::NodeMap<bool>;
+    using ReachedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
         static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
@@ -387,16 +385,13 @@ private:
     const GR & graph;
     std::vector<Node> stack;
 
-    VisitedMap stacked_map;
+    ReachedMap reached_map;
 
     PredNodesMap pred_nodes_map;
     PredArcsMap pred_arcs_map;
 
 public:
-    DFS(const GR & g)
-        : graph(g)
-        , stack()
-        , stacked_map(g.nb_nodes(), false) {
+    DFS(const GR & g) : graph(g), stack(), reached_map(g.nb_nodes(), false) {
         if constexpr(track_predecessor_nodes)
             pred_nodes_map.resize(g.nb_nodes());
         if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
@@ -404,11 +399,11 @@ public:
 
     DFS & reset() noexcept {
         stack.clear();
-        std::ranges::fill(stacked_map, false);
+        std::ranges::fill(reached_map, false);
         return *this;
     }
     DFS & addSource(Node s) noexcept {
-        assert(!stacked_map[s]);
+        assert(!reached_map[s]);
         pushNode(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         return *this;
@@ -417,19 +412,20 @@ public:
     bool emptyQueue() const noexcept { return stack.empty(); }
     void pushNode(Node u) noexcept {
         stack.push_back(u);
-        stacked_map[u] = true;
+        reached_map[u] = true;
     }
     Node popNode() noexcept {
         Node u = stack.back();
         stack.pop_back();
         return u;
     }
+    bood reached(const Node u) const noexcept { return reached_map[u]; }
 
     Node processNextNode() noexcept {
         const Node u = popNode();
         for(Arc a : graph.out_arcs(u)) {
             Node w = graph.target(a);
-            if(stacked_map[w]) continue;
+            if(reached_map[w]) continue;
             pushNode(w);
             if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
             if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
@@ -445,11 +441,11 @@ public:
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
-        assert(stacked_map[u]);
+        assert(reached(u));
         return pred_nodes_map[u];
     }
     Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
-        assert(stacked_map[u]);
+        assert(reached(u));
         return pred_arcs_map[u];
     }
 };
