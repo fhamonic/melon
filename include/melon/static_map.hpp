@@ -13,7 +13,6 @@ namespace melon {
 template <typename T>
 class StaticMap {
 public:
-private:
     using value_type = T;
     using reference = T &;
     using const_reference = const T &;
@@ -21,13 +20,14 @@ private:
     using const_iterator = const T *;
     using size_type = std::size_t;
 
+private:
     std::unique_ptr<value_type[]> _data;
     value_type * _data_end;
 
 public:
     StaticMap(std::size_t size)
         : _data(std::make_unique<value_type[]>(size))
-        , _data_end(_data + size) {};
+        , _data_end(_data + size){};
 
     StaticMap(std::size_t size, value_type init_value) : StaticMap(size) {
         std::ranges::fill(*this, init_value);
