@@ -70,9 +70,10 @@ private:
     value_type * _data_end;
 
 public:
+    StaticMap() : _data(nullptr), _data_end(nullptr){};
     StaticMap(std::size_t size)
         : _data(std::make_unique<value_type[]>(size))
-        , _data_end(_data + size){};
+        , _data_end(_data.get() + size){};
 
     StaticMap(std::size_t size, value_type init_value) : StaticMap(size) {
         std::ranges::fill(*this, init_value);
