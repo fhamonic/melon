@@ -264,7 +264,7 @@ public:
 private:
     const GR & graph;
     std::vector<Node> queue;
-    std::vector<Node>::iterator front, back;
+    std::vector<Node>::iterator queue_current;
 
     VisitedMap queued_map;
 
@@ -275,11 +275,10 @@ private:
 public:
     BFS(const GR & g)
         : graph(g)
-        , queue(g.nb_nodes())
-        , front(queue.begin())
-        , back(queue.begin())
+        , queue()
         , queued_map(g.nb_nodes(), false) {
-        front = back = queue.begin();
+        queue.reserve(g.nb_nodes());
+        queue_current = queue.begin();
         if constexpr(track_predecessor_nodes)
             pred_nodes_map.resize(g.nb_nodes());
         if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
@@ -299,15 +298,14 @@ public:
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return front == back; }
+    bool emptyQueue() const noexcept { return queue_current == queue.end(); }
     void pushNode(Node u) noexcept {
-        *back = u;
-        ++back;
+        queue.push_back(u);
         queued_map[u] = true;
     }
     Node popNode() noexcept {
-        Node u = *front;
-        ++front;
+        Node u = *queue_current;
+        ++queue_current;
         return u;
     }
 
@@ -1016,7 +1014,7 @@ struct node_search_span {
     iterator begin() {
         iterator it{algorithm};
         if(!algorithm.emptyQueue()) ++it;
-        return ++it;
+        return it;
     }
     end_iterator end() noexcept { return {}; }
 
