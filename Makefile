@@ -31,3 +31,6 @@ single-header:
 	echo "*/" >> single-header/melon.hpp && \
 	cat melon.hpp.tmp >> single-header/melon.hpp && \
 	rm melon.hpp.tmp
+
+cp-to-benchmark:
+	cp ../melon/single-header/melon.hpp ../melon_benchmark/include/melon.hpp

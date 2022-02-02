@@ -497,25 +497,29 @@ public:
     }
     bool reached(const Node u) const noexcept { return reached_map[u]; }
 
-    std::pair<Arc, Node> processNextNode() noexcept {
-        const auto p = popNode();
-        const auto & [a, u] = p;
-        pushNode(u);
-        // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
-        if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
-
-        // advance the iterators to the next arc
+private:
+    void advance_iterators() {
+        assert(!stack.empty());
         do {
             while(stack.top().first != stack.top().second) {
                 if(reached(graph.target(*stack.top().first))) {
                     ++stack.top().first;
                     continue;
                 }
-                goto ok;
+                return;
             }
             stack.pop();
         } while(!stack.empty());
-    ok:
+    }
+
+public:
+    std::pair<Arc, Node> processNextNode() noexcept {
+        const auto p = popNode();
+        const auto & [a, u] = p;
+        pushNode(u);
+        // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
+        if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
+        advance_iterators();
         return p;
     }
 
