@@ -50,7 +50,7 @@ public:
     const_iterator cbegin() const noexcept { return _data.get(); }
     const_iterator cend() const noexcept { return _data_end; }
 
-    size_type size() const noexcept { return std::distance(begin(), end()); }
+    size_type size() const noexcept { return std::distance(cbegin(), cend()); }
     void resize(size_type n) {
         if(n == size()) return;
         _data = std::make_unique<value_type[]>(n);
