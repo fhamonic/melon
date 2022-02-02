@@ -94,6 +94,14 @@ public:
         reference(span_type * p, span_type index) : _p(p), _index(index) {}
 
         operator bool() const { return (*_p >> _index) & 1; }
+        reference & operator=(bool b) {
+            // if(b)
+            //     *_p |= (1 << _index);
+            // else
+            //     *_p &= ~(1 << _index);
+            *_p ^= (((*_p >> _index) & 1) & b) << _index;
+            return *this;
+        }
     };
     using const_reference = const reference;
     // using iterator = T *;
