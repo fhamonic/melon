@@ -38,7 +38,12 @@ public:
 
 private:
     const GR & graph;
-    std::vector<Node> stack;
+
+    using OutArcRange = decltype(std::declval<GR>().out_arcs(Node()));
+    using OutArcIt = decltype(std::declval<OutArcRange>().begin());
+    using OutArcItEnd = decltype(std::declval<OutArcRange>().end());
+
+    std::stack<std::pair<OutArcIt, OutArcItEnd>> stack;
 
     ReachedMap reached_map;
 
@@ -66,26 +71,38 @@ public:
 
     bool emptyQueue() const noexcept { return stack.empty(); }
     void pushNode(Node u) noexcept {
-        stack.push_back(u);
+        OutArcRange r = graph.out_arcs(u);
+        stack.emplace(r.begin(), r.end());
         reached_map[u] = true;
     }
-    Node popNode() noexcept {
-        Node u = stack.back();
-        stack.pop_back();
-        return u;
+    std::pair<Arc, Node> popNode() noexcept {
+        Arc a = *stack.top().first;
+        Node u = graph.target(a);
+        ++stack.top().first;
+        return std::make_pair(a, u);
     }
     bool reached(const Node u) const noexcept { return reached_map[u]; }
 
-    Node processNextNode() noexcept {
-        const Node u = popNode();
-        for(Arc a : graph.out_arcs(u)) {
-            Node w = graph.target(a);
-            if(reached_map[w]) continue;
-            pushNode(w);
-            if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
-            if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
-        }
-        return u;
+    std::pair<Arc, Node> processNextNode() noexcept {
+        const auto p = popNode();
+        const auto & [a, u] = p;
+        pushNode(u);
+        // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
+        if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
+
+        // advance the iterators to the next arc
+        do {
+            while(stack.top().first != stack.top().second) {
+                if(reached(graph.target(*stack.top().first))) {
+                    ++stack.top().first;
+                    continue;
+                }
+                goto ok;
+            }
+            stack.pop();
+        } while(!stack.empty());
+    ok:
+        return p;
     }
 
     void run() noexcept {

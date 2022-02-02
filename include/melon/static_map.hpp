@@ -30,7 +30,7 @@ public:
         : _data(std::make_unique<value_type[]>(size))
         , _data_end(_data.get() + size){};
 
-    StaticMap(std::size_t size, value_type init_value) : StaticMap(size) {
+    StaticMap(std::size_t n, value_type init_value) : StaticMap(n) {
         std::ranges::fill(*this, init_value);
     };
 
@@ -39,12 +39,23 @@ public:
     };
     StaticMap(StaticMap &&) = default;
 
+    StaticMap & operator=(const StaticMap & other) {
+        resize(other.size());
+        std::ranges::copy(other, _data);
+    };
+    StaticMap & operator=(StaticMap &&) = default;
+
     iterator begin() noexcept { return _data.get(); }
     iterator end() noexcept { return _data_end; }
     const_iterator cbegin() const noexcept { return _data.get(); }
     const_iterator cend() const noexcept { return _data_end; }
 
     size_type size() const noexcept { return std::distance(begin(), end()); }
+    void resize(size_type n) {
+        if(n == size()) return;
+        _data = std::make_unique<value_type[]>(n);
+        _data_end = _data.get() + n;
+    }
 
     reference operator[](size_type i) noexcept { return _data[i]; }
     const_reference operator[](size_type i) const noexcept { return _data[i]; }

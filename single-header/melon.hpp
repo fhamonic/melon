@@ -75,7 +75,7 @@ public:
         : _data(std::make_unique<value_type[]>(size))
         , _data_end(_data.get() + size){};
 
-    StaticMap(std::size_t size, value_type init_value) : StaticMap(size) {
+    StaticMap(std::size_t n, value_type init_value) : StaticMap(n) {
         std::ranges::fill(*this, init_value);
     };
 
@@ -84,12 +84,23 @@ public:
     };
     StaticMap(StaticMap &&) = default;
 
+    StaticMap & operator=(const StaticMap & other) {
+        resize(other.size());
+        std::ranges::copy(other, _data);
+    };
+    StaticMap & operator=(StaticMap &&) = default;
+
     iterator begin() noexcept { return _data.get(); }
     iterator end() noexcept { return _data_end; }
     const_iterator cbegin() const noexcept { return _data.get(); }
     const_iterator cend() const noexcept { return _data_end; }
 
     size_type size() const noexcept { return std::distance(begin(), end()); }
+    void resize(size_type n) {
+        if(n == size()) return;
+        _data = std::make_unique<value_type[]>(n);
+        _data_end = _data.get() + n;
+    }
 
     reference operator[](size_type i) noexcept { return _data[i]; }
     const_reference operator[](size_type i) const noexcept { return _data[i]; }
@@ -441,7 +452,12 @@ public:
 
 private:
     const GR & graph;
-    std::vector<Node> stack;
+
+    using OutArcRange = decltype(std::declval<GR>().out_arcs(Node()));
+    using OutArcIt = decltype(std::declval<OutArcRange>().begin());
+    using OutArcItEnd = decltype(std::declval<OutArcRange>().end());
+
+    std::stack<std::pair<OutArcIt, OutArcItEnd>> stack;
 
     ReachedMap reached_map;
 
@@ -469,26 +485,38 @@ public:
 
     bool emptyQueue() const noexcept { return stack.empty(); }
     void pushNode(Node u) noexcept {
-        stack.push_back(u);
+        OutArcRange r = graph.out_arcs(u);
+        stack.emplace(r.begin(), r.end());
         reached_map[u] = true;
     }
-    Node popNode() noexcept {
-        Node u = stack.back();
-        stack.pop_back();
-        return u;
+    std::pair<Arc, Node> popNode() noexcept {
+        Arc a = *stack.top().first;
+        Node u = graph.target(a);
+        ++stack.top().first;
+        return std::make_pair(a, u);
     }
     bool reached(const Node u) const noexcept { return reached_map[u]; }
 
-    Node processNextNode() noexcept {
-        const Node u = popNode();
-        for(Arc a : graph.out_arcs(u)) {
-            Node w = graph.target(a);
-            if(reached_map[w]) continue;
-            pushNode(w);
-            if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
-            if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
-        }
-        return u;
+    std::pair<Arc, Node> processNextNode() noexcept {
+        const auto p = popNode();
+        const auto & [a, u] = p;
+        pushNode(u);
+        // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
+        if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
+
+        // advance the iterators to the next arc
+        do {
+            while(stack.top().first != stack.top().second) {
+                if(reached(graph.target(*stack.top().first))) {
+                    ++stack.top().first;
+                    continue;
+                }
+                goto ok;
+            }
+            stack.pop();
+        } while(!stack.empty());
+    ok:
+        return p;
     }
 
     void run() noexcept {
