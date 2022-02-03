@@ -88,22 +88,28 @@ public:
     class reference {
     private:
         span_type * _p;
-        span_type _index;
+        size_type _index;
 
     public:
-        reference(span_type * p, span_type index) : _p(p), _index(index) {}
+        reference(span_type * p, size_type index) : _p(p), _index(index) {}
+        reference(const reference &) = default;
 
-        operator bool() const { return (*_p >> _index) & 1; }
-        reference & operator=(bool b) {
-            // if(b)
-            //     *_p |= (1 << _index);
-            // else
-            //     *_p &= ~(1 << _index);
-            *_p ^= (((*_p >> _index) & 1) & b) << _index;
+        operator bool() const noexcept { return (*_p >> _index) & 1; }
+        reference & operator=(bool b) noexcept {
+            *_p ^= (bool(*this) ^ b) << _index;
             return *this;
         }
+        reference & operator=(const reference & other) noexcept {
+            return *this = bool(other);
+        }
+        bool operator==(const reference & __x) const noexcept {
+            return bool(*this) == bool(__x);
+        }
+        bool operator<(const reference & __x) const noexcept {
+            return !bool(*this) && bool(__x);
+        }
     };
-    using const_reference = const reference;
+    using const_reference = bool;
     // using iterator = T *;
     // using const_iterator = const T *;
 
@@ -148,13 +154,12 @@ public:
 
     reference operator[](size_type i) noexcept {
         assert(0 <= i && i < size());
-        return reference(_data.get() + i / N,
-                         static_cast<span_type>(i & span_index_mask));
+        return reference(_data.get() + i / N, i & span_index_mask);
     }
-    // const_reference operator[](size_type i) const noexcept {
-    //     assert(0 <= i && i < size());
-    //     return _data[i];
-    // }
+    const_reference operator[](size_type i) const noexcept {
+        assert(0 <= i && i < size());
+        return reference(_data.get() + i / N, i & span_index_mask);
+    }
 };
 
 }  // namespace melon
