@@ -58,11 +58,11 @@ public:
     }
 
     reference operator[](size_type i) noexcept {
-        assert(0 <= i && i < size());
+        assert(i < size());
         return _data[i];
     }
     const_reference operator[](size_type i) const noexcept {
-        assert(0 <= i && i < size());
+        assert(i < size());
         return _data[i];
     }
 };
@@ -102,16 +102,172 @@ public:
         reference & operator=(const reference & other) noexcept {
             return *this = bool(other);
         }
-        bool operator==(const reference & __x) const noexcept {
-            return bool(*this) == bool(__x);
+        bool operator==(const reference & x) const noexcept {
+            return bool(*this) == bool(x);
         }
-        bool operator<(const reference & __x) const noexcept {
-            return !bool(*this) && bool(__x);
+        bool operator<(const reference & x) const noexcept {
+            return !bool(*this) && bool(x);
         }
     };
     using const_reference = bool;
-    // using iterator = T *;
-    // using const_iterator = const T *;
+
+    class iterator_base {
+    public:
+        using iterator_category = std::random_access_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = bool;
+        using pointer = void;
+
+    protected:
+        span_type * _p;
+        size_type _index;
+
+    public:
+        iterator_base(span_type * p, size_type index) : _p(p), _index(index) {}
+        iterator_base(const iterator_base &) = default;
+
+    protected:
+        void _incr() noexcept {
+            if(_index++ == N - 1) {
+                ++_p;
+                _index = 0;
+            }
+        }
+        void _decr() noexcept {
+            if(_index++ == 0) {
+                --_p;
+                _index = N - 1;
+            }
+        }
+        void _incr(difference_type i) noexcept {
+            difference_type n = static_cast<difference_type>(_index) + i;
+            _p += n / N;
+            n = n & span_index_mask;
+            if(n < 0) {
+                n += N;
+                --_p;
+            }
+            _index = static_cast<size_type>(n);
+        }
+
+    public:
+        friend bool operator==(const iterator_base & x,
+                               const iterator_base & y) noexcept {
+            return x._p == y._p && x._index == y._index;
+        }
+        difference_type operator-(const iterator_base & other) {
+            return (N * (_p - other._p) + _index - other._index);
+        }
+    };
+
+    class iterator : public iterator_base {
+    public:
+        using reference = StaticMap<bool>::reference;
+
+        using iterator_base::iterator_base;
+
+        iterator & operator++() noexcept {
+            _incr();
+            return *this;
+        }
+        iterator operator++(int) noexcept {
+            iterator tmp = *this;
+            _incr();
+            return tmp;
+        }
+        iterator & operator--() noexcept {
+            _decr();
+            return *this;
+        }
+        iterator operator--(int) noexcept {
+            iterator tmp = *this;
+            _decr();
+            return tmp;
+        }
+        iterator & operator+=(difference_type i) noexcept {
+            _incr(i);
+            return *this;
+        }
+
+        iterator & operator-=(difference_type i) noexcept {
+            _incr(-i);
+            return *this;
+        }
+
+        friend iterator operator+(const iterator & x, difference_type n) {
+            iterator tmp = x;
+            tmp += n;
+            return tmp;
+        }
+        friend iterator operator+(difference_type n, const iterator & x) {
+            return x + n;
+        }
+        friend iterator operator-(const iterator & x, difference_type n) {
+            iterator tmp = x;
+            tmp -= n;
+            return tmp;
+        }
+
+        reference operator*() const noexcept { return reference(_p, _index); }
+        reference operator[](difference_type i) const { return *(*this + i); }
+    };
+
+    class const_iterator : public iterator_base {
+    public:
+        using reference = const_reference;
+
+        using iterator_base::iterator_base;
+
+        const_iterator & operator++() noexcept {
+            _incr();
+            return *this;
+        }
+        const_iterator operator++(int) noexcept {
+            const_iterator tmp = *this;
+            _incr();
+            return tmp;
+        }
+        const_iterator & operator--() noexcept {
+            _decr();
+            return *this;
+        }
+        const_iterator operator--(int) noexcept {
+            const_iterator tmp = *this;
+            _decr();
+            return tmp;
+        }
+        const_iterator & operator+=(difference_type i) noexcept {
+            _incr(i);
+            return *this;
+        }
+
+        const_iterator & operator-=(difference_type i) noexcept {
+            _incr(-i);
+            return *this;
+        }
+
+        friend const_iterator operator+(const const_iterator & x,
+                                        difference_type n) {
+            const_iterator tmp = x;
+            tmp += n;
+            return tmp;
+        }
+        friend const_iterator operator+(difference_type n,
+                                        const const_iterator & x) {
+            return x + n;
+        }
+        friend const_iterator operator-(const const_iterator & x,
+                                        difference_type n) {
+            const_iterator tmp = x;
+            tmp -= n;
+            return tmp;
+        }
+
+        reference operator*() const noexcept {
+            return (*_p >> _index) & 1;
+        }
+        reference operator[](difference_type i) const { return *(*this + i); }
+    };
 
 private:
     std::unique_ptr<span_type[]> _data;
@@ -137,13 +293,20 @@ public:
         resize(other.size());
         std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
                   _data.get());
+        return *this;
     };
     StaticMap & operator=(StaticMap &&) = default;
 
-    // iterator begin() noexcept { return _data.get(); }
-    // iterator end() noexcept { return _data_end; }
-    // const_iterator cbegin() const noexcept { return _data.get(); }
-    // const_iterator cend() const noexcept { return _data_end; }
+    iterator begin() noexcept { return iterator(_data.get(), 0); }
+    iterator end() noexcept {
+        return iterator(_data.get() + _size / N, _size & span_index_mask);
+    }
+    const_iterator cbegin() const noexcept {
+        return const_iterator(_data.get(), 0);
+    }
+    const_iterator cend() const noexcept {
+        return const_iterator(_data.get() + _size / N, _size & span_index_mask);
+    }
 
     size_type size() const noexcept { return _size; }
     void resize(size_type n) {
@@ -153,11 +316,11 @@ public:
     }
 
     reference operator[](size_type i) noexcept {
-        assert(0 <= i && i < size());
+        assert(i < size());
         return reference(_data.get() + i / N, i & span_index_mask);
     }
     const_reference operator[](size_type i) const noexcept {
-        assert(0 <= i && i < size());
+        assert(i < size());
         return reference(_data.get() + i / N, i & span_index_mask);
     }
 };
