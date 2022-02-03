@@ -32,17 +32,18 @@ public:
 
     StaticMap(size_type size, value_type init_value) : StaticMap(size) {
         std::ranges::fill(*this, init_value);
-    };
+    }
 
-    StaticMap(const StaticMap & other) : StaticMap(other.size()) {
-        std::ranges::copy(other, _data);
-    };
+    template <std::ranges::random_access_range R>
+    StaticMap(R&& r) : StaticMap(std::ranges::size(r)) {
+        std::ranges::copy(r, _data.get());
+    }
     StaticMap(StaticMap &&) = default;
 
     StaticMap & operator=(const StaticMap & other) {
         resize(other.size());
         std::ranges::copy(other, _data);
-    };
+    }
     StaticMap & operator=(StaticMap &&) = default;
 
     iterator begin() noexcept { return _data.get(); }
@@ -50,7 +51,9 @@ public:
     const_iterator cbegin() const noexcept { return _data.get(); }
     const_iterator cend() const noexcept { return _data_end; }
 
-    size_type size() const noexcept { return std::distance(cbegin(), cend()); }
+    size_type size() const noexcept {
+        return static_cast<size_type>(std::distance(cbegin(), cend()));
+    }
     void resize(size_type n) {
         if(n == size()) return;
         _data = std::make_unique<value_type[]>(n);
@@ -156,7 +159,8 @@ public:
             return x._p == y._p && x._index == y._index;
         }
         difference_type operator-(const iterator_base & other) {
-            return (difference_type(N) * (_p - other._p) + static_cast<difference_type>(_index) -
+            return (difference_type(N) * (_p - other._p) +
+                    static_cast<difference_type>(_index) -
                     static_cast<difference_type>(other._index));
         }
     };

@@ -48,7 +48,7 @@ int main() {
     dijkstra.addSource(0);
     while(!dijkstra.emptyQueue()) dijkstra.processNextNode();
 
-    // std::vector<bool>::reference
+    // std::vector<int> a;
 
     return 0;
 }
