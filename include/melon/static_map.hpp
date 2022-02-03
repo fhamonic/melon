@@ -96,7 +96,7 @@ public:
 
         operator bool() const noexcept { return (*_p >> _index) & 1; }
         reference & operator=(bool b) noexcept {
-            *_p ^= (bool(*this) ^ b) << _index;
+            *_p ^= (((*_p >> _index) & 1) ^ b) << _index;
             return *this;
         }
         reference & operator=(const reference & other) noexcept {
@@ -141,10 +141,10 @@ public:
         }
         void _incr(difference_type i) noexcept {
             difference_type n = static_cast<difference_type>(_index) + i;
-            _p += n / N;
-            n = n & span_index_mask;
+            _p += n / difference_type(N);
+            n = n % difference_type(N);
             if(n < 0) {
-                n += N;
+                n += difference_type(N);
                 --_p;
             }
             _index = static_cast<size_type>(n);
@@ -156,7 +156,8 @@ public:
             return x._p == y._p && x._index == y._index;
         }
         difference_type operator-(const iterator_base & other) {
-            return (N * (_p - other._p) + _index - other._index);
+            return (difference_type(N) * (_p - other._p) + static_cast<difference_type>(_index) -
+                    static_cast<difference_type>(other._index));
         }
     };
 
@@ -263,9 +264,7 @@ public:
             return tmp;
         }
 
-        reference operator*() const noexcept {
-            return (*_p >> _index) & 1;
-        }
+        reference operator*() const noexcept { return (*_p >> _index) & 1; }
         reference operator[](difference_type i) const { return *(*this + i); }
     };
 
