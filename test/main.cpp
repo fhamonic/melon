@@ -1,4 +1,5 @@
 #include <iostream>
+#include <bitset>
 
 #include "melon/dijkstra.hpp"
 #include "melon/static_digraph.hpp"
@@ -41,6 +42,9 @@ int main() {
     auto [graph, length_map] = builder.build();
 
     Dijkstra dijkstra(graph, length_map);
+    std::bitset<3> a;
+
+    a[]
 
     dijkstra.addSource(0);
     while(!dijkstra.emptyQueue()) dijkstra.processNextNode();
