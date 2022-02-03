@@ -23,6 +23,7 @@ struct node_search_span {
         using value_type = decltype(std::declval<Algo>().processNextNode());
         using reference = value_type const &;
         using pointer = value_type *;
+        using difference_type = void;
 
         iterator(Algo & alg) : algorithm(alg) {}
         iterator & operator++() noexcept {
