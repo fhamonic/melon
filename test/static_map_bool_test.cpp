@@ -110,7 +110,7 @@ GTEST_TEST(StaticMap_bool, accessor_extensive_write_and_read) {
 GTEST_TEST(StaticMap_bool, iterator_extensive_read) {
     const std::size_t nb_bools = 153;
     std::vector<bool> datas(nb_bools);
-    StaticMap<bool> map(nb_bools, false);
+    StaticMap<bool> map(nb_bools);
 
     auto gen = std::bind(std::uniform_int_distribution<>(0, 1),
                          std::default_random_engine());
