@@ -62,7 +62,7 @@ public:
 
     BFS & reset() noexcept {
         queue.resize(0);
-        std::ranges::fill(reached_map, false);
+        reached_map.fill(false);
         return *this;
     }
     BFS & addSource(Node s) noexcept {

@@ -59,7 +59,7 @@ public:
 
     DFS & reset() noexcept {
         stack.resize(0);
-        std::ranges::fill(reached_map, false);
+        reached_map.fill(false);
         return *this;
     }
     DFS & addSource(Node s) noexcept {
