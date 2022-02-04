@@ -48,11 +48,11 @@ public:
 
     iterator begin() noexcept { return _data.get(); }
     iterator end() noexcept { return _data_end; }
-    const_iterator cbegin() const noexcept { return _data.get(); }
-    const_iterator cend() const noexcept { return _data_end; }
+    const_iterator begin() const noexcept { return _data.get(); }
+    const_iterator end() const noexcept { return _data_end; }
 
     size_type size() const noexcept {
-        return static_cast<size_type>(std::distance(cbegin(), cend()));
+        return static_cast<size_type>(std::distance(begin(), end()));
     }
     void resize(size_type n) {
         if(n == size()) return;
@@ -114,6 +114,35 @@ public:
             return !bool(*this) && bool(x);
         }
     };
+
+    // Branchless version
+    // struct reference {
+    //     span_type * _p;
+    //     span_type _mask;
+
+    //     reference(span_type * __x, size_type __y) : _p(__x),
+    //     _mask(span_type(1) << __y) {} reference() noexcept : _p(0), _mask(0)
+    //     {} reference(const reference &) = default;
+
+    //     operator bool() const noexcept { return !!(*_p & _mask); }
+    //     reference & operator=(bool __x) noexcept {
+    //         if(__x)
+    //             *_p |= _mask;
+    //         else
+    //             *_p &= ~_mask;
+    //         return *this;
+    //     }
+    //     reference & operator=(const reference & __x) noexcept {
+    //         return *this = bool(__x);
+    //     }
+    //     bool operator==(const reference & __x) const {
+    //         return bool(*this) == bool(__x);
+    //     }
+    //     bool operator<(const reference & __x) const {
+    //         return !bool(*this) && bool(__x);
+    //     }
+    // };
+    //*/
     using const_reference = bool;
 
     class iterator_base {
@@ -139,19 +168,19 @@ public:
         iterator_base & operator=(iterator_base &&) = default;
 
     protected:
-        void _incr() noexcept {
+        constexpr void _incr() noexcept {
             if(_local_index++ == N - 1) {
                 ++_p;
                 _local_index = 0;
             }
         }
-        void _decr() noexcept {
+        constexpr void _decr() noexcept {
             if(_local_index++ == 0) {
                 --_p;
                 _local_index = N - 1;
             }
         }
-        void _incr(difference_type i) noexcept {
+        constexpr void _incr(difference_type i) noexcept {
             difference_type n = static_cast<difference_type>(_local_index) + i;
             _p += n / difference_type(N);
             n = n % difference_type(N);
@@ -284,10 +313,12 @@ public:
             return tmp;
         }
 
-        reference operator*() const noexcept {
+        const_reference operator*() const noexcept {
             return (*_p >> _local_index) & 1;
         }
-        reference operator[](difference_type i) const { return *(*this + i); }
+        const_reference operator[](difference_type i) const {
+            return *(*this + i);
+        }
     };
 
 private:
@@ -300,8 +331,7 @@ public:
         : _data(std::make_unique<span_type[]>(nb_spans(size))), _size(size){};
 
     StaticMap(size_type size, bool init_value) : StaticMap(size) {
-        std::fill(_data.get(), _data.get() + nb_spans(size),
-                  init_value ? ~span_type(0) : span_type(0));
+        fill(init_value);
     };
 
     StaticMap(const StaticMap & other) : StaticMap(other._size) {
@@ -322,10 +352,10 @@ public:
     iterator end() noexcept {
         return iterator(_data.get() + _size / N, _size & span_index_mask);
     }
-    const_iterator cbegin() const noexcept {
+    const_iterator begin() const noexcept {
         return const_iterator(_data.get(), 0);
     }
-    const_iterator cend() const noexcept {
+    const_iterator end() const noexcept {
         return const_iterator(_data.get() + _size / N, _size & span_index_mask);
     }
 
@@ -343,6 +373,11 @@ public:
     const_reference operator[](size_type i) const noexcept {
         assert(i < size());
         return reference(_data.get() + i / N, i & span_index_mask);
+    }
+
+    void fill(bool b) noexcept {
+        std::fill(_data.get(), _data.get() + nb_spans(_size),
+                  b ? ~span_type(0) : span_type(0));
     }
 };
 

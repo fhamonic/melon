@@ -13,44 +13,44 @@ GTEST_TEST(StaticMap_bool, empty_constructor) {
     StaticMap<bool> map;
     ASSERT_EQ(map.size(), 0);
     ASSERT_EQ(map.begin(), map.end());
-    ASSERT_EQ(map.cbegin(), map.cend());
+    ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 }
 
 GTEST_TEST(StaticMap_bool, size_constructor) {
     StaticMap<bool> map(0);
     ASSERT_EQ(map.size(), 0);
     ASSERT_EQ(map.begin(), map.end());
-    ASSERT_EQ(map.cbegin(), map.cend());
+    ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
     StaticMap<bool> map2(5);
     ASSERT_EQ(map2.size(), 5);
     ASSERT_NE(map2.begin(), map.end());
-    ASSERT_NE(map2.cbegin(), map.cend());
+    ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 }
 
 GTEST_TEST(StaticMap_bool, size_init_constructor) {
     StaticMap<bool> map(0, false);
     ASSERT_EQ(map.size(), 0);
     ASSERT_EQ(map.begin(), map.end());
-    ASSERT_EQ(map.cbegin(), map.cend());
+    ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
     StaticMap<bool> map2(5, true);
     ASSERT_EQ(map2.size(), 5);
     ASSERT_NE(map2.begin(), map.end());
-    ASSERT_NE(map2.cbegin(), map.cend());
+    ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
     auto test = [](const bool a) { return a; };
     ASSERT_TRUE(std::all_of(map2.begin(), map2.end(), test));
-    ASSERT_TRUE(std::all_of(map2.cbegin(), map2.cend(), test));
+    ASSERT_TRUE(std::all_of(std::as_const(map2).begin(), std::as_const(map2).end(), test));
 
     StaticMap<bool> map3(5, false);
     ASSERT_EQ(map3.size(), 5);
     ASSERT_NE(map3.begin(), map.end());
-    ASSERT_NE(map3.cbegin(), map.cend());
+    ASSERT_NE(std::as_const(map3).begin(), std::as_const(map).end());
 
     auto test2 = [](const bool a) { return !a; };
     ASSERT_TRUE(std::all_of(map3.begin(), map3.end(), test2));
-    ASSERT_TRUE(std::all_of(map3.cbegin(), map3.cend(), test2));
+    ASSERT_TRUE(std::all_of(std::as_const(map3).begin(), std::as_const(map3).end(), test2));
 }
 
 GTEST_TEST(StaticMap_bool, accessor_uniform_read) {
