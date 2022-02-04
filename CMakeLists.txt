@@ -47,6 +47,7 @@ add_executable(
                test/static_digraph_builder_test.cpp test/dijkstra_test.cpp)
 target_link_libraries(melon_test CONAN_PKG::gtest)
 target_link_libraries(melon_test melon)
+target_compile_options_if_exists(melon_test PUBLIC ON -fconcepts-diagnostics-depth=4)
 
 include(GoogleTest)
 gtest_discover_tests(melon_test)
