@@ -77,17 +77,18 @@ public:
 
     StaticMap(size_type size, value_type init_value) : StaticMap(size) {
         std::ranges::fill(*this, init_value);
-    };
+    }
 
-    StaticMap(const StaticMap & other) : StaticMap(other.size()) {
-        std::ranges::copy(other, _data);
-    };
+    template <std::ranges::random_access_range R>
+    StaticMap(R && r) : StaticMap(std::ranges::size(r)) {
+        std::ranges::copy(r, _data.get());
+    }
     StaticMap(StaticMap &&) = default;
 
     StaticMap & operator=(const StaticMap & other) {
         resize(other.size());
         std::ranges::copy(other, _data);
-    };
+    }
     StaticMap & operator=(StaticMap &&) = default;
 
     iterator begin() noexcept { return _data.get(); }
@@ -95,7 +96,9 @@ public:
     const_iterator cbegin() const noexcept { return _data.get(); }
     const_iterator cend() const noexcept { return _data_end; }
 
-    size_type size() const noexcept { return std::distance(cbegin(), cend()); }
+    size_type size() const noexcept {
+        return static_cast<size_type>(std::distance(cbegin(), cend()));
+    }
     void resize(size_type n) {
         if(n == size()) return;
         _data = std::make_unique<value_type[]>(n);
@@ -119,6 +122,7 @@ class StaticMap<bool> {
 public:
     using value_type = bool;
     using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
 
 private:
     using span_type = std::size_t;
@@ -133,15 +137,16 @@ public:
     class reference {
     private:
         span_type * _p;
-        size_type _index;
+        size_type _local_index;
 
     public:
-        reference(span_type * p, size_type index) : _p(p), _index(index) {}
+        reference(span_type * p, size_type index)
+            : _p(p), _local_index(index) {}
         reference(const reference &) = default;
 
-        operator bool() const noexcept { return (*_p >> _index) & 1; }
+        operator bool() const noexcept { return (*_p >> _local_index) & 1; }
         reference & operator=(bool b) noexcept {
-            *_p ^= (bool(*this) ^ b) << _index;
+            *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
             return *this;
         }
         reference & operator=(const reference & other) noexcept {
@@ -159,49 +164,63 @@ public:
     class iterator_base {
     public:
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = StaticMap<bool>::difference_type;
         using value_type = bool;
         using pointer = void;
 
     protected:
         span_type * _p;
-        size_type _index;
+        size_type _local_index;
 
     public:
-        iterator_base(span_type * p, size_type index) : _p(p), _index(index) {}
+        iterator_base(span_type * p, size_type index)
+            : _p(p), _local_index(index) {}
+
+        iterator_base() = default;
         iterator_base(const iterator_base &) = default;
+        iterator_base(iterator_base &&) = default;
+
+        iterator_base & operator=(const iterator_base &) = default;
+        iterator_base & operator=(iterator_base &&) = default;
 
     protected:
         void _incr() noexcept {
-            if(_index++ == N - 1) {
+            if(_local_index++ == N - 1) {
                 ++_p;
-                _index = 0;
+                _local_index = 0;
             }
         }
         void _decr() noexcept {
-            if(_index++ == 0) {
+            if(_local_index++ == 0) {
                 --_p;
-                _index = N - 1;
+                _local_index = N - 1;
             }
         }
         void _incr(difference_type i) noexcept {
-            difference_type n = static_cast<difference_type>(_index) + i;
-            _p += n / N;
-            n = n & span_index_mask;
+            difference_type n = static_cast<difference_type>(_local_index) + i;
+            _p += n / difference_type(N);
+            n = n % difference_type(N);
             if(n < 0) {
-                n += N;
+                n += difference_type(N);
                 --_p;
             }
-            _index = static_cast<size_type>(n);
+            _local_index = static_cast<size_type>(n);
         }
 
     public:
         friend bool operator==(const iterator_base & x,
                                const iterator_base & y) noexcept {
-            return x._p == y._p && x._index == y._index;
+            return x._p == y._p && x._local_index == y._local_index;
         }
-        difference_type operator-(const iterator_base & other) {
-            return (N * (_p - other._p) + _index - other._index);
+        friend constexpr std::strong_ordering operator<=>(
+            const iterator_base & x, const iterator_base & y) noexcept {
+            if(const auto cmp = x._p <=> y._p; cmp != 0) return cmp;
+            return x._local_index <=> y._local_index;
+        }
+        difference_type operator-(const iterator_base & other) const noexcept {
+            return (difference_type(N) * (_p - other._p) +
+                    static_cast<difference_type>(_local_index) -
+                    static_cast<difference_type>(other._local_index));
         }
     };
 
@@ -253,7 +272,9 @@ public:
             return tmp;
         }
 
-        reference operator*() const noexcept { return reference(_p, _index); }
+        reference operator*() const noexcept {
+            return reference(_p, _local_index);
+        }
         reference operator[](difference_type i) const { return *(*this + i); }
     };
 
@@ -309,7 +330,7 @@ public:
         }
 
         reference operator*() const noexcept {
-            return (*_p >> _index) & 1;
+            return (*_p >> _local_index) & 1;
         }
         reference operator[](difference_type i) const { return *(*this + i); }
     };
