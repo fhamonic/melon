@@ -596,19 +596,19 @@ public:
 #define MELON_BFS_HPP
 
 #include <algorithm>
-#include <cassert>
 #include <ranges>
-#include <type_traits>  // underlying_type, conditional
-#include <variant>      // monostate
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
-#ifndef MELON_NODE_SEARCH_BEHAVIOR
-#define MELON_NODE_SEARCH_BEHAVIOR
+#ifndef MELON_TRAVERSAL_ALGORITHM_BEHAVIOR_HPP
+#define MELON_TRAVERSAL_ALGORITHM_BEHAVIOR_HPP
 
 namespace fhamonic {
 namespace melon {
 
-enum NodeSeachBehavior : unsigned char {
+enum TraversalAlgorithmBehavior : unsigned char {
     TRACK_NONE = 0b00000000,
     TRACK_PRED_NODES = 0b00000001,
     TRACK_PRED_ARCS = 0b00000010,
@@ -618,7 +618,7 @@ enum NodeSeachBehavior : unsigned char {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_NODE_SEARCH_BEHAVIOR
+#endif  // MELON_TRAVERSAL_ALGORITHM_BEHAVIOR_HPP
 
 #ifndef MELON_TRAVERSAL_ALGORITHM_ITERATOR_HPP
 #define MELON_TRAVERSAL_ALGORITHM_ITERATOR_HPP
@@ -675,9 +675,9 @@ public:
 namespace fhamonic {
 namespace melon {
 
-template <typename GR, std::underlying_type_t<NodeSeachBehavior> BH =
-                           NodeSeachBehavior::TRACK_NONE>
-class BFS {
+template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
+                           TraversalAlgorithmBehavior::TRACK_NONE>
+class Bfs {
 public:
     using Node = GR::Node;
     using Arc = GR::Arc;
@@ -685,11 +685,11 @@ public:
     using ReachedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -713,7 +713,7 @@ private:
     DistancesMap dist_map;
 
 public:
-    BFS(const GR & g) : graph(g), queue(), reached_map(g.nb_nodes(), false) {
+    Bfs(const GR & g) : graph(g), queue(), reached_map(g.nb_nodes(), false) {
         queue.reserve(g.nb_nodes());
         queue_current = queue.begin();
         if constexpr(track_predecessor_nodes)
@@ -722,12 +722,12 @@ public:
         if constexpr(track_distances) dist_map.resize(g.nb_nodes());
     }
 
-    BFS & reset() noexcept {
+    Bfs & reset() noexcept {
         queue.resize(0);
         reached_map.fill(false);
         return *this;
     }
-    BFS & add_source(Node s) noexcept {
+    Bfs & add_source(Node s) noexcept {
         assert(!reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
@@ -790,20 +790,20 @@ public:
 #define MELON_DFS_HPP
 
 #include <algorithm>
-#include <cassert>
 #include <ranges>
 #include <stack>
-#include <type_traits>  // underlying_type, conditional
-#include <variant>      // monostate
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace fhamonic {
 namespace melon {
 
 // TODO ranges , requires out_arcs : borrowed_range
-template <typename GR, std::underlying_type_t<NodeSeachBehavior> BH =
-                           NodeSeachBehavior::TRACK_NONE>
-class DFS {
+template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
+                           TraversalAlgorithmBehavior::TRACK_NONE>
+class Dfs {
 public:
     using Node = GR::Node;
     using Arc = GR::Arc;
@@ -811,9 +811,9 @@ public:
     using ReachedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -838,19 +838,19 @@ private:
     PredArcsMap pred_arcs_map;
 
 public:
-    DFS(const GR & g) : graph(g), stack(), reached_map(g.nb_nodes(), false) {
+    Dfs(const GR & g) : graph(g), stack(), reached_map(g.nb_nodes(), false) {
         stack.reserve(g.nb_nodes());
         if constexpr(track_predecessor_nodes)
             pred_nodes_map.resize(g.nb_nodes());
         if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
     }
 
-    DFS & reset() noexcept {
+    Dfs & reset() noexcept {
         stack.resize(0);
         reached_map.fill(false);
         return *this;
     }
-    DFS & add_source(Node s) noexcept {
+    Dfs & add_source(Node s) noexcept {
         assert(!reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
@@ -915,6 +915,7 @@ public:
 #include <algorithm>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -1301,8 +1302,8 @@ namespace fhamonic {
 namespace melon {
 
 template <typename GR, typename LM,
-          std::underlying_type_t<NodeSeachBehavior> BH =
-              NodeSeachBehavior::TRACK_NONE,
+          std::underlying_type_t<TraversalAlgorithmBehavior> BH =
+              TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
           typename HP = FastBinaryHeap<
               typename GR::Node, typename LM::value_type, decltype(SR::less)>>
@@ -1316,11 +1317,11 @@ public:
     using Heap = HP;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,

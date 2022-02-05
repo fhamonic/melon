@@ -2,21 +2,21 @@
 #define MELON_BFS_HPP
 
 #include <algorithm>
-#include <cassert>
 #include <ranges>
-#include <type_traits>  // underlying_type, conditional
-#include <variant>      // monostate
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
-#include "melon/node_search_behavior.hpp"
+#include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <typename GR, std::underlying_type_t<NodeSeachBehavior> BH =
-                           NodeSeachBehavior::TRACK_NONE>
-class BFS {
+template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
+                           TraversalAlgorithmBehavior::TRACK_NONE>
+class Bfs {
 public:
     using Node = GR::Node;
     using Arc = GR::Arc;
@@ -24,11 +24,11 @@ public:
     using ReachedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -52,7 +52,7 @@ private:
     DistancesMap dist_map;
 
 public:
-    BFS(const GR & g) : graph(g), queue(), reached_map(g.nb_nodes(), false) {
+    Bfs(const GR & g) : graph(g), queue(), reached_map(g.nb_nodes(), false) {
         queue.reserve(g.nb_nodes());
         queue_current = queue.begin();
         if constexpr(track_predecessor_nodes)
@@ -61,12 +61,12 @@ public:
         if constexpr(track_distances) dist_map.resize(g.nb_nodes());
     }
 
-    BFS & reset() noexcept {
+    Bfs & reset() noexcept {
         queue.resize(0);
         reached_map.fill(false);
         return *this;
     }
-    BFS & add_source(Node s) noexcept {
+    Bfs & add_source(Node s) noexcept {
         assert(!reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;

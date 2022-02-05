@@ -2,22 +2,23 @@
 #define MELON_DFS_HPP
 
 #include <algorithm>
-#include <cassert>
 #include <ranges>
 #include <stack>
-#include <type_traits>  // underlying_type, conditional
-#include <variant>      // monostate
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
+#include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
 // TODO ranges , requires out_arcs : borrowed_range
-template <typename GR, std::underlying_type_t<NodeSeachBehavior> BH =
-                           NodeSeachBehavior::TRACK_NONE>
-class DFS {
+template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
+                           TraversalAlgorithmBehavior::TRACK_NONE>
+class Dfs {
 public:
     using Node = GR::Node;
     using Arc = GR::Arc;
@@ -25,9 +26,9 @@ public:
     using ReachedMap = typename GR::NodeMap<bool>;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
@@ -52,19 +53,19 @@ private:
     PredArcsMap pred_arcs_map;
 
 public:
-    DFS(const GR & g) : graph(g), stack(), reached_map(g.nb_nodes(), false) {
+    Dfs(const GR & g) : graph(g), stack(), reached_map(g.nb_nodes(), false) {
         stack.reserve(g.nb_nodes());
         if constexpr(track_predecessor_nodes)
             pred_nodes_map.resize(g.nb_nodes());
         if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
     }
 
-    DFS & reset() noexcept {
+    Dfs & reset() noexcept {
         stack.resize(0);
         reached_map.fill(false);
         return *this;
     }
-    DFS & add_source(Node s) noexcept {
+    Dfs & add_source(Node s) noexcept {
         assert(!reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
