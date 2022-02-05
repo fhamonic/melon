@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <ranges>
-#include <_stack>
+#include <stack>
 #include <type_traits>
 #include <utility>
 #include <variant>
