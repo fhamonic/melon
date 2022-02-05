@@ -9,6 +9,8 @@
 #include <variant>      // monostate
 #include <vector>
 
+#include "melon/utils/traversal_algorithm_iterator.hpp"
+
 namespace fhamonic {
 namespace melon {
 
@@ -62,15 +64,15 @@ public:
         reached_map.fill(false);
         return *this;
     }
-    DFS & addSource(Node s) noexcept {
+    DFS & add_source(Node s) noexcept {
         assert(!reached_map[s]);
-        pushNode(s);
+        push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return stack.empty(); }
-    void pushNode(Node u) noexcept {
+    bool empty_queue() const noexcept { return stack.empty(); }
+    void push_node(Node u) noexcept {
         OutArcRange r = graph.out_arcs(u);
         stack.emplace_back(r.begin(), r.end());
         reached_map[u] = true;
@@ -90,10 +92,10 @@ private:
     }
 
 public:
-    std::pair<Arc, Node> processNextNode() noexcept {
+    std::pair<Arc, Node> next_node() noexcept {
         Arc a = *stack.back().first;
         Node u = graph.target(a);
-        pushNode(u);
+        push_node(u);
         // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
         if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
         advance_iterators();
@@ -101,10 +103,10 @@ public:
     }
 
     void run() noexcept {
-        while(!emptyQueue()) {
-            processNextNode();
-        }
+        while(!empty_queue()) next_node();
     }
+    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
+    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {

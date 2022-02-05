@@ -12,6 +12,7 @@
 #include "melon/fast_binary_heap.hpp"
 
 #include "melon/node_search_behavior.hpp"
+#include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -70,17 +71,17 @@ public:
         heap.clear();
         return *this;
     }
-    Dijkstra & addSource(Node s,
-                         Value dist = DijkstraSemiringTraits::zero) noexcept {
+    Dijkstra & add_source(Node s,
+                          Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(heap.state(s) != Heap::IN_HEAP);
         heap.push(s, dist);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return heap.empty(); }
+    bool empty_queue() const noexcept { return heap.empty(); }
 
-    std::pair<Node, Value> processNextNode() noexcept {
+    std::pair<Node, Value> next_node() noexcept {
         const auto p = heap.pop();
         for(Arc a : graph.out_arcs(p.first)) {
             Node w = graph.target(a);
@@ -109,10 +110,10 @@ public:
     }
 
     void run() noexcept {
-        while(!emptyQueue()) {
-            processNextNode();
-        }
+        while(!empty_queue()) next_node();
     }
+    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
+    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {

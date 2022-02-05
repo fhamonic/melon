@@ -486,7 +486,7 @@ public:
         assert(is_valid_arc(a));
         return arc_target[a];
     }
-    auto out_neighbors(const Node u) const {
+    auto out_targets(const Node u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             arc_target.begin() + out_arc_begin[u],
@@ -497,7 +497,7 @@ public:
     auto out_arcs_pairs(const Node u) const {
         assert(is_valid_node(u));
         return std::views::transform(
-            out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
+            out_targets(u), [u](auto v) { return std::make_pair(u, v); });
     }
     auto arcs_pairs() const {
         return std::views::join(std::views::transform(
@@ -551,7 +551,7 @@ private:
     }
 
 public:
-    void addArc(Node u, Node v, ArcProperty... properties) {
+    void add_arc(Node u, Node v, ArcProperty... properties) {
         assert(_nb_nodes > std::max(u, v));
         ++nb_out_arcs[u];
         arc_sources.push_back(u);
@@ -620,6 +620,58 @@ enum NodeSeachBehavior : unsigned char {
 
 #endif  // MELON_NODE_SEARCH_BEHAVIOR
 
+#ifndef MELON_TRAVERSAL_ALGORITHM_ITERATOR_HPP
+#define MELON_TRAVERSAL_ALGORITHM_ITERATOR_HPP
+
+#include <concepts>
+#include <iterator>
+
+namespace fhamonic {
+namespace melon {
+
+template <typename Algo>
+concept traversal_algorithm = requires(Algo alg) {
+    { alg.empty_queue() } -> std::convertible_to<bool>;
+    { alg.next_node() } -> std::default_initializable;
+};
+
+struct traversal_algorithm_end_iterator {};
+
+template <typename Algo>
+requires traversal_algorithm<Algo>
+class traversal_algorithm_iterator {
+public:
+    using iterator_category = std::input_iterator_tag;
+    using value_type = decltype(std::declval<Algo>().next_node());
+    using reference = value_type const &;
+    using pointer = value_type *;
+    using difference_type = void;
+
+    traversal_algorithm_iterator(Algo & alg) : algorithm(alg) {
+        if(!algorithm.empty_queue()) ++(*this);
+    }
+    traversal_algorithm_iterator & operator++() noexcept {
+        node = algorithm.next_node();
+        return *this;
+    }
+    friend bool operator==(const traversal_algorithm_iterator & it,
+                           traversal_algorithm_end_iterator) noexcept {
+        return it.algorithm.empty_queue();
+    }
+    reference operator*() const noexcept { return node; }
+
+private:
+    Algo & algorithm;
+
+public:
+    value_type node;
+};
+
+}  // namespace melon
+}  // namespace fhamonic
+
+#endif  // MELON_TRAVERSAL_ALGORITHM_ITERATOR_HPP
+
 namespace fhamonic {
 namespace melon {
 
@@ -672,35 +724,35 @@ public:
 
     BFS & reset() noexcept {
         queue.resize(0);
-        std::ranges::fill(reached_map, false);
+        reached_map.fill(false);
         return *this;
     }
-    BFS & addSource(Node s) noexcept {
+    BFS & add_source(Node s) noexcept {
         assert(!reached_map[s]);
-        pushNode(s);
+        push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         if constexpr(track_distances) dist_map[s] = 0;
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return queue_current == queue.end(); }
-    void pushNode(Node u) noexcept {
+    bool empty_queue() const noexcept { return queue_current == queue.end(); }
+    void push_node(Node u) noexcept {
         queue.push_back(u);
         reached_map[u] = true;
     }
-    Node popNode() noexcept {
+    Node pop_node() noexcept {
         Node u = *queue_current;
         ++queue_current;
         return u;
     }
     bool reached(const Node u) const noexcept { return reached_map[u]; }
 
-    Node processNextNode() noexcept {
-        const Node u = popNode();
+    Node next_node() noexcept {
+        const Node u = pop_node();
         for(Arc a : graph.out_arcs(u)) {
             Node w = graph.target(a);
             if(reached_map[w]) continue;
-            pushNode(w);
+            push_node(w);
             if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
             if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
             if constexpr(track_distances) dist_map[w] = dist_map[u] + 1;
@@ -709,10 +761,10 @@ public:
     }
 
     void run() noexcept {
-        while(!emptyQueue()) {
-            processNextNode();
-        }
+        while(!empty_queue()) next_node();
     }
+    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
+    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
@@ -795,18 +847,18 @@ public:
 
     DFS & reset() noexcept {
         stack.resize(0);
-        std::ranges::fill(reached_map, false);
+        reached_map.fill(false);
         return *this;
     }
-    DFS & addSource(Node s) noexcept {
+    DFS & add_source(Node s) noexcept {
         assert(!reached_map[s]);
-        pushNode(s);
+        push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return stack.empty(); }
-    void pushNode(Node u) noexcept {
+    bool empty_queue() const noexcept { return stack.empty(); }
+    void push_node(Node u) noexcept {
         OutArcRange r = graph.out_arcs(u);
         stack.emplace_back(r.begin(), r.end());
         reached_map[u] = true;
@@ -826,10 +878,10 @@ private:
     }
 
 public:
-    std::pair<Arc, Node> processNextNode() noexcept {
+    std::pair<Arc, Node> next_node() noexcept {
         Arc a = *stack.back().first;
         Node u = graph.target(a);
-        pushNode(u);
+        push_node(u);
         // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
         if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
         advance_iterators();
@@ -837,10 +889,10 @@ public:
     }
 
     void run() noexcept {
-        while(!emptyQueue()) {
-            processNextNode();
-        }
+        while(!empty_queue()) next_node();
     }
+    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
+    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
@@ -1302,17 +1354,17 @@ public:
         heap.clear();
         return *this;
     }
-    Dijkstra & addSource(Node s,
-                         Value dist = DijkstraSemiringTraits::zero) noexcept {
+    Dijkstra & add_source(Node s,
+                          Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(heap.state(s) != Heap::IN_HEAP);
         heap.push(s, dist);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return heap.empty(); }
+    bool empty_queue() const noexcept { return heap.empty(); }
 
-    std::pair<Node, Value> processNextNode() noexcept {
+    std::pair<Node, Value> next_node() noexcept {
         const auto p = heap.pop();
         for(Arc a : graph.out_arcs(p.first)) {
             Node w = graph.target(a);
@@ -1341,10 +1393,10 @@ public:
     }
 
     void run() noexcept {
-        while(!emptyQueue()) {
-            processNextNode();
-        }
+        while(!empty_queue()) next_node();
     }
+    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
+    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
@@ -1365,68 +1417,5 @@ public:
 }  // namespace fhamonic
 
 #endif  // MELON_DIJKSTRA_HPP
-
-#ifndef MELON_NODE_SEARCH_SPAN_HPP
-#define MELON_NODE_SEARCH_SPAN_HPP
-
-#include <concepts>
-#include <iterator>
-
-namespace fhamonic {
-namespace melon {
-
-template <typename Algo>
-concept node_search_algorithm = requires(Algo alg) {
-    { alg.emptyQueue() } -> std::convertible_to<bool>;
-    { alg.processNextNode() } -> std::default_initializable;
-};
-
-template <typename Algo>
-requires node_search_algorithm<Algo>
-struct node_search_span {
-    struct end_iterator {};
-    class iterator {
-    public:
-        using iterator_category = std::input_iterator_tag;
-        using value_type = decltype(std::declval<Algo>().processNextNode());
-        using reference = value_type const &;
-        using pointer = value_type *;
-        using difference_type = void;
-
-        iterator(Algo & alg) : algorithm(alg) {}
-        iterator & operator++() noexcept {
-            node = algorithm.processNextNode();
-            return *this;
-        }
-        friend bool operator==(const iterator & it, end_iterator) noexcept {
-            return it.algorithm.emptyQueue();
-        }
-        reference operator*() const noexcept { return node; }
-
-    private:
-        Algo & algorithm;
-
-    public:
-        value_type node;
-    };
-
-    iterator begin() {
-        iterator it{algorithm};
-        if(!algorithm.emptyQueue()) ++it;
-        return it;
-    }
-    end_iterator end() noexcept { return {}; }
-
-    node_search_span(node_search_span const &) = delete;
-
-public:
-    explicit node_search_span(Algo & alg) : algorithm(alg) {}
-    Algo & algorithm;
-};
-
-}  // namespace melon
-}  // namespace fhamonic
-
-#endif  // MELON_NODE_SEARCH_SPAN_HPP
 
 #endif //FHAMONIC_MELON_HPP

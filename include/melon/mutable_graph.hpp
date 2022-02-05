@@ -61,7 +61,7 @@ public:
         assert(is_valid_arc(a));
         return arc_target[a];
     }
-    auto out_neighbors(const Node u) const {
+    auto out_targets(const Node u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             arc_target.begin() + out_arc_begin[u],
@@ -72,7 +72,7 @@ public:
     auto out_arcs_pairs(const Node u) const {
         assert(is_valid_node(u));
         return std::views::transform(
-            out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
+            out_targets(u), [u](auto v) { return std::make_pair(u, v); });
     }
     auto arcs_pairs() const {
         return std::views::join(std::views::transform(
