@@ -735,7 +735,7 @@ public:
         return *this;
     }
 
-    bool empty__queue() const noexcept { return _queue_current == _queue.end(); }
+    bool empty_queue() const noexcept { return _queue_current == _queue.end(); }
     
 private:
     void push_node(Node u) noexcept {
@@ -763,7 +763,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty__queue()) next_node();
+        while(!empty_queue()) next_node();
     }
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
