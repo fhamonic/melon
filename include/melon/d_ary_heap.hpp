@@ -24,26 +24,26 @@ private:
 public:
     enum State : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
-    std::vector<Pair> heap_array;
-    std::vector<Index> indices_map;
-    std::vector<State> states_map;
-    Compare cmp;
+    std::vector<Pair> _heap_array;
+    std::vector<Index> _indices_map;
+    std::vector<State> _states_map;
+    Compare _cmp;
 
 public:
     DAryHeap(const std::size_t nb_nodes)
-        : heap_array()
-        , indices_map(nb_nodes)
-        , states_map(nb_nodes, State::PRE_HEAP)
-        , cmp() {}
+        : _heap_array()
+        , _indices_map(nb_nodes)
+        , _states_map(nb_nodes, State::PRE_HEAP)
+        , _cmp() {}
 
     DAryHeap(const DAryHeap & bin) = default;
     DAryHeap(DAryHeap && bin) = default;
 
-    Index size() const noexcept { return heap_array.size(); }
-    bool empty() const noexcept { return heap_array.empty(); }
+    Index size() const noexcept { return _heap_array.size(); }
+    bool empty() const noexcept { return _heap_array.empty(); }
     void clear() noexcept {
-        heap_array.resize(0);
-        std::ranges::fill(states_map, State::PRE_HEAP);
+        _heap_array.resize(0);
+        std::ranges::fill(_states_map, State::PRE_HEAP);
     }
 
 private:
@@ -60,13 +60,13 @@ private:
         else if constexpr(I == 2)
             return first_child +
                    sizeof(Pair) *
-                       cmp(pair_ref(first_child + sizeof(Pair)).second,
+                       _cmp(pair_ref(first_child + sizeof(Pair)).second,
                            pair_ref(first_child).second);
         else {
             const Index first_half_minimum = minimum_child<I / 2>(first_child);
             const Index second_half_minimum =
                 minimum_child<I - I / 2>(first_child + (I / 2) * sizeof(Pair));
-            return cmp(pair_ref(second_half_minimum).second,
+            return _cmp(pair_ref(second_half_minimum).second,
                        pair_ref(first_half_minimum).second)
                        ? second_half_minimum
                        : first_half_minimum;
@@ -97,7 +97,7 @@ private:
                         minimum_remaining_child(first_child, half);
                     const Index second_half_minimum = minimum_remaining_child(
                         first_child + half * sizeof(Pair), nb_children - half);
-                    return cmp(pair_ref(second_half_minimum).second,
+                    return _cmp(pair_ref(second_half_minimum).second,
                                pair_ref(first_half_minimum).second)
                                ? second_half_minimum
                                : first_half_minimum;
@@ -107,27 +107,27 @@ private:
 
     constexpr Pair & pair_ref(Index i) {
         assert(0 <= (i / sizeof(Pair)) &&
-               (i / sizeof(Pair)) < heap_array.size());
+               (i / sizeof(Pair)) < _heap_array.size());
         return *(reinterpret_cast<Pair *>(
-            reinterpret_cast<std::byte *>(heap_array.data()) + i));
+            reinterpret_cast<std::byte *>(_heap_array.data()) + i));
     }
     constexpr const Pair & pair_ref(Index i) const {
         assert(0 <= (i / sizeof(Pair)) &&
-               (i / sizeof(Pair)) < heap_array.size());
+               (i / sizeof(Pair)) < _heap_array.size());
         return *(reinterpret_cast<const Pair *>(
-            reinterpret_cast<const std::byte *>(heap_array.data()) + i));
+            reinterpret_cast<const std::byte *>(_heap_array.data()) + i));
     }
     void heap_move(Index i, Pair && p) noexcept {
         assert(0 <= (i / sizeof(Pair)) &&
-               (i / sizeof(Pair)) < heap_array.size());
-        indices_map[p.first] = i;
+               (i / sizeof(Pair)) < _heap_array.size());
+        _indices_map[p.first] = i;
         pair_ref(i) = std::move(p);
     }
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
         while(holeIndex > 0) {
             Index parent = parent_of(holeIndex);
-            if(!cmp(p.second, pair_ref(parent).second)) break;
+            if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;
         }
@@ -144,7 +144,7 @@ private:
         Index child = first_child_of(holeIndex);
         while(child < child_end) {
             child = minimum_child(child);
-            if(cmp(pair_ref(child).second, p.second)) {
+            if(_cmp(pair_ref(child).second, p.second)) {
                 heap_move(holeIndex, std::move(pair_ref(child)));
                 holeIndex = child;
                 child = first_child_of(child);
@@ -155,7 +155,7 @@ private:
         if(child < end) {
             child =
                 minimum_remaining_child(child, (end - child) / sizeof(Pair));
-            if(cmp(pair_ref(child).second, p.second)) {
+            if(_cmp(pair_ref(child).second, p.second)) {
                 heap_move(holeIndex, std::move(pair_ref(child)));
                 holeIndex = child;
             }
@@ -166,34 +166,34 @@ private:
 
 public:
     void push(Pair && p) noexcept {
-        const Index n = heap_array.size();
-        heap_array.emplace_back();
-        states_map[p.first] = IN_HEAP;
+        const Index n = _heap_array.size();
+        _heap_array.emplace_back();
+        _states_map[p.first] = IN_HEAP;
         heap_push(Index(n * sizeof(Pair)), std::move(p));
     }
     void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
     Prio prio(const Node u) const noexcept {
-        return pair_ref(indices_map[u]).second;
+        return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
-        assert(!heap_array.empty());
-        return heap_array.front();
+        assert(!_heap_array.empty());
+        return _heap_array.front();
     }
     Pair pop() noexcept {
-        assert(!heap_array.empty());
-        const Pair p = std::move(heap_array.front());
-        states_map[p.first] = POST_HEAP;
-        const Index n = heap_array.size() - 1;
+        assert(!_heap_array.empty());
+        const Pair p = std::move(_heap_array.front());
+        _states_map[p.first] = POST_HEAP;
+        const Index n = _heap_array.size() - 1;
         if(n > 0)
             adjust_heap(Index(0), n * sizeof(Pair),
-                        std::move(heap_array.back()));
-        heap_array.pop_back();
+                        std::move(_heap_array.back()));
+        _heap_array.pop_back();
         return p;
     }
     void decrease(const Node & u, const Prio & p) noexcept {
-        heap_push(indices_map[u], Pair(u, p));
+        heap_push(_indices_map[u], Pair(u, p));
     }
-    State state(const Node & u) const noexcept { return states_map[u]; }
+    State state(const Node & u) const noexcept { return _states_map[u]; }
 };  // class DAryHeap
 
 template <typename ND, typename PR, typename CMP = std::less<PR>>

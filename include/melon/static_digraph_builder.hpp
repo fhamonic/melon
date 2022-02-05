@@ -24,15 +24,15 @@ public:
 
 private:
     std::size_t _nb_nodes;
-    std::vector<Arc> nb_out_arcs;
-    std::vector<Node> arc_sources;
-    std::vector<Node> arc_targets;
-    PropertyMaps arc_property_maps;
+    std::vector<Arc> _nb_out_arcs;
+    std::vector<Node> _arc_sources;
+    std::vector<Node> _arc_targets;
+    PropertyMaps _arc_property_maps;
 
 public:
     StaticDigraphBuilder() : _nb_nodes(0) {}
     StaticDigraphBuilder(std::size_t nb_nodes)
-        : _nb_nodes(nb_nodes), nb_out_arcs(nb_nodes, 0) {}
+        : _nb_nodes(nb_nodes), _nb_out_arcs(nb_nodes, 0) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
@@ -44,37 +44,37 @@ private:
 public:
     void add_arc(Node u, Node v, ArcProperty... properties) {
         assert(_nb_nodes > std::max(u, v));
-        ++nb_out_arcs[u];
-        arc_sources.push_back(u);
-        arc_targets.push_back(v);
+        ++_nb_out_arcs[u];
+        _arc_sources.push_back(u);
+        _arc_targets.push_back(v);
         addProperties(
-            arc_property_maps, std::make_tuple(properties...),
+            _arc_property_maps, std::make_tuple(properties...),
             std::make_index_sequence<std::tuple_size<PropertyMaps>{}>{});
     }
 
     auto build() {
-        // sort arc_sources, arc_tagrets and arc_property_maps
+        // sort _arc_sources, arc_tagrets and _arc_property_maps
         auto arcs_zipped_view = std::apply(
             [this](auto &&... property_map) {
-                return ranges::view::zip(arc_sources, arc_targets,
+                return ranges::view::zip(_arc_sources, _arc_targets,
                                          property_map...);
             },
-            arc_property_maps);
+            _arc_property_maps);
         ranges::sort(arcs_zipped_view, [](const auto & a, const auto & b) {
             if(std::get<0>(a) == std::get<0>(b))
                 return std::get<1>(a) < std::get<1>(b);
             return std::get<0>(a) < std::get<0>(b);
         });
         // compute out_arc_begin
-        std::exclusive_scan(nb_out_arcs.begin(), nb_out_arcs.end(),
-                            nb_out_arcs.begin(), 0);
+        std::exclusive_scan(_nb_out_arcs.begin(), _nb_out_arcs.end(),
+                            _nb_out_arcs.begin(), 0);
         // create graph
-        StaticDigraph graph(std::move(nb_out_arcs), std::move(arc_targets));
+        StaticDigraph graph(std::move(_nb_out_arcs), std::move(_arc_targets));
         return std::apply(
             [this, &graph](auto &&... property_map) {
                 return std::make_tuple(graph, property_map...);
             },
-            arc_property_maps);
+            _arc_property_maps);
     }
 };
 

@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <ranges>
-#include <stack>
+#include <_stack>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -38,67 +38,66 @@ public:
                          std::monostate>::type;
 
 private:
-    const GR & graph;
+    const GR & _graph;
 
     using OutArcRange = decltype(std::declval<GR>().out_arcs(Node()));
     using OutArcIt = decltype(std::declval<OutArcRange>().begin());
     using OutArcItEnd = decltype(std::declval<OutArcRange>().end());
 
     static_assert(std::ranges::borrowed_range<OutArcRange>);
-    std::vector<std::pair<OutArcIt, OutArcItEnd>> stack;
+    std::vector<std::pair<OutArcIt, OutArcItEnd>> _stack;
 
-    ReachedMap reached_map;
+    ReachedMap _reached_map;
 
-    PredNodesMap pred_nodes_map;
-    PredArcsMap pred_arcs_map;
+    PredNodesMap _pred_nodes_map;
+    PredArcsMap _pred_arcs_map;
 
 public:
-    Dfs(const GR & g) : graph(g), stack(), reached_map(g.nb_nodes(), false) {
-        stack.reserve(g.nb_nodes());
+    Dfs(const GR & g) : _graph(g), _stack(), _reached_map(g.nb_nodes(), false) {
+        _stack.reserve(g.nb_nodes());
         if constexpr(track_predecessor_nodes)
-            pred_nodes_map.resize(g.nb_nodes());
-        if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
+            _pred_nodes_map.resize(g.nb_nodes());
+        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_nodes());
     }
 
     Dfs & reset() noexcept {
-        stack.resize(0);
-        reached_map.fill(false);
+        _stack.resize(0);
+        _reached_map.fill(false);
         return *this;
     }
     Dfs & add_source(Node s) noexcept {
-        assert(!reached_map[s]);
+        assert(!_reached_map[s]);
         push_node(s);
-        if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
+        if constexpr(track_predecessor_nodes) _pred_nodes_map[s] = s;
         return *this;
     }
 
-    bool empty_queue() const noexcept { return stack.empty(); }
+    bool empty_queue() const noexcept { return _stack.empty(); }
     void push_node(Node u) noexcept {
-        OutArcRange r = graph.out_arcs(u);
-        stack.emplace_back(r.begin(), r.end());
-        reached_map[u] = true;
+        OutArcRange r = _graph.out_arcs(u);
+        _stack.emplace_back(r.begin(), r.end());
+        _reached_map[u] = true;
     }
-    bool reached(const Node u) const noexcept { return reached_map[u]; }
 
 private:
     void advance_iterators() {
-        assert(!stack.empty());
+        assert(!_stack.empty());
         do {
-            while(stack.back().first != stack.back().second) {
-                if(!reached(graph.target(*stack.back().first))) return;
-                ++stack.back().first;
+            while(_stack.back().first != _stack.back().second) {
+                if(!reached(_graph.target(*_stack.back().first))) return;
+                ++_stack.back().first;
             }
-            stack.pop_back();
-        } while(!stack.empty());
+            _stack.pop_back();
+        } while(!_stack.empty());
     }
 
 public:
     std::pair<Arc, Node> next_node() noexcept {
-        Arc a = *stack.back().first;
-        Node u = graph.target(a);
+        Arc a = *_stack.back().first;
+        Node u = _graph.target(a);
         push_node(u);
-        // if constexpr(track_predecessor_nodes) pred_nodes_map[u] = u;
-        if constexpr(track_predecessor_arcs) pred_arcs_map[u] = a;
+        // if constexpr(track_predecessor_nodes) _pred_nodes_map[u] = u;
+        if constexpr(track_predecessor_arcs) _pred_arcs_map[u] = a;
         advance_iterators();
         return std::make_pair(a, u);
     }
@@ -109,14 +108,15 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
+    bool reached(const Node u) const noexcept { return _reached_map[u]; }
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
         assert(reached(u));
-        return pred_nodes_map[u];
+        return _pred_nodes_map[u];
     }
     Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
         assert(reached(u));
-        return pred_arcs_map[u];
+        return _pred_arcs_map[u];
     }
 };
 
