@@ -9,15 +9,15 @@ using namespace fhamonic::melon;
 GTEST_TEST(StaticDigraphBuilder, build_without_map) {
     StaticDigraphBuilder<> builder(8);
 
-    builder.addArc(3, 4);
-    builder.addArc(1, 7);
-    builder.addArc(5, 2);
-    builder.addArc(2, 4);
-    builder.addArc(5, 3);
-    builder.addArc(6, 5);
-    builder.addArc(1, 2);
-    builder.addArc(1, 6);
-    builder.addArc(2, 3);
+    builder.add_arc(3, 4);
+    builder.add_arc(1, 7);
+    builder.add_arc(5, 2);
+    builder.add_arc(2, 4);
+    builder.add_arc(5, 3);
+    builder.add_arc(6, 5);
+    builder.add_arc(1, 2);
+    builder.add_arc(1, 6);
+    builder.add_arc(2, 3);
 
     auto [graph] = builder.build();
 
@@ -46,7 +46,7 @@ GTEST_TEST(StaticDigraphBuilder, build_with_map) {
         return static_cast<int>(u * n + v);
     };
 
-    for(auto & [u, v] : pairs) builder.addArc(u, v, weight(u, v));
+    for(auto & [u, v] : pairs) builder.add_arc(u, v, weight(u, v));
 
     auto [graph, map] = builder.build();
 

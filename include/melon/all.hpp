@@ -16,6 +16,5 @@
 #include "melon/bfs.hpp"
 #include "melon/dfs.hpp"
 #include "melon/dijkstra.hpp"
-#include "melon/utils/node_search_span.hpp"
 
 #endif //FHAMONIC_MELON_HPP

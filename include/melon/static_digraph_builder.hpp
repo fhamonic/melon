@@ -42,7 +42,7 @@ private:
     }
 
 public:
-    void addArc(Node u, Node v, ArcProperty... properties) {
+    void add_arc(Node u, Node v, ArcProperty... properties) {
         assert(_nb_nodes > std::max(u, v));
         ++nb_out_arcs[u];
         arc_sources.push_back(u);

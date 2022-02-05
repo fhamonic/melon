@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "melon/node_search_behavior.hpp"
+#include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -65,32 +66,32 @@ public:
         reached_map.fill(false);
         return *this;
     }
-    BFS & addSource(Node s) noexcept {
+    BFS & add_source(Node s) noexcept {
         assert(!reached_map[s]);
-        pushNode(s);
+        push_node(s);
         if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
         if constexpr(track_distances) dist_map[s] = 0;
         return *this;
     }
 
-    bool emptyQueue() const noexcept { return queue_current == queue.end(); }
-    void pushNode(Node u) noexcept {
+    bool empty_queue() const noexcept { return queue_current == queue.end(); }
+    void push_node(Node u) noexcept {
         queue.push_back(u);
         reached_map[u] = true;
     }
-    Node popNode() noexcept {
+    Node pop_node() noexcept {
         Node u = *queue_current;
         ++queue_current;
         return u;
     }
     bool reached(const Node u) const noexcept { return reached_map[u]; }
 
-    Node processNextNode() noexcept {
-        const Node u = popNode();
+    Node next_node() noexcept {
+        const Node u = pop_node();
         for(Arc a : graph.out_arcs(u)) {
             Node w = graph.target(a);
             if(reached_map[w]) continue;
-            pushNode(w);
+            push_node(w);
             if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
             if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
             if constexpr(track_distances) dist_map[w] = dist_map[u] + 1;
@@ -99,10 +100,10 @@ public:
     }
 
     void run() noexcept {
-        while(!emptyQueue()) {
-            processNextNode();
-        }
+        while(!empty_queue()) next_node();
     }
+    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
+    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
