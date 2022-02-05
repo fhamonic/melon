@@ -89,60 +89,60 @@ private:
     }
 
 public:
-    class reference {
-    private:
-        span_type * _p;
-        size_type _local_index;
-
-    public:
-        reference(span_type * p, size_type index)
-            : _p(p), _local_index(index) {}
-        reference(const reference &) = default;
-
-        operator bool() const noexcept { return (*_p >> _local_index) & 1; }
-        reference & operator=(bool b) noexcept {
-            *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
-            return *this;
-        }
-        reference & operator=(const reference & other) noexcept {
-            return *this = bool(other);
-        }
-        bool operator==(const reference & x) const noexcept {
-            return bool(*this) == bool(x);
-        }
-        bool operator<(const reference & x) const noexcept {
-            return !bool(*this) && bool(x);
-        }
-    };
-
     // Branchless version
-    // struct reference {
+    // class reference {
+    // private:
     //     span_type * _p;
-    //     span_type _mask;
+    //     size_type _local_index;
 
-    //     reference(span_type * __x, size_type __y) : _p(__x),
-    //     _mask(span_type(1) << __y) {} reference() noexcept : _p(0), _mask(0)
-    //     {} reference(const reference &) = default;
+    // public:
+    //     reference(span_type * p, size_type index)
+    //         : _p(p), _local_index(index) {}
+    //     reference(const reference &) = default;
 
-    //     operator bool() const noexcept { return !!(*_p & _mask); }
-    //     reference & operator=(bool __x) noexcept {
-    //         if(__x)
-    //             *_p |= _mask;
-    //         else
-    //             *_p &= ~_mask;
+    //     operator bool() const noexcept { return (*_p >> _local_index) & 1; }
+    //     reference & operator=(bool b) noexcept {
+    //         *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
     //         return *this;
     //     }
-    //     reference & operator=(const reference & __x) noexcept {
-    //         return *this = bool(__x);
+    //     reference & operator=(const reference & other) noexcept {
+    //         return *this = bool(other);
     //     }
-    //     bool operator==(const reference & __x) const {
-    //         return bool(*this) == bool(__x);
+    //     bool operator==(const reference & x) const noexcept {
+    //         return bool(*this) == bool(x);
     //     }
-    //     bool operator<(const reference & __x) const {
-    //         return !bool(*this) && bool(__x);
+    //     bool operator<(const reference & x) const noexcept {
+    //         return !bool(*this) && bool(x);
     //     }
     // };
-    //*/
+
+    struct reference {
+        span_type * _p;
+        span_type _mask;
+
+        reference(span_type * __x, size_type __y)
+            : _p(__x), _mask(span_type(1) << __y) {}
+        reference() noexcept : _p(0), _mask(0) {}
+        reference(const reference &) = default;
+
+        operator bool() const noexcept { return !!(*_p & _mask); }
+        reference & operator=(bool __x) noexcept {
+            if(__x)
+                *_p |= _mask;
+            else
+                *_p &= ~_mask;
+            return *this;
+        }
+        reference & operator=(const reference & __x) noexcept {
+            return *this = bool(__x);
+        }
+        bool operator==(const reference & __x) const {
+            return bool(*this) == bool(__x);
+        }
+        bool operator<(const reference & __x) const {
+            return !bool(*this) && bool(__x);
+        }
+    };
     using const_reference = bool;
 
     class iterator_base {
