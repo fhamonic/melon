@@ -92,7 +92,7 @@ public:
         const Node u = pop_node();
         for(Arc a : _graph.out_arcs(u)) {
             Node w = _graph.target(a);
-            if(_reached_map[w]) continue;
+            if(reached(w)) continue;
             push_node(w);
             if constexpr(track_predecessor_nodes) _pred_nodes_map[w] = u;
             if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
