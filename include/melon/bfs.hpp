@@ -41,82 +41,86 @@ public:
                          std::monostate>::type;
 
 private:
-    const GR & graph;
-    std::vector<Node> queue;
-    std::vector<Node>::iterator queue_current;
+    const GR & _graph;
+    std::vector<Node> _queue;
+    std::vector<Node>::iterator _queue_current;
 
-    ReachedMap reached_map;
+    ReachedMap _reached_map;
 
-    PredNodesMap pred_nodes_map;
-    PredArcsMap pred_arcs_map;
-    DistancesMap dist_map;
+    PredNodesMap _pred_nodes_map;
+    PredArcsMap _pred_arcs_map;
+    DistancesMap _dist_map;
 
 public:
-    Bfs(const GR & g) : graph(g), queue(), reached_map(g.nb_nodes(), false) {
-        queue.reserve(g.nb_nodes());
-        queue_current = queue.begin();
+    Bfs(const GR & g) : _graph(g), _queue(), _reached_map(g.nb_nodes(), false) {
+        _queue.reserve(g.nb_nodes());
+        _queue_current = _queue.begin();
         if constexpr(track_predecessor_nodes)
-            pred_nodes_map.resize(g.nb_nodes());
-        if constexpr(track_predecessor_arcs) pred_arcs_map.resize(g.nb_nodes());
-        if constexpr(track_distances) dist_map.resize(g.nb_nodes());
+            _pred_nodes_map.resize(g.nb_nodes());
+        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_nodes());
+        if constexpr(track_distances) _dist_map.resize(g.nb_nodes());
     }
 
     Bfs & reset() noexcept {
-        queue.resize(0);
-        reached_map.fill(false);
+        _queue.resize(0);
+        _reached_map.fill(false);
         return *this;
     }
     Bfs & add_source(Node s) noexcept {
-        assert(!reached_map[s]);
+        assert(!_reached_map[s]);
         push_node(s);
-        if constexpr(track_predecessor_nodes) pred_nodes_map[s] = s;
-        if constexpr(track_distances) dist_map[s] = 0;
+        if constexpr(track_predecessor_nodes) _pred_nodes_map[s] = s;
+        if constexpr(track_distances) _dist_map[s] = 0;
         return *this;
     }
 
-    bool empty_queue() const noexcept { return queue_current == queue.end(); }
+    bool empty__queue() const noexcept { return _queue_current == _queue.end(); }
+    
+private:
     void push_node(Node u) noexcept {
-        queue.push_back(u);
-        reached_map[u] = true;
+        _queue.push_back(u);
+        _reached_map[u] = true;
     }
     Node pop_node() noexcept {
-        Node u = *queue_current;
-        ++queue_current;
+        Node u = *_queue_current;
+        ++_queue_current;
         return u;
     }
-    bool reached(const Node u) const noexcept { return reached_map[u]; }
 
+public:
     Node next_node() noexcept {
         const Node u = pop_node();
-        for(Arc a : graph.out_arcs(u)) {
-            Node w = graph.target(a);
-            if(reached_map[w]) continue;
+        for(Arc a : _graph.out_arcs(u)) {
+            Node w = _graph.target(a);
+            if(_reached_map[w]) continue;
             push_node(w);
-            if constexpr(track_predecessor_nodes) pred_nodes_map[w] = u;
-            if constexpr(track_predecessor_arcs) pred_arcs_map[w] = a;
-            if constexpr(track_distances) dist_map[w] = dist_map[u] + 1;
+            if constexpr(track_predecessor_nodes) _pred_nodes_map[w] = u;
+            if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
+            if constexpr(track_distances) _dist_map[w] = _dist_map[u] + 1;
         }
         return u;
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(!empty__queue()) next_node();
     }
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
+    bool reached(const Node u) const noexcept { return _reached_map[u]; }
+
     Node pred_node(const Node u) const noexcept
         requires(track_predecessor_nodes) {
         assert(reached(u));
-        return pred_nodes_map[u];
+        return _pred_nodes_map[u];
     }
     Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
         assert(reached(u));
-        return pred_arcs_map[u];
+        return _pred_arcs_map[u];
     }
     std::size_t dist(const Node u) const noexcept requires(track_distances) {
         assert(reached(u));
-        return dist_map[u];
+        return _dist_map[u];
     }
 };
 

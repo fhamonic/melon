@@ -29,43 +29,43 @@ public:
         IN_HEAP = static_cast<Index>(2)
     };
 
-    std::vector<Pair> heap_array;
-    std::vector<Index> indices_map;
-    Compare cmp;
+    std::vector<Pair> _heap_array;
+    std::vector<Index> _indices_map;
+    Compare _cmp;
 
 public:
     FastBinaryHeap(const std::size_t nb_nodes)
-        : heap_array(1), indices_map(nb_nodes, State::PRE_HEAP), cmp() {}
+        : _heap_array(1), _indices_map(nb_nodes, State::PRE_HEAP), _cmp() {}
 
     FastBinaryHeap(const FastBinaryHeap & bin) = default;
     FastBinaryHeap(FastBinaryHeap && bin) = default;
 
-    Index size() const noexcept { return heap_array.size() - 1; }
+    Index size() const noexcept { return _heap_array.size() - 1; }
     bool empty() const noexcept { return size() == 0; }
     void clear() noexcept {
-        heap_array.resize(1);
-        std::ranges::fill(indices_map, State::PRE_HEAP);
+        _heap_array.resize(1);
+        std::ranges::fill(_indices_map, State::PRE_HEAP);
     }
 
 private:
     constexpr Pair & pair_ref(Index i) {
         return *(reinterpret_cast<Pair *>(
-            reinterpret_cast<std::byte *>(heap_array.data()) + i));
+            reinterpret_cast<std::byte *>(_heap_array.data()) + i));
     }
     constexpr const Pair & pair_ref(Index i) const {
         return *(reinterpret_cast<const Pair *>(
-            reinterpret_cast<const std::byte *>(heap_array.data()) + i));
+            reinterpret_cast<const std::byte *>(_heap_array.data()) + i));
     }
 
     void heap_move(Index index, Pair && p) noexcept {
-        indices_map[p.first] = index;
+        _indices_map[p.first] = index;
         pair_ref(index) = std::move(p);
     }
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
         while(holeIndex > sizeof(Pair)) {
             Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
-            if(!cmp(p.second, pair_ref(parent).second)) break;
+            if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;
         }
@@ -75,9 +75,9 @@ private:
     void adjust_heap(Index holeIndex, const Index end, Pair && p) noexcept {
         Index child = 2 * holeIndex;
         while(child < end) {
-            child += sizeof(Pair) * cmp(pair_ref(child + sizeof(Pair)).second,
+            child += sizeof(Pair) * _cmp(pair_ref(child + sizeof(Pair)).second,
                                         pair_ref(child).second);
-            if(cmp(pair_ref(child).second, p.second)) {
+            if(_cmp(pair_ref(child).second, p.second)) {
                 heap_move(holeIndex, std::move(pair_ref(child)));
                 holeIndex = child;
                 child = 2 * holeIndex;
@@ -85,7 +85,7 @@ private:
             }
             goto ok;
         }
-        if(child == end && cmp(pair_ref(child).second, p.second)) {
+        if(child == end && _cmp(pair_ref(child).second, p.second)) {
             heap_move(holeIndex, std::move(pair_ref(child)));
             holeIndex = child;
         }
@@ -95,34 +95,34 @@ private:
 
 public:
     void push(Pair && p) noexcept {
-        heap_array.emplace_back();
+        _heap_array.emplace_back();
         heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
     }
     void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
-    bool contains(const Node u) const noexcept { return indices_map[u] > 0; }
+    bool contains(const Node u) const noexcept { return _indices_map[u] > 0; }
     Prio prio(const Node u) const noexcept {
-        return pair_ref(indices_map[u]).second;
+        return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
         assert(!empty());
-        return heap_array[1];
+        return _heap_array[1];
     }
     Pair pop() noexcept {
         assert(!empty());
-        const Index n = heap_array.size() - 1;
-        const Pair p = std::move(heap_array[1]);
-        indices_map[p.first] = POST_HEAP;
+        const Index n = _heap_array.size() - 1;
+        const Pair p = std::move(_heap_array[1]);
+        _indices_map[p.first] = POST_HEAP;
         if(n > 1)
             adjust_heap(static_cast<Index>(sizeof(Pair)), n * sizeof(Pair),
-                        std::move(heap_array.back()));
-        heap_array.pop_back();
+                        std::move(_heap_array.back()));
+        _heap_array.pop_back();
         return p;
     }
     void decrease(const Node & u, const Prio & p) noexcept {
-        heap_push(indices_map[u], Pair(u, p));
+        heap_push(_indices_map[u], Pair(u, p));
     }
     State state(const Node & u) const noexcept {
-        return State(std::min(indices_map[u], static_cast<Index>(IN_HEAP)));
+        return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
     }
 };  // class FastBinaryHeap
 
