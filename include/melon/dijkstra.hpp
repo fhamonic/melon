@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -11,15 +12,15 @@
 #include "melon/dijkstra_semirings.hpp"
 #include "melon/fast_binary_heap.hpp"
 
-#include "melon/node_search_behavior.hpp"
+#include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
 template <typename GR, typename LM,
-          std::underlying_type_t<NodeSeachBehavior> BH =
-              NodeSeachBehavior::TRACK_NONE,
+          std::underlying_type_t<TraversalAlgorithmBehavior> BH =
+              TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
           typename HP = FastBinaryHeap<
               typename GR::Node, typename LM::value_type, decltype(SR::less)>>
@@ -33,11 +34,11 @@ public:
     using Heap = HP;
 
     static constexpr bool track_predecessor_nodes =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_NODES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_PRED_ARCS);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
-        static_cast<bool>(BH & NodeSeachBehavior::TRACK_DISTANCES);
+        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredNodesMap =
         std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,

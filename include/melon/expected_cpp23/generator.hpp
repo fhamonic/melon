@@ -2,7 +2,10 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
-#include <optional>
+
+namespace fhamonic {
+namespace melon {
+namespace expected_cpp23 {
 
 template <typename T>
 struct generator {
@@ -66,3 +69,7 @@ private:
 
     std::coroutine_handle<promise_type> handle;
 };
+
+}  // namespace expected_cpp23
+}  // namespace melon
+}  // namespace fhamonic
