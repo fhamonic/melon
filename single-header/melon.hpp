@@ -80,7 +80,7 @@ public:
     }
 
     template <std::ranges::random_access_range R>
-    StaticMap(R && r) : StaticMap(std::ranges::size(r)) {
+    explicit StaticMap(R && r) : StaticMap(std::ranges::size(r)) {
         std::ranges::copy(r, _data.get());
     }
     StaticMap(StaticMap &&) = default;
@@ -134,60 +134,60 @@ private:
     }
 
 public:
-    class reference {
-    private:
-        span_type * _p;
-        size_type _local_index;
-
-    public:
-        reference(span_type * p, size_type index)
-            : _p(p), _local_index(index) {}
-        reference(const reference &) = default;
-
-        operator bool() const noexcept { return (*_p >> _local_index) & 1; }
-        reference & operator=(bool b) noexcept {
-            *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
-            return *this;
-        }
-        reference & operator=(const reference & other) noexcept {
-            return *this = bool(other);
-        }
-        bool operator==(const reference & x) const noexcept {
-            return bool(*this) == bool(x);
-        }
-        bool operator<(const reference & x) const noexcept {
-            return !bool(*this) && bool(x);
-        }
-    };
-
     // Branchless version
-    // struct reference {
+    // class reference {
+    // private:
     //     span_type * _p;
-    //     span_type _mask;
+    //     size_type _local_index;
 
-    //     reference(span_type * __x, size_type __y) : _p(__x),
-    //     _mask(span_type(1) << __y) {} reference() noexcept : _p(0), _mask(0)
-    //     {} reference(const reference &) = default;
+    // public:
+    //     reference(span_type * p, size_type index)
+    //         : _p(p), _local_index(index) {}
+    //     reference(const reference &) = default;
 
-    //     operator bool() const noexcept { return !!(*_p & _mask); }
-    //     reference & operator=(bool __x) noexcept {
-    //         if(__x)
-    //             *_p |= _mask;
-    //         else
-    //             *_p &= ~_mask;
+    //     operator bool() const noexcept { return (*_p >> _local_index) & 1; }
+    //     reference & operator=(bool b) noexcept {
+    //         *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
     //         return *this;
     //     }
-    //     reference & operator=(const reference & __x) noexcept {
-    //         return *this = bool(__x);
+    //     reference & operator=(const reference & other) noexcept {
+    //         return *this = bool(other);
     //     }
-    //     bool operator==(const reference & __x) const {
-    //         return bool(*this) == bool(__x);
+    //     bool operator==(const reference & x) const noexcept {
+    //         return bool(*this) == bool(x);
     //     }
-    //     bool operator<(const reference & __x) const {
-    //         return !bool(*this) && bool(__x);
+    //     bool operator<(const reference & x) const noexcept {
+    //         return !bool(*this) && bool(x);
     //     }
     // };
-    //*/
+
+    struct reference {
+        span_type * _p;
+        span_type _mask;
+
+        reference(span_type * __x, size_type __y)
+            : _p(__x), _mask(span_type(1) << __y) {}
+        reference() noexcept : _p(0), _mask(0) {}
+        reference(const reference &) = default;
+
+        operator bool() const noexcept { return !!(*_p & _mask); }
+        reference & operator=(bool __x) noexcept {
+            if(__x)
+                *_p |= _mask;
+            else
+                *_p &= ~_mask;
+            return *this;
+        }
+        reference & operator=(const reference & __x) noexcept {
+            return *this = bool(__x);
+        }
+        bool operator==(const reference & __x) const {
+            return bool(*this) == bool(__x);
+        }
+        bool operator<(const reference & __x) const {
+            return !bool(*this) && bool(__x);
+        }
+    };
     using const_reference = bool;
 
     class iterator_base {
@@ -743,7 +743,7 @@ private:
         _reached_map[u] = true;
     }
     Node pop_node() noexcept {
-        Node u = *_queue_current;
+        const Node u = *_queue_current;
         ++_queue_current;
         return u;
     }
@@ -752,8 +752,8 @@ public:
     Node next_node() noexcept {
         const Node u = pop_node();
         for(Arc a : _graph.out_arcs(u)) {
-            Node w = _graph.target(a);
-            if(_reached_map[w]) continue;
+            const Node w = _graph.target(a);
+            if(reached(w)) continue;
             push_node(w);
             if constexpr(track_predecessor_nodes) _pred_nodes_map[w] = u;
             if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
@@ -882,8 +882,8 @@ private:
 
 public:
     std::pair<Arc, Node> next_node() noexcept {
-        Arc a = *_stack.back().first;
-        Node u = _graph.target(a);
+        const Arc a = *_stack.back().first;
+        const Node u = _graph.target(a);
         push_node(u);
         // if constexpr(track_predecessor_nodes) _pred_nodes_map[u] = u;
         if constexpr(track_predecessor_arcs) _pred_arcs_map[u] = a;
@@ -1051,7 +1051,7 @@ private:
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
         while(holeIndex > 0) {
-            Index parent = parent_of(holeIndex);
+            const Index parent = parent_of(holeIndex);
             if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;
@@ -1235,7 +1235,7 @@ private:
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
         while(holeIndex > sizeof(Pair)) {
-            Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
+            const Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
             if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;
@@ -1371,11 +1371,11 @@ public:
 
     std::pair<Node, Value> next_node() noexcept {
         const auto p = _heap.pop();
-        for(Arc a : _graph.out_arcs(p.first)) {
-            Node w = _graph.target(a);
+        for(const Arc a : _graph.out_arcs(p.first)) {
+            const Node w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
-                Value new_dist =
+                const Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, _length_map[a]);
                 if(DijkstraSemiringTraits::less(new_dist, _heap.prio(w))) {
                     _heap.decrease(w, new_dist);
@@ -1383,9 +1383,7 @@ public:
                         _pred_nodes_map[w] = p.first;
                     if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
                 }
-                continue;
-            }
-            if(s == Heap::PRE_HEAP) {
+            } else if(s == Heap::PRE_HEAP) {
                 _heap.push(
                     w, DijkstraSemiringTraits::plus(p.second, _length_map[a]));
                 if constexpr(track_predecessor_nodes)
