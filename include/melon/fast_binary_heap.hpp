@@ -64,7 +64,7 @@ private:
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
         while(holeIndex > sizeof(Pair)) {
-            Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
+            const Index parent = holeIndex / (2 * sizeof(Pair)) * sizeof(Pair);
             if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;

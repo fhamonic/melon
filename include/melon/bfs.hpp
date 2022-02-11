@@ -82,7 +82,7 @@ private:
         _reached_map[u] = true;
     }
     Node pop_node() noexcept {
-        Node u = *_queue_current;
+        const Node u = *_queue_current;
         ++_queue_current;
         return u;
     }
@@ -91,7 +91,7 @@ public:
     Node next_node() noexcept {
         const Node u = pop_node();
         for(Arc a : _graph.out_arcs(u)) {
-            Node w = _graph.target(a);
+            const Node w = _graph.target(a);
             if(reached(w)) continue;
             push_node(w);
             if constexpr(track_predecessor_nodes) _pred_nodes_map[w] = u;

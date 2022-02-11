@@ -84,11 +84,11 @@ public:
 
     std::pair<Node, Value> next_node() noexcept {
         const auto p = _heap.pop();
-        for(Arc a : _graph.out_arcs(p.first)) {
-            Node w = _graph.target(a);
+        for(const Arc a : _graph.out_arcs(p.first)) {
+            const Node w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
-                Value new_dist =
+                const Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, _length_map[a]);
                 if(DijkstraSemiringTraits::less(new_dist, _heap.prio(w))) {
                     _heap.decrease(w, new_dist);
@@ -96,9 +96,7 @@ public:
                         _pred_nodes_map[w] = p.first;
                     if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
                 }
-                continue;
-            }
-            if(s == Heap::PRE_HEAP) {
+            } else if(s == Heap::PRE_HEAP) {
                 _heap.push(
                     w, DijkstraSemiringTraits::plus(p.second, _length_map[a]));
                 if constexpr(track_predecessor_nodes)

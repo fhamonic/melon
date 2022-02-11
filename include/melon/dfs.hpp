@@ -93,8 +93,8 @@ private:
 
 public:
     std::pair<Arc, Node> next_node() noexcept {
-        Arc a = *_stack.back().first;
-        Node u = _graph.target(a);
+        const Arc a = *_stack.back().first;
+        const Node u = _graph.target(a);
         push_node(u);
         // if constexpr(track_predecessor_nodes) _pred_nodes_map[u] = u;
         if constexpr(track_predecessor_arcs) _pred_arcs_map[u] = a;

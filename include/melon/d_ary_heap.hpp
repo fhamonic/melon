@@ -126,7 +126,7 @@ private:
 
     void heap_push(Index holeIndex, Pair && p) noexcept {
         while(holeIndex > 0) {
-            Index parent = parent_of(holeIndex);
+            const Index parent = parent_of(holeIndex);
             if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;

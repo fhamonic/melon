@@ -35,7 +35,7 @@ public:
     }
 
     template <std::ranges::random_access_range R>
-    StaticMap(R && r) : StaticMap(std::ranges::size(r)) {
+    explicit StaticMap(R && r) : StaticMap(std::ranges::size(r)) {
         std::ranges::copy(r, _data.get());
     }
     StaticMap(StaticMap &&) = default;
