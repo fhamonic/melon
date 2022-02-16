@@ -14,7 +14,7 @@ $(BUILD_DIR):
 	@mkdir $(BUILD_DIR) && \
 	cd $(BUILD_DIR) && \
 	conan install .. && \
-	cmake -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_BUILD_TYPE=Debug -DWARNINGS=ON -DHARDCORE_WARNINGS=ON ..
+	cmake -DCMAKE_BUILD_TYPE=Debug -DWARNINGS=ON -DHARDCORE_WARNINGS=ON ..
 
 test: all
 	@cd $(BUILD_DIR) && \

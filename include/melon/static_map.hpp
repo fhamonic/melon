@@ -27,7 +27,7 @@ private:
 public:
     StaticMap() : _data(nullptr), _data_end(nullptr){};
     StaticMap(size_type size)
-        : _data(std::make_unique<value_type[]>(size))
+        : _data(std::make_unique_for_overwrite<value_type[]>(size))
         , _data_end(_data.get() + size){};
 
     StaticMap(size_type size, value_type init_value) : StaticMap(size) {
@@ -56,7 +56,7 @@ public:
     }
     void resize(size_type n) {
         if(n == size()) return;
-        _data = std::make_unique<value_type[]>(n);
+        _data = std::make_unique_for_overwrite<value_type[]>(n);
         _data_end = _data.get() + n;
     }
 

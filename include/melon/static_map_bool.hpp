@@ -269,7 +269,7 @@ private:
 public:
     StaticMap() : _data(nullptr), _size(0){};
     StaticMap(size_type size)
-        : _data(std::make_unique<span_type[]>(nb_spans(size))), _size(size){};
+        : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size))), _size(size){};
 
     StaticMap(size_type size, bool init_value) : StaticMap(size) {
         fill(init_value);
@@ -303,7 +303,7 @@ public:
     size_type size() const noexcept { return _size; }
     void resize(size_type n) {
         if(n == _size) return;
-        _data = std::make_unique<span_type[]>(nb_spans(n));
+        _data = std::make_unique_for_overwrite<span_type[]>(nb_spans(n));
         _size = n;
     }
 
