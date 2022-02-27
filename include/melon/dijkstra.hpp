@@ -83,7 +83,12 @@ public:
     bool empty_queue() const noexcept { return _heap.empty(); }
 
     std::pair<Node, Value> next_node() noexcept {
-        const auto p = _heap.pop();
+        const auto p = _heap.top();
+        if(_graph.out_arcs(p.first).size()) {
+            __builtin_prefetch(&(*_graph.out_targets(p.first).begin()));
+            __builtin_prefetch(&_length_map[*_graph.out_arcs(p.first).begin()]);
+        }
+        _heap.pop();
         for(const Arc a : _graph.out_arcs(p.first)) {
             const Node w = _graph.target(a);
             const auto s = _heap.state(w);
