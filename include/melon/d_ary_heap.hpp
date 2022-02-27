@@ -179,16 +179,14 @@ public:
         assert(!_heap_array.empty());
         return _heap_array.front();
     }
-    Pair pop() noexcept {
+    void pop() noexcept {
         assert(!_heap_array.empty());
-        const Pair p = std::move(_heap_array.front());
-        _states_map[p.first] = POST_HEAP;
+        _states_map[_heap_array.front().first] = POST_HEAP;
         const Index n = _heap_array.size() - 1;
         if(n > 0)
             adjust_heap(Index(0), n * sizeof(Pair),
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
-        return p;
     }
     void decrease(const Node & u, const Prio & p) noexcept {
         heap_push(_indices_map[u], Pair(u, p));
