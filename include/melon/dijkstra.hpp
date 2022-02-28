@@ -64,7 +64,8 @@ public:
         : _graph(g), _length_map(l), _heap(g.nb_nodes()) {
         if constexpr(track_predecessor_nodes)
             _pred_nodes_map.resize(g.nb_nodes());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_nodes());
+        if constexpr(track_predecessor_arcs)
+            _pred_arcs_map.resize(g.nb_nodes());
         if constexpr(track_distances) _dist_map.resize(g.nb_nodes());
     }
 
@@ -84,9 +85,13 @@ public:
 
     std::pair<Node, Value> next_node() noexcept {
         const auto p = _heap.top();
-        if(_graph.out_arcs(p.first).size()) {
-            __builtin_prefetch(&(*_graph.out_targets(p.first).begin()));
-            __builtin_prefetch(&_length_map[*_graph.out_arcs(p.first).begin()]);
+        if constexpr(std::ranges::contiguous_range<decltype(_graph.out_targets(
+                         p.first))>) {
+            if(_graph.out_arcs(p.first).size()) {
+                __builtin_prefetch(_graph.out_targets(p.first).data());
+                __builtin_prefetch(
+                    &_length_map[_graph.out_arcs(p.first).front()]);
+            }
         }
         _heap.pop();
         for(const Arc a : _graph.out_arcs(p.first)) {
