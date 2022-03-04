@@ -13,16 +13,16 @@ namespace melon {
 template <typename ND, typename PR, typename CMP = std::less<PR>>
 class FastBinaryHeap {
 public:
-    using Node = ND;
+    using vertex = ND;
     using Prio = PR;
     using Compare = CMP;
-    using Pair = std::pair<Node, Prio>;
+    using Pair = std::pair<vertex, Prio>;
 
 private:
     using Index = std::vector<Pair>::size_type;
 
 public:
-    static_assert(sizeof(Pair) >= 2, "std::pair<Node, Prio> is too small");
+    static_assert(sizeof(Pair) >= 2, "std::pair<vertex, Prio> is too small");
     enum State : Index {
         PRE_HEAP = static_cast<Index>(0),
         POST_HEAP = static_cast<Index>(1),
@@ -34,8 +34,8 @@ public:
     Compare _cmp;
 
 public:
-    FastBinaryHeap(const std::size_t nb_nodes)
-        : _heap_array(1), _indices_map(nb_nodes, State::PRE_HEAP), _cmp() {}
+    FastBinaryHeap(const std::size_t nb_vertices)
+        : _heap_array(1), _indices_map(nb_vertices, State::PRE_HEAP), _cmp() {}
 
     FastBinaryHeap(const FastBinaryHeap & bin) = default;
     FastBinaryHeap(FastBinaryHeap && bin) = default;
@@ -98,9 +98,9 @@ public:
         _heap_array.emplace_back();
         heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
     }
-    void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
-    bool contains(const Node u) const noexcept { return _indices_map[u] > 0; }
-    Prio prio(const Node u) const noexcept {
+    void push(const vertex i, const Prio p) noexcept { push(Pair(i, p)); }
+    bool contains(const vertex u) const noexcept { return _indices_map[u] > 0; }
+    Prio prio(const vertex u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -116,10 +116,10 @@ public:
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
-    void decrease(const Node & u, const Prio & p) noexcept {
+    void decrease(const vertex & u, const Prio & p) noexcept {
         heap_push(_indices_map[u], Pair(u, p));
     }
-    State state(const Node & u) const noexcept {
+    State state(const vertex & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
     }
 };  // class FastBinaryHeap
