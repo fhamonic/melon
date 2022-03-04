@@ -33,6 +33,9 @@ public:
     StaticDigraph(const StaticDigraph & graph) = default;
     StaticDigraph(StaticDigraph && graph) = default;
 
+    StaticDigraph & operator=(const StaticDigraph &) = default;
+    StaticDigraph & operator=(StaticDigraph &&) = default;
+
     auto nb_nodes() const { return _out_arc_begin.size(); }
     auto nb_arcs() const { return _arc_target.size(); }
 
