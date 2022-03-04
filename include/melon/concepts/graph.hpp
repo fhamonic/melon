@@ -12,20 +12,38 @@ namespace concepts {
 
 // clang-format off
 template <typename G>
-concept graph = std::semiregular<G> && requires(G g, typename G::Node u,
-                                        typename G::Arc a) {
-    { g.nodes() } -> detail::range_of<typename G::Node>;
-    { g.arcs() } -> detail::range_of<typename G::Arc>;
-    { g.source(a) } -> std::same_as<typename G::Node>;
-    { g.target(a) } -> std::same_as<typename G::Node>;
+concept graph = std::semiregular<G> && requires(G g, typename G::vertex u,
+                                        typename G::arc a) {
+    { g.vertices() } -> detail::range_of<typename G::vertex>;
+    { g.arcs() } -> detail::range_of<typename G::arc>;
+    { g.source(a) } -> std::same_as<typename G::vertex>;
+    { g.target(a) } -> std::same_as<typename G::vertex>;
     { g.arcs_pairs() }
-        -> detail::range_of<std::pair<typename G::Node, typename G::Node>>;
+        -> detail::range_of<std::pair<typename G::vertex, typename G::vertex>>;
 };
 
 template <typename G>
-concept adjacency_list_graph = graph<G> && requires(G g, typename G::Node u,
-                                        typename G::Arc a) {
-    { g.out_arcs(u) } -> detail::range_of<typename G::Arc>;
+concept adjacency_list_graph = graph<G> && requires(G g, typename G::vertex u,
+                                        typename G::arc a) {
+    { g.out_neighbors(u) } -> detail::range_of<typename G::vertex>;
+};
+
+template <typename G>
+concept incidence_list_graph = graph<G> && requires(G g, typename G::vertex u) {
+    { g.out_arcs(u) } -> detail::range_of<typename G::arc>;
+};
+
+
+template <typename G>
+concept reversible_adjacency_list_graph = graph<G> && requires(G g,
+                                    typename G::vertex u, typename G::arc a) {
+    { g.in_neighbors(u) } -> detail::range_of<typename G::vertex>;
+};
+
+template <typename G>
+concept reversible_incidence_list_graph = graph<G> && requires(G g,
+                                        typename G::vertex u) {
+    { g.in_arcs(u) } -> detail::range_of<typename G::arc>;
 };
 // clang-format on
 

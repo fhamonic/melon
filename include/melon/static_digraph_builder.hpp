@@ -14,25 +14,25 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename... ArcProperty>
+template <typename... arcProperty>
 class StaticDigraphBuilder {
 public:
-    using Node = StaticDigraph::Node;
-    using Arc = StaticDigraph::Arc;
+    using vertex = StaticDigraph::vertex;
+    using arc = StaticDigraph::arc;
 
-    using PropertyMaps = std::tuple<std::vector<ArcProperty>...>;
+    using PropertyMaps = std::tuple<std::vector<arcProperty>...>;
 
 private:
-    std::size_t _nb_nodes;
-    std::vector<Arc> _nb_out_arcs;
-    std::vector<Node> _arc_sources;
-    std::vector<Node> _arc_targets;
+    std::size_t _nb_vertices;
+    std::vector<arc> _nb_out_arcs;
+    std::vector<vertex> _arc_sources;
+    std::vector<vertex> _arc_targets;
     PropertyMaps _arc_property_maps;
 
 public:
-    StaticDigraphBuilder() : _nb_nodes(0) {}
-    StaticDigraphBuilder(std::size_t nb_nodes)
-        : _nb_nodes(nb_nodes), _nb_out_arcs(nb_nodes, 0) {}
+    StaticDigraphBuilder() : _nb_vertices(0) {}
+    StaticDigraphBuilder(std::size_t nb_vertices)
+        : _nb_vertices(nb_vertices), _nb_out_arcs(nb_vertices, 0) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
@@ -42,8 +42,8 @@ private:
     }
 
 public:
-    void add_arc(Node u, Node v, ArcProperty... properties) {
-        assert(_nb_nodes > std::max(u, v));
+    void add_arc(vertex u, vertex v, arcProperty... properties) {
+        assert(_nb_vertices > std::max(u, v));
         ++_nb_out_arcs[u];
         _arc_sources.push_back(u);
         _arc_targets.push_back(v);

@@ -758,72 +758,72 @@ namespace melon {
 
 class StaticDigraph {
 public:
-    using Node = unsigned int;
-    using Arc = unsigned int;
+    using vertex = unsigned int;
+    using arc = unsigned int;
 
     template <typename T>
-    using NodeMap = StaticMap<T>;
+    using vertexMap = StaticMap<T>;
     template <typename T>
-    using ArcMap = StaticMap<T>;
+    using arcMap = StaticMap<T>;
 
 private:
-    std::vector<Arc> _out_arc_begin;
-    std::vector<Node> _arc_target;
+    std::vector<arc> _out_arc_begin;
+    std::vector<vertex> _arc_target;
 
 public:
-    StaticDigraph(std::vector<Arc> && begins, std::vector<Node> && targets)
+    StaticDigraph(std::vector<arc> && begins, std::vector<vertex> && targets)
         : _out_arc_begin(std::move(begins)), _arc_target(std::move(targets)) {}
 
     StaticDigraph() = default;
     StaticDigraph(const StaticDigraph & graph) = default;
     StaticDigraph(StaticDigraph && graph) = default;
 
-    auto nb_nodes() const { return _out_arc_begin.size(); }
+    auto nb_vertices() const { return _out_arc_begin.size(); }
     auto nb_arcs() const { return _arc_target.size(); }
 
-    bool is_valid_node(Node u) const { return u < nb_nodes(); }
-    bool is_valid_arc(Arc u) const { return u < nb_arcs(); }
+    bool is_valid_node(vertex u) const { return u < nb_vertices(); }
+    bool is_valid_arc(arc u) const { return u < nb_arcs(); }
 
-    auto nodes() const {
-        return std::views::iota(static_cast<Node>(0),
-                                static_cast<Node>(nb_nodes()));
+    auto vertices() const {
+        return std::views::iota(static_cast<vertex>(0),
+                                static_cast<vertex>(nb_vertices()));
     }
     auto arcs() const {
-        return std::views::iota(static_cast<Arc>(0),
-                                static_cast<Arc>(nb_arcs()));
+        return std::views::iota(static_cast<arc>(0),
+                                static_cast<arc>(nb_arcs()));
     }
-    auto out_arcs(const Node u) const {
+    auto out_arcs(const vertex u) const {
         assert(is_valid_node(u));
         return std::views::iota(
             _out_arc_begin[u],
-            (u + 1 < nb_nodes() ? _out_arc_begin[u + 1] : nb_arcs()));
+            (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    Node source(Arc a) const {  // O(\log |V|)
+    vertex source(arc a) const {  // O(\log |V|)
         assert(is_valid_arc(a));
         auto it =
-            std::ranges::lower_bound(_out_arc_begin, a, std::less_equal<Arc>());
-        return static_cast<Node>(std::distance(_out_arc_begin.begin(), --it));
+            std::ranges::lower_bound(_out_arc_begin, a, std::less_equal<arc>());
+        return static_cast<vertex>(std::distance(_out_arc_begin.begin(), --it));
     }
-    Node target(Arc a) const {
+    vertex target(arc a) const {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
-    auto out_targets(const Node u) const {
+    auto out_neighbors(const vertex u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             _arc_target.begin() + _out_arc_begin[u],
-            (u + 1 < nb_nodes() ? _arc_target.begin() + _out_arc_begin[u + 1]
+            (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u + 1]
                                 : _arc_target.end()));
     }
 
-    auto out_arcs_pairs(const Node u) const {
+    auto out_arcs_pairs(const vertex u) const {
         assert(is_valid_node(u));
         return std::views::transform(
-            out_targets(u), [u](auto v) { return std::make_pair(u, v); });
+            out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
     }
     auto arcs_pairs() const {
         return std::views::join(std::views::transform(
-            nodes(), [this](auto u) { return out_arcs_pairs(u); }));
+            vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
 };
 
@@ -845,25 +845,25 @@ public:
 namespace fhamonic {
 namespace melon {
 
-template <typename... ArcProperty>
+template <typename... arcProperty>
 class StaticDigraphBuilder {
 public:
-    using Node = StaticDigraph::Node;
-    using Arc = StaticDigraph::Arc;
+    using vertex = StaticDigraph::vertex;
+    using arc = StaticDigraph::arc;
 
-    using PropertyMaps = std::tuple<std::vector<ArcProperty>...>;
+    using PropertyMaps = std::tuple<std::vector<arcProperty>...>;
 
 private:
-    std::size_t _nb_nodes;
-    std::vector<Arc> _nb_out_arcs;
-    std::vector<Node> _arc_sources;
-    std::vector<Node> _arc_targets;
+    std::size_t _nb_vertices;
+    std::vector<arc> _nb_out_arcs;
+    std::vector<vertex> _arc_sources;
+    std::vector<vertex> _arc_targets;
     PropertyMaps _arc_property_maps;
 
 public:
-    StaticDigraphBuilder() : _nb_nodes(0) {}
-    StaticDigraphBuilder(std::size_t nb_nodes)
-        : _nb_nodes(nb_nodes), _nb_out_arcs(nb_nodes, 0) {}
+    StaticDigraphBuilder() : _nb_vertices(0) {}
+    StaticDigraphBuilder(std::size_t nb_vertices)
+        : _nb_vertices(nb_vertices), _nb_out_arcs(nb_vertices, 0) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
@@ -873,8 +873,8 @@ private:
     }
 
 public:
-    void add_arc(Node u, Node v, ArcProperty... properties) {
-        assert(_nb_nodes > std::max(u, v));
+    void add_arc(vertex u, vertex v, arcProperty... properties) {
+        assert(_nb_vertices > std::max(u, v));
         ++_nb_out_arcs[u];
         _arc_sources.push_back(u);
         _arc_targets.push_back(v);
@@ -1001,47 +1001,47 @@ template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
                            TraversalAlgorithmBehavior::TRACK_NONE>
 class Bfs {
 public:
-    using Node = GR::Node;
-    using Arc = GR::Arc;
+    using vertex = GR::vertex;
+    using arc = GR::arc;
 
-    using ReachedMap = typename GR::NodeMap<bool>;
+    using ReachedMap = typename GR::vertexMap<bool>;
 
-    static constexpr bool track_predecessor_nodes =
+    static constexpr bool track_predecessor_vertices =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
-    using PredNodesMap =
-        std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
+    using PredverticesMap =
+        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
                          std::monostate>::type;
-    using PredArcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::NodeMap<Arc>,
+    using PredarcsMap =
+        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::NodeMap<std::size_t>,
+        std::conditional<track_distances, typename GR::vertexMap<std::size_t>,
                          std::monostate>::type;
 
 private:
     const GR & _graph;
-    std::vector<Node> _queue;
-    std::vector<Node>::iterator _queue_current;
+    std::vector<vertex> _queue;
+    std::vector<vertex>::iterator _queue_current;
 
     ReachedMap _reached_map;
 
-    PredNodesMap _pred_nodes_map;
-    PredArcsMap _pred_arcs_map;
+    PredverticesMap _pred_vertices_map;
+    PredarcsMap _pred_arcs_map;
     DistancesMap _dist_map;
 
 public:
-    Bfs(const GR & g) : _graph(g), _queue(), _reached_map(g.nb_nodes(), false) {
-        _queue.reserve(g.nb_nodes());
+    Bfs(const GR & g) : _graph(g), _queue(), _reached_map(g.nb_vertices(), false) {
+        _queue.reserve(g.nb_vertices());
         _queue_current = _queue.begin();
-        if constexpr(track_predecessor_nodes)
-            _pred_nodes_map.resize(g.nb_nodes());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_nodes());
-        if constexpr(track_distances) _dist_map.resize(g.nb_nodes());
+        if constexpr(track_predecessor_vertices)
+            _pred_vertices_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
+        if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
     }
 
     Bfs & reset() noexcept {
@@ -1049,10 +1049,10 @@ public:
         _reached_map.fill(false);
         return *this;
     }
-    Bfs & add_source(Node s) noexcept {
+    Bfs & add_source(vertex s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
-        if constexpr(track_predecessor_nodes) _pred_nodes_map[s] = s;
+        if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
         if constexpr(track_distances) _dist_map[s] = 0;
         return *this;
     }
@@ -1060,24 +1060,24 @@ public:
     bool empty_queue() const noexcept { return _queue_current == _queue.end(); }
     
 private:
-    void push_node(Node u) noexcept {
+    void push_node(vertex u) noexcept {
         _queue.push_back(u);
         _reached_map[u] = true;
     }
-    Node pop_node() noexcept {
-        const Node u = *_queue_current;
+    vertex pop_node() noexcept {
+        const vertex u = *_queue_current;
         ++_queue_current;
         return u;
     }
 
 public:
-    Node next_node() noexcept {
-        const Node u = pop_node();
-        for(Arc a : _graph.out_arcs(u)) {
-            const Node w = _graph.target(a);
+    vertex next_node() noexcept {
+        const vertex u = pop_node();
+        for(arc a : _graph.out_arcs(u)) {
+            const vertex w = _graph.target(a);
             if(reached(w)) continue;
             push_node(w);
-            if constexpr(track_predecessor_nodes) _pred_nodes_map[w] = u;
+            if constexpr(track_predecessor_vertices) _pred_vertices_map[w] = u;
             if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
             if constexpr(track_distances) _dist_map[w] = _dist_map[u] + 1;
         }
@@ -1090,18 +1090,18 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    bool reached(const Node u) const noexcept { return _reached_map[u]; }
+    bool reached(const vertex u) const noexcept { return _reached_map[u]; }
 
-    Node pred_node(const Node u) const noexcept
-        requires(track_predecessor_nodes) {
+    vertex pred_node(const vertex u) const noexcept
+        requires(track_predecessor_vertices) {
         assert(reached(u));
-        return _pred_nodes_map[u];
+        return _pred_vertices_map[u];
     }
-    Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
+    arc pred_arc(const vertex u) const noexcept requires(track_predecessor_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
-    std::size_t dist(const Node u) const noexcept requires(track_distances) {
+    std::size_t dist(const vertex u) const noexcept requires(track_distances) {
         assert(reached(u));
         return _dist_map[u];
     }
@@ -1131,44 +1131,44 @@ template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
                            TraversalAlgorithmBehavior::TRACK_NONE>
 class Dfs {
 public:
-    using Node = GR::Node;
-    using Arc = GR::Arc;
+    using vertex = GR::vertex;
+    using arc = GR::arc;
 
-    using ReachedMap = typename GR::NodeMap<bool>;
+    using ReachedMap = typename GR::vertexMap<bool>;
 
-    static constexpr bool track_predecessor_nodes =
+    static constexpr bool track_predecessor_vertices =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
 
-    using PredNodesMap =
-        std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
+    using PredverticesMap =
+        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
                          std::monostate>::type;
-    using PredArcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::NodeMap<Arc>,
+    using PredarcsMap =
+        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
                          std::monostate>::type;
 
 private:
     const GR & _graph;
 
-    using OutArcRange = decltype(std::declval<GR>().out_arcs(Node()));
-    using OutArcIt = decltype(std::declval<OutArcRange>().begin());
-    using OutArcItEnd = decltype(std::declval<OutArcRange>().end());
+    using OutarcRange = decltype(std::declval<GR>().out_arcs(vertex()));
+    using OutarcIt = decltype(std::declval<OutarcRange>().begin());
+    using OutarcItEnd = decltype(std::declval<OutarcRange>().end());
 
-    static_assert(std::ranges::borrowed_range<OutArcRange>);
-    std::vector<std::pair<OutArcIt, OutArcItEnd>> _stack;
+    static_assert(std::ranges::borrowed_range<OutarcRange>);
+    std::vector<std::pair<OutarcIt, OutarcItEnd>> _stack;
 
     ReachedMap _reached_map;
 
-    PredNodesMap _pred_nodes_map;
-    PredArcsMap _pred_arcs_map;
+    PredverticesMap _pred_vertices_map;
+    PredarcsMap _pred_arcs_map;
 
 public:
-    Dfs(const GR & g) : _graph(g), _stack(), _reached_map(g.nb_nodes(), false) {
-        _stack.reserve(g.nb_nodes());
-        if constexpr(track_predecessor_nodes)
-            _pred_nodes_map.resize(g.nb_nodes());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_nodes());
+    Dfs(const GR & g) : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
+        _stack.reserve(g.nb_vertices());
+        if constexpr(track_predecessor_vertices)
+            _pred_vertices_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
     }
 
     Dfs & reset() noexcept {
@@ -1176,16 +1176,16 @@ public:
         _reached_map.fill(false);
         return *this;
     }
-    Dfs & add_source(Node s) noexcept {
+    Dfs & add_source(vertex s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
-        if constexpr(track_predecessor_nodes) _pred_nodes_map[s] = s;
+        if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
         return *this;
     }
 
     bool empty_queue() const noexcept { return _stack.empty(); }
-    void push_node(Node u) noexcept {
-        OutArcRange r = _graph.out_arcs(u);
+    void push_node(vertex u) noexcept {
+        OutarcRange r = _graph.out_arcs(u);
         _stack.emplace_back(r.begin(), r.end());
         _reached_map[u] = true;
     }
@@ -1203,11 +1203,11 @@ private:
     }
 
 public:
-    std::pair<Arc, Node> next_node() noexcept {
-        const Arc a = *_stack.back().first;
-        const Node u = _graph.target(a);
+    std::pair<arc, vertex> next_node() noexcept {
+        const arc a = *_stack.back().first;
+        const vertex u = _graph.target(a);
         push_node(u);
-        // if constexpr(track_predecessor_nodes) _pred_nodes_map[u] = u;
+        // if constexpr(track_predecessor_vertices) _pred_vertices_map[u] = u;
         if constexpr(track_predecessor_arcs) _pred_arcs_map[u] = a;
         advance_iterators();
         return std::make_pair(a, u);
@@ -1219,13 +1219,13 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    bool reached(const Node u) const noexcept { return _reached_map[u]; }
-    Node pred_node(const Node u) const noexcept
-        requires(track_predecessor_nodes) {
+    bool reached(const vertex u) const noexcept { return _reached_map[u]; }
+    vertex pred_node(const vertex u) const noexcept
+        requires(track_predecessor_vertices) {
         assert(reached(u));
-        return _pred_nodes_map[u];
+        return _pred_vertices_map[u];
     }
-    Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
+    arc pred_arc(const vertex u) const noexcept requires(track_predecessor_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
@@ -1260,10 +1260,10 @@ namespace melon {
 template <int D, typename ND, typename PR, typename CMP = std::less<PR>>
 class DAryHeap {
 public:
-    using Node = ND;
+    using vertex = ND;
     using Prio = PR;
     using Compare = CMP;
-    using Pair = std::pair<Node, Prio>;
+    using Pair = std::pair<vertex, Prio>;
 
 private:
     using Index = std::vector<Pair>::size_type;
@@ -1277,10 +1277,10 @@ public:
     Compare _cmp;
 
 public:
-    DAryHeap(const std::size_t nb_nodes)
+    DAryHeap(const std::size_t nb_vertices)
         : _heap_array()
-        , _indices_map(nb_nodes)
-        , _states_map(nb_nodes, State::PRE_HEAP)
+        , _indices_map(nb_vertices)
+        , _states_map(nb_vertices, State::PRE_HEAP)
         , _cmp() {}
 
     DAryHeap(const DAryHeap & bin) = default;
@@ -1418,8 +1418,8 @@ public:
         _states_map[p.first] = IN_HEAP;
         heap_push(Index(n * sizeof(Pair)), std::move(p));
     }
-    void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
-    Prio prio(const Node u) const noexcept {
+    void push(const vertex i, const Prio p) noexcept { push(Pair(i, p)); }
+    Prio prio(const vertex u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -1437,10 +1437,10 @@ public:
         _heap_array.pop_back();
         return p;
     }
-    void decrease(const Node & u, const Prio & p) noexcept {
+    void decrease(const vertex & u, const Prio & p) noexcept {
         heap_push(_indices_map[u], Pair(u, p));
     }
-    State state(const Node & u) const noexcept { return _states_map[u]; }
+    State state(const vertex & u) const noexcept { return _states_map[u]; }
 };  // class DAryHeap
 
 template <typename ND, typename PR, typename CMP = std::less<PR>>
@@ -1506,16 +1506,16 @@ namespace melon {
 template <typename ND, typename PR, typename CMP = std::less<PR>>
 class FastBinaryHeap {
 public:
-    using Node = ND;
+    using vertex = ND;
     using Prio = PR;
     using Compare = CMP;
-    using Pair = std::pair<Node, Prio>;
+    using Pair = std::pair<vertex, Prio>;
 
 private:
     using Index = std::vector<Pair>::size_type;
 
 public:
-    static_assert(sizeof(Pair) >= 2, "std::pair<Node, Prio> is too small");
+    static_assert(sizeof(Pair) >= 2, "std::pair<vertex, Prio> is too small");
     enum State : Index {
         PRE_HEAP = static_cast<Index>(0),
         POST_HEAP = static_cast<Index>(1),
@@ -1527,8 +1527,8 @@ public:
     Compare _cmp;
 
 public:
-    FastBinaryHeap(const std::size_t nb_nodes)
-        : _heap_array(1), _indices_map(nb_nodes, State::PRE_HEAP), _cmp() {}
+    FastBinaryHeap(const std::size_t nb_vertices)
+        : _heap_array(1), _indices_map(nb_vertices, State::PRE_HEAP), _cmp() {}
 
     FastBinaryHeap(const FastBinaryHeap & bin) = default;
     FastBinaryHeap(FastBinaryHeap && bin) = default;
@@ -1591,9 +1591,9 @@ public:
         _heap_array.emplace_back();
         heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
     }
-    void push(const Node i, const Prio p) noexcept { push(Pair(i, p)); }
-    bool contains(const Node u) const noexcept { return _indices_map[u] > 0; }
-    Prio prio(const Node u) const noexcept {
+    void push(const vertex i, const Prio p) noexcept { push(Pair(i, p)); }
+    bool contains(const vertex u) const noexcept { return _indices_map[u] > 0; }
+    Prio prio(const vertex u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -1611,10 +1611,10 @@ public:
         _heap_array.pop_back();
         return p;
     }
-    void decrease(const Node & u, const Prio & p) noexcept {
+    void decrease(const vertex & u, const Prio & p) noexcept {
         heap_push(_indices_map[u], Pair(u, p));
     }
-    State state(const Node & u) const noexcept {
+    State state(const vertex & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
     }
 };  // class FastBinaryHeap
@@ -1632,31 +1632,31 @@ template <typename GR, typename LM,
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
           typename HP = FastBinaryHeap<
-              typename GR::Node, typename LM::value_type, decltype(SR::less)>>
+              typename GR::vertex, typename LM::value_type, decltype(SR::less)>>
 class Dijkstra {
 public:
-    using Node = GR::Node;
-    using Arc = GR::Arc;
+    using vertex = GR::vertex;
+    using arc = GR::arc;
 
     using Value = LM::value_type;
     using DijkstraSemiringTraits = SR;
     using Heap = HP;
 
-    static constexpr bool track_predecessor_nodes =
+    static constexpr bool track_predecessor_vertices =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
     static constexpr bool track_predecessor_arcs =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
     static constexpr bool track_distances =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
-    using PredNodesMap =
-        std::conditional<track_predecessor_nodes, typename GR::NodeMap<Node>,
+    using PredverticesMap =
+        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
                          std::monostate>::type;
-    using PredArcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::NodeMap<Arc>,
+    using PredarcsMap =
+        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::NodeMap<Value>,
+        std::conditional<track_distances, typename GR::vertexMap<Value>,
                          std::monostate>::type;
 
 private:
@@ -1664,52 +1664,52 @@ private:
     const LM & _length_map;
 
     Heap _heap;
-    PredNodesMap _pred_nodes_map;
-    PredArcsMap _pred_arcs_map;
+    PredverticesMap _pred_vertices_map;
+    PredarcsMap _pred_arcs_map;
     DistancesMap _dist_map;
 
 public:
     Dijkstra(const GR & g, const LM & l)
-        : _graph(g), _length_map(l), _heap(g.nb_nodes()) {
-        if constexpr(track_predecessor_nodes)
-            _pred_nodes_map.resize(g.nb_nodes());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_nodes());
-        if constexpr(track_distances) _dist_map.resize(g.nb_nodes());
+        : _graph(g), _length_map(l), _heap(g.nb_vertices()) {
+        if constexpr(track_predecessor_vertices)
+            _pred_vertices_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
+        if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
     }
 
     Dijkstra & reset() noexcept {
         _heap.clear();
         return *this;
     }
-    Dijkstra & add_source(Node s,
+    Dijkstra & add_source(vertex s,
                           Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(_heap.state(s) != Heap::IN_HEAP);
         _heap.push(s, dist);
-        if constexpr(track_predecessor_nodes) _pred_nodes_map[s] = s;
+        if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
         return *this;
     }
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<Node, Value> next_node() noexcept {
+    std::pair<vertex, Value> next_node() noexcept {
         const auto p = _heap.pop();
-        for(const Arc a : _graph.out_arcs(p.first)) {
-            const Node w = _graph.target(a);
+        for(const arc a : _graph.out_arcs(p.first)) {
+            const vertex w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
                 const Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, _length_map[a]);
                 if(DijkstraSemiringTraits::less(new_dist, _heap.prio(w))) {
                     _heap.decrease(w, new_dist);
-                    if constexpr(track_predecessor_nodes)
-                        _pred_nodes_map[w] = p.first;
+                    if constexpr(track_predecessor_vertices)
+                        _pred_vertices_map[w] = p.first;
                     if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
                 }
             } else if(s == Heap::PRE_HEAP) {
                 _heap.push(
                     w, DijkstraSemiringTraits::plus(p.second, _length_map[a]));
-                if constexpr(track_predecessor_nodes)
-                    _pred_nodes_map[w] = p.first;
+                if constexpr(track_predecessor_vertices)
+                    _pred_vertices_map[w] = p.first;
                 if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
             }
         }
@@ -1723,16 +1723,16 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    Node pred_node(const Node u) const noexcept
-        requires(track_predecessor_nodes) {
+    vertex pred_node(const vertex u) const noexcept
+        requires(track_predecessor_vertices) {
         assert(_heap.state(u) != Heap::PRE_HEAP);
-        return _pred_nodes_map[u];
+        return _pred_vertices_map[u];
     }
-    Arc pred_arc(const Node u) const noexcept requires(track_predecessor_arcs) {
+    arc pred_arc(const vertex u) const noexcept requires(track_predecessor_arcs) {
         assert(_heap.state(u) != Heap::PRE_HEAP);
         return _pred_arcs_map[u];
     }
-    Value dist(const Node u) const noexcept requires(track_distances) {
+    Value dist(const vertex u) const noexcept requires(track_distances) {
         assert(_heap.state(u) == Heap::POST_HEAP);
         return _dist_map[u];
     }
