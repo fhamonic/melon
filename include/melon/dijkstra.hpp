@@ -8,6 +8,8 @@
 #include <variant>
 #include <vector>
 
+#include "melon/concepts/graph.hpp"
+
 #include "melon/d_ary_heap.hpp"
 #include "melon/dijkstra_semirings.hpp"
 #include "melon/fast_binary_heap.hpp"
@@ -18,7 +20,7 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename GR, typename LM,
+template <concepts::adjacency_list_graph GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
