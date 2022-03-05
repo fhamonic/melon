@@ -1,6 +1,11 @@
 macro(run_conan)
-    # Download automatically, you can also just copy the conan.cmake file
-    if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
+    find_program(conanexecutable "conan")
+    if(NOT conanexecutable)
+        message(
+            FATAL_ERROR
+                "Conan package manager is not installed."
+                "Check https://docs.conan.io/en/latest/installation.html")
+    elseif(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
         message(
             STATUS
                 "Downloading conan.cmake from https://github.com/conan-io/cmake-conan"
@@ -18,7 +23,7 @@ macro(run_conan)
     include(${CMAKE_BINARY_DIR}/conan.cmake)
 
     conan_cmake_configure(REQUIRES range-v3/0.11.0 gtest/cci.20210126
-                          GENERATORS cmake)
+                          GENERATORS cmake_find_package)
 
     conan_cmake_autodetect(settings)
 
@@ -31,8 +36,5 @@ macro(run_conan)
         conancenter
         SETTINGS
         ${settings})
-
-    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake) 
-    conan_basic_setup(TARGETS) 
 
 endmacro()
