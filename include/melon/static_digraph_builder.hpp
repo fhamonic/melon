@@ -15,10 +15,10 @@ namespace fhamonic {
 namespace melon {
 
 template <typename... arcProperty>
-class StaticDigraphBuilder {
+class static_digraphBuilder {
 public:
-    using vertex = StaticDigraph::vertex;
-    using arc = StaticDigraph::arc;
+    using vertex = static_digraph::vertex;
+    using arc = static_digraph::arc;
 
     using PropertyMaps = std::tuple<std::vector<arcProperty>...>;
 
@@ -30,8 +30,8 @@ private:
     PropertyMaps _arc_property_maps;
 
 public:
-    StaticDigraphBuilder() : _nb_vertices(0) {}
-    StaticDigraphBuilder(std::size_t nb_vertices)
+    static_digraphBuilder() : _nb_vertices(0) {}
+    static_digraphBuilder(std::size_t nb_vertices)
         : _nb_vertices(nb_vertices), _nb_out_arcs(nb_vertices, 0) {}
 
 private:
@@ -69,7 +69,7 @@ public:
         std::exclusive_scan(_nb_out_arcs.begin(), _nb_out_arcs.end(),
                             _nb_out_arcs.begin(), 0);
         // create graph
-        StaticDigraph graph(std::move(_nb_out_arcs), std::move(_arc_targets));
+        static_digraph graph(std::move(_nb_out_arcs), std::move(_arc_targets));
         return std::apply(
             [this, &graph](auto &&... property_map) {
                 return std::make_tuple(graph, property_map...);

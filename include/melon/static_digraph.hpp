@@ -11,30 +11,30 @@
 namespace fhamonic {
 namespace melon {
 
-class StaticDigraph {
+class static_digraph {
 public:
     using vertex = unsigned int;
     using arc = unsigned int;
 
     template <typename T>
-    using vertexMap = StaticMap<T>;
+    using vertex_map = static_map<T>;
     template <typename T>
-    using arcMap = StaticMap<T>;
+    using arc_map = static_map<T>;
 
 private:
-    std::vector<arc> _out_arc_begin;
-    std::vector<vertex> _arc_target;
+    vertex_map<arc> _out_arc_begin;
+    arc_map<vertex> _arc_target;
 
 public:
-    StaticDigraph(std::vector<arc> && begins, std::vector<vertex> && targets)
+    static_digraph(std::vector<arc> && begins, std::vector<vertex> && targets)
         : _out_arc_begin(std::move(begins)), _arc_target(std::move(targets)) {}
 
-    StaticDigraph() = default;
-    StaticDigraph(const StaticDigraph & graph) = default;
-    StaticDigraph(StaticDigraph && graph) = default;
+    static_digraph() = default;
+    static_digraph(const static_digraph & graph) = default;
+    static_digraph(static_digraph && graph) = default;
 
-    StaticDigraph & operator=(const StaticDigraph &) = default;
-    StaticDigraph & operator=(StaticDigraph &&) = default;
+    static_digraph & operator=(const static_digraph &) = default;
+    static_digraph & operator=(static_digraph &&) = default;
 
     auto nb_vertices() const { return _out_arc_begin.size(); }
     auto nb_arcs() const { return _arc_target.size(); }

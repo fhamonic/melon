@@ -43,13 +43,13 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::vertexMap<Value>,
+        std::conditional<track_distances, typename GR::vertex_map<Value>,
                          std::monostate>::type;
 
 private:

@@ -56,7 +56,7 @@ namespace fhamonic {
 namespace melon {
 
 template <typename T>
-class StaticMap {
+class static_map {
 public:
     using value_type = T;
     using reference = T &;
@@ -70,26 +70,26 @@ private:
     value_type * _data_end;
 
 public:
-    StaticMap() : _data(nullptr), _data_end(nullptr){};
-    StaticMap(size_type size)
+    static_map() : _data(nullptr), _data_end(nullptr){};
+    static_map(size_type size)
         : _data(std::make_unique_for_overwrite<value_type[]>(size))
         , _data_end(_data.get() + size){};
 
-    StaticMap(size_type size, value_type init_value) : StaticMap(size) {
+    static_map(size_type size, value_type init_value) : static_map(size) {
         std::ranges::fill(*this, init_value);
     }
 
     template <std::ranges::random_access_range R>
-    explicit StaticMap(R && r) : StaticMap(std::ranges::size(r)) {
+    explicit static_map(R && r) : static_map(std::ranges::size(r)) {
         std::ranges::copy(r, _data.get());
     }
-    StaticMap(StaticMap &&) = default;
+    static_map(static_map &&) = default;
 
-    StaticMap & operator=(const StaticMap & other) {
+    static_map & operator=(const static_map & other) {
         resize(other.size());
         std::ranges::copy(other, _data);
     }
-    StaticMap & operator=(StaticMap &&) = default;
+    static_map & operator=(static_map &&) = default;
 
     iterator begin() noexcept { return _data.get(); }
     iterator end() noexcept { return _data_end; }
@@ -132,7 +132,7 @@ namespace fhamonic {
 namespace melon {
 
 template <>
-class StaticMap<bool> {
+class static_map<bool> {
 public:
     using value_type = bool;
     using size_type = std::size_t;
@@ -207,7 +207,7 @@ public:
     class iterator_base {
     public:
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = StaticMap<bool>::difference_type;
+        using difference_type = static_map<bool>::difference_type;
         using value_type = bool;
         using pointer = void;
 
@@ -269,7 +269,7 @@ public:
 
     class iterator : public iterator_base {
     public:
-        using reference = StaticMap<bool>::reference;
+        using reference = static_map<bool>::reference;
 
         using iterator_base::iterator_base;
 
@@ -385,27 +385,27 @@ private:
     size_type _size;
 
 public:
-    StaticMap() : _data(nullptr), _size(0){};
-    StaticMap(size_type size)
+    static_map() : _data(nullptr), _size(0){};
+    static_map(size_type size)
         : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size))), _size(size){};
 
-    StaticMap(size_type size, bool init_value) : StaticMap(size) {
+    static_map(size_type size, bool init_value) : static_map(size) {
         fill(init_value);
     };
 
-    StaticMap(const StaticMap & other) : StaticMap(other._size) {
+    static_map(const static_map & other) : static_map(other._size) {
         std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
                   _data.get());
     };
-    StaticMap(StaticMap &&) = default;
+    static_map(static_map &&) = default;
 
-    StaticMap & operator=(const StaticMap & other) {
+    static_map & operator=(const static_map & other) {
         resize(other.size());
         std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
                   _data.get());
         return *this;
     };
-    StaticMap & operator=(StaticMap &&) = default;
+    static_map & operator=(static_map &&) = default;
 
     iterator begin() noexcept { return iterator(_data.get(), 0); }
     iterator end() noexcept {
@@ -461,7 +461,7 @@ namespace fhamonic {
 namespace melon {
 
 template <>
-class StaticMap<std::atomic<bool>> {
+class static_map<std::atomic<bool>> {
 public:
     using value_type = bool;
     using size_type = std::size_t;
@@ -509,7 +509,7 @@ public:
     class iterator_base {
     public:
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = StaticMap<std::atomic<bool>>::difference_type;
+        using difference_type = static_map<std::atomic<bool>>::difference_type;
         using value_type = bool;
         using pointer = void;
 
@@ -571,7 +571,7 @@ public:
 
     class iterator : public iterator_base {
     public:
-        using reference = StaticMap<std::atomic<bool>>::reference;
+        using reference = static_map<std::atomic<bool>>::reference;
 
         using iterator_base::iterator_base;
 
@@ -687,30 +687,30 @@ private:
     size_type _size;
 
 public:
-    StaticMap() : _data(nullptr), _size(0){};
-    StaticMap(size_type size)
+    static_map() : _data(nullptr), _size(0){};
+    static_map(size_type size)
         : _data(std::make_unique<std::atomic<span_type>[]>(nb_spans(size)))
         , _size(size){};
 
-    StaticMap(size_type size, bool init_value) : StaticMap(size) {
+    static_map(size_type size, bool init_value) : static_map(size) {
         fill(init_value);
     };
 
-    StaticMap(const StaticMap & other) : StaticMap(other._size) {
+    static_map(const static_map & other) : static_map(other._size) {
         const size_type length = nb_spans(_size);
         for(size_type i = 0; i < length; ++i)
             _data[i].store(other._data[i].load());
     };
-    StaticMap(StaticMap &&) = default;
+    static_map(static_map &&) = default;
 
-    StaticMap & operator=(const StaticMap & other) {
+    static_map & operator=(const static_map & other) {
         resize(other.size());
         const size_type length = nb_spans(_size);
         for(size_type i = 0; i < length; ++i)
             _data[i].store(other._data[i].load());
         return *this;
     };
-    StaticMap & operator=(StaticMap &&) = default;
+    static_map & operator=(static_map &&) = default;
 
     iterator begin() noexcept { return iterator(_data.get(), 0); }
     iterator end() noexcept {
@@ -756,27 +756,27 @@ public:
 namespace fhamonic {
 namespace melon {
 
-class StaticDigraph {
+class vertex_map {
 public:
     using vertex = unsigned int;
     using arc = unsigned int;
 
     template <typename T>
-    using vertexMap = StaticMap<T>;
+    using vertex_map = static_map<T>;
     template <typename T>
-    using arcMap = StaticMap<T>;
+    using arc_map = static_map<T>;
 
 private:
     std::vector<arc> _out_arc_begin;
     std::vector<vertex> _arc_target;
 
 public:
-    StaticDigraph(std::vector<arc> && begins, std::vector<vertex> && targets)
+    vertex_map(std::vector<arc> && begins, std::vector<vertex> && targets)
         : _out_arc_begin(std::move(begins)), _arc_target(std::move(targets)) {}
 
-    StaticDigraph() = default;
-    StaticDigraph(const StaticDigraph & graph) = default;
-    StaticDigraph(StaticDigraph && graph) = default;
+    vertex_map() = default;
+    vertex_map(const vertex_map & graph) = default;
+    vertex_map(vertex_map && graph) = default;
 
     auto nb_vertices() const { return _out_arc_begin.size(); }
     auto nb_arcs() const { return _arc_target.size(); }
@@ -846,10 +846,10 @@ namespace fhamonic {
 namespace melon {
 
 template <typename... arcProperty>
-class StaticDigraphBuilder {
+class vertex_mapBuilder {
 public:
-    using vertex = StaticDigraph::vertex;
-    using arc = StaticDigraph::arc;
+    using vertex = static_digraph::vertex;
+    using arc = static_digraph::arc;
 
     using PropertyMaps = std::tuple<std::vector<arcProperty>...>;
 
@@ -861,8 +861,8 @@ private:
     PropertyMaps _arc_property_maps;
 
 public:
-    StaticDigraphBuilder() : _nb_vertices(0) {}
-    StaticDigraphBuilder(std::size_t nb_vertices)
+    vertex_mapBuilder() : _nb_vertices(0) {}
+    vertex_mapBuilder(std::size_t nb_vertices)
         : _nb_vertices(nb_vertices), _nb_out_arcs(nb_vertices, 0) {}
 
 private:
@@ -900,7 +900,7 @@ public:
         std::exclusive_scan(_nb_out_arcs.begin(), _nb_out_arcs.end(),
                             _nb_out_arcs.begin(), 0);
         // create graph
-        StaticDigraph graph(std::move(_nb_out_arcs), std::move(_arc_targets));
+        vertex_map graph(std::move(_nb_out_arcs), std::move(_arc_targets));
         return std::apply(
             [this, &graph](auto &&... property_map) {
                 return std::make_tuple(graph, property_map...);
@@ -1004,7 +1004,7 @@ public:
     using vertex = GR::vertex;
     using arc = GR::arc;
 
-    using ReachedMap = typename GR::vertexMap<bool>;
+    using ReachedMap = typename GR::vertex_map<bool>;
 
     static constexpr bool track_predecessor_vertices =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
@@ -1014,13 +1014,13 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::vertexMap<std::size_t>,
+        std::conditional<track_distances, typename GR::vertex_map<std::size_t>,
                          std::monostate>::type;
 
 private:
@@ -1134,7 +1134,7 @@ public:
     using vertex = GR::vertex;
     using arc = GR::arc;
 
-    using ReachedMap = typename GR::vertexMap<bool>;
+    using ReachedMap = typename GR::vertex_map<bool>;
 
     static constexpr bool track_predecessor_vertices =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
@@ -1142,10 +1142,10 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
                          std::monostate>::type;
 
 private:
@@ -1650,13 +1650,13 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::vertexMap<Value>,
+        std::conditional<track_distances, typename GR::vertex_map<Value>,
                          std::monostate>::type;
 
 private:
