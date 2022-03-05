@@ -15,9 +15,9 @@ public:
     using arc = unsigned int;
 
     template <typename T>
-    using vertexMap = std::vector<T>;
+    using vertex_map = std::vector<T>;
     template <typename T>
-    using arcMap = std::vector<T>;
+    using arc_map = std::vector<T>;
 
 private:
     std::vector<arc> _out_arc_begin;

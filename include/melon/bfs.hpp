@@ -21,7 +21,7 @@ public:
     using vertex = GR::vertex;
     using arc = GR::arc;
 
-    using ReachedMap = typename GR::vertexMap<bool>;
+    using ReachedMap = typename GR::vertex_map<bool>;
 
     static constexpr bool track_predecessor_vertices =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
@@ -31,13 +31,13 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertexMap<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertexMap<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
                          std::monostate>::type;
     using DistancesMap =
-        std::conditional<track_distances, typename GR::vertexMap<std::size_t>,
+        std::conditional<track_distances, typename GR::vertex_map<std::size_t>,
                          std::monostate>::type;
 
 private:

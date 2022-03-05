@@ -14,7 +14,7 @@ namespace fhamonic {
 namespace melon {
 
 template <>
-class StaticMap<bool> {
+class static_map<bool> {
 public:
     using value_type = bool;
     using size_type = std::size_t;
@@ -89,7 +89,7 @@ public:
     class iterator_base {
     public:
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = StaticMap<bool>::difference_type;
+        using difference_type = static_map<bool>::difference_type;
         using value_type = bool;
         using pointer = void;
 
@@ -151,7 +151,7 @@ public:
 
     class iterator : public iterator_base {
     public:
-        using reference = StaticMap<bool>::reference;
+        using reference = static_map<bool>::reference;
 
         using iterator_base::iterator_base;
 
@@ -267,27 +267,27 @@ private:
     size_type _size;
 
 public:
-    StaticMap() : _data(nullptr), _size(0){};
-    StaticMap(size_type size)
+    static_map() : _data(nullptr), _size(0){};
+    static_map(size_type size)
         : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size))), _size(size){};
 
-    StaticMap(size_type size, bool init_value) : StaticMap(size) {
+    static_map(size_type size, bool init_value) : static_map(size) {
         fill(init_value);
     };
 
-    StaticMap(const StaticMap & other) : StaticMap(other._size) {
+    static_map(const static_map & other) : static_map(other._size) {
         std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
                   _data.get());
     };
-    StaticMap(StaticMap &&) = default;
+    static_map(static_map &&) = default;
 
-    StaticMap & operator=(const StaticMap & other) {
+    static_map & operator=(const static_map & other) {
         resize(other.size());
         std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
                   _data.get());
         return *this;
     };
-    StaticMap & operator=(StaticMap &&) = default;
+    static_map & operator=(static_map &&) = default;
 
     iterator begin() noexcept { return iterator(_data.get(), 0); }
     iterator end() noexcept {
