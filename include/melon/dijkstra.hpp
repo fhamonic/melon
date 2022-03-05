@@ -8,7 +8,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/concepts/graph_concepts.hpp"
 
 #include "melon/d_ary_heap.hpp"
 #include "melon/dijkstra_semirings.hpp"
