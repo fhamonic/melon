@@ -17,16 +17,18 @@ concept priority_queue = std::semiregular<Q> &&
     { q.top() } 
         -> std::same_as<std::pair<typename Q::key, typename Q::priority>>;
     q.pop();
-    q.push(k, v);
+    q.emplace(k, v);
     q.clear();
 };
 
 template <typename Q>
 concept updatable_priority_queue = priority_queue<Q> &&
     requires(Q q, typename Q::key k, typename Q::priority v) {
+    { q.contains(k) } -> std::convertible_to<bool>;
     { q.priority(k) } -> std::same_as<typename Q::priority>;
-    q.increase_priority(k, v);
-    q.decrease_priority(k, v);
+    q.promote(k, v);
+    q.demote(k, v);
+    q.update(k, v);
 };
 // clang-format on
 

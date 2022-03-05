@@ -14,7 +14,7 @@ all: $(BUILD_DIR)
 $(BUILD_DIR):
 	@mkdir $(BUILD_DIR) && \
 	cd $(BUILD_DIR) && \
-	cmake -DCMAKE_CXX_COMPILER=$(CC) -DCMAKE_BUILD_TYPE=Debug ..
+	cmake -DCMAKE_CXX_COMPILER=$(CC) -DENABLE_TESTING=ON -DCMAKE_BUILD_TYPE=Debug ..
 
 test: all
 	@cd $(BUILD_DIR) && \
