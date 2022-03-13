@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/dijkstra.hpp"
+#include "melon/algorithm/dijkstra.hpp"
 #include "melon/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
