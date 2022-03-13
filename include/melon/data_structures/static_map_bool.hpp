@@ -8,7 +8,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/static_map.hpp"
+#include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
 namespace melon {

@@ -21,13 +21,13 @@ concept graph = std::semiregular<G> && requires(G g, typename G::vertex u,
 };
 
 template <typename G>
-concept has_arc_source = graph<G> && requires(G g, typename G::arc a) {
-    { g.source(a) } -> detail::range_of<typename G::vertex>;
+concept has_arc_source = requires(G g, typename G::arc a) {
+    { g.source(a) } -> std::same_as<typename G::vertex>;
 };
 
 template <typename G>
-concept has_arc_target = graph<G> && requires(G g, typename G::arc a) {
-    { g.target(a) } -> detail::range_of<typename G::vertex>;
+concept has_arc_target = requires(G g, typename G::arc a) {
+    { g.target(a) } -> std::same_as<typename G::vertex>;
 };
 
 

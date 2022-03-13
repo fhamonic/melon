@@ -8,19 +8,17 @@
 #include <variant>
 #include <vector>
 
+#include "melon/algorithm/dijkstra_semirings.hpp"
 #include "melon/concepts/graph_concepts.hpp"
-
-#include "melon/d_ary_heap.hpp"
-#include "melon/dijkstra_semirings.hpp"
-#include "melon/fast_binary_heap.hpp"
-
+#include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <concepts::adjacency_list_graph GR, typename LM,
+template <typename GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
@@ -66,8 +64,7 @@ public:
         : _graph(g), _length_map(l), _heap(g.nb_vertices()) {
         if constexpr(track_predecessor_vertices)
             _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs)
-            _pred_arcs_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
         if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
     }
 
@@ -86,16 +83,7 @@ public:
     bool empty_queue() const noexcept { return _heap.empty(); }
 
     std::pair<vertex, Value> next_node() noexcept {
-        const auto p = _heap.top();
-        if constexpr(std::ranges::contiguous_range<decltype(_graph.out_neighbors(
-                         p.first))>) {
-            if(_graph.out_arcs(p.first).size()) {
-                __builtin_prefetch(_graph.out_neighbors(p.first).data());
-                __builtin_prefetch(
-                    &_length_map[_graph.out_arcs(p.first).front()]);
-            }
-        }
-        _heap.pop();
+        const auto p = _heap.pop();
         for(const arc a : _graph.out_arcs(p.first)) {
             const vertex w = _graph.target(a);
             const auto s = _heap.state(w);
