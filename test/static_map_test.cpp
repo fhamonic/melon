@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/static_digraph.hpp"
-#include "melon/static_map.hpp"
+#include "melon/data_structures/static_map.hpp"
 
 #include "ranges_test_helper.hpp"
 
