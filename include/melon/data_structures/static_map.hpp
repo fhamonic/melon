@@ -80,7 +80,7 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#include "melon/static_map_atomic_bool.hpp"
-#include "melon/static_map_bool.hpp"
+#include "melon/data_structures/static_map_atomic_bool.hpp"
+#include "melon/data_structures/static_map_bool.hpp"
 
 #endif  // MELON_STATIC_MAP_HPP

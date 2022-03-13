@@ -8,17 +8,17 @@
 #include <variant>
 #include <vector>
 
-#include "melon/d_ary_heap.hpp"
-#include "melon/dijkstra_semirings.hpp"
-#include "melon/fast_binary_heap.hpp"
-
+#include "melon/algorithm/dijkstra_semirings.hpp"
+#include "melon/concepts/graph_concepts.hpp"
+#include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_algorithm_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <typename GR, typename LM,
+template <concepts::adjacency_list_graph GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
@@ -41,8 +41,8 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
-                         std::monostate>::type;
+        std::conditional<track_predecessor_vertices,
+                         typename GR::vertex_map<vertex>, std::monostate>::type;
     using PredarcsMap =
         std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
                          std::monostate>::type;
@@ -64,7 +64,8 @@ public:
         : _graph(g), _length_map(l), _heap(g.nb_vertices()) {
         if constexpr(track_predecessor_vertices)
             _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs)
+            _pred_arcs_map.resize(g.nb_vertices());
         if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
     }
 
@@ -83,7 +84,16 @@ public:
     bool empty_queue() const noexcept { return _heap.empty(); }
 
     std::pair<vertex, Value> next_node() noexcept {
-        const auto p = _heap.pop();
+        const auto p = _heap.top();
+        if constexpr(std::ranges::contiguous_range<
+                         decltype(_graph.out_neighbors(p.first))>) {
+            if(_graph.out_arcs(p.first).size()) {
+                __builtin_prefetch(_graph.out_neighbors(p.first).data());
+                __builtin_prefetch(
+                    &_length_map[_graph.out_arcs(p.first).front()]);
+            }
+        }
+        _heap.pop();
         for(const arc a : _graph.out_arcs(p.first)) {
             const vertex w = _graph.target(a);
             const auto s = _heap.state(w);
@@ -119,7 +129,8 @@ public:
         assert(_heap.state(u) != Heap::PRE_HEAP);
         return _pred_vertices_map[u];
     }
-    arc pred_arc(const vertex u) const noexcept requires(track_predecessor_arcs) {
+    arc pred_arc(const vertex u) const noexcept
+        requires(track_predecessor_arcs) {
         assert(_heap.state(u) != Heap::PRE_HEAP);
         return _pred_arcs_map[u];
     }

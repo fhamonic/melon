@@ -1,5 +1,5 @@
-#ifndef MELON_STATIC_DIGRAPH_HPP
-#define MELON_STATIC_DIGRAPH_HPP
+#ifndef MELON_ADAPTOR_REVERSE_HPP
+#define MELON_ADAPTOR_REVERSE_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -11,10 +11,11 @@
 namespace fhamonic {
 namespace melon {
 
-class static_digraph {
+template <typename G>
+class reverse {
 public:
-    using vertex = unsigned int;
-    using arc = unsigned int;
+    using vertex = typename G::vertex;
+    using arc = typename G::arc;
 
     template <typename T>
     using vertex_map = static_map<T>;
@@ -22,25 +23,25 @@ public:
     using arc_map = static_map<T>;
 
 private:
-    vertex_map<arc> _out_arc_begin;
-    arc_map<vertex> _arc_target;
+    const G & _graph;
+    vertex_map<std::size_t> _in_arc_begin;
+    std::vector<arc> _in_arcs;
+    std::vector<vertex> _arc_source;
 
 public:
-    static_digraph(std::vector<arc> && begins, std::vector<vertex> && targets)
-        : _out_arc_begin(std::move(begins)), _arc_target(std::move(targets)) {}
+    reverse(G && g)
+        : _graph(std::forward(g)) {}
 
-    static_digraph() = default;
-    static_digraph(const static_digraph & graph) = default;
-    static_digraph(static_digraph && graph) = default;
+    reverse() = default;
+    reverse(const reverse & graph) = default;
+    reverse(reverse && graph) = default;
 
-    static_digraph & operator=(const static_digraph &) = default;
-    static_digraph & operator=(static_digraph &&) = default;
+    reverse & operator=(const reverse &) = default;
+    reverse & operator=(reverse &&) = default;
 
     auto nb_vertices() const { return _out_arc_begin.size(); }
     auto nb_arcs() const { return _arc_target.size(); }
 
-    bool is_valid_node(vertex u) const { return u < nb_vertices(); }
-    bool is_valid_arc(arc u) const { return u < nb_arcs(); }
 
     auto vertices() const {
         return std::views::iota(static_cast<vertex>(0),
@@ -75,17 +76,12 @@ public:
     }
 
     auto out_arcs_pairs(const vertex u) const {
-        assert(is_valid_node(u));
-        return std::views::transform(
-            out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
     }
     auto arcs_pairs() const {
-        return std::views::join(std::views::transform(
-            vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
 };
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_STATIC_DIGRAPH_HPP
+#endif  // MELON_ADAPTOR_REVERSE_HPP

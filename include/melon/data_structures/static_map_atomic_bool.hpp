@@ -11,7 +11,7 @@
 
 #include <range/v3/view/zip.hpp>
 
-#include "melon/static_map.hpp"
+#include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -233,7 +233,7 @@ public:
         const_reference operator*() const noexcept {
             return (_p->load() >> _local_index) & 1;
         }
-        const_reference operator[](difference_type i) const {
+        const_reference operator[](difference_type i) const noexcept {
             return *(*this + i);
         }
     };

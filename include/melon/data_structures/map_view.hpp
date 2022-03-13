@@ -24,7 +24,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#include "melon/static_map_atomic_bool.hpp"
-#include "melon/static_map_bool.hpp"
-
 #endif  // MELON_MAP_VIEW_HPP
