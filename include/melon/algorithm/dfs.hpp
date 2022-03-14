@@ -1,5 +1,5 @@
-#ifndef MELON_DFS_HPP
-#define MELON_DFS_HPP
+#ifndef MELON_ALGORITHM_DFS_HPP
+#define MELON_ALGORITHM_DFS_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -123,4 +123,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_DFS_HPP
+#endif  // MELON_ALGORITHM_DFS_HPP

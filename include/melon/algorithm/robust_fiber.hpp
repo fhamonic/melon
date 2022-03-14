@@ -1,5 +1,5 @@
-#ifndef MELON_ALGORITHM_DIJKSTRA_HPP
-#define MELON_ALGORITHM_DIJKSTRA_HPP
+#ifndef MELON_ALGORITHM_ROBUST_FIBER_HPP
+#define MELON_ALGORITHM_ROBUST_FIBER_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -18,13 +18,12 @@
 namespace fhamonic {
 namespace melon {
 
-template <concepts::adjacency_list_graph GR, typename LM,
-          std::underlying_type_t<TraversalAlgorithmBehavior> BH =
-              TraversalAlgorithmBehavior::TRACK_NONE,
-          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
-          typename HP = FastBinaryHeap<
-              typename GR::vertex, typename LM::value_type, decltype(SR::less)>>
-class Dijkstra {
+template <concepts::adjacency_list_graph GR, typename LM1, typename LM2,
+          typename SR = DijkstraShortestPathSemiring<typename LM1::value_type>,
+          typename HP =
+              FastBinaryHeap<typename GR::vertex, typename LM1::value_type,
+                             decltype(SR::less)>>
+class RobustFiber {
 public:
     using vertex = GR::vertex;
     using arc = GR::arc;
@@ -33,41 +32,19 @@ public:
     using DijkstraSemiringTraits = SR;
     using Heap = HP;
 
-    static constexpr bool track_predecessor_vertices =
-        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
-    static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
-    static constexpr bool track_distances =
-        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
-
-    using PredverticesMap =
-        std::conditional<track_predecessor_vertices,
-                         typename GR::vertex_map<vertex>, std::monostate>::type;
-    using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
-                         std::monostate>::type;
-    using DistancesMap =
-        std::conditional<track_distances, typename GR::vertex_map<Value>,
-                         std::monostate>::type;
-
 private:
     const GR & _graph;
-    const LM & _length_map;
+    const LM1 & _length_map;
+    const LM2 & _reduced_length_map;
 
     Heap _heap;
-    PredverticesMap _pred_vertices_map;
-    PredarcsMap _pred_arcs_map;
-    DistancesMap _dist_map;
 
 public:
-    Dijkstra(const GR & g, const LM & l)
-        : _graph(g), _length_map(l), _heap(g.nb_vertices()) {
-        if constexpr(track_predecessor_vertices)
-            _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs)
-            _pred_arcs_map.resize(g.nb_vertices());
-        if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
-    }
+    Dijkstra(const GR & g, const LM1 & l1, const LM2 & l2)
+        : _graph(g)
+        , _length_map(l1)
+        , _reduced_length_map(l2)
+        , _heap(g.nb_vertices()) {}
 
     Dijkstra & reset() noexcept {
         _heap.clear();
@@ -77,7 +54,6 @@ public:
                           Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(_heap.state(s) != Heap::IN_HEAP);
         _heap.push(s, dist);
-        if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
         return *this;
     }
 
@@ -102,19 +78,12 @@ public:
                     DijkstraSemiringTraits::plus(p.second, _length_map[a]);
                 if(DijkstraSemiringTraits::less(new_dist, _heap.prio(w))) {
                     _heap.decrease(w, new_dist);
-                    if constexpr(track_predecessor_vertices)
-                        _pred_vertices_map[w] = p.first;
-                    if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
                 }
             } else if(s == Heap::PRE_HEAP) {
                 _heap.push(
                     w, DijkstraSemiringTraits::plus(p.second, _length_map[a]));
-                if constexpr(track_predecessor_vertices)
-                    _pred_vertices_map[w] = p.first;
-                if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
             }
         }
-        if constexpr(track_distances) _dist_map[p.first] = p.second;
         return p;
     }
 
@@ -143,4 +112,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_ALGORITHM_DIJKSTRA_HPP
+#endif  // MELON_ALGORITHM_ROBUST_FIBER_HPP
