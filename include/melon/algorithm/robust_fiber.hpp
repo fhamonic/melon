@@ -19,10 +19,7 @@ namespace fhamonic {
 namespace melon {
 
 template <concepts::adjacency_list_graph GR, typename LM1, typename LM2,
-          typename SR = DijkstraShortestPathSemiring<typename LM1::value_type>,
-          typename HP =
-              FastBinaryHeap<typename GR::vertex, typename LM1::value_type,
-                             decltype(SR::less)>>
+          typename SR = DijkstraShortestPathSemiring<typename LM1::value_type>>
 class RobustFiber {
 public:
     using vertex = GR::vertex;
@@ -30,7 +27,24 @@ public:
 
     using Value = LM::value_type;
     using DijkstraSemiringTraits = SR;
-    using Heap = HP;
+
+    struct Entry {
+        Value dist;
+        bool strong;
+
+        Entry operator+(Value v) {
+            return Entry(DijkstraSemiringTraits::plus(dist, v), strong);
+        }
+        bool operator<(const Entry & o) {
+            if(dist == o.dist) return !strong & o.strong;
+            return DijkstraSemiringTraits::less(dist, o.dist);
+        }
+        bool operator==(const Entry & o) {
+            return dist == o.dist && strong == o.strong;
+        }
+    };
+
+    using Heap = FastBinaryHeap<typename GR::vertex, Entry, decltype(SR::less)>;
 
 private:
     const GR & _graph;
@@ -50,23 +64,20 @@ public:
         _heap.clear();
         return *this;
     }
-    Dijkstra & add_source(vertex s,
-                          Value dist = DijkstraSemiringTraits::zero) noexcept {
+    Dijkstra & add_source(vertex s, Entry e) noexcept {
         assert(_heap.state(s) != Heap::IN_HEAP);
-        _heap.push(s, dist);
+        _heap.push(s, e);
         return *this;
     }
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex, Value> next_node() noexcept {
+    std::pair<vertex, Entry> next_node() noexcept {
         const auto p = _heap.top();
-        if constexpr(std::ranges::contiguous_range<
-                         decltype(_graph.out_neighbors(p.first))>) {
+        if constexpr(std::ranges::contiguous_range<decltype(
+                         _graph.out_neighbors(p.first))>) {
             if(_graph.out_arcs(p.first).size()) {
                 __builtin_prefetch(_graph.out_neighbors(p.first).data());
-                __builtin_prefetch(
-                    &_length_map[_graph.out_arcs(p.first).front()]);
             }
         }
         _heap.pop();
@@ -74,14 +85,12 @@ public:
             const vertex w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
-                const Value new_dist =
-                    DijkstraSemiringTraits::plus(p.second, _length_map[a]);
-                if(DijkstraSemiringTraits::less(new_dist, _heap.prio(w))) {
-                    _heap.decrease(w, new_dist);
+                const Entry new_entry = p.second + p.second.strong ? _length_map[a] : _reduced_length_map[a]);
+                if(new_entry < _heap.prio(w)) {
+                    _heap.decrease(w, new_entry);
                 }
             } else if(s == Heap::PRE_HEAP) {
-                _heap.push(
-                    w, DijkstraSemiringTraits::plus(p.second, _length_map[a]));
+                _heap.push(w, p.second + _length_map[a]);
             }
         }
         return p;
@@ -92,21 +101,6 @@ public:
     }
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
-
-    vertex pred_node(const vertex u) const noexcept
-        requires(track_predecessor_vertices) {
-        assert(_heap.state(u) != Heap::PRE_HEAP);
-        return _pred_vertices_map[u];
-    }
-    arc pred_arc(const vertex u) const noexcept
-        requires(track_predecessor_arcs) {
-        assert(_heap.state(u) != Heap::PRE_HEAP);
-        return _pred_arcs_map[u];
-    }
-    Value dist(const vertex u) const noexcept requires(track_distances) {
-        assert(_heap.state(u) == Heap::POST_HEAP);
-        return _dist_map[u];
-    }
 };
 
 }  // namespace melon
