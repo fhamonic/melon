@@ -14,8 +14,8 @@
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
 
-#include "melon/bfs.hpp"
-#include "melon/dfs.hpp"
-#include "melon/dijkstra.hpp"
+#include "melon/algorithm/bfs.hpp"
+#include "melon/algorithm/dfs.hpp"
+#include "melon/algorithm/dijkstra.hpp"
 
 #endif  // FHAMONIC_MELON_HPP
