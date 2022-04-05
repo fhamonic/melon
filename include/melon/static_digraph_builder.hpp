@@ -15,7 +15,7 @@ namespace fhamonic {
 namespace melon {
 
 template <typename... arcProperty>
-class static_digraphBuilder {
+class static_digraph_builder {
 public:
     using vertex = static_digraph::vertex;
     using arc = static_digraph::arc;
@@ -30,8 +30,8 @@ private:
     PropertyMaps _arc_property_maps;
 
 public:
-    static_digraphBuilder() : _nb_vertices(0) {}
-    static_digraphBuilder(std::size_t nb_vertices)
+    static_digraph_builder() : _nb_vertices(0) {}
+    static_digraph_builder(std::size_t nb_vertices)
         : _nb_vertices(nb_vertices), _nb_out_arcs(nb_vertices, 0) {}
 
 private:
