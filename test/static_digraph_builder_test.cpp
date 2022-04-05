@@ -6,8 +6,8 @@
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(static_digraphBuilder, build_without_map) {
-    static_digraphBuilder<> builder(8);
+GTEST_TEST(static_digraph_builder, build_without_map) {
+    static_digraph_builder<> builder(8);
 
     builder.add_arc(3, 4);
     builder.add_arc(1, 7);
@@ -35,9 +35,9 @@ GTEST_TEST(static_digraphBuilder, build_without_map) {
              {6, 5}}));
 }
 
-GTEST_TEST(static_digraphBuilder, build_with_map) {
+GTEST_TEST(static_digraph_builder, build_with_map) {
     constexpr std::size_t n = 8;
-    static_digraphBuilder<int> builder(n);
+    static_digraph_builder<int> builder(n);
 
     std::vector<std::pair<static_digraph::vertex, static_digraph::vertex>> pairs{
         {3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3}, {6, 5}, {1, 2}, {1, 6}, {2, 3}};
