@@ -2,6 +2,7 @@
 #define MELON_ALGORITHM_DIJKSTRA_HPP
 
 #include <algorithm>
+#include <concepts>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -12,6 +13,7 @@
 #include "melon/concepts/graph_concepts.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/data_structures/fast_binary_heap.hpp"
+#include "melon/utils/prefetch.hpp"
 #include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_algorithm_iterator.hpp"
 
@@ -85,14 +87,9 @@ public:
 
     std::pair<vertex, Value> next_node() noexcept {
         const auto p = _heap.top();
-        if constexpr(std::ranges::contiguous_range<
-                         decltype(_graph.out_neighbors(p.first))>) {
-            if(_graph.out_arcs(p.first).size()) {
-                __builtin_prefetch(_graph.out_neighbors(p.first).data());
-                __builtin_prefetch(
-                    &_length_map[_graph.out_arcs(p.first).front()]);
-            }
-        }
+        prefetch_range(_graph.out_arcs(p.first));
+        prefetch_range(_graph.out_neighbors(p.first));
+        prefetch_map_values(_graph.out_arcs(p.first), _length_map);
         _heap.pop();
         for(const arc a : _graph.out_arcs(p.first)) {
             const vertex w = _graph.target(a);
