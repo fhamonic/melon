@@ -81,29 +81,40 @@ public:
         return std::views::iota(static_cast<arc_t>(0),
                                 static_cast<arc_t>(nb_arcs()));
     }
+
     auto out_arcs(const vertex_t u) const {
         assert(is_valid_node(u));
         return std::views::iota(
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    vertex_t source(arc_t a) const {  // O(\log |V|)
+    auto in_arcs(const vertex_t u) const {
+        assert(is_valid_node(u));
+        return std::ranges::subrange(
+            _in_arcs.begin() + _in_arc_begin[u],
+            (u + 1 < nb_vertices() ? _in_arcs.begin() + _in_arc_begin[u + 1]
+                                   : _in_arcs.end()));
+    }
+
+    vertex_t source(arc_t a) const {
         assert(is_valid_arc(a));
-        auto it = std::ranges::lower_bound(_out_arc_begin, a,
-                                           std::less_equal<arc_t>());
-        return static_cast<vertex_t>(
-            std::distance(_out_arc_begin.begin(), --it));
+        return _arc_source[a];
     }
     vertex_t target(arc_t a) const {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
+    
     auto out_neighbors(const vertex_t u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             _arc_target.begin() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u + 1]
                                    : _arc_target.end()));
+    }
+    auto in_neighbors(const vertex_t u) const {
+        assert(is_valid_node(u));
+        return std::views::transform(in_arcs(u), [this](auto a) { return source(a); });
     }
 
     auto out_arcs_pairs(const vertex_t u) const {
@@ -115,6 +126,8 @@ public:
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
+
+
 };
 
 }  // namespace melon
