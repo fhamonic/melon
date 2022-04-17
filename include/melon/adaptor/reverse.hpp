@@ -24,10 +24,10 @@ public:
     using arc_map = typename G::arc_map<T>;
 
 private:
-    const G & _graph;
+    G _graph;
 
 public:
-    reverse(G && g) : _graph(std::forward(g)) {}
+    reverse(G && g) : _graph(std::forward<G>(g)) {}
 
     reverse(const reverse & graph) = default;
     reverse(reverse && graph) = default;
