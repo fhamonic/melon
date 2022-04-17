@@ -19,9 +19,9 @@ public:
     using arc_t = typename G::arc_t;
 
     template <typename T>
-    using vertex_map = typename G::static_map<T>;
+    using vertex_map = typename G::vertex_map<T>;
     template <typename T>
-    using arc_map = typename G::static_map<T>;
+    using arc_map = typename G::arc_map<T>;
 
 private:
     const G & _graph;
