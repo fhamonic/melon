@@ -17,13 +17,11 @@ template <typename E>
 using graph_arc_t = typename std::remove_reference<E>::type::arc_t;
 
 template <typename G>
-concept graph = std::semiregular<typename std::remove_reference<G>::type> &&
+concept graph = std::copyable<G> &&
     requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
     { g.vertices() } -> detail::range_of<graph_vertex_t<G>>;
     { g.arcs() } -> detail::range_of<graph_arc_t<G>>;
-    {
-        g.arcs_pairs()
-        } -> detail::range_of<std::pair<graph_vertex_t<G>, graph_vertex_t<G>>>;
+    { g.arcs_pairs() } -> detail::range_of<std::pair<graph_vertex_t<G>, graph_vertex_t<G>>>;
 };
 
 template <typename G>
