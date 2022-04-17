@@ -1,13 +1,14 @@
 #include <gtest/gtest.h>
 
-#include "melon/static_digraph_builder.hpp"
+#include "melon/arc_list_builder.hpp"
+#include "melon/static_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(static_digraph_builder, build_without_map) {
-    static_digraph_builder<> builder(8);
+GTEST_TEST(arc_list_builder, build_without_map) {
+    arc_list_builder<static_digraph> builder(8);
 
     builder.add_arc(3, 4);
     builder.add_arc(1, 7);
@@ -23,7 +24,8 @@ GTEST_TEST(static_digraph_builder, build_without_map) {
 
     AssertRangesAreEqual(
         graph.arcs_pairs(),
-        std::vector<std::pair<static_digraph::vertex, static_digraph::vertex>>(
+        std::vector<
+            std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>(
             {{1, 2},
              {1, 6},
              {1, 7},
@@ -35,14 +37,15 @@ GTEST_TEST(static_digraph_builder, build_without_map) {
              {6, 5}}));
 }
 
-GTEST_TEST(static_digraph_builder, build_with_map) {
+GTEST_TEST(arc_list_builder, build_with_map) {
     constexpr std::size_t n = 8;
-    static_digraph_builder<int> builder(n);
+    arc_list_builder<static_digraph, int> builder(n);
 
-    std::vector<std::pair<static_digraph::vertex, static_digraph::vertex>> pairs{
-        {3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3}, {6, 5}, {1, 2}, {1, 6}, {2, 3}};
+    std::vector<std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>
+        pairs{{3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3},
+              {6, 5}, {1, 2}, {1, 6}, {2, 3}};
 
-    auto weight = [n](static_digraph::vertex u, static_digraph::vertex v) {
+    auto weight = [n](static_digraph::vertex_t u, static_digraph::vertex_t v) {
         return static_cast<int>(u * n + v);
     };
 
@@ -52,7 +55,8 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
 
     AssertRangesAreEqual(
         graph.arcs_pairs(),
-        std::vector<std::pair<static_digraph::vertex, static_digraph::vertex>>(
+        std::vector<
+            std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>(
             {{1, 2},
              {1, 6},
              {1, 7},
@@ -63,7 +67,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
              {5, 3},
              {6, 5}}));
 
-    for(static_digraph::arc a : graph.arcs()) {
+    for(static_digraph::arc_t a : graph.arcs()) {
         auto u = graph.source(a);
         auto v = graph.target(a);
         ASSERT_EQ(map[a], weight(u, v));

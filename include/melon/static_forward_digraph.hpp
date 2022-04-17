@@ -3,33 +3,50 @@
 
 #include <algorithm>
 #include <cassert>
+#include <numeric>
 #include <ranges>
 #include <vector>
+
+#include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-class MutableDigraph {
+class static_forward_digraph {
 public:
     using vertex_t = unsigned int;
     using arc_t = unsigned int;
 
     template <typename T>
-    using vertex_map = std::vector<T>;
+    using vertex_map = static_map<T>;
     template <typename T>
-    using arc_map = std::vector<T>;
+    using arc_map = static_map<T>;
 
 private:
-    std::vector<arc_t> _out_arc_begin;
-    std::vector<vertex_t> _arc_target;
+    vertex_map<arc_t> _out_arc_begin;
+    arc_map<vertex_t> _arc_target;
 
 public:
-    MutableDigraph(std::vector<arc_t> && begins, std::vector<vertex_t> && targets)
-        : _out_arc_begin(std::move(begins)), _arc_target(std::move(targets)) {}
+    template <std::ranges::range S, std::ranges::range T>
+    static_forward_digraph(std::size_t nb_vertices, S && sources, T && targets)
+        : _out_arc_begin(nb_vertices, 0), _arc_target(std::move(targets)) {
+        assert(std::ranges::all_of(
+            sources, [n = nb_vertices](auto && v) { return v < n; }));
+        assert(std::ranges::all_of(
+            _arc_target, [n = nb_vertices](auto && v) { return v < n; }));
+        assert(std::ranges::is_sorted(sources));
+        for(auto && s : sources) ++_out_arc_begin[s];
+        std::exclusive_scan(_out_arc_begin.begin(), _out_arc_begin.end(),
+                            _out_arc_begin.begin(), 0);
+    }
 
-    MutableDigraph() = default;
-    MutableDigraph(const MutableDigraph & graph) = default;
-    MutableDigraph(MutableDigraph && graph) = default;
+    static_forward_digraph() = default;
+    static_forward_digraph(const static_forward_digraph & graph) = default;
+    static_forward_digraph(static_forward_digraph && graph) = default;
+
+    static_forward_digraph & operator=(const static_forward_digraph &) =
+        default;
+    static_forward_digraph & operator=(static_forward_digraph &&) = default;
 
     auto nb_vertices() const { return _out_arc_begin.size(); }
     auto nb_arcs() const { return _arc_target.size(); }
@@ -53,9 +70,10 @@ public:
     }
     vertex_t source(arc_t a) const {  // O(\log |V|)
         assert(is_valid_arc(a));
-        auto it =
-            std::ranges::lower_bound(_out_arc_begin, a, std::less_equal<arc_t>());
-        return static_cast<vertex_t>(std::distance(_out_arc_begin.begin(), --it));
+        auto it = std::ranges::lower_bound(_out_arc_begin, a,
+                                           std::less_equal<arc_t>());
+        return static_cast<vertex_t>(
+            std::distance(_out_arc_begin.begin(), --it));
     }
     vertex_t target(arc_t a) const {
         assert(is_valid_arc(a));
@@ -66,7 +84,7 @@ public:
         return std::ranges::subrange(
             _arc_target.begin() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u + 1]
-                                : _arc_target.end()));
+                                   : _arc_target.end()));
     }
 
     auto out_arcs_pairs(const vertex_t u) const {

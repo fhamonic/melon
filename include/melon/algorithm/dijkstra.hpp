@@ -24,12 +24,13 @@ template <concepts::adjacency_list_graph GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
-          typename HP = FastBinaryHeap<
-              typename GR::vertex, typename LM::value_type, decltype(SR::less)>>
+          typename HP =
+              FastBinaryHeap<typename GR::vertex_t, typename LM::value_type,
+                             decltype(SR::less)>>
 class Dijkstra {
 public:
-    using vertex = GR::vertex;
-    using arc = GR::arc;
+    using vertex_t = GR::vertex_t;
+    using arc_t = GR::arc_t;
 
     using Value = LM::value_type;
     using DijkstraSemiringTraits = SR;
@@ -42,11 +43,11 @@ public:
     static constexpr bool track_distances =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
-    using PredverticesMap =
-        std::conditional<track_predecessor_vertices,
-                         typename GR::vertex_map<vertex>, std::monostate>::type;
+    using PredverticesMap = std::conditional<track_predecessor_vertices,
+                                             typename GR::vertex_map<vertex_t>,
+                                             std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc_t>,
                          std::monostate>::type;
     using DistancesMap =
         std::conditional<track_distances, typename GR::vertex_map<Value>,
@@ -75,7 +76,7 @@ public:
         _heap.clear();
         return *this;
     }
-    Dijkstra & add_source(vertex s,
+    Dijkstra & add_source(vertex_t s,
                           Value dist = DijkstraSemiringTraits::zero) noexcept {
         assert(_heap.state(s) != Heap::IN_HEAP);
         _heap.push(s, dist);
@@ -85,14 +86,14 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex, Value> next_node() noexcept {
+    std::pair<vertex_t, Value> next_node() noexcept {
         const auto p = _heap.top();
         prefetch_range(_graph.out_arcs(p.first));
         prefetch_range(_graph.out_neighbors(p.first));
         prefetch_map_values(_graph.out_arcs(p.first), _length_map);
         _heap.pop();
-        for(const arc a : _graph.out_arcs(p.first)) {
-            const vertex w = _graph.target(a);
+        for(const arc_t a : _graph.out_arcs(p.first)) {
+            const vertex_t w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
                 const Value new_dist =
@@ -121,17 +122,17 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    vertex pred_node(const vertex u) const noexcept
+    vertex_t pred_node(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {
         assert(_heap.state(u) != Heap::PRE_HEAP);
         return _pred_vertices_map[u];
     }
-    arc pred_arc(const vertex u) const noexcept
+    arc_t pred_arc(const vertex_t u) const noexcept
         requires(track_predecessor_arcs) {
         assert(_heap.state(u) != Heap::PRE_HEAP);
         return _pred_arcs_map[u];
     }
-    Value dist(const vertex u) const noexcept requires(track_distances) {
+    Value dist(const vertex_t u) const noexcept requires(track_distances) {
         assert(_heap.state(u) == Heap::POST_HEAP);
         return _dist_map[u];
     }

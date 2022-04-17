@@ -20,8 +20,8 @@ template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
                            TraversalAlgorithmBehavior::TRACK_NONE>
 class Dfs {
 public:
-    using vertex = GR::vertex;
-    using arc = GR::arc;
+    using vertex_t = GR::vertex_t;
+    using arc_t = GR::arc_t;
 
     using ReachedMap = typename GR::vertex_map<bool>;
 
@@ -31,16 +31,16 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex_t>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc_t>,
                          std::monostate>::type;
 
 private:
     const GR & _graph;
 
-    using OutarcRange = decltype(std::declval<GR>().out_arcs(vertex()));
+    using OutarcRange = decltype(std::declval<GR>().out_arcs(vertex_t()));
     using OutarcIt = decltype(std::declval<OutarcRange>().begin());
     using OutarcItEnd = decltype(std::declval<OutarcRange>().end());
 
@@ -65,7 +65,7 @@ public:
         _reached_map.fill(false);
         return *this;
     }
-    Dfs & add_source(vertex s) noexcept {
+    Dfs & add_source(vertex_t s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
@@ -73,7 +73,7 @@ public:
     }
 
     bool empty_queue() const noexcept { return _stack.empty(); }
-    void push_node(vertex u) noexcept {
+    void push_node(vertex_t u) noexcept {
         OutarcRange r = _graph.out_arcs(u);
         _stack.emplace_back(r.begin(), r.end());
         _reached_map[u] = true;
@@ -92,9 +92,9 @@ private:
     }
 
 public:
-    std::pair<arc, vertex> next_node() noexcept {
-        const arc a = *_stack.back().first;
-        const vertex u = _graph.target(a);
+    std::pair<arc_t, vertex_t> next_node() noexcept {
+        const arc_t a = *_stack.back().first;
+        const vertex_t u = _graph.target(a);
         push_node(u);
         // if constexpr(track_predecessor_vertices) _pred_vertices_map[u] = u;
         if constexpr(track_predecessor_arcs) _pred_arcs_map[u] = a;
@@ -108,13 +108,13 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    bool reached(const vertex u) const noexcept { return _reached_map[u]; }
-    vertex pred_node(const vertex u) const noexcept
+    bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
+    vertex_t pred_node(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc pred_arc(const vertex u) const noexcept requires(track_predecessor_arcs) {
+    arc_t pred_arc(const vertex_t u) const noexcept requires(track_predecessor_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }

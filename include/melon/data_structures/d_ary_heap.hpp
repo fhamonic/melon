@@ -13,10 +13,10 @@ namespace melon {
 template <int D, typename ND, typename PR, typename CMP = std::less<PR>>
 class DAryHeap {
 public:
-    using vertex = ND;
+    using vertex_t = ND;
     using Prio = PR;
     using Compare = CMP;
-    using Pair = std::pair<vertex, Prio>;
+    using Pair = std::pair<vertex_t, Prio>;
 
 private:
     using Index = std::vector<Pair>::size_type;
@@ -171,8 +171,8 @@ public:
         _states_map[p.first] = IN_HEAP;
         heap_push(Index(n * sizeof(Pair)), std::move(p));
     }
-    void push(const vertex i, const Prio p) noexcept { push(Pair(i, p)); }
-    Prio prio(const vertex u) const noexcept {
+    void push(const vertex_t i, const Prio p) noexcept { push(Pair(i, p)); }
+    Prio prio(const vertex_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -188,10 +188,10 @@ public:
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
-    void decrease(const vertex & u, const Prio & p) noexcept {
+    void decrease(const vertex_t & u, const Prio & p) noexcept {
         heap_push(_indices_map[u], Pair(u, p));
     }
-    State state(const vertex & u) const noexcept { return _states_map[u]; }
+    State state(const vertex_t & u) const noexcept { return _states_map[u]; }
 };  // class DAryHeap
 
 template <typename ND, typename PR, typename CMP = std::less<PR>>

@@ -14,8 +14,8 @@ namespace melon {
 template <typename G>
 class reverse {
 public:
-    using vertex = typename G::vertex;
-    using arc = typename G::arc;
+    using vertex_t = typename G::vertex_t;
+    using arc_t = typename G::arc_t;
 
     template <typename T>
     using vertex_map = static_map<T>;
@@ -25,8 +25,8 @@ public:
 private:
     const G & _graph;
     vertex_map<std::size_t> _in_arc_begin;
-    std::vector<arc> _in_arcs;
-    std::vector<vertex> _arc_source;
+    std::vector<arc_t> _in_arcs;
+    std::vector<vertex_t> _arc_source;
 
 public:
     reverse(G && g)
@@ -44,30 +44,30 @@ public:
 
 
     auto vertices() const {
-        return std::views::iota(static_cast<vertex>(0),
-                                static_cast<vertex>(nb_vertices()));
+        return std::views::iota(static_cast<vertex_t>(0),
+                                static_cast<vertex_t>(nb_vertices()));
     }
     auto arcs() const {
-        return std::views::iota(static_cast<arc>(0),
-                                static_cast<arc>(nb_arcs()));
+        return std::views::iota(static_cast<arc_t>(0),
+                                static_cast<arc_t>(nb_arcs()));
     }
-    auto out_arcs(const vertex u) const {
+    auto out_arcs(const vertex_t u) const {
         assert(is_valid_node(u));
         return std::views::iota(
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    vertex source(arc a) const {  // O(\log |V|)
+    vertex_t source(arc_t a) const {  // O(\log |V|)
         assert(is_valid_arc(a));
         auto it =
-            std::ranges::lower_bound(_out_arc_begin, a, std::less_equal<arc>());
-        return static_cast<vertex>(std::distance(_out_arc_begin.begin(), --it));
+            std::ranges::lower_bound(_out_arc_begin, a, std::less_equal<arc_t>());
+        return static_cast<vertex_t>(std::distance(_out_arc_begin.begin(), --it));
     }
-    vertex target(arc a) const {
+    vertex_t target(arc_t a) const {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
-    auto out_neighbors(const vertex u) const {
+    auto out_neighbors(const vertex_t u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             _arc_target.begin() + _out_arc_begin[u],
@@ -75,7 +75,7 @@ public:
                                 : _arc_target.end()));
     }
 
-    auto out_arcs_pairs(const vertex u) const {
+    auto out_arcs_pairs(const vertex_t u) const {
     }
     auto arcs_pairs() const {
     }

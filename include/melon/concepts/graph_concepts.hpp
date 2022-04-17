@@ -12,47 +12,47 @@ namespace concepts {
 
 // clang-format off
 template <typename G>
-concept graph = std::semiregular<G> && requires(G g, typename G::vertex u,
-                                        typename G::arc a) {
-    { g.vertices() } -> detail::range_of<typename G::vertex>;
-    { g.arcs() } -> detail::range_of<typename G::arc>;
+concept graph = std::semiregular<G> && requires(G g, typename G::vertex_t u,
+                                        typename G::arc_t a) {
+    { g.vertices() } -> detail::range_of<typename G::vertex_t>;
+    { g.arcs() } -> detail::range_of<typename G::arc_t>;
     { g.arcs_pairs() }
-        -> detail::range_of<std::pair<typename G::vertex, typename G::vertex>>;
+        -> detail::range_of<std::pair<typename G::vertex_t, typename G::vertex_t>>;
 };
 
 template <typename G>
-concept has_arc_source = requires(G g, typename G::arc a) {
-    { g.source(a) } -> std::same_as<typename G::vertex>;
+concept has_arc_source = requires(G g, typename G::arc_t a) {
+    { g.source(a) } -> std::same_as<typename G::vertex_t>;
 };
 
 template <typename G>
-concept has_arc_target = requires(G g, typename G::arc a) {
-    { g.target(a) } -> std::same_as<typename G::vertex>;
+concept has_arc_target = requires(G g, typename G::arc_t a) {
+    { g.target(a) } -> std::same_as<typename G::vertex_t>;
 };
 
 
 template <typename G>
-concept incidence_list_graph = graph<G> && requires(G g, typename G::vertex u) {
-    { g.out_arcs(u) } -> detail::range_of<typename G::arc>;
+concept incidence_list_graph = graph<G> && requires(G g, typename G::vertex_t u) {
+    { g.out_arcs(u) } -> detail::range_of<typename G::arc_t>;
 };
 
 template <typename G>
-concept adjacency_list_graph = graph<G> && requires(G g, typename G::vertex u,
-                                        typename G::arc a) {
-    { g.out_neighbors(u) } -> detail::range_of<typename G::vertex>;
+concept adjacency_list_graph = graph<G> && requires(G g, typename G::vertex_t u,
+                                        typename G::arc_t a) {
+    { g.out_neighbors(u) } -> detail::range_of<typename G::vertex_t>;
 };
 
 
 template <typename G>
 concept reversible_incidence_list_graph = graph<G> && requires(G g,
-                                        typename G::vertex u) {
-    { g.in_arcs(u) } -> detail::range_of<typename G::arc>;
+                                        typename G::vertex_t u) {
+    { g.in_arcs(u) } -> detail::range_of<typename G::arc_t>;
 };
 
 template <typename G>
 concept reversible_adjacency_list_graph = graph<G> && requires(G g,
-                                    typename G::vertex u, typename G::arc a) {
-    { g.in_neighbors(u) } -> detail::range_of<typename G::vertex>;
+                                    typename G::vertex_t u, typename G::arc_t a) {
+    { g.in_neighbors(u) } -> detail::range_of<typename G::vertex_t>;
 };
 // clang-format on
 

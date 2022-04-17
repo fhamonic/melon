@@ -18,8 +18,8 @@ template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
                            TraversalAlgorithmBehavior::TRACK_NONE>
 class Bfs {
 public:
-    using vertex = GR::vertex;
-    using arc = GR::arc;
+    using vertex_t = GR::vertex_t;
+    using arc_t = GR::arc_t;
 
     using ReachedMap = typename GR::vertex_map<bool>;
 
@@ -31,10 +31,10 @@ public:
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
     using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex>,
+        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex_t>,
                          std::monostate>::type;
     using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc>,
+        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc_t>,
                          std::monostate>::type;
     using DistancesMap =
         std::conditional<track_distances, typename GR::vertex_map<std::size_t>,
@@ -42,8 +42,8 @@ public:
 
 private:
     const GR & _graph;
-    std::vector<vertex> _queue;
-    std::vector<vertex>::iterator _queue_current;
+    std::vector<vertex_t> _queue;
+    std::vector<vertex_t>::iterator _queue_current;
 
     ReachedMap _reached_map;
 
@@ -66,7 +66,7 @@ public:
         _reached_map.fill(false);
         return *this;
     }
-    Bfs & add_source(vertex s) noexcept {
+    Bfs & add_source(vertex_t s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
@@ -77,21 +77,21 @@ public:
     bool empty_queue() const noexcept { return _queue_current == _queue.end(); }
     
 private:
-    void push_node(vertex u) noexcept {
+    void push_node(vertex_t u) noexcept {
         _queue.push_back(u);
         _reached_map[u] = true;
     }
-    vertex pop_node() noexcept {
-        const vertex u = *_queue_current;
+    vertex_t pop_node() noexcept {
+        const vertex_t u = *_queue_current;
         ++_queue_current;
         return u;
     }
 
 public:
-    vertex next_node() noexcept {
-        const vertex u = pop_node();
-        for(arc a : _graph.out_arcs(u)) {
-            const vertex w = _graph.target(a);
+    vertex_t next_node() noexcept {
+        const vertex_t u = pop_node();
+        for(arc_t a : _graph.out_arcs(u)) {
+            const vertex_t w = _graph.target(a);
             if(reached(w)) continue;
             push_node(w);
             if constexpr(track_predecessor_vertices) _pred_vertices_map[w] = u;
@@ -107,18 +107,18 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    bool reached(const vertex u) const noexcept { return _reached_map[u]; }
+    bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
 
-    vertex pred_node(const vertex u) const noexcept
+    vertex_t pred_node(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc pred_arc(const vertex u) const noexcept requires(track_predecessor_arcs) {
+    arc_t pred_arc(const vertex_t u) const noexcept requires(track_predecessor_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
-    std::size_t dist(const vertex u) const noexcept requires(track_distances) {
+    std::size_t dist(const vertex_t u) const noexcept requires(track_distances) {
         assert(reached(u));
         return _dist_map[u];
     }
