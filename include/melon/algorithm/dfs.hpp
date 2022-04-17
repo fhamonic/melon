@@ -2,6 +2,7 @@
 #define MELON_ALGORITHM_DFS_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <ranges>
 #include <stack>
 #include <type_traits>
@@ -30,9 +31,9 @@ public:
     static constexpr bool track_predecessor_arcs =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
 
-    using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex_t>,
-                         std::monostate>::type;
+    using PredverticesMap = std::conditional<track_predecessor_vertices,
+                                             typename GR::vertex_map<vertex_t>,
+                                             std::monostate>::type;
     using PredarcsMap =
         std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc_t>,
                          std::monostate>::type;
@@ -53,11 +54,13 @@ private:
     PredarcsMap _pred_arcs_map;
 
 public:
-    Dfs(const GR & g) : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
+    Dfs(const GR & g)
+        : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
         _stack.reserve(g.nb_vertices());
         if constexpr(track_predecessor_vertices)
             _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs)
+            _pred_arcs_map.resize(g.nb_vertices());
     }
 
     Dfs & reset() noexcept {
@@ -114,7 +117,8 @@ public:
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc_t pred_arc(const vertex_t u) const noexcept requires(track_predecessor_arcs) {
+    arc_t pred_arc(const vertex_t u) const noexcept
+        requires(track_predecessor_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }

@@ -2,6 +2,7 @@
 #define MELON_ALGORITHM_BFS_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -30,9 +31,9 @@ public:
     static constexpr bool track_distances =
         static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_DISTANCES);
 
-    using PredverticesMap =
-        std::conditional<track_predecessor_vertices, typename GR::vertex_map<vertex_t>,
-                         std::monostate>::type;
+    using PredverticesMap = std::conditional<track_predecessor_vertices,
+                                             typename GR::vertex_map<vertex_t>,
+                                             std::monostate>::type;
     using PredarcsMap =
         std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc_t>,
                          std::monostate>::type;
@@ -52,12 +53,14 @@ private:
     DistancesMap _dist_map;
 
 public:
-    Bfs(const GR & g) : _graph(g), _queue(), _reached_map(g.nb_vertices(), false) {
+    Bfs(const GR & g)
+        : _graph(g), _queue(), _reached_map(g.nb_vertices(), false) {
         _queue.reserve(g.nb_vertices());
         _queue_current = _queue.begin();
         if constexpr(track_predecessor_vertices)
             _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
+        if constexpr(track_predecessor_arcs)
+            _pred_arcs_map.resize(g.nb_vertices());
         if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
     }
 
@@ -75,7 +78,7 @@ public:
     }
 
     bool empty_queue() const noexcept { return _queue_current == _queue.end(); }
-    
+
 private:
     void push_node(vertex_t u) noexcept {
         _queue.push_back(u);
@@ -114,11 +117,13 @@ public:
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc_t pred_arc(const vertex_t u) const noexcept requires(track_predecessor_arcs) {
+    arc_t pred_arc(const vertex_t u) const noexcept
+        requires(track_predecessor_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
-    std::size_t dist(const vertex_t u) const noexcept requires(track_distances) {
+    std::size_t dist(const vertex_t u) const noexcept
+        requires(track_distances) {
         assert(reached(u));
         return _dist_map[u];
     }

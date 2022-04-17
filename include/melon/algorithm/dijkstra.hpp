@@ -2,6 +2,7 @@
 #define MELON_ALGORITHM_DIJKSTRA_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <ranges>
 #include <type_traits>
