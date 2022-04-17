@@ -65,6 +65,11 @@ GTEST_TEST(static_digraph, vectors_constructor_1) {
     ASSERT_EQ_RANGES(graph.out_neighbors(0), {1, 2});
     ASSERT_EQ_RANGES(graph.out_neighbors(1), {2});
     ASSERT_EQ_RANGES(graph.out_neighbors(2), {0, 1});
+
+    ASSERT_EQ_RANGES(graph.in_neighbors(0), {2});
+    ASSERT_EQ_RANGES(graph.in_neighbors(1), {0, 2});
+    ASSERT_EQ_RANGES(graph.in_neighbors(2), {0, 1});
+
     ASSERT_EQ_RANGES(graph.arcs_pairs(), arc_pairs);
 
     for(static_digraph::arc_t a : graph.arcs()) {
