@@ -53,12 +53,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     ASSERT_EQ(graph.nb_vertices(), 3);
     ASSERT_EQ(graph.nb_arcs(), 5);
 
-    AssertRangesAreEqual(
-        graph.vertices(),
-        std::vector<static_forward_digraph::vertex_t>({0, 1, 2}));
-    AssertRangesAreEqual(
-        graph.arcs(),
-        std::vector<static_forward_digraph::arc_t>({0, 1, 2, 3, 4}));
+    ASSERT_EQ_RANGES(graph.vertices(), {0, 1, 2});
+    ASSERT_EQ_RANGES(graph.arcs(), {0, 1, 2, 3, 4});
 
     for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
     ASSERT_FALSE(graph.is_valid_node(
@@ -68,14 +64,10 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     ASSERT_FALSE(
         graph.is_valid_arc(static_forward_digraph::arc_t(graph.nb_arcs())));
 
-    AssertRangesAreEqual(graph.out_neighbors(0),
-                         std::vector<static_forward_digraph::vertex_t>({1, 2}));
-    AssertRangesAreEqual(graph.out_neighbors(1),
-                         std::vector<static_forward_digraph::vertex_t>({2}));
-    AssertRangesAreEqual(graph.out_neighbors(2),
-                         std::vector<static_forward_digraph::vertex_t>({0, 1}));
-
-    AssertRangesAreEqual(graph.arcs_pairs(), arc_pairs);
+    ASSERT_EQ_RANGES(graph.out_neighbors(0), {1, 2});
+    ASSERT_EQ_RANGES(graph.out_neighbors(1), {2});
+    ASSERT_EQ_RANGES(graph.out_neighbors(2), {0, 1});
+    ASSERT_EQ_RANGES(graph.arcs_pairs(), arc_pairs);
 
     for(static_forward_digraph::arc_t a : graph.arcs()) {
         ASSERT_EQ(graph.source(a), arc_pairs[a].first);
@@ -100,12 +92,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
     ASSERT_EQ(graph.nb_vertices(), 8);
     ASSERT_EQ(graph.nb_arcs(), 9);
 
-    AssertRangesAreEqual(graph.vertices(),
-                         std::vector<static_forward_digraph::vertex_t>(
-                             {0, 1, 2, 3, 4, 5, 6, 7}));
-    AssertRangesAreEqual(graph.arcs(),
-                         std::vector<static_forward_digraph::arc_t>(
-                             {0, 1, 2, 3, 4, 5, 6, 7, 8}));
+    ASSERT_EQ_RANGES(graph.vertices(), {0, 1, 2, 3, 4, 5, 6, 7});
+    ASSERT_EQ_RANGES(graph.arcs(), {0, 1, 2, 3, 4, 5, 6, 7, 8});
 
     for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
     ASSERT_FALSE(graph.is_valid_node(
@@ -115,21 +103,17 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
     ASSERT_FALSE(
         graph.is_valid_arc(static_forward_digraph::arc_t(graph.nb_arcs())));
 
-    AssertRangesAreEqual(
+    ASSERT_EQ_RANGES(
         graph.out_neighbors(0),
         std::ranges::empty_view<static_forward_digraph::vertex_t>());
-    AssertRangesAreEqual(
-        graph.out_neighbors(1),
-        std::vector<static_forward_digraph::vertex_t>({2, 6, 7}));
-    AssertRangesAreEqual(graph.out_neighbors(2),
-                         std::vector<static_forward_digraph::vertex_t>({3, 4}));
-    AssertRangesAreEqual(graph.out_neighbors(6),
-                         std::vector<static_forward_digraph::vertex_t>({5}));
-    AssertRangesAreEqual(
+    ASSERT_EQ_RANGES(graph.out_neighbors(1), {2, 6, 7});
+    ASSERT_EQ_RANGES(graph.out_neighbors(2), {3, 4});
+    ASSERT_EQ_RANGES(graph.out_neighbors(6), {5});
+    ASSERT_EQ_RANGES(
         graph.out_neighbors(7),
         std::ranges::empty_view<static_forward_digraph::vertex_t>());
 
-    AssertRangesAreEqual(graph.arcs_pairs(), arc_pairs);
+    ASSERT_EQ_RANGES(graph.arcs_pairs(), arc_pairs);
 
     for(static_forward_digraph::arc_t a : graph.arcs()) {
         ASSERT_EQ(graph.source(a), arc_pairs[a].first);

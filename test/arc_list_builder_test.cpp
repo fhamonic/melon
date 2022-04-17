@@ -22,7 +22,7 @@ GTEST_TEST(arc_list_builder, build_without_map) {
 
     auto [graph] = builder.build();
 
-    AssertRangesAreEqual(
+    ASSERT_EQ_RANGES(
         graph.arcs_pairs(),
         std::vector<
             std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>(
@@ -53,7 +53,7 @@ GTEST_TEST(arc_list_builder, build_with_map) {
 
     auto [graph, map] = builder.build();
 
-    AssertRangesAreEqual(
+    ASSERT_EQ_RANGES(
         graph.arcs_pairs(),
         std::vector<
             std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>(
