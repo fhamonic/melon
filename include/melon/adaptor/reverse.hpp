@@ -15,8 +15,8 @@ namespace melon {
 template <typename G>
 class reverse {
 public:
-    using vertex = typename G::vertex;
-    using arc = typename G::arc;
+    using vertex_t = typename G::vertex_t;
+    using arc_t = typename G::arc_t;
 
     template <typename T>
     using vertex_map = typename G::static_map<T>;
@@ -45,27 +45,27 @@ public:
     auto vertices() const noexcept { return _graph.vertices(); }
     auto arcs() const noexcept { return _graph.arcs(); }
 
-    vertex source(arc a) const noexcept requires concepts::has_arc_target<G> {
+    vertex_t source(arc_t a) const noexcept requires concepts::has_arc_target<G> {
         return _graph.target(a);
     }
-    vertex target(arc a) const noexcept requires concepts::has_arc_source<G> {
+    vertex_t target(arc_t a) const noexcept requires concepts::has_arc_source<G> {
         return _graph.source(a);
     }
 
-    auto out_arcs(const vertex u)
+    auto out_arcs(const vertex_t u)
         const noexcept requires concepts::reversible_incidence_list_graph<G> {
         return _graph.in_arcs(u);
     }
-    auto in_arcs(const vertex u)
+    auto in_arcs(const vertex_t u)
         const noexcept requires concepts::incidence_list_graph<G> {
         return _graph.out_arcs(u);
     }
 
-    auto out_neighbors(const vertex u)
+    auto out_neighbors(const vertex_t u)
         const noexcept requires concepts::reversible_adjacency_list_graph<G> {
         return _graph.in_neighbors(u);
     }
-    auto in_neighbors(const vertex u)
+    auto in_neighbors(const vertex_t u)
         const noexcept requires concepts::adjacency_list_graph<G> {
         return _graph.out_neighbors(u);
     }

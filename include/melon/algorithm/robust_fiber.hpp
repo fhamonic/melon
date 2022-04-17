@@ -22,8 +22,8 @@ template <concepts::adjacency_list_graph GR, typename LM1, typename LM2,
           typename SR = DijkstraShortestPathSemiring<typename LM1::value_type>>
 class RobustFiber {
 public:
-    using vertex = GR::vertex;
-    using arc = GR::arc;
+    using vertex_t = GR::vertex_t;
+    using arc_t = GR::arc_t;
 
     using Value = LM::value_type;
     using DijkstraSemiringTraits = SR;
@@ -44,7 +44,7 @@ public:
         }
     };
 
-    using Heap = FastBinaryHeap<typename GR::vertex, Entry, decltype(SR::less)>;
+    using Heap = FastBinaryHeap<typename GR::vertex_t, Entry, decltype(SR::less)>;
 
 private:
     const GR & _graph;
@@ -64,7 +64,7 @@ public:
         _heap.clear();
         return *this;
     }
-    Dijkstra & add_source(vertex s, Entry e) noexcept {
+    Dijkstra & add_source(vertex_t s, Entry e) noexcept {
         assert(_heap.state(s) != Heap::IN_HEAP);
         _heap.push(s, e);
         return *this;
@@ -72,7 +72,7 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex, Entry> next_node() noexcept {
+    std::pair<vertex_t, Entry> next_node() noexcept {
         const auto p = _heap.top();
         if constexpr(std::ranges::contiguous_range<decltype(
                          _graph.out_neighbors(p.first))>) {
@@ -81,8 +81,8 @@ public:
             }
         }
         _heap.pop();
-        for(const arc a : _graph.out_arcs(p.first)) {
-            const vertex w = _graph.target(a);
+        for(const arc_t a : _graph.out_arcs(p.first)) {
+            const vertex_t w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
                 const Entry new_entry = p.second + p.second.strong ? _length_map[a] : _reduced_length_map[a]);

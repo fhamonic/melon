@@ -13,16 +13,16 @@ namespace melon {
 template <typename ND, typename PR, typename CMP = std::less<PR>>
 class FastBinaryHeap {
 public:
-    using vertex = ND;
+    using vertex_t = ND;
     using Prio = PR;
     using Compare = CMP;
-    using Pair = std::pair<vertex, Prio>;
+    using Pair = std::pair<vertex_t, Prio>;
 
 private:
     using Index = std::vector<Pair>::size_type;
 
 public:
-    static_assert(sizeof(Pair) >= 2, "std::pair<vertex, Prio> is too small");
+    static_assert(sizeof(Pair) >= 2, "std::pair<vertex_t, Prio> is too small");
     enum State : Index {
         PRE_HEAP = static_cast<Index>(0),
         POST_HEAP = static_cast<Index>(1),
@@ -98,9 +98,9 @@ public:
         _heap_array.emplace_back();
         heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
     }
-    void push(const vertex i, const Prio p) noexcept { push(Pair(i, p)); }
-    bool contains(const vertex u) const noexcept { return _indices_map[u] > 0; }
-    Prio prio(const vertex u) const noexcept {
+    void push(const vertex_t i, const Prio p) noexcept { push(Pair(i, p)); }
+    bool contains(const vertex_t u) const noexcept { return _indices_map[u] > 0; }
+    Prio prio(const vertex_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -116,10 +116,10 @@ public:
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
-    void decrease(const vertex & u, const Prio & p) noexcept {
+    void decrease(const vertex_t & u, const Prio & p) noexcept {
         heap_push(_indices_map[u], Pair(u, p));
     }
-    State state(const vertex & u) const noexcept {
+    State state(const vertex_t & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
     }
 };  // class FastBinaryHeap
