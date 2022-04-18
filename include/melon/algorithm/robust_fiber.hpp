@@ -19,6 +19,7 @@ namespace fhamonic {
 namespace melon {
 
 template <concepts::adjacency_list_graph GR, typename LM1, typename LM2,
+          bool strictly_strong = false, typename F1, typename F2,
           typename SR = DijkstraShortestPathSemiring<typename LM1::value_type>>
 class RobustFiber {
 public:
@@ -35,72 +36,156 @@ public:
         Entry operator+(Value v) {
             return Entry(DijkstraSemiringTraits::plus(dist, v), strong);
         }
-        bool operator<(const Entry & o) {
-            if(dist == o.dist) return !strong & o.strong;
-            return DijkstraSemiringTraits::less(dist, o.dist);
-        }
         bool operator==(const Entry & o) {
             return dist == o.dist && strong == o.strong;
         }
     };
 
-    using Heap = FastBinaryHeap<typename GR::vertex_t, Entry, decltype(SR::less)>;
+    struct entry_cmp {
+        constexpr bool operator()(const Entry & e1,
+                                  const Entry & e2) const noexcept {
+            if constexpr(strictly_strong) {
+                if(e1.dist == e2.dist) return !e1.strong && e2.strong;
+            } else {
+                if(e1.dist == e2.dist) return e1.strong & !e2.strong;
+            }
+            return DijkstraSemiringTraits::less(e1.dist, e2.dist);
+        }
+    };
+
+    using Heap = FastBinaryHeap<typename GR::vertex_t, Entry, entry_cmp>;
 
 private:
     const GR & _graph;
     const LM1 & _length_map;
     const LM2 & _reduced_length_map;
 
+    F1 _callback_strong;
+    F2 _callback_weak;
+
     Heap _heap;
+    entry_cmp cmp;
+    std::size_t nb_strong_candidates;
+    std::size_t nb_weak_candidates;
 
 public:
-    Dijkstra(const GR & g, const LM1 & l1, const LM2 & l2)
+    RobustFiber(const GR & g, const LM1 & l1, const LM2 & l2, F1 && f1,
+                F2 && f2)
         : _graph(g)
         , _length_map(l1)
         , _reduced_length_map(l2)
-        , _heap(g.nb_vertices()) {}
+        , _callback_strong(std::forward<F1>(f1))
+        , _callback_weak(std::forward<F2>(f2))
+        , _heap(g.nb_vertices())
+        , nb_strong_candidates(0)
+        , nb_weak_candidates(0) {}
 
-    Dijkstra & reset() noexcept {
+    RobustFiber & reset() noexcept {
         _heap.clear();
+        nb_strong_candidates = 0;
+        nb_weak_candidates = 0;
         return *this;
     }
-    Dijkstra & add_source(vertex_t s, Entry e) noexcept {
+    RobustFiber & add_source(vertex_t s,
+                             Value dist = DijkstraSemiringTraits::zero,
+                             bool strong = false) noexcept {
         assert(_heap.state(s) != Heap::IN_HEAP);
-        _heap.push(s, e);
+        if(strong) {
+            ++nb_strong_candidates;
+        } else {
+            ++nb_weak_candidates;
+        }
+        _heap.push(s, Entry(dist, strong));
+        return *this;
+    }
+    RobustFiber & add_definitive_source(vertex_t s,
+                             Value dist = DijkstraSemiringTraits::zero,
+                             bool strong = false) noexcept {
+        assert(_heap.state(s) != Heap::IN_HEAP);
+        if(e.strong) {
+           process_strong_node(s, Entry(dist, strong));
+        } else {
+           process_strong_node(s, Entry(dist, strong));
+        }
         return *this;
     }
 
-    bool empty_queue() const noexcept { return _heap.empty(); }
-
-    std::pair<vertex_t, Entry> next_node() noexcept {
-        const auto p = _heap.top();
-        if constexpr(std::ranges::contiguous_range<decltype(
-                         _graph.out_neighbors(p.first))>) {
-            if(_graph.out_arcs(p.first).size()) {
-                __builtin_prefetch(_graph.out_neighbors(p.first).data());
-            }
-        }
-        _heap.pop();
-        for(const arc_t a : _graph.out_arcs(p.first)) {
+    void process_strong_node(const vertex_t u, const Entry e) noexcept {
+        for(const arc_t a : _graph.out_arcs(u)) {
             const vertex_t w = _graph.target(a);
             const auto s = _heap.state(w);
             if(s == Heap::IN_HEAP) {
-                const Entry new_entry = p.second + p.second.strong ? _length_map[a] : _reduced_length_map[a]);
-                if(new_entry < _heap.prio(w)) {
+                const Entry new_entry = e + _length_map[a];
+                const Entry old_entry = _heap.prio(w);
+                if(cmp(new_entry, old_entry)) {
+                    if(!old_entry.strong) {
+                        --nb_weak_candidates;
+                        ++nb_strong_candidates;
+                    }
                     _heap.decrease(w, new_entry);
                 }
             } else if(s == Heap::PRE_HEAP) {
-                _heap.push(w, p.second + _length_map[a]);
+                _heap.push(w, e + _length_map[a]);
+                ++nb_strong_candidates;
             }
         }
-        return p;
+    }
+
+    void process_weak_node(const vertex_t u, const Entry e) noexcept {
+        for(const arc_t a : _graph.out_arcs(u)) {
+            const vertex_t w = _graph.target(a);
+            const auto s = _heap.state(w);
+            if(s == Heap::IN_HEAP) {
+                const Entry new_entry = e + _reduced_length_map[a];
+                const Entry old_entry = _heap.prio(w);
+                if(cmp(new_entry, old_entry)) {
+                    if(old_entry.strong) {
+                        --nb_strong_candidates;
+                        ++nb_weak_candidates;
+                    }
+                    _heap.decrease(w, new_entry);
+                }
+            } else if(s == Heap::PRE_HEAP) {
+                _heap.push(w, e + _reduced_length_map[a]);
+                ++nb_weak_candidates;
+            }
+        }
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(nb_strong_candidates > 0 && nb_weak_candidates > 0) {
+            const auto && [u, entry] = _heap.top();
+            prefetch_range(_graph.out_arcs(p.first));
+            prefetch_range(_graph.out_neighbors(p.first));
+            if(p.second.strong) {
+                prefetch_map_values(_graph.out_arcs(p.first), _length_map);
+                _callback_strong(p.first);
+                _heap.pop();
+                --nb_strong_candidates;
+                process_strong_node(p);
+            } else {
+                prefetch_map_values(_graph.out_arcs(p.first),
+                                    _reduced_length_map);
+                _callback_weak(p.first);
+                _heap.pop();
+                --nb_weak_candidates;
+                process_weak_node(p);
+            }
+        }
+        if(nb_strong_candidates > 0) {
+            for(auto && v : _graph.vertices()) {
+                if(_heap.status(v) == Heap::POST_HEAP) continue;
+                _callback_strong(v);
+            }
+            return;
+        }
+        if(nb_weak_candidates > 0) {
+            for(auto && [v, prio] : _heap.entries()) {
+                if(_heap.status(v) == Heap::POST_HEAP) continue;
+                _callback_weak(v);
+            }
+        }
     }
-    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
-    auto end() noexcept { return traversal_algorithm_end_iterator(); }
 };
 
 }  // namespace melon

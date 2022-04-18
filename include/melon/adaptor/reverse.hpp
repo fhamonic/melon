@@ -10,8 +10,9 @@
 #include "melon/concepts/graph_concepts.hpp"
 #include "melon/data_structures/static_map.hpp"
 
-namespace fhamonic {
+namespace fhamonic { 
 namespace melon {
+namespace adaptors {
 
 template <typename G>
 class reverse {
@@ -81,6 +82,7 @@ public:
     }
 };
 
+}  // namespace adaptors
 }  // namespace melon
 }  // namespace fhamonic
 

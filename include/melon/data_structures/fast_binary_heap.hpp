@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <functional>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -41,6 +42,9 @@ public:
     FastBinaryHeap(FastBinaryHeap && bin) = default;
 
     Index size() const noexcept { return _heap_array.size() - 1; }
+    auto entries() const noexcept {
+        return std::ranges::views::drop(_heap_array, 1);
+    }
     bool empty() const noexcept { return size() == 0; }
     void clear() noexcept {
         _heap_array.resize(1);
@@ -76,7 +80,7 @@ private:
         Index child = 2 * holeIndex;
         while(child < end) {
             child += sizeof(Pair) * _cmp(pair_ref(child + sizeof(Pair)).second,
-                                        pair_ref(child).second);
+                                         pair_ref(child).second);
             if(_cmp(pair_ref(child).second, p.second)) {
                 heap_move(holeIndex, std::move(pair_ref(child)));
                 holeIndex = child;
@@ -99,7 +103,9 @@ public:
         heap_push(static_cast<Index>(size() * sizeof(Pair)), std::move(p));
     }
     void push(const vertex_t i, const Prio p) noexcept { push(Pair(i, p)); }
-    bool contains(const vertex_t u) const noexcept { return _indices_map[u] > 0; }
+    bool contains(const vertex_t u) const noexcept {
+        return _indices_map[u] > 0;
+    }
     Prio prio(const vertex_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
@@ -121,6 +127,10 @@ public:
     }
     State state(const vertex_t & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
+    }
+    void discard(const vertex_t & u) const noexcept {
+        assert(_indices_map[u] < sizeof(Pair));
+        _indices_map[u] = POST_HEAP;
     }
 };  // class FastBinaryHeap
 
