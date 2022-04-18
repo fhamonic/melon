@@ -16,7 +16,7 @@ GTEST_TEST(reverse_adaptor, static_graph) {
     static_digraph graph(3, std::ranges::views::keys(arc_pairs),
                          std::ranges::views::values(arc_pairs));
 
-    auto reverse_graph = reverse(graph);
+    auto reverse_graph = adaptors::reverse(graph);
 
     ASSERT_EQ(graph.nb_vertices(), reverse_graph.nb_vertices());
     ASSERT_EQ(graph.nb_arcs(), reverse_graph.nb_arcs());
@@ -69,7 +69,7 @@ GTEST_TEST(reverse_adaptor, dijkstra) {
     builder.add_arc(5, 4, 9);
 
     auto [fgraph, length_map] = builder.build();
-    auto graph = reverse(fgraph);
+    auto graph = adaptors::reverse(fgraph);
 
     Dijkstra dijkstra(graph, length_map);
 
