@@ -44,7 +44,7 @@ GTEST_TEST(RobustFiber, test) {
         [&strong_nodes](auto && v) { strong_nodes.push_back(v); },
         [&weak_nodes](auto && v) { weak_nodes.push_back(v); });
 
-    algo.add_source(0).run();
+    algo.add_source_arc(0, 1).run();
 
     ASSERT_EQ_RANGES(strong_nodes, {6, 5, 4});
     ASSERT_EQ_RANGES(weak_nodes, {0, 1, 7, 2, 4});
