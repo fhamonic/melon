@@ -12,6 +12,7 @@ add_executable(
     static_map_bool_test.cpp
     arc_list_builder_test.cpp
     dijkstra_test.cpp
+    robust_fiber_test.cpp
     reverse_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
