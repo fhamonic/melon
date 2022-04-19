@@ -87,68 +87,65 @@ public:
         nb_weak_candidates = 0;
         return *this;
     }
-    RobustFiber & add_fiber_arc(vertex_t s, arc_t st,
-                             Value dist = DijkstraSemiringTraits::zero) noexcept {
-        assert(_heap.state(s) != Heap::IN_HEAP);
-        _heap.push(s, Entry(dist, strong));
+    RobustFiber & add_source_arc(
+        vertex_t u, arc_t uv,
+        Value u_dist = DijkstraSemiringTraits::zero) noexcept {
+        assert(_heap.state(u) != Heap::IN_HEAP);
+        for(const arc_t a : _graph.out_arcs(u)) {
+            if(a == uv) continue;
+            process_weak_node_out_arc(u, Entry(u_dist, false), a);
+        }
+        process_strong_node_out_arc(u, Entry(u_dist, true), uv);
+        _callback_weak(u);
+        return *this;
+    }
+
+    RobustFiber & add_strong_source(vertex_t u, Value dist) noexcept {
+        assert(_heap.state(u) != Heap::IN_HEAP);
+        _heap.discard(u);
+        for(const arc_t a : _graph.out_arcs(u)) {
+            process_strong_node_out_arc(u, Entry(dist, true), a);
+        }
+        return *this;
+    }
+
+    void process_strong_node_out_arc(const vertex_t u, const Entry e,
+                                     const arc_t uw) noexcept {
+        const vertex_t w = _graph.target(uw);
+        const auto s = _heap.state(w);
+        if(s == Heap::IN_HEAP) {
+            const Entry new_entry = e + _length_map[uw];
+            const Entry old_entry = _heap.prio(w);
+            if(cmp(new_entry, old_entry)) {
+                if(!old_entry.strong) {
+                    --nb_weak_candidates;
+                    ++nb_strong_candidates;
+                }
+                _heap.decrease(w, new_entry);
+            }
+        } else if(s == Heap::PRE_HEAP) {
+            _heap.push(w, e + _length_map[uw]);
             ++nb_strong_candidates;
-        return *this;
-    }
-
-
-
-    RobustFiber & add_definitive_source(
-        vertex_t s, Value dist = DijkstraSemiringTraits::zero,
-        bool strong = false) noexcept {
-        assert(_heap.state(s) != Heap::IN_HEAP);
-        _heap.discard(s);
-        if(strong) {
-            process_strong_node(s, Entry(dist, strong));
-        } else {
-            process_weak_node(s, Entry(dist, strong));
-        }
-        return *this;
-    }
-
-    void process_strong_node(const vertex_t u, const Entry e) noexcept {
-        for(const arc_t a : _graph.out_arcs(u)) {
-            const vertex_t w = _graph.target(a);
-            const auto s = _heap.state(w);
-            if(s == Heap::IN_HEAP) {
-                const Entry new_entry = e + _length_map[a];
-                const Entry old_entry = _heap.prio(w);
-                if(cmp(new_entry, old_entry)) {
-                    if(!old_entry.strong) {
-                        --nb_weak_candidates;
-                        ++nb_strong_candidates;
-                    }
-                    _heap.decrease(w, new_entry);
-                }
-            } else if(s == Heap::PRE_HEAP) {
-                _heap.push(w, e + _length_map[a]);
-                ++nb_strong_candidates;
-            }
         }
     }
 
-    void process_weak_node(const vertex_t u, const Entry e) noexcept {
-        for(const arc_t a : _graph.out_arcs(u)) {
-            const vertex_t w = _graph.target(a);
-            const auto s = _heap.state(w);
-            if(s == Heap::IN_HEAP) {
-                const Entry new_entry = e + _reduced_length_map[a];
-                const Entry old_entry = _heap.prio(w);
-                if(cmp(new_entry, old_entry)) {
-                    if(old_entry.strong) {
-                        --nb_strong_candidates;
-                        ++nb_weak_candidates;
-                    }
-                    _heap.decrease(w, new_entry);
+    void process_weak_node_out_arc(const vertex_t u, const Entry e,
+                                   const arc_t uw) noexcept {
+        const vertex_t w = _graph.target(uw);
+        const auto s = _heap.state(w);
+        if(s == Heap::IN_HEAP) {
+            const Entry new_entry = e + _reduced_length_map[uw];
+            const Entry old_entry = _heap.prio(w);
+            if(cmp(new_entry, old_entry)) {
+                if(old_entry.strong) {
+                    --nb_strong_candidates;
+                    ++nb_weak_candidates;
                 }
-            } else if(s == Heap::PRE_HEAP) {
-                _heap.push(w, e + _reduced_length_map[a]);
-                ++nb_weak_candidates;
+                _heap.decrease(w, new_entry);
             }
+        } else if(s == Heap::PRE_HEAP) {
+            _heap.push(w, e + _reduced_length_map[uw]);
+            ++nb_weak_candidates;
         }
     }
 
@@ -162,13 +159,17 @@ public:
                 _callback_strong(u);
                 _heap.pop();
                 --nb_strong_candidates;
-                process_strong_node(u, entry);
+                for(const arc_t a : _graph.out_arcs(u)) {
+                    process_strong_node_out_arc(u, entry, a);
+                }
             } else {
                 prefetch_map_values(_graph.out_arcs(u), _reduced_length_map);
                 _callback_weak(u);
                 _heap.pop();
                 --nb_weak_candidates;
-                process_weak_node(u, entry);
+                for(const arc_t a : _graph.out_arcs(u)) {
+                    process_weak_node_out_arc(u, entry, a);
+                }
             }
         }
         if(nb_strong_candidates > 0) {
