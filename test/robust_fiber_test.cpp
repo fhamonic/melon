@@ -46,6 +46,14 @@ GTEST_TEST(RobustFiber, test) {
 
     algo.add_source_arc(0, 1).run();
 
+    for(auto && v : strong_nodes) {
+        std::cout << v << std::endl;
+    }
+        std::cout << std::endl;
+    for(auto && v : weak_nodes) {
+        std::cout << v << std::endl;
+    }
+
     ASSERT_EQ_RANGES(strong_nodes, {6, 5, 4});
-    ASSERT_EQ_RANGES(weak_nodes, {0, 1, 7, 2, 4});
+    ASSERT_EQ_RANGES(weak_nodes, {0, 1, 7, 2, 3});
 }

@@ -91,6 +91,7 @@ public:
         vertex_t u, arc_t uv,
         Value u_dist = DijkstraSemiringTraits::zero) noexcept {
         assert(_heap.state(u) != Heap::IN_HEAP);
+        _heap.discard(u);
         for(const arc_t a : _graph.out_arcs(u)) {
             if(a == uv) continue;
             process_weak_node_out_arc(u, Entry(u_dist, false), a);

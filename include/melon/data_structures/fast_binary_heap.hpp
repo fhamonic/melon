@@ -128,7 +128,7 @@ public:
     State state(const vertex_t & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
     }
-    void discard(const vertex_t & u) const noexcept {
+    void discard(const vertex_t & u) noexcept {
         assert(_indices_map[u] < sizeof(Pair));
         _indices_map[u] = POST_HEAP;
     }
