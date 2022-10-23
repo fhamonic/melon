@@ -22,9 +22,9 @@ This library is intended to be added as git and cmake submodules with
 ```
 and
 ```cmake
-add_subdirectory(dependencies/mippp)
+add_subdirectory(dependencies/melon)
 ...
-target_link_libraries(<some_target> INTERFACE mippp)
+target_link_libraries(<some_target> INTERFACE melon)
 ```
 Until C++23, the Range-v3 library (https://ericniebler.github.io/range-v3/) is mandatory for some ranges functionnalities.
 The Conan C++ package manager (https://conan.io/) is used to automatically resolve this dependency.
