@@ -27,7 +27,7 @@ add_subdirectory(dependencies/melon)
 target_link_libraries(<some_target> INTERFACE melon)
 ```
 Until C++23, the [Range-v3 library](https://ericniebler.github.io/range-v3/) is mandatory for some ranges functionnalities.
-The [Conan C++ package manager](https://conan.io/) is used to automatically resolve this dependency.
+This project use the [Conan C++ package manager](https://conan.io/) to automatically resolve this dependency.
 
 
 ### As a single-header
