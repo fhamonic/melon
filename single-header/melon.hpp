@@ -1092,7 +1092,7 @@ public:
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
 
-    vertex_t pred_node(const vertex_t u) const noexcept
+    vertex_t pred_vertex(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
@@ -1220,7 +1220,7 @@ public:
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
-    vertex_t pred_node(const vertex_t u) const noexcept
+    vertex_t pred_vertex(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
@@ -1723,7 +1723,7 @@ public:
     auto begin() noexcept { return traversal_algorithm_iterator(*this); }
     auto end() noexcept { return traversal_algorithm_end_iterator(); }
 
-    vertex_t pred_node(const vertex_t u) const noexcept
+    vertex_t pred_vertex(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {
         assert(_heap.state(u) != Heap::PRE_HEAP);
         return _pred_vertices_map[u];
