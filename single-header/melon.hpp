@@ -1258,7 +1258,7 @@ namespace fhamonic {
 namespace melon {
 
 template <int D, typename ND, typename PR, typename CMP = std::less<PR>>
-class DAryHeap {
+class d_ary_heap {
 public:
     using vertex_t = ND;
     using Prio = PR;
@@ -1277,14 +1277,14 @@ public:
     Compare _cmp;
 
 public:
-    DAryHeap(const std::size_t nb_vertices)
+    d_ary_heap(const std::size_t nb_vertices)
         : _heap_array()
         , _indices_map(nb_vertices)
         , _states_map(nb_vertices, State::PRE_HEAP)
         , _cmp() {}
 
-    DAryHeap(const DAryHeap & bin) = default;
-    DAryHeap(DAryHeap && bin) = default;
+    d_ary_heap(const d_ary_heap & bin) = default;
+    d_ary_heap(d_ary_heap && bin) = default;
 
     Index size() const noexcept { return _heap_array.size(); }
     bool empty() const noexcept { return _heap_array.empty(); }
@@ -1441,10 +1441,10 @@ public:
         heap_push(_indices_map[u], Pair(u, p));
     }
     State state(const vertex_t & u) const noexcept { return _states_map[u]; }
-};  // class DAryHeap
+};  // class d_ary_heap
 
 template <typename ND, typename PR, typename CMP = std::less<PR>>
-using BinaryHeap = DAryHeap<2, ND, PR, CMP>;
+using binary_heap = d_ary_heap<2, ND, PR, CMP>;
 
 }  // namespace melon
 }  // namespace fhamonic
@@ -1504,7 +1504,7 @@ namespace fhamonic {
 namespace melon {
 
 template <typename ND, typename PR, typename CMP = std::less<PR>>
-class FastBinaryHeap {
+class fast_binary_heap {
 public:
     using vertex_t = ND;
     using Prio = PR;
@@ -1527,11 +1527,11 @@ public:
     Compare _cmp;
 
 public:
-    FastBinaryHeap(const std::size_t nb_vertices)
+    fast_binary_heap(const std::size_t nb_vertices)
         : _heap_array(1), _indices_map(nb_vertices, State::PRE_HEAP), _cmp() {}
 
-    FastBinaryHeap(const FastBinaryHeap & bin) = default;
-    FastBinaryHeap(FastBinaryHeap && bin) = default;
+    fast_binary_heap(const fast_binary_heap & bin) = default;
+    fast_binary_heap(fast_binary_heap && bin) = default;
 
     Index size() const noexcept { return _heap_array.size() - 1; }
     bool empty() const noexcept { return size() == 0; }
@@ -1617,7 +1617,7 @@ public:
     State state(const vertex_t & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<Index>(IN_HEAP)));
     }
-};  // class FastBinaryHeap
+};  // class fast_binary_heap
 
 }  // namespace melon
 }  // namespace fhamonic
@@ -1631,7 +1631,7 @@ template <typename GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
-          typename HP = FastBinaryHeap<
+          typename HP = fast_binary_heap<
               typename GR::vertex_t, typename LM::value_type, decltype(SR::less)>>
 class Dijkstra {
 public:
