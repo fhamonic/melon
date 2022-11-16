@@ -24,7 +24,7 @@ namespace melon {
 template <concepts::adjacency_list_graph GR, typename LM>
 struct DijkstraDefaultTraits {
     using Semiring = DijkstraShortestPathSemiring<typename LM::value_type>;
-    using Heap = FastBinaryHeap<typename GR::vertex_t, typename LM::value_type,
+    using Heap = fast_binary_heap<typename GR::vertex_t, typename LM::value_type,
                                 decltype(Semiring::less)>;
 
     static constexpr bool store_pred_vertices = false;

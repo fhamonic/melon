@@ -22,7 +22,7 @@ template <typename GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
           typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
-          typename HP = FastBinaryHeap<
+          typename HP = fast_binary_heap<
               typename GR::vertex_t, typename LM::value_type, decltype(SR::less)>>
 class Dijkstra {
 public:

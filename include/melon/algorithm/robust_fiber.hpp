@@ -54,7 +54,7 @@ public:
         }
     };
 
-    using Heap = FastBinaryHeap<typename GR::vertex_t, Entry, entry_cmp>;
+    using Heap = fast_binary_heap<typename GR::vertex_t, Entry, entry_cmp>;
 
 private:
     const GR & _graph;
