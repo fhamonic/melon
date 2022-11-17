@@ -75,16 +75,16 @@ GTEST_TEST(reverse_adaptor, dijkstra) {
 
     dijkstra.add_source(0);
     ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_node(), std::make_pair(0u, 0));
+    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(0u, 0));
     ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_node(), std::make_pair(1u, 7));
+    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(1u, 7));
     ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_node(), std::make_pair(2u, 9));
+    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(2u, 9));
     ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_node(), std::make_pair(5u, 11));
+    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(5u, 11));
     ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_node(), std::make_pair(4u, 20));
+    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(4u, 20));
     ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_node(), std::make_pair(3u, 21));
+    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(3u, 21));
     ASSERT_TRUE(dijkstra.empty_queue());
 }
