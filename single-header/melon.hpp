@@ -954,30 +954,30 @@ namespace melon {
 template <typename Algo>
 concept traversal_algorithm = requires(Algo alg) {
     { alg.empty_queue() } -> std::convertible_to<bool>;
-    { alg.next_node() } -> std::default_initializable;
+    { alg.next_vertex() } -> std::default_initializable;
 };
 
-struct traversal_algorithm_end_iterator {};
+struct traversal_end_sentinel {};
 
 template <typename Algo>
 requires traversal_algorithm<Algo>
-class traversal_algorithm_iterator {
+class traversal_iterator {
 public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = decltype(std::declval<Algo>().next_node());
+    using value_type = decltype(std::declval<Algo>().next_vertex());
     using reference = value_type const &;
     using pointer = value_type *;
     using difference_type = void;
 
-    traversal_algorithm_iterator(Algo & alg) : algorithm(alg) {
+    traversal_iterator(Algo & alg) : algorithm(alg) {
         if(!algorithm.empty_queue()) ++(*this);
     }
-    traversal_algorithm_iterator & operator++() noexcept {
-        node = algorithm.next_node();
+    traversal_iterator & operator++() noexcept {
+        node = algorithm.next_vertex();
         return *this;
     }
-    friend bool operator==(const traversal_algorithm_iterator & it,
-                           traversal_algorithm_end_iterator) noexcept {
+    friend bool operator==(const traversal_iterator & it,
+                           traversal_end_sentinel) noexcept {
         return it.algorithm.empty_queue();
     }
     reference operator*() const noexcept { return node; }
@@ -1071,7 +1071,7 @@ private:
     }
 
 public:
-    vertex_t next_node() noexcept {
+    vertex_t next_vertex() noexcept {
         const vertex_t u = pop_node();
         for(arc_t a : _graph.out_arcs(u)) {
             const vertex_t w = _graph.target(a);
@@ -1085,10 +1085,10 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(!empty_queue()) next_vertex();
     }
-    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
-    auto end() noexcept { return traversal_algorithm_end_iterator(); }
+    auto begin() noexcept { return traversal_iterator(*this); }
+    auto end() noexcept { return traversal_end_sentinel(); }
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
 
@@ -1203,7 +1203,7 @@ private:
     }
 
 public:
-    std::pair<arc_t, vertex_t> next_node() noexcept {
+    std::pair<arc_t, vertex_t> next_vertex() noexcept {
         const arc_t a = *_stack.back().first;
         const vertex_t u = _graph.target(a);
         push_node(u);
@@ -1214,10 +1214,10 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(!empty_queue()) next_vertex();
     }
-    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
-    auto end() noexcept { return traversal_algorithm_end_iterator(); }
+    auto begin() noexcept { return traversal_iterator(*this); }
+    auto end() noexcept { return traversal_end_sentinel(); }
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
     vertex_t pred_vertex(const vertex_t u) const noexcept
@@ -1459,21 +1459,21 @@ namespace fhamonic {
 namespace melon {
 
 template <typename T>
-struct DijkstraShortestPathSemiring {
+struct dijkstra_shortest_path_semiring {
     static constexpr T zero = static_cast<T>(0);
     static constexpr std::plus<T> plus{};
     static constexpr std::less<T> less{};
 };
 
 template <typename T>
-struct DijkstraMostProbablePathSemiring {
+struct dijkstra_most_reliable_path_semiring {
     static constexpr T zero = static_cast<T>(1);
     static constexpr std::multiplies<T> plus{};
     static constexpr std::greater<T> less{};
 };
 
 template <typename T>
-struct DijkstraMaxFlowPathSemiring {
+struct dijkstra_max_capacity_path_semiring {
     static constexpr T zero = std::numeric_limits<T>::max();
     static constexpr auto plus = [](const T & a, const T & b){ return std::min(a, b); };
     static constexpr std::greater<T> less{};
@@ -1630,7 +1630,7 @@ namespace melon {
 template <typename GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
-          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
+          typename SR = dijkstra_shortest_path_semiring<typename LM::value_type>,
           typename HP = fast_binary_heap<
               typename GR::vertex_t, typename LM::value_type, decltype(SR::less)>>
 class Dijkstra {
@@ -1691,7 +1691,7 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex_t, Value> next_node() noexcept {
+    std::pair<vertex_t, Value> next_vertex() noexcept {
         const auto p = _heap.pop();
         for(const arc_t a : _graph.out_arcs(p.first)) {
             const vertex_t w = _graph.target(a);
@@ -1718,10 +1718,10 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(!empty_queue()) next_vertex();
     }
-    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
-    auto end() noexcept { return traversal_algorithm_end_iterator(); }
+    auto begin() noexcept { return traversal_iterator(*this); }
+    auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {

@@ -13,7 +13,7 @@
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/traversal_algorithm_behavior.hpp"
-#include "melon/utils/traversal_algorithm_iterator.hpp"
+#include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -21,7 +21,7 @@ namespace melon {
 template <typename GR, typename LM,
           std::underlying_type_t<TraversalAlgorithmBehavior> BH =
               TraversalAlgorithmBehavior::TRACK_NONE,
-          typename SR = DijkstraShortestPathSemiring<typename LM::value_type>,
+          typename SR = dijkstra_shortest_path_semiring<typename LM::value_type>,
           typename HP = fast_binary_heap<
               typename GR::vertex_t, typename LM::value_type, decltype(SR::less)>>
 class Dijkstra {
@@ -82,7 +82,7 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex_t, Value> next_node() noexcept {
+    std::pair<vertex_t, Value> next_vertex() noexcept {
         const auto p = _heap.pop();
         for(const arc_t a : _graph.out_arcs(p.first)) {
             const vertex_t w = _graph.target(a);
@@ -109,10 +109,10 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(!empty_queue()) next_vertex();
     }
-    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
-    auto end() noexcept { return traversal_algorithm_end_iterator(); }
+    auto begin() noexcept { return traversal_iterator(*this); }
+    auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
         requires(track_predecessor_vertices) {

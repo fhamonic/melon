@@ -14,14 +14,14 @@
 #include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/prefetch.hpp"
 #include "melon/utils/traversal_algorithm_behavior.hpp"
-#include "melon/utils/traversal_algorithm_iterator.hpp"
+#include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
 template <concepts::adjacency_list_graph GR, typename LM1, typename LM2,
           typename F1, typename F2, bool strictly_strong = false,
-          typename SR = DijkstraShortestPathSemiring<typename LM1::value_type>>
+          typename SR = shortest_path_semiring<typename LM1::value_type>>
 class RobustFiber {
 public:
     using vertex_t = GR::vertex_t;
@@ -100,9 +100,9 @@ public:
         discard(u);
         for(const arc_t a : _graph.out_arcs(u)) {
             if(a == uv) continue;
-            process_weak_node_out_arc(u, u_dist, a);
+            process_weak_vertex_out_arc(u, u_dist, a);
         }
-        process_strong_node_out_arc(u, u_dist, uv);
+        process_strong_vertex_out_arc(u, u_dist, uv);
         _callback_weak(u);
         return *this;
     }
@@ -113,9 +113,9 @@ public:
         discard(u);
         for(const arc_t a : _graph.out_arcs(u)) {
             if(a == uv) continue;
-            process_strong_node_out_arc(u, u_dist, a);
+            process_strong_vertex_out_arc(u, u_dist, a);
         }
-        process_weak_node_out_arc(u, u_dist, uv);
+        process_weak_vertex_out_arc(u, u_dist, uv);
         _callback_weak(u);
         return *this;
     }
@@ -123,13 +123,13 @@ public:
     RobustFiber & add_strong_source(vertex_t u, Value dist) noexcept {
         discard(u);
         for(const arc_t a : _graph.out_arcs(u)) {
-            process_strong_node_out_arc(u, Entry(dist, true), a);
+            process_strong_vertex_out_arc(u, Entry(dist, true), a);
         }
         return *this;
     }
 
-    void process_strong_node_out_arc(const vertex_t u, const Value dist,
-                                     const arc_t uw) noexcept {
+    void process_strong_vertex_out_arc(const vertex_t u, const Value dist,
+                                       const arc_t uw) noexcept {
         const vertex_t w = _graph.target(uw);
         const auto s = _heap.state(w);
         if(s == Heap::IN_HEAP) {
@@ -148,8 +148,8 @@ public:
         }
     }
 
-    void process_weak_node_out_arc(const vertex_t u, const Value dist,
-                                   const arc_t uw) noexcept {
+    void process_weak_vertex_out_arc(const vertex_t u, const Value dist,
+                                     const arc_t uw) noexcept {
         const vertex_t w = _graph.target(uw);
         const auto s = _heap.state(w);
         if(s == Heap::IN_HEAP) {
@@ -179,7 +179,7 @@ public:
                 _heap.pop();
                 --nb_strong_candidates;
                 for(const arc_t a : _graph.out_arcs(u)) {
-                    process_strong_node_out_arc(u, entry.dist, a);
+                    process_strong_vertex_out_arc(u, entry.dist, a);
                 }
             } else {
                 prefetch_map_values(_graph.out_arcs(u), _reduced_length_map);
@@ -187,7 +187,7 @@ public:
                 _heap.pop();
                 --nb_weak_candidates;
                 for(const arc_t a : _graph.out_arcs(u)) {
-                    process_weak_node_out_arc(u, entry.dist, a);
+                    process_weak_vertex_out_arc(u, entry.dist, a);
                 }
             }
         }

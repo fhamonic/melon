@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "melon/utils/traversal_algorithm_behavior.hpp"
-#include "melon/utils/traversal_algorithm_iterator.hpp"
+#include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -91,7 +91,7 @@ private:
     }
 
 public:
-    vertex_t next_node() noexcept {
+    vertex_t next_vertex() noexcept {
         const vertex_t u = pop_node();
         for(arc_t a : _graph.out_arcs(u)) {
             const vertex_t w = _graph.target(a);
@@ -105,10 +105,10 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_node();
+        while(!empty_queue()) next_vertex();
     }
-    auto begin() noexcept { return traversal_algorithm_iterator(*this); }
-    auto end() noexcept { return traversal_algorithm_end_iterator(); }
+    auto begin() noexcept { return traversal_iterator(*this); }
+    auto end() noexcept { return traversal_end_sentinel(); }
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
 
