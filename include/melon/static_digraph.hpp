@@ -105,8 +105,8 @@ public:
         return _arc_target[a];
     }
 
-    auto sources_map() const { return _arc_source; }
-    auto targets_map() const { return _arc_target; }
+    const auto & sources_map() const { return _arc_source; }
+    const auto & targets_map() const { return _arc_target; }
 
     auto out_neighbors(const vertex_t u) const {
         assert(is_valid_node(u));
