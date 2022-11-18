@@ -10,7 +10,7 @@
 #include "melon/concepts/graph_concepts.hpp"
 #include "melon/data_structures/static_map.hpp"
 
-namespace fhamonic { 
+namespace fhamonic {
 namespace melon {
 namespace adaptors {
 
@@ -54,6 +54,13 @@ public:
     vertex_t target(
         arc_t a) const noexcept requires concepts::has_arc_source<G> {
         return _graph.get().source(a);
+    }
+
+    auto sources_map() const noexcept requires concepts::has_arc_target<G> {
+        return _graph.get().targets_map();
+    }
+    auto targets_map() const noexcept requires concepts::has_arc_source<G> {
+        return _graph.get().sources_map();
     }
 
     auto out_arcs(const vertex_t u)

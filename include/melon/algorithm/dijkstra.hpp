@@ -12,6 +12,7 @@
 
 #include "melon/algorithm/dijkstra_semirings.hpp"
 #include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
@@ -22,7 +23,18 @@
 namespace fhamonic {
 namespace melon {
 
-template <concepts::adjacency_list_graph GR, typename LM>
+namespace concepts {
+template <typename T>
+concept dijkstra_trait = semiring<typename T::semiring> &&
+    updatable_priority_queue<typename T::heap> && requires() {
+    { T::store_pred_vertices } -> std::convertible_to<bool>;
+    { T::store_pred_arcs } -> std::convertible_to<bool>;
+    { T::store_distances } -> std::convertible_to<bool>;
+};
+}  // namespace concepts
+
+template <concepts::graph GR, typename LM>
+requires concepts::incidence_list_graph<GR> && concepts::has_arc_target<GR>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<typename LM::value_type>;
     using heap =
@@ -34,14 +46,16 @@ struct dijkstra_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <concepts::adjacency_list_graph GR, typename LM,
-          typename TR = dijkstra_default_traits<GR, LM>>
+template <concepts::graph GR, typename LM,
+          concepts::dijkstra_trait TR = dijkstra_default_traits<GR, LM>>
+requires concepts::incidence_list_graph<GR> && concepts::has_arc_target<GR>
 class Dijkstra {
 public:
     using vertex_t = GR::vertex_t;
     using arc_t = GR::arc_t;
     using value_t = LM::value_type;
     using traits = TR;
+    using traversal_entry = typename TR::heap::entry;
 
 private:
     using heap = traits::heap;
@@ -49,11 +63,11 @@ private:
                                              typename GR::vertex_map<vertex_t>,
                                              std::monostate>::type;
     using PredArcsMap =
-        std::conditional<traits::store_pred_arcs, typename GR::vertex_map<arc_t>,
-                         std::monostate>::type;
-    using DistancesMap =
-        std::conditional<traits::store_distances, typename GR::vertex_map<value_t>,
-                         std::monostate>::type;
+        std::conditional<traits::store_pred_arcs,
+                         typename GR::vertex_map<arc_t>, std::monostate>::type;
+    using DistancesMap = std::conditional<traits::store_distances,
+                                          typename GR::vertex_map<value_t>,
+                                          std::monostate>::type;
 
 private:
     const GR & _graph;
@@ -62,7 +76,7 @@ private:
     heap _heap;
     PredVerticesMap _pred_vertices_map;
     PredArcsMap _pred_arcs_map;
-    DistancesMap _dist_map;
+    DistancesMap _distances_map;
 
 public:
     Dijkstra(const GR & g, const LM & l)
@@ -73,8 +87,8 @@ public:
               g.nb_vertices(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
               g.nb_vertices(), std::monostate{}))
-        , _dist_map(constexpr_ternary<traits::store_distances>(g.nb_vertices(),
-                                                           std::monostate{})) {}
+        , _distances_map(constexpr_ternary<traits::store_distances>(
+              g.nb_vertices(), std::monostate{})) {}
 
     Dijkstra & reset() noexcept {
         _heap.clear();
@@ -90,10 +104,10 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex_t, value_t> next_vertex() noexcept {
-        const auto p = _heap.top();
+    traversal_entry next_vertex() noexcept {
+        const traversal_entry p = _heap.top();
         prefetch_range(_graph.out_arcs(p.first));
-        prefetch_range(_graph.out_neighbors(p.first));
+        prefetch_map_values(_graph.out_arcs(p.first), _graph.targets_map());
         prefetch_map_values(_graph.out_arcs(p.first), _length_map);
         _heap.pop();
         for(const arc_t a : _graph.out_arcs(p.first)) {
@@ -102,7 +116,7 @@ public:
             if(s == heap::IN_HEAP) {
                 const value_t new_dist =
                     traits::semiring::plus(p.second, _length_map[a]);
-                if(traits::semiring::less(new_dist, _heap.prio(w))) {
+                if(traits::semiring::less(new_dist, _heap.priority(w))) {
                     _heap.decrease(w, new_dist);
                     if constexpr(traits::store_pred_vertices)
                         _pred_vertices_map[w] = p.first;
@@ -115,7 +129,8 @@ public:
                 if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
             }
         }
-        if constexpr(traits::store_distances) _dist_map[p.first] = p.second;
+        if constexpr(traits::store_distances)
+            _distances_map[p.first] = p.second;
         return p;
     }
 
@@ -138,7 +153,7 @@ public:
     value_t dist(const vertex_t u) const noexcept
         requires(traits::store_distances) {
         assert(_heap.state(u) == heap::POST_HEAP);
-        return _dist_map[u];
+        return _distances_map[u];
     }
 };
 

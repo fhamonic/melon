@@ -104,7 +104,10 @@ public:
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
-    
+
+    auto sources_map() const { return _arc_source; }
+    auto targets_map() const { return _arc_target; }
+
     auto out_neighbors(const vertex_t u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
@@ -114,7 +117,8 @@ public:
     }
     auto in_neighbors(const vertex_t u) const {
         assert(is_valid_node(u));
-        return std::views::transform(in_arcs(u), [this](auto a) { return source(a); });
+        return std::views::transform(in_arcs(u),
+                                     [this](auto a) { return source(a); });
     }
 
     auto out_arcs_pairs(const vertex_t u) const {
@@ -126,8 +130,6 @@ public:
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
-
-
 };
 
 }  // namespace melon

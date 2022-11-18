@@ -134,7 +134,7 @@ public:
         const auto s = _heap.state(w);
         if(s == Heap::IN_HEAP) {
             const Entry new_entry(dist + _length_map[uw], true);
-            const Entry old_entry = _heap.prio(w);
+            const Entry old_entry = _heap.priority(w);
             if(cmp(new_entry, old_entry)) {
                 if(!old_entry.strong) {
                     --nb_weak_candidates;
@@ -154,7 +154,7 @@ public:
         const auto s = _heap.state(w);
         if(s == Heap::IN_HEAP) {
             const Entry new_entry(dist + _reduced_length_map[uw], false);
-            const Entry old_entry = _heap.prio(w);
+            const Entry old_entry = _heap.priority(w);
             if(cmp(new_entry, old_entry)) {
                 if(old_entry.strong) {
                     --nb_strong_candidates;

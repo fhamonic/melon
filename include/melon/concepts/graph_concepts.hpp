@@ -27,11 +27,13 @@ concept graph = std::copyable<G> &&
 template <typename G>
 concept has_arc_source = requires(G g, graph_arc_t<G> a) {
     { g.source(a) } -> std::same_as<graph_vertex_t<G>>;
+    { g.sources_map() } -> detail::range_of<graph_vertex_t<G>>;
 };
 
 template <typename G>
 concept has_arc_target = requires(G g, graph_arc_t<G> a) {
     { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
+    { g.targets_map() } -> detail::range_of<graph_vertex_t<G>>;
 };
 
 template <typename G>

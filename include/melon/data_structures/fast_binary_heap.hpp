@@ -11,19 +11,19 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename ND, typename PR, typename CMP = std::less<PR>>
+template <typename K, typename P, typename C = std::less<P>>
 class fast_binary_heap {
 public:
-    using vertex_t = ND;
-    using priority_t = PR;
-    using Compare = CMP;
-    using entry = std::pair<vertex_t, priority_t>;
+    using key_t = K;
+    using priority_t = P;
+    using entry = std::pair<key_t, priority_t>;
 
 private:
     using index_t = std::size_t;
 
 public:
-    static_assert(sizeof(entry) >= 2, "std::pair<vertex_t, priority_t> is too small");
+    static_assert(sizeof(entry) >= 2,
+                  "std::pair<key_t, priority_t> is too small");
     enum State : index_t {
         PRE_HEAP = static_cast<index_t>(0),
         POST_HEAP = static_cast<index_t>(1),
@@ -32,7 +32,7 @@ public:
 
     std::vector<entry> _heap_array;
     std::vector<index_t> _indices_map;
-    Compare _cmp;
+    C _cmp;
 
 public:
     fast_binary_heap(const std::size_t nb_vertices)
@@ -68,7 +68,8 @@ private:
 
     void heap_push(index_t holeIndex, entry && p) noexcept {
         while(holeIndex > sizeof(entry)) {
-            const index_t parent = holeIndex / (2 * sizeof(entry)) * sizeof(entry);
+            const index_t parent =
+                holeIndex / (2 * sizeof(entry)) * sizeof(entry);
             if(!_cmp(p.second, pair_ref(parent).second)) break;
             heap_move(holeIndex, std::move(pair_ref(parent)));
             holeIndex = parent;
@@ -76,11 +77,13 @@ private:
         heap_move(holeIndex, std::move(p));
     }
 
-    void adjust_heap(index_t holeIndex, const index_t end, entry && p) noexcept {
+    void adjust_heap(index_t holeIndex, const index_t end,
+                     entry && p) noexcept {
         index_t child = 2 * holeIndex;
         while(child < end) {
-            child += sizeof(entry) * _cmp(pair_ref(child + sizeof(entry)).second,
-                                         pair_ref(child).second);
+            child +=
+                sizeof(entry) * _cmp(pair_ref(child + sizeof(entry)).second,
+                                     pair_ref(child).second);
             if(_cmp(pair_ref(child).second, p.second)) {
                 heap_move(holeIndex, std::move(pair_ref(child)));
                 holeIndex = child;
@@ -98,15 +101,12 @@ private:
     }
 
 public:
-    void push(entry && p) noexcept {
+    void push(const key_t i, const priority_t p) noexcept {
         _heap_array.emplace_back();
-        heap_push(static_cast<index_t>(size() * sizeof(entry)), std::move(p));
+        heap_push(static_cast<index_t>(size() * sizeof(entry)), entry(i, p));
     }
-    void push(const vertex_t i, const priority_t p) noexcept { push(entry(i, p)); }
-    bool contains(const vertex_t u) const noexcept {
-        return _indices_map[u] > 0;
-    }
-    priority_t prio(const vertex_t u) const noexcept {
+    bool contains(const key_t u) const noexcept { return _indices_map[u] > 0; }
+    priority_t priority(const key_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     entry top() const noexcept {
@@ -122,13 +122,13 @@ public:
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
-    void decrease(const vertex_t & u, const priority_t & p) noexcept {
+    void decrease(const key_t & u, const priority_t & p) noexcept {
         heap_push(_indices_map[u], entry(u, p));
     }
-    State state(const vertex_t & u) const noexcept {
+    State state(const key_t & u) const noexcept {
         return State(std::min(_indices_map[u], static_cast<index_t>(IN_HEAP)));
     }
-    void discard(const vertex_t & u) noexcept {
+    void discard(const key_t & u) noexcept {
         assert(_indices_map[u] < sizeof(entry));
         _indices_map[u] = POST_HEAP;
     }

@@ -86,6 +86,7 @@ public:
     };
     using const_reference = bool;
 
+    template <typename I>
     class iterator_base {
     public:
         using iterator_category = std::random_access_iterator_tag;
@@ -147,55 +148,51 @@ public:
                     static_cast<difference_type>(_local_index) -
                     static_cast<difference_type>(other._local_index));
         }
-    };
-
-    class iterator : public iterator_base {
-    public:
-        using reference = static_map<bool>::reference;
-
-        using iterator_base::iterator_base;
-
-        iterator & operator++() noexcept {
+        I & operator++() noexcept {
             _incr();
-            return *this;
+            return *static_cast<I *>(this);
         }
-        iterator operator++(int) noexcept {
-            iterator tmp = *this;
+        I operator++(int) noexcept {
+            I tmp = *static_cast<I *>(this);
             _incr();
             return tmp;
         }
-        iterator & operator--() noexcept {
+        I & operator--() noexcept {
             _decr();
-            return *this;
+            return *static_cast<I *>(this);
         }
-        iterator operator--(int) noexcept {
-            iterator tmp = *this;
+        I operator--(int) noexcept {
+            I tmp = *static_cast<I *>(this);
             _decr();
             return tmp;
         }
-        iterator & operator+=(difference_type i) noexcept {
+        I & operator+=(difference_type i) noexcept {
             _incr(i);
-            return *this;
+            return *static_cast<I *>(this);
         }
 
-        iterator & operator-=(difference_type i) noexcept {
+        I & operator-=(difference_type i) noexcept {
             _incr(-i);
-            return *this;
+            return *static_cast<I *>(this);
         }
 
-        friend iterator operator+(const iterator & x, difference_type n) {
-            iterator tmp = x;
+        friend I operator+(const I & x, difference_type n) {
+            I tmp = x;
             tmp += n;
             return tmp;
         }
-        friend iterator operator+(difference_type n, const iterator & x) {
-            return x + n;
-        }
-        friend iterator operator-(const iterator & x, difference_type n) {
-            iterator tmp = x;
+        friend I operator+(difference_type n, const I & x) { return x + n; }
+        friend I operator-(const I & x, difference_type n) {
+            I tmp = x;
             tmp -= n;
             return tmp;
         }
+    };
+
+    class iterator : public iterator_base<iterator> {
+    public:
+        using iterator_base::iterator_base;
+        using reference = static_map<bool>::reference;
 
         reference operator*() const noexcept {
             return reference(_p, _local_index);
@@ -203,56 +200,10 @@ public:
         reference operator[](difference_type i) const { return *(*this + i); }
     };
 
-    class const_iterator : public iterator_base {
+    class const_iterator : public iterator_base<const_iterator> {
     public:
-        using reference = const_reference;
-
         using iterator_base::iterator_base;
-
-        const_iterator & operator++() noexcept {
-            _incr();
-            return *this;
-        }
-        const_iterator operator++(int) noexcept {
-            const_iterator tmp = *this;
-            _incr();
-            return tmp;
-        }
-        const_iterator & operator--() noexcept {
-            _decr();
-            return *this;
-        }
-        const_iterator operator--(int) noexcept {
-            const_iterator tmp = *this;
-            _decr();
-            return tmp;
-        }
-        const_iterator & operator+=(difference_type i) noexcept {
-            _incr(i);
-            return *this;
-        }
-
-        const_iterator & operator-=(difference_type i) noexcept {
-            _incr(-i);
-            return *this;
-        }
-
-        friend const_iterator operator+(const const_iterator & x,
-                                        difference_type n) {
-            const_iterator tmp = x;
-            tmp += n;
-            return tmp;
-        }
-        friend const_iterator operator+(difference_type n,
-                                        const const_iterator & x) {
-            return x + n;
-        }
-        friend const_iterator operator-(const const_iterator & x,
-                                        difference_type n) {
-            const_iterator tmp = x;
-            tmp -= n;
-            return tmp;
-        }
+        using reference = const_reference;
 
         const_reference operator*() const noexcept {
             return (*_p >> _local_index) & 1;
@@ -269,7 +220,8 @@ private:
 public:
     static_map() : _data(nullptr), _size(0){};
     static_map(size_type size)
-        : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size))), _size(size){};
+        : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size)))
+        , _size(size){};
 
     static_map(size_type size, bool init_value) : static_map(size) {
         fill(init_value);
