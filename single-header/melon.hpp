@@ -954,7 +954,7 @@ namespace melon {
 template <typename Algo>
 concept traversal_algorithm = requires(Algo alg) {
     { alg.empty_queue() } -> std::convertible_to<bool>;
-    { alg.next_vertex() } -> std::default_initializable;
+    { alg.next_entry() } -> std::default_initializable;
 };
 
 struct traversal_end_sentinel {};
@@ -964,7 +964,7 @@ requires traversal_algorithm<Algo>
 class traversal_iterator {
 public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = decltype(std::declval<Algo>().next_vertex());
+    using value_type = decltype(std::declval<Algo>().next_entry());
     using reference = value_type const &;
     using pointer = value_type *;
     using difference_type = void;
@@ -973,7 +973,7 @@ public:
         if(!algorithm.empty_queue()) ++(*this);
     }
     traversal_iterator & operator++() noexcept {
-        node = algorithm.next_vertex();
+        node = algorithm.next_entry();
         return *this;
     }
     friend bool operator==(const traversal_iterator & it,
@@ -1071,7 +1071,7 @@ private:
     }
 
 public:
-    vertex_t next_vertex() noexcept {
+    vertex_t next_entry() noexcept {
         const vertex_t u = pop_node();
         for(arc_t a : _graph.out_arcs(u)) {
             const vertex_t w = _graph.target(a);
@@ -1085,7 +1085,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_vertex();
+        while(!empty_queue()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
@@ -1112,8 +1112,8 @@ public:
 
 #endif  // MELON_BFS_HPP
 
-#ifndef MELON_DFS_HPP
-#define MELON_DFS_HPP
+#ifndef MELON_depth_first_search_HPP
+#define MELON_depth_first_search_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -1129,7 +1129,7 @@ namespace melon {
 // TODO ranges , requires out_arcs : borrowed_range
 template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
                            TraversalAlgorithmBehavior::TRACK_NONE>
-class Dfs {
+class depth_first_search {
 public:
     using vertex_t = GR::vertex_t;
     using arc_t = GR::arc_t;
@@ -1164,19 +1164,19 @@ private:
     PredarcsMap _pred_arcs_map;
 
 public:
-    Dfs(const GR & g) : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
+    depth_first_search(const GR & g) : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
         _stack.reserve(g.nb_vertices());
         if constexpr(track_predecessor_vertices)
             _pred_vertices_map.resize(g.nb_vertices());
         if constexpr(track_predecessor_arcs) _pred_arcs_map.resize(g.nb_vertices());
     }
 
-    Dfs & reset() noexcept {
+    depth_first_search & reset() noexcept {
         _stack.resize(0);
         _reached_map.fill(false);
         return *this;
     }
-    Dfs & add_source(vertex_t s) noexcept {
+    depth_first_search & add_source(vertex_t s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
@@ -1203,7 +1203,7 @@ private:
     }
 
 public:
-    std::pair<arc_t, vertex_t> next_vertex() noexcept {
+    std::pair<arc_t, vertex_t> next_entry() noexcept {
         const arc_t a = *_stack.back().first;
         const vertex_t u = _graph.target(a);
         push_node(u);
@@ -1214,7 +1214,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_vertex();
+        while(!empty_queue()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
@@ -1234,7 +1234,7 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_DFS_HPP
+#endif  // MELON_depth_first_search_HPP
 #ifndef MELON_DIJKSTRA_HPP
 #define MELON_DIJKSTRA_HPP
 
@@ -1691,7 +1691,7 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-    std::pair<vertex_t, Value> next_vertex() noexcept {
+    std::pair<vertex_t, Value> next_entry() noexcept {
         const auto p = _heap.pop();
         for(const arc_t a : _graph.out_arcs(p.first)) {
             const vertex_t w = _graph.target(a);
@@ -1718,7 +1718,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_vertex();
+        while(!empty_queue()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
