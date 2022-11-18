@@ -79,7 +79,7 @@ public:
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
-    auto targets_map() const { return _arc_target; }
+    const auto & targets_map() const { return _arc_target; }
     auto out_neighbors(const vertex_t u) const {
         assert(is_valid_node(u));
         return std::ranges::subrange(
