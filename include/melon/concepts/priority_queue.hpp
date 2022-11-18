@@ -25,7 +25,7 @@ concept priority_queue = //std::semiregular<Q> &&
 template <typename Q>
 concept updatable_priority_queue = priority_queue<Q> &&
     requires(Q q, typename Q::key_t k, typename Q::priority_t v) {
-    { q.contains(k) } -> std::convertible_to<bool>;
+    // { q.contains(k) } -> std::convertible_to<bool>;
     { q.priority(k) } -> std::same_as<typename Q::priority_t>;
     // q.increase(k, v);
     q.decrease(k, v);
