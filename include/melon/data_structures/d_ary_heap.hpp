@@ -10,13 +10,12 @@
 namespace fhamonic {
 namespace melon {
 
-template <int D, typename ND, typename PR, typename CMP = std::less<PR>>
+template <int D, typename K, typename P, typename C = std::less<P>>
 class d_ary_heap {
 public:
-    using vertex_t = ND;
-    using priority_t = PR;
-    using Compare = CMP;
-    using entry = std::pair<vertex_t, priority_t>;
+    using key_t = K;
+    using priority_t = P;
+    using entry = std::pair<key_t, priority_t>;
 
 private:
     using index_t = std::size_t;
@@ -27,7 +26,7 @@ public:
     std::vector<entry> _heap_array;
     std::vector<index_t> _indices_map;
     std::vector<State> _states_map;
-    Compare _cmp;
+    C _cmp;
 
 public:
     d_ary_heap(const std::size_t nb_vertices)
@@ -65,8 +64,8 @@ private:
         else {
             const index_t first_half_minimum =
                 minimum_child<I / 2>(first_child);
-            const index_t second_half_minimum = minimum_child<I - I / 2>(
-                first_child + (I / 2) * sizeof(entry));
+            const index_t second_half_minimum =
+                minimum_child<I - I / 2>(first_child + (I / 2) * sizeof(entry));
             return _cmp(pair_ref(second_half_minimum).second,
                         pair_ref(first_half_minimum).second)
                        ? second_half_minimum
@@ -97,8 +96,7 @@ private:
                     const index_t first_half_minimum =
                         minimum_remaining_child(first_child, half);
                     const index_t second_half_minimum = minimum_remaining_child(
-                        first_child + half * sizeof(entry),
-                        nb_children - half);
+                        first_child + half * sizeof(entry), nb_children - half);
                     return _cmp(pair_ref(second_half_minimum).second,
                                 pair_ref(first_half_minimum).second)
                                ? second_half_minimum
@@ -174,10 +172,8 @@ public:
         _states_map[p.first] = IN_HEAP;
         heap_push(index_t(n * sizeof(entry)), std::move(p));
     }
-    void push(const vertex_t i, const priority_t p) noexcept {
-        push(entry(i, p));
-    }
-    priority_t prio(const vertex_t u) const noexcept {
+    void push(const key_t i, const priority_t p) noexcept { push(entry(i, p)); }
+    priority_t priority(const key_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     entry top() const noexcept {
@@ -193,14 +189,14 @@ public:
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
-    void decrease(const vertex_t & u, const priority_t & p) noexcept {
+    void decrease(const key_t & u, const priority_t & p) noexcept {
         heap_push(_indices_map[u], entry(u, p));
     }
-    State state(const vertex_t & u) const noexcept { return _states_map[u]; }
+    State state(const key_t & u) const noexcept { return _states_map[u]; }
 };  // class d_ary_heap
 
-template <typename ND, typename PR, typename CMP = std::less<PR>>
-using binary_heap = d_ary_heap<2, ND, PR, CMP>;
+template <typename K, typename P, typename C = std::less<P>>
+using binary_heap = d_ary_heap<2, K, P, C>;
 
 }  // namespace melon
 }  // namespace fhamonic

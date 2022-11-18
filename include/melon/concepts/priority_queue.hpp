@@ -12,23 +12,24 @@ namespace concepts {
 
 // clang-format off
 template <typename Q>
-concept priority_queue = std::semiregular<Q> &&
-    requires(Q q, typename Q::key k, typename Q::priority v) {
-    { q.top() } 
-        -> std::same_as<std::pair<typename Q::key, typename Q::priority>>;
+concept priority_queue = //std::semiregular<Q> &&
+    requires(Q q, typename Q::key_t k, typename Q::priority_t v, typename Q::entry e) {
+    { q.top() } -> std::same_as<typename Q::entry>;
+    { e.first } -> std::common_with<typename Q::key_t>;
+    { e.second } -> std::common_with<typename Q::priority_t>;
     q.pop();
-    q.emplace(k, v);
+    q.push(k, v);
     q.clear();
 };
 
 template <typename Q>
 concept updatable_priority_queue = priority_queue<Q> &&
-    requires(Q q, typename Q::key k, typename Q::priority v) {
+    requires(Q q, typename Q::key_t k, typename Q::priority_t v) {
     { q.contains(k) } -> std::convertible_to<bool>;
-    { q.priority(k) } -> std::same_as<typename Q::priority>;
-    q.promote(k, v);
-    q.demote(k, v);
-    q.update(k, v);
+    { q.priority(k) } -> std::same_as<typename Q::priority_t>;
+    // q.increase(k, v);
+    q.decrease(k, v);
+    // q.update(k, v);
 };
 // clang-format on
 

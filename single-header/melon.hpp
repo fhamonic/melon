@@ -1419,7 +1419,7 @@ public:
         heap_push(Index(n * sizeof(Pair)), std::move(p));
     }
     void push(const vertex_t i, const Prio p) noexcept { push(Pair(i, p)); }
-    Prio prio(const vertex_t u) const noexcept {
+    Prio priority(const vertex_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -1593,7 +1593,7 @@ public:
     }
     void push(const vertex_t i, const Prio p) noexcept { push(Pair(i, p)); }
     bool contains(const vertex_t u) const noexcept { return _indices_map[u] > 0; }
-    Prio prio(const vertex_t u) const noexcept {
+    Prio priority(const vertex_t u) const noexcept {
         return pair_ref(_indices_map[u]).second;
     }
     Pair top() const noexcept {
@@ -1699,7 +1699,7 @@ public:
             if(s == Heap::IN_HEAP) {
                 const Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, _length_map[a]);
-                if(DijkstraSemiringTraits::less(new_dist, _heap.prio(w))) {
+                if(DijkstraSemiringTraits::less(new_dist, _heap.priority(w))) {
                     _heap.decrease(w, new_dist);
                     if constexpr(track_predecessor_vertices)
                         _pred_vertices_map[w] = p.first;
