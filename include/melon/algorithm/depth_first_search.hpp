@@ -1,5 +1,5 @@
-#ifndef MELON_ALGORITHM_DFS_HPP
-#define MELON_ALGORITHM_DFS_HPP
+#ifndef MELON_ALGORITHM_depth_first_search_HPP
+#define MELON_ALGORITHM_depth_first_search_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -10,51 +10,50 @@
 #include <variant>
 #include <vector>
 
+#include "melon/concepts/graph_concepts.hpp"
 #include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
+struct dfs_default_traits {
+    static constexpr bool store_pred_vertices = false;
+    static constexpr bool store_pred_arcs = false;
+};
+
 // TODO ranges , requires out_arcs : borrowed_range
-template <typename GR, std::underlying_type_t<TraversalAlgorithmBehavior> BH =
-                           TraversalAlgorithmBehavior::TRACK_NONE>
-class Dfs {
+template <concepts::incidence_list_graph G, typename T = dfs_default_traits>
+class depth_first_search {
 public:
-    using vertex_t = GR::vertex_t;
-    using arc_t = GR::arc_t;
+    using vertex_t = G::vertex_t;
+    using arc_t = G::arc_t;
+    using reached_map = typename G::vertex_map<bool>;
 
-    using ReachedMap = typename GR::vertex_map<bool>;
-
-    static constexpr bool track_predecessor_vertices =
-        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_NODES);
-    static constexpr bool track_predecessor_arcs =
-        static_cast<bool>(BH & TraversalAlgorithmBehavior::TRACK_PRED_ARCS);
-
-    using PredverticesMap = std::conditional<track_predecessor_vertices,
-                                             typename GR::vertex_map<vertex_t>,
-                                             std::monostate>::type;
-    using PredarcsMap =
-        std::conditional<track_predecessor_arcs, typename GR::vertex_map<arc_t>,
+    using pred_vertices_map = std::conditional<traits::store_pred_vertices,
+                                               typename G::vertex_map<vertex_t>,
+                                               std::monostate>::type;
+    using pred_arcs_map =
+        std::conditional<traits::store_pred_arcs, typename G::vertex_map<arc_t>,
                          std::monostate>::type;
 
 private:
-    const GR & _graph;
+    const G & _graph;
 
-    using OutarcRange = decltype(std::declval<GR>().out_arcs(vertex_t()));
-    using OutarcIt = decltype(std::declval<OutarcRange>().begin());
-    using OutarcItEnd = decltype(std::declval<OutarcRange>().end());
+    using out_arcs_range = decltype(std::declval<G>().out_arcs(vertex_t()));
+    using out_arcs_it = decltype(std::declval<out_arcs_range>().begin());
+    using out_arcs_sentinel = decltype(std::declval<out_arcs_range>().end());
 
-    static_assert(std::ranges::borrowed_range<OutarcRange>);
-    std::vector<std::pair<OutarcIt, OutarcItEnd>> _stack;
+    static_assert(std::ranges::borrowed_range<out_arcs_range>);
+    std::vector<std::pair<out_arcs_it, out_arcs_sentinel>> _stack;
 
-    ReachedMap _reached_map;
+    reached_map _reached_map;
 
-    PredverticesMap _pred_vertices_map;
-    PredarcsMap _pred_arcs_map;
+    pred_vertices_map _pred_vertices_map;
+    pred_arcs_map _pred_arcs_map;
 
 public:
-    Dfs(const GR & g)
+    depth_first_search(const G & g)
         : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
         _stack.reserve(g.nb_vertices());
         if constexpr(track_predecessor_vertices)
@@ -63,12 +62,12 @@ public:
             _pred_arcs_map.resize(g.nb_vertices());
     }
 
-    Dfs & reset() noexcept {
+    depth_first_search & reset() noexcept {
         _stack.resize(0);
         _reached_map.fill(false);
         return *this;
     }
-    Dfs & add_source(vertex_t s) noexcept {
+    depth_first_search & add_source(vertex_t s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
         if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
@@ -77,7 +76,7 @@ public:
 
     bool empty_queue() const noexcept { return _stack.empty(); }
     void push_node(vertex_t u) noexcept {
-        OutarcRange r = _graph.out_arcs(u);
+        out_arcs_range r = _graph.out_arcs(u);
         _stack.emplace_back(r.begin(), r.end());
         _reached_map[u] = true;
     }
@@ -95,7 +94,7 @@ private:
     }
 
 public:
-    std::pair<arc_t, vertex_t> next_vertex() noexcept {
+    std::pair<arc_t, vertex_t> next_entry() noexcept {
         const arc_t a = *_stack.back().first;
         const vertex_t u = _graph.target(a);
         push_node(u);
@@ -106,19 +105,21 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_vertex();
+        while(!empty_queue()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(track_predecessor_vertices) {
+        requires(track_predecessor_vertices)
+    {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(track_predecessor_arcs) {
+        requires(track_predecessor_arcs)
+    {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
@@ -127,4 +128,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_ALGORITHM_DFS_HPP
+#endif  // MELON_ALGORITHM_depth_first_search_HPP

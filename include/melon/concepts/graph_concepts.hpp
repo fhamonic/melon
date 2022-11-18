@@ -10,54 +10,69 @@ namespace fhamonic {
 namespace melon {
 namespace concepts {
 
-template <typename E>
-using graph_vertex_t = typename std::remove_reference<E>::type::vertex_t;
+template <typename G>
+using graph_vertex_t = typename std::remove_reference<G>::type::vertex_t;
 
-template <typename E>
-using graph_arc_t = typename std::remove_reference<E>::type::arc_t;
+template <typename G>
+using graph_arc_t = typename std::remove_reference<G>::type::arc_t;
 
 template <typename G>
 concept graph = std::copyable<G> &&
-    requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
-    { g.vertices() } -> detail::range_of<graph_vertex_t<G>>;
-    { g.arcs() } -> detail::range_of<graph_arc_t<G>>;
-    { g.arcs_pairs() } -> detail::range_of<std::pair<graph_vertex_t<G>, graph_vertex_t<G>>>;
-};
+                requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
+                    { g.vertices() } -> detail::range_of<graph_vertex_t<G>>;
+                    { g.arcs() } -> detail::range_of<graph_arc_t<G>>;
+                    {
+                        g.arcs_pairs()
+                        } -> detail::range_of<
+                            std::pair<graph_vertex_t<G>, graph_vertex_t<G>>>;
+                };
 
 template <typename G>
 concept has_arc_source = requires(G g, graph_arc_t<G> a) {
-    { g.source(a) } -> std::same_as<graph_vertex_t<G>>;
-    { g.sources_map() } -> detail::range_of<graph_vertex_t<G>>;
-};
+                             { g.source(a) } -> std::same_as<graph_vertex_t<G>>;
+                             {
+                                 g.sources_map()
+                                 } -> detail::range_of<graph_vertex_t<G>>;
+                         };
 
 template <typename G>
 concept has_arc_target = requires(G g, graph_arc_t<G> a) {
-    { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
-    { g.targets_map() } -> detail::range_of<graph_vertex_t<G>>;
-};
+                             { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
+                             {
+                                 g.targets_map()
+                                 } -> detail::range_of<graph_vertex_t<G>>;
+                         };
 
 template <typename G>
-concept incidence_list_graph = graph<G> && requires(G g, graph_vertex_t<G> u) {
-    { g.out_arcs(u) } -> detail::range_of<graph_arc_t<G>>;
-};
+concept incidence_list_graph = graph<G> && has_arc_target<G> &&
+                               requires(G g, graph_vertex_t<G> u) {
+                                   {
+                                       g.out_arcs(u)
+                                       } -> detail::range_of<graph_arc_t<G>>;
+                               };
 
 template <typename G>
-concept adjacency_list_graph = graph<G> &&
-    requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
-    { g.out_neighbors(u) } -> detail::range_of<graph_vertex_t<G>>;
-};
+concept adjacency_list_graph =
+    graph<G> && requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
+                    {
+                        g.out_neighbors(u)
+                        } -> detail::range_of<graph_vertex_t<G>>;
+                };
 
 template <typename G>
-concept reversible_incidence_list_graph = graph<G> &&
+concept reversible_incidence_list_graph =
+    graph<G> && has_arc_source<G> &&
     requires(G g, graph_vertex_t<G> u) {
-    { g.in_arcs(u) } -> detail::range_of<graph_arc_t<G>>;
-};
+        { g.in_arcs(u) } -> detail::range_of<graph_arc_t<G>>;
+    };
 
 template <typename G>
-concept reversible_adjacency_list_graph = graph<G> &&
-    requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
-    { g.in_neighbors(u) } -> detail::range_of<graph_vertex_t<G>>;
-};
+concept reversible_adjacency_list_graph =
+    graph<G> && requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
+                    {
+                        g.in_neighbors(u)
+                        } -> detail::range_of<graph_vertex_t<G>>;
+                };
 
 }  // namespace concepts
 }  // namespace melon

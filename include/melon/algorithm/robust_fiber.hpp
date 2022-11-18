@@ -19,6 +19,15 @@
 namespace fhamonic {
 namespace melon {
 
+template <concepts::incidence_list_graph G, typename L>
+struct strong_fiber_default_traits {
+    using semiring = shortest_path_semiring<typename L::value_type>;
+    using heap = fast_binary_heap<typename G::vertex_t, typename L::value_type,
+                                  decltype(semiring::less)>;
+
+    static constexpr bool strictly_strong = false;
+};
+
 template <concepts::adjacency_list_graph GR, typename LM1, typename LM2,
           typename F1, typename F2, bool strictly_strong = false,
           typename SR = shortest_path_semiring<typename LM1::value_type>>

@@ -7,21 +7,24 @@
 namespace fhamonic {
 namespace melon {
 
+namespace concepts {
 template <typename A>
-concept traversal_algorithm = requires(A alg) {
-    { alg.empty_queue() }
-    ->std::convertible_to<bool>;
-    { alg.next_vertex() }
-    -> std::default_initializable;
-};
+concept traversal_algorithm =
+    requires(A alg, typename A::traversal_entry) {
+        { alg.empty_queue() } -> std::convertible_to<bool>;
+        { alg.next_entry() } -> std::same_as<typename A::traversal_entry>;
+    };
+}
 
 struct traversal_end_sentinel {};
 
 template <typename A>
-requires traversal_algorithm<A> class traversal_iterator {
+    requires concepts::traversal_algorithm<A> &&
+             std::default_initializable<typename A::traversal_entry>
+class traversal_iterator {
 public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = decltype(std::declval<A>().next_vertex());
+    using value_type = typename A::traversal_entry;
     using reference = value_type const &;
     using pointer = value_type *;
     using difference_type = void;
@@ -30,7 +33,7 @@ public:
         if(!algorithm.empty_queue()) ++(*this);
     }
     traversal_iterator & operator++() noexcept {
-        node = algorithm.next_vertex();
+        node = algorithm.next_entry();
         return *this;
     }
     friend bool operator==(const traversal_iterator & it,

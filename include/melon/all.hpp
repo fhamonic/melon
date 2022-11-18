@@ -15,7 +15,7 @@
 #include "melon/arc_list_builder.hpp"
 
 #include "melon/algorithm/bfs.hpp"
-#include "melon/algorithm/dfs.hpp"
+#include "melon/algorithm/depth_first_search.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 
 #endif  // FHAMONIC_MELON_HPP

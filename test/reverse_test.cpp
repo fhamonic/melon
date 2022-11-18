@@ -71,20 +71,20 @@ GTEST_TEST(reverse_adaptor, dijkstra) {
     auto [fgraph, length_map] = builder.build();
     auto graph = adaptors::reverse(fgraph);
 
-    Dijkstra dijkstra(graph, length_map);
+    dijkstra alg(graph, length_map);
 
-    dijkstra.add_source(0);
-    ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(0u, 0));
-    ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(1u, 7));
-    ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(2u, 9));
-    ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(5u, 11));
-    ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(4u, 20));
-    ASSERT_FALSE(dijkstra.empty_queue());
-    ASSERT_EQ(dijkstra.next_vertex(), std::make_pair(3u, 21));
-    ASSERT_TRUE(dijkstra.empty_queue());
+    alg.add_source(0);
+    ASSERT_FALSE(alg.empty_queue());
+    ASSERT_EQ(alg.next_entry(), std::make_pair(0u, 0));
+    ASSERT_FALSE(alg.empty_queue());
+    ASSERT_EQ(alg.next_entry(), std::make_pair(1u, 7));
+    ASSERT_FALSE(alg.empty_queue());
+    ASSERT_EQ(alg.next_entry(), std::make_pair(2u, 9));
+    ASSERT_FALSE(alg.empty_queue());
+    ASSERT_EQ(alg.next_entry(), std::make_pair(5u, 11));
+    ASSERT_FALSE(alg.empty_queue());
+    ASSERT_EQ(alg.next_entry(), std::make_pair(4u, 20));
+    ASSERT_FALSE(alg.empty_queue());
+    ASSERT_EQ(alg.next_entry(), std::make_pair(3u, 21));
+    ASSERT_TRUE(alg.empty_queue());
 }
