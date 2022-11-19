@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "melon/data_structures/static_map.hpp"
+#include "melon/expected_cpp23/generator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -271,6 +272,27 @@ public:
     void fill(bool b) noexcept {
         std::fill(_data.get(), _data.get() + nb_spans(_size),
                   b ? ~span_type(0) : span_type(0));
+    }
+
+    expected_cpp23::generator<size_type> true_keys() const {
+        span_type * p = _data.get();
+        size_type index = 0;
+        const span_type * p_end = _data.get() + _size / N;
+        const size_type index_end = _size & span_index_mask;
+
+        for(;;) {
+            index += std::countr_zero((*p) >> index);
+            if(p == p_end && index >= index_end) co_return;
+            if(index >= N) {
+                ++p;
+                index = 0;
+                continue;
+            }
+            co_yield static_cast<size_type>(
+                difference_type(N) * (p - _data.get()) +
+                static_cast<difference_type>(index));
+            ++index;
+        }
     }
 };
 

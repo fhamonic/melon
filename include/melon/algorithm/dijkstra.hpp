@@ -10,13 +10,13 @@
 #include <variant>
 #include <vector>
 
-#include "melon/algorithm/dijkstra_semirings.hpp"
 #include "melon/concepts/graph_concepts.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/prefetch.hpp"
+#include "melon/utils/semirings.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {

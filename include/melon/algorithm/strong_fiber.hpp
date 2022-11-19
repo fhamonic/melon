@@ -8,7 +8,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/algorithm/dijkstra_semirings.hpp"
+#include "melon/utils/semirings.hpp"
 #include "melon/concepts/graph_concepts.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/data_structures/fast_binary_heap.hpp"
@@ -18,7 +18,7 @@
 namespace fhamonic {
 namespace melon {
 
-template <concepts::incidence_list_graph G, typename L>
+template <concepts::incidence_list_graph G, typename L, bool strictly_strong=false>
 struct strong_fiber_default_traits {
     using value_t = typename L::value_type;
     using semiring = shortest_path_semiring<value_t>;
@@ -34,8 +34,6 @@ struct strong_fiber_default_traits {
             return dist == o.dist && strong == o.strong;
         }
     };
-
-    static constexpr bool strictly_strong = false;
 
     struct entry_cmp {
         constexpr bool operator()(const entry & e1,

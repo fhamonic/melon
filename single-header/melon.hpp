@@ -1450,8 +1450,8 @@ using binary_heap = d_ary_heap<2, ND, PR, CMP>;
 }  // namespace fhamonic
 
 #endif  // MELON_D_ARY_HEAP_HPP
-#ifndef MELON_DIJKSTRA_SEMIRINGS_HPP
-#define MELON_DIJKSTRA_SEMIRINGS_HPP
+#ifndef MELON_DETAIL/SEMIRINGS_HPP
+#define MELON_DETAIL/SEMIRINGS_HPP
 
 #include <functional>
 
@@ -1489,7 +1489,7 @@ struct DijkstraSpanningTreeSemiring {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_DIJKSTRA_SEMIRINGS_HPP
+#endif  // MELON_DETAIL/SEMIRINGS_HPP
 
 #ifndef MELON_FAST_BINARY_HEAP_HPP
 #define MELON_FAST_BINARY_HEAP_HPP

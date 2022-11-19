@@ -1,5 +1,5 @@
-#ifndef MELON_DIJKSTRA_SEMIRINGS_HPP
-#define MELON_DIJKSTRA_SEMIRINGS_HPP
+#ifndef MELON_DETAIL_SEMIRINGS_HPP
+#define MELON_DETAIL_SEMIRINGS_HPP
 
 #include <functional>
 
@@ -53,4 +53,4 @@ struct minimum_spanning_tree_semiring {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_DIJKSTRA_SEMIRINGS_HPP
+#endif  // MELON_DETAIL_SEMIRINGS_HPP
