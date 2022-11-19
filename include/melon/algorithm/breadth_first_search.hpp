@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "melon/concepts/graph_concepts.hpp"
-#include "melon/utils/traversal_algorithm_behavior.hpp"
+#include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
@@ -23,8 +23,7 @@ struct bfs_default_traits {
 };
 
 template <concepts::graph G, typename T = bfs_default_traits>
-    requires concepts::incidence_list_graph<G> ||
-             concepts::adjacency_list_graph<G>
+requires concepts::incidence_list_graph<G> || concepts::adjacency_list_graph<G>
 class breadth_first_search {
 public:
     using vertex_t = G::vertex_t;
@@ -50,22 +49,25 @@ private:
     std::vector<vertex_t> _queue;
     std::vector<vertex_t>::iterator _queue_current;
 
-    ReachedMap _reached_map;
+    reached_map _reached_map;
 
-    PredverticesMap _pred_vertices_map;
-    PredarcsMap _pred_arcs_map;
-    DistancesMap _dist_map;
+    pred_vertices_map _pred_vertices_map;
+    pred_arcs_map _pred_arcs_map;
+    distances_map _dist_map;
 
 public:
     breadth_first_search(const G & g)
-        : _graph(g), _queue(), _reached_map(g.nb_vertices(), false) {
+        : _graph(g)
+        , _queue()
+        , _reached_map(g.nb_vertices(), false)
+        , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
+              g.nb_vertices(), std::monostate{}))
+        , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
+              g.nb_vertices(), std::monostate{}))
+        , _distances_map(constexpr_ternary<traits::store_distances>(
+              g.nb_vertices(), std::monostate{})) {
         _queue.reserve(g.nb_vertices());
         _queue_current = _queue.begin();
-        if constexpr(track_predecessor_vertices)
-            _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs)
-            _pred_arcs_map.resize(g.nb_vertices());
-        if constexpr(track_distances) _dist_map.resize(g.nb_vertices());
     }
 
     breadth_first_search & reset() noexcept {
@@ -76,8 +78,8 @@ public:
     breadth_first_search & add_source(vertex_t s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
-        if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
-        if constexpr(track_distances) _dist_map[s] = 0;
+        if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
+        if constexpr(traits::store_distances) _dist_map[s] = 0;
         return *this;
     }
 
@@ -102,18 +104,20 @@ public:
                 const vertex_t w = _graph.target(a);
                 if(reached(w)) continue;
                 push_node(w);
-                if constexpr(track_predecessor_vertices)
+                if constexpr(traits::store_pred_vertices)
                     _pred_vertices_map[w] = u;
-                if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
-                if constexpr(track_distances) _dist_map[w] = _dist_map[u] + 1;
+                if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
+                if constexpr(traits::store_distances)
+                    _dist_map[w] = _dist_map[u] + 1;
             }
         } else {  // i.e., concepts::adjacency_list_graph<G>
             for(auto && w : _graph.out_neighbors(u)) {
                 if(reached(w)) continue;
                 push_node(w);
-                if constexpr(track_predecessor_vertices)
+                if constexpr(traits::store_pred_vertices)
                     _pred_vertices_map[w] = u;
-                if constexpr(track_distances) _dist_map[w] = _dist_map[u] + 1;
+                if constexpr(traits::store_distances)
+                    _dist_map[w] = _dist_map[u] + 1;
             }
         }
         return u;
@@ -128,20 +132,17 @@ public:
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(track_predecessor_vertices)
-    {
+        requires(traits::store_pred_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(track_predecessor_arcs)
-    {
+        requires(traits::store_pred_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
     std::size_t dist(const vertex_t u) const noexcept
-        requires(track_distances)
-    {
+        requires(traits::store_distances) {
         assert(reached(u));
         return _dist_map[u];
     }

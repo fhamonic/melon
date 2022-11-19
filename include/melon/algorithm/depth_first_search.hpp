@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "melon/concepts/graph_concepts.hpp"
-#include "melon/utils/traversal_algorithm_behavior.hpp"
+#include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
@@ -54,12 +54,14 @@ private:
 
 public:
     depth_first_search(const G & g)
-        : _graph(g), _stack(), _reached_map(g.nb_vertices(), false) {
+        : _graph(g)
+        , _stack()
+        , _reached_map(g.nb_vertices(), false)
+        , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
+              g.nb_vertices(), std::monostate{}))
+        , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
+              g.nb_vertices(), std::monostate{})) {
         _stack.reserve(g.nb_vertices());
-        if constexpr(track_predecessor_vertices)
-            _pred_vertices_map.resize(g.nb_vertices());
-        if constexpr(track_predecessor_arcs)
-            _pred_arcs_map.resize(g.nb_vertices());
     }
 
     depth_first_search & reset() noexcept {
@@ -70,7 +72,7 @@ public:
     depth_first_search & add_source(vertex_t s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
-        if constexpr(track_predecessor_vertices) _pred_vertices_map[s] = s;
+        if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
         return *this;
     }
 
@@ -98,8 +100,8 @@ public:
         const arc_t a = *_stack.back().first;
         const vertex_t u = _graph.target(a);
         push_node(u);
-        // if constexpr(track_predecessor_vertices) _pred_vertices_map[u] = u;
-        if constexpr(track_predecessor_arcs) _pred_arcs_map[u] = a;
+        // if constexpr(traits::store_pred_vertices) _pred_vertices_map[u] = u;
+        if constexpr(traits::store_pred_arcs) _pred_arcs_map[u] = a;
         advance_iterators();
         return std::make_pair(a, u);
     }
@@ -112,14 +114,12 @@ public:
 
     bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(track_predecessor_vertices)
-    {
+        requires(traits::store_pred_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(track_predecessor_arcs)
-    {
+        requires(traits::store_pred_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }

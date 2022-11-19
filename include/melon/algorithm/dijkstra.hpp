@@ -17,7 +17,6 @@
 #include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/prefetch.hpp"
-#include "melon/utils/traversal_algorithm_behavior.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
@@ -26,18 +25,11 @@ namespace melon {
 namespace concepts {
 template <typename T>
 concept dijkstra_trait = semiring<typename T::semiring> &&
-                         updatable_priority_queue<typename T::heap> &&
-                         requires() {
-                             {
-                                 T::store_pred_vertices
-                                 } -> std::convertible_to<bool>;
-                             {
-                                 T::store_pred_arcs
-                                 } -> std::convertible_to<bool>;
-                             {
-                                 T::store_distances
-                                 } -> std::convertible_to<bool>;
-                         };
+    updatable_priority_queue<typename T::heap> && requires() {
+    { T::store_pred_vertices } -> std::convertible_to<bool>;
+    { T::store_pred_arcs } -> std::convertible_to<bool>;
+    { T::store_distances } -> std::convertible_to<bool>;
+};
 }  // namespace concepts
 
 template <concepts::incidence_list_graph G, typename L>
@@ -152,20 +144,17 @@ public:
     auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(traits::store_pred_vertices)
-    {
+        requires(traits::store_pred_vertices) {
         assert(_heap.state(u) != heap::PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(traits::store_pred_arcs)
-    {
+        requires(traits::store_pred_arcs) {
         assert(_heap.state(u) != heap::PRE_HEAP);
         return _pred_arcs_map[u];
     }
     value_t dist(const vertex_t u) const noexcept
-        requires(traits::store_distances)
-    {
+        requires(traits::store_distances) {
         assert(_heap.state(u) == heap::POST_HEAP);
         return _distances_map[u];
     }
