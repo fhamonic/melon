@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/algorithm/robust_fiber.hpp"
+#include "melon/algorithm/strong_fiber.hpp"
 #include "melon/arc_list_builder.hpp"
 #include "melon/static_digraph.hpp"
 
@@ -8,7 +8,7 @@
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(RobustFiber, test) {
+GTEST_TEST(strong_fiber, test) {
     arc_list_builder<static_digraph, int, int> builder(8);
 
     builder.add_arc(0, 1, 1, 2);
@@ -39,7 +39,7 @@ GTEST_TEST(RobustFiber, test) {
     std::vector<static_digraph::vertex_t> strong_nodes;
     std::vector<static_digraph::vertex_t> weak_nodes;
 
-    RobustFiber algo(
+    strong_fiber algo(
         graph, reduced_length_map, length_map,
         [&strong_nodes](auto && v) { strong_nodes.push_back(v); },
         [&weak_nodes](auto && v) { weak_nodes.push_back(v); });
