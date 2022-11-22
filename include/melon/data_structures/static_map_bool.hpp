@@ -281,7 +281,7 @@ public:
         const size_type index_end = _size & span_index_mask;
 
         for(;;) {
-            index += std::countr_zero((*p) >> index);
+            index += static_cast<size_type>(std::countr_zero((*p) >> index));
             if(p == p_end && index >= index_end) co_return;
             if(index >= N) {
                 ++p;

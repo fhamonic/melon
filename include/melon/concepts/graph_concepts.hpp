@@ -3,76 +3,64 @@
 
 #include <concepts>
 #include <ranges>
+#include <type_traits>
 
-#include "melon/concepts/detail/range_of.hpp"
+#include "melon/concepts/key_value_map.hpp"
+#include "melon/concepts/range_of.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace concepts {
 
 template <typename G>
-using graph_vertex_t = typename std::remove_reference<G>::type::vertex_t;
+using graph_vertex_t = typename std::remove_reference_t<G>::vertex_t;
 
 template <typename G>
-using graph_arc_t = typename std::remove_reference<G>::type::arc_t;
+using graph_arc_t = typename std::remove_reference_t<G>::arc_t;
 
 template <typename G>
 concept graph = std::copyable<G> &&
-                requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
-                    { g.vertices() } -> detail::range_of<graph_vertex_t<G>>;
-                    { g.arcs() } -> detail::range_of<graph_arc_t<G>>;
-                    {
-                        g.arcs_pairs()
-                        } -> detail::range_of<
-                            std::pair<graph_vertex_t<G>, graph_vertex_t<G>>>;
-                };
+requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
+    { g.vertices() } -> range_of<graph_vertex_t<G>>;
+    { g.arcs() } -> range_of<graph_arc_t<G>>;
+    { g.arcs_pairs() } -> 
+            range_of<std::pair<graph_vertex_t<G>, graph_vertex_t<G>>>;
+};
 
 template <typename G>
 concept has_arc_source = requires(G g, graph_arc_t<G> a) {
-                             { g.source(a) } -> std::same_as<graph_vertex_t<G>>;
-                             {
-                                 g.sources_map()
-                                 } -> detail::range_of<graph_vertex_t<G>>;
-                         };
+    { g.source(a) } -> std::same_as<graph_vertex_t<G>>;
+    { g.sources_map() } -> key_value_map_view<graph_vertex_t<G>, graph_vertex_t<G>>;
+};
 
 template <typename G>
 concept has_arc_target = requires(G g, graph_arc_t<G> a) {
-                             { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
-                             {
-                                 g.targets_map()
-                                 } -> detail::range_of<graph_vertex_t<G>>;
-                         };
+    { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
+    { g.targets_map() } -> key_value_map_view<graph_vertex_t<G>, graph_vertex_t<G>>;
+};
 
 template <typename G>
 concept incidence_list_graph = graph<G> && has_arc_target<G> &&
-                               requires(G g, graph_vertex_t<G> u) {
-                                   {
-                                       g.out_arcs(u)
-                                       } -> detail::range_of<graph_arc_t<G>>;
-                               };
+requires(G g, graph_vertex_t<G> u) {
+    { g.out_arcs(u) } -> range_of<graph_arc_t<G>>;
+};
 
 template <typename G>
-concept adjacency_list_graph =
-    graph<G> && requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
-                    {
-                        g.out_neighbors(u)
-                        } -> detail::range_of<graph_vertex_t<G>>;
-                };
+concept adjacency_list_graph = graph<G> && requires(G g, graph_vertex_t<G> u) {
+    { g.out_neighbors(u) } -> range_of<graph_vertex_t<G>>;
+};
 
 template <typename G>
-concept reversible_incidence_list_graph =
-    graph<G> && has_arc_source<G> &&
-    requires(G g, graph_vertex_t<G> u) {
-        { g.in_arcs(u) } -> detail::range_of<graph_arc_t<G>>;
-    };
+concept reversible_incidence_list_graph = graph<G> && has_arc_source<G> &&
+requires(G g, graph_vertex_t<G> u) {
+    { g.in_arcs(u) } -> range_of<graph_arc_t<G>>;
+};
 
 template <typename G>
-concept reversible_adjacency_list_graph =
-    graph<G> && requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
-                    {
-                        g.in_neighbors(u)
-                        } -> detail::range_of<graph_vertex_t<G>>;
-                };
+concept reversible_adjacency_list_graph = graph<G> && 
+requires(G g, graph_vertex_t<G> u) {
+    { g.in_neighbors(u) } -> range_of<graph_vertex_t<G>>;
+};
 
 }  // namespace concepts
 }  // namespace melon

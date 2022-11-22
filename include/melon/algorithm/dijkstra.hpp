@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/key_value_map.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/data_structures/fast_binary_heap.hpp"
@@ -21,8 +22,8 @@
 
 namespace fhamonic {
 namespace melon {
-
 namespace concepts {
+
 template <typename T>
 concept dijkstra_trait = semiring<typename T::semiring> &&
     updatable_priority_queue<typename T::heap> && requires() {
@@ -30,9 +31,10 @@ concept dijkstra_trait = semiring<typename T::semiring> &&
     { T::store_pred_arcs } -> std::convertible_to<bool>;
     { T::store_distances } -> std::convertible_to<bool>;
 };
+
 }  // namespace concepts
 
-template <concepts::incidence_list_graph G, typename L>
+template <typename G, typename L>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<typename L::value_type>;
     using heap = fast_binary_heap<typename G::vertex_t, typename L::value_type,
