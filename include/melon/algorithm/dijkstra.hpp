@@ -22,32 +22,26 @@
 
 namespace fhamonic {
 namespace melon {
-namespace concepts {
 
+// clang-format off
+namespace concepts {
 template <typename T>
 concept dijkstra_trait = semiring<typename T::semiring> &&
-                         updatable_priority_queue<typename T::heap> &&
-                         requires() {
-                             {
-                                 T::store_pred_vertices
-                                 } -> std::convertible_to<bool>;
-                             {
-                                 T::store_pred_arcs
-                                 } -> std::convertible_to<bool>;
-                             {
-                                 T::store_distances
-                                 } -> std::convertible_to<bool>;
-                         };
-
+    updatable_priority_queue<typename T::heap> && requires() {
+    { T::store_pred_vertices } -> std::convertible_to<bool>;
+    { T::store_pred_arcs } -> std::convertible_to<bool>;
+    { T::store_distances } -> std::convertible_to<bool>;
+};
 }  // namespace concepts
+// clang-format on
 
 template <typename G, typename L>
 struct dijkstra_default_traits {
     using semiring =
         shortest_path_semiring<mapped_value_t<L, graph_vertex_t<G>>>;
-    using heap = fast_binary_heap<graph_vertex_t<G>,
-                                  mapped_value_t<L, graph_vertex_t<G>>,
-                                  decltype(semiring::less)>;
+    using heap =
+        d_ary_heap<2, graph_vertex_t<G>, mapped_value_t<L, graph_vertex_t<G>>,
+                   decltype(semiring::less), graph_vertex_map<G, std::size_t>>;
 
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
@@ -165,20 +159,17 @@ public:
     auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(traits::store_pred_vertices)
-    {
+        requires(traits::store_pred_vertices) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(traits::store_pred_arcs)
-    {
+        requires(traits::store_pred_arcs) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }
     value_t dist(const vertex_t u) const noexcept
-        requires(traits::store_distances)
-    {
+        requires(traits::store_distances) {
         assert(_vertex_status_map[u] == POST_HEAP);
         return _distances_map[u];
     }
