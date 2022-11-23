@@ -17,8 +17,8 @@ using graph_vertex_t = typename std::remove_reference_t<G>::vertex_t;
 template <typename G>
 using graph_arc_t = typename std::remove_reference_t<G>::arc_t;
 
+// clang-format off
 namespace concepts {
-
 template <typename G>
 concept graph = std::copyable<G> &&
 requires(G g, graph_vertex_t<G> u, graph_arc_t<G> a) {
@@ -62,8 +62,8 @@ concept reversible_adjacency_list_graph = graph<G> &&
 requires(G g, graph_vertex_t<G> u) {
     { g.in_neighbors(u) } -> range_of<graph_vertex_t<G>>;
 };
-
 }  // namespace concepts
+// clang-format on
 
 template <typename G, typename T>
 using graph_vertex_map = typename std::remove_reference_t<G>::vertex_map<T>;
@@ -71,8 +71,9 @@ using graph_vertex_map = typename std::remove_reference_t<G>::vertex_map<T>;
 template <typename G, typename T>
 using graph_arc_map = typename std::remove_reference_t<G>::arc_map<T>;
 
-namespace concepts {
 
+// clang-format off
+namespace concepts {
 template <typename G>
 concept has_vertex_map = requires(G g, graph_arc_t<G> a) {
     { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
@@ -84,8 +85,8 @@ concept has_arc_map = requires(G g, graph_arc_t<G> a) {
     { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
     { g.targets_map() } -> key_value_map_view<graph_vertex_t<G>, graph_vertex_t<G>>;
 };
-
 }  // namespace concepts
+// clang-format on
 }  // namespace melon
 }  // namespace fhamonic
 
