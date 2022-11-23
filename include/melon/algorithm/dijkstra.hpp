@@ -36,8 +36,10 @@ concept dijkstra_trait = semiring<typename T::semiring> &&
 
 template <typename G, typename L>
 struct dijkstra_default_traits {
-    using semiring = shortest_path_semiring<typename L::value_type>;
-    using heap = fast_binary_heap<typename G::vertex_t, typename L::value_type,
+    using semiring =
+        shortest_path_semiring<mapped_value_t<L, graph_vertex_t<G>>>;
+    using heap = fast_binary_heap<graph_vertex_t<G>,
+                                  mapped_value_t<L, graph_vertex_t<G>>,
                                   decltype(semiring::less)>;
 
     static constexpr bool store_pred_vertices = false;
@@ -45,13 +47,14 @@ struct dijkstra_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <concepts::incidence_list_graph G, typename L,
+template <concepts::incidence_list_graph G,
+          concepts::map_of<graph_vertex_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
 class dijkstra {
 public:
-    using vertex_t = G::vertex_t;
-    using arc_t = G::arc_t;
-    using value_t = L::value_type;
+    using vertex_t = graph_vertex_t<G>;
+    using arc_t = graph_arc_t<G>;
+    using value_t = mapped_value_t<L, graph_vertex_t<G>>;
     using traversal_entry = std::pair<vertex_t, value_t>;
     using traits = T;
 
@@ -146,17 +149,20 @@ public:
     auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(traits::store_pred_vertices) {
+        requires(traits::store_pred_vertices)
+    {
         assert(_heap.state(u) != heap::PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(traits::store_pred_arcs) {
+        requires(traits::store_pred_arcs)
+    {
         assert(_heap.state(u) != heap::PRE_HEAP);
         return _pred_arcs_map[u];
     }
     value_t dist(const vertex_t u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(_heap.state(u) == heap::POST_HEAP);
         return _distances_map[u];
     }
