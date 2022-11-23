@@ -43,7 +43,7 @@ public:
                          std::monostate>::type;
     using distances_map =
         std::conditional<traits::store_distances,
-                         typename G::vertex_map<value_t>, std::monostate>::type;
+                         typename G::vertex_map<std::size_t>, std::monostate>::type;
 
 private:
     const G & _graph;
