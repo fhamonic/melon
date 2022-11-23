@@ -10,13 +10,14 @@
 
 namespace fhamonic {
 namespace melon {
-namespace concepts {
 
 template <typename G>
 using graph_vertex_t = typename std::remove_reference_t<G>::vertex_t;
 
 template <typename G>
 using graph_arc_t = typename std::remove_reference_t<G>::arc_t;
+
+namespace concepts {
 
 template <typename G>
 concept graph = std::copyable<G> &&
