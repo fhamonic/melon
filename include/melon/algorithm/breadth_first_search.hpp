@@ -28,6 +28,7 @@ class breadth_first_search {
 public:
     using vertex_t = G::vertex_t;
     using arc_t = G::arc_t;
+    using traits = T;
 
     static_assert(
         !(concepts::adjacency_list_graph<G> && traits::store_pred_arcs),

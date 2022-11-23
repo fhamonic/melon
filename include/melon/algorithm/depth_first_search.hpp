@@ -28,6 +28,7 @@ class depth_first_search {
 public:
     using vertex_t = G::vertex_t;
     using arc_t = G::arc_t;
+    using traits = T;
     using reached_map = typename G::vertex_map<bool>;
 
     using pred_vertices_map = std::conditional<traits::store_pred_vertices,
