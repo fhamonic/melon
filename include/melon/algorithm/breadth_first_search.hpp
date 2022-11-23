@@ -65,7 +65,7 @@ public:
               g.nb_vertices(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
               g.nb_vertices(), std::monostate{}))
-        , _distances_map(constexpr_ternary<traits::store_distances>(
+        , _dist_map(constexpr_ternary<traits::store_distances>(
               g.nb_vertices(), std::monostate{})) {
         _queue.reserve(g.nb_vertices());
         _queue_current = _queue.begin();
