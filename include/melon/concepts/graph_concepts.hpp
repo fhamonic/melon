@@ -17,6 +17,12 @@ using graph_vertex_t = typename std::remove_reference_t<G>::vertex_t;
 template <typename G>
 using graph_arc_t = typename std::remove_reference_t<G>::arc_t;
 
+template <typename G, typename T>
+using graph_vertex_map = typename std::remove_reference_t<G>::vertex_map<T>;
+
+template <typename G, typename T>
+using graph_arc_map = typename std::remove_reference_t<G>::arc_map<T>;
+
 namespace concepts {
 
 template <typename G>
