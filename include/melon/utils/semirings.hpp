@@ -1,22 +1,13 @@
-#ifndef MELON_DETAIL_SEMIRINGS_HPP
-#define MELON_DETAIL_SEMIRINGS_HPP
+#ifndef MELON_UTIL_SEMIRINGS_HPP
+#define MELON_UTIL_SEMIRINGS_HPP
 
 #include <functional>
+#include <limits>
+
+#include "melon/concepts/semiring.hpp"
 
 namespace fhamonic {
 namespace melon {
-
-// clang-format off
-namespace concepts {
-template <typename S>
-concept semiring = requires(typename S::value_type v) {
-    { S::zero } -> std::same_as<const typename S::value_type &>;
-    { S::infty } -> std::same_as<const typename S::value_type &>;
-    { S::plus(v, v) } -> std::same_as<typename S::value_type>;
-    { S::less(v, v) } -> std::convertible_to<bool>;
-};
-}  // namespace concepts
-// clang-format on
 
 template <typename T>
 struct shortest_path_semiring {
@@ -60,4 +51,4 @@ struct minimum_spanning_tree_semiring {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_DETAIL_SEMIRINGS_HPP
+#endif  // MELON_UTIL_SEMIRINGS_HPP
