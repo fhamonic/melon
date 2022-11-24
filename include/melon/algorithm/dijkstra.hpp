@@ -14,7 +14,6 @@
 #include "melon/concepts/key_value_map.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
-#include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/prefetch.hpp"
 #include "melon/utils/semirings.hpp"
@@ -134,7 +133,7 @@ public:
                 const value_t new_dist =
                     traits::semiring::plus(p.second, _length_map[a]);
                 if(traits::semiring::less(new_dist, _heap.priority(w))) {
-                    _heap.decrease(w, new_dist);
+                    _heap.promote(w, new_dist);
                     if constexpr(traits::store_pred_vertices)
                         _pred_vertices_map[w] = p.first;
                     if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;

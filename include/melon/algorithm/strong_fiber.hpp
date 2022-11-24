@@ -8,17 +8,17 @@
 #include <variant>
 #include <vector>
 
-#include "melon/utils/semirings.hpp"
 #include "melon/concepts/graph_concepts.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
-#include "melon/data_structures/fast_binary_heap.hpp"
 #include "melon/utils/prefetch.hpp"
+#include "melon/utils/semirings.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <concepts::incidence_list_graph G, typename L, bool strictly_strong=false>
+template <concepts::incidence_list_graph G, typename L,
+          bool strictly_strong = false>
 struct strong_fiber_default_traits {
     using value_t = typename L::value_type;
     using semiring = shortest_path_semiring<value_t>;
@@ -47,7 +47,8 @@ struct strong_fiber_default_traits {
         }
     };
 
-    using heap = fast_binary_heap<typename G::vertex_t, entry, entry_cmp>;
+    using heap = d_ary_heap<2, typename G::vertex_t, entry, entry_cmp,
+                            graph_vertex_map<G, std::size_t>>;
 };
 
 template <concepts::adjacency_list_graph G, typename L1, typename L2,
@@ -63,9 +64,12 @@ public:
     using traits = T;
 
 private:
+    enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
+
     using entry = traits::entry;
     using entry_cmp = traits::entry_cmp;
     using heap = traits::heap;
+    using vertex_status_map = graph_vertex_map<G, vertex_status>;
 
     const G & _graph;
     const L1 & _reduced_length_map;
@@ -75,6 +79,7 @@ private:
     F2 _callback_weak;
 
     heap _heap;
+    vertex_status_map _vertex_status_map;
     entry_cmp cmp;
     std::size_t nb_strong_candidates;
     std::size_t nb_weak_candidates;
@@ -87,19 +92,21 @@ public:
         , _callback_strong(std::forward<F1>(f1))
         , _callback_weak(std::forward<F2>(f2))
         , _heap(g.nb_vertices())
+        , _vertex_status_map(g.nb_vertices(), PRE_HEAP)
         , nb_strong_candidates(0)
         , nb_weak_candidates(0) {}
 
     strong_fiber & reset() noexcept {
         _heap.clear();
+        _vertex_status_map.fill(PRE_HEAP);
         nb_strong_candidates = 0;
         nb_weak_candidates = 0;
         return *this;
     }
 
     strong_fiber & discard(vertex_t u) noexcept {
-        assert(_heap.state(u) != heap::IN_HEAP);
-        _heap.discard(u);
+        assert(_vertex_status_map[u] != IN_HEAP);
+        _vertex_status_map[u] = POST_HEAP;
         return *this;
     }
 
@@ -140,8 +147,8 @@ public:
     void process_strong_vertex_out_arc(const vertex_t u, const value_t dist,
                                        const arc_t uw) noexcept {
         const vertex_t w = _graph.target(uw);
-        const auto s = _heap.state(w);
-        if(s == heap::IN_HEAP) {
+        auto && w_status = _vertex_status_map[w];
+        if(w_status == IN_HEAP) {
             const entry new_entry(dist + _length_map[uw], true);
             const entry old_entry = _heap.priority(w);
             if(cmp(new_entry, old_entry)) {
@@ -149,10 +156,11 @@ public:
                     --nb_weak_candidates;
                     ++nb_strong_candidates;
                 }
-                _heap.decrease(w, new_entry);
+                _heap.promote(w, new_entry);
             }
-        } else if(s == heap::PRE_HEAP) {
+        } else if(w_status == PRE_HEAP) {
             _heap.push(w, entry(dist + _length_map[uw], true));
+            _vertex_status_map[w] = IN_HEAP;
             ++nb_strong_candidates;
         }
     }
@@ -160,8 +168,8 @@ public:
     void process_weak_vertex_out_arc(const vertex_t u, const value_t dist,
                                      const arc_t uw) noexcept {
         const vertex_t w = _graph.target(uw);
-        const auto s = _heap.state(w);
-        if(s == heap::IN_HEAP) {
+        auto && w_status = _vertex_status_map[w];
+        if(w_status == IN_HEAP) {
             const entry new_entry(dist + _reduced_length_map[uw], false);
             const entry old_entry = _heap.priority(w);
             if(cmp(new_entry, old_entry)) {
@@ -169,10 +177,11 @@ public:
                     --nb_strong_candidates;
                     ++nb_weak_candidates;
                 }
-                _heap.decrease(w, new_entry);
+                _heap.promote(w, new_entry);
             }
-        } else if(s == heap::PRE_HEAP) {
+        } else if(w_status == PRE_HEAP) {
             _heap.push(w, entry(dist + _reduced_length_map[uw], false));
+            _vertex_status_map[w] = IN_HEAP;
             ++nb_weak_candidates;
         }
     }
@@ -180,6 +189,7 @@ public:
     strong_fiber & run() noexcept {
         while(nb_strong_candidates > 0 && nb_weak_candidates > 0) {
             const auto && [u, e] = _heap.top();
+            _vertex_status_map[u] = POST_HEAP;
             prefetch_range(_graph.out_arcs(u));
             prefetch_range(_graph.out_neighbors(u));
             if(e.strong) {
@@ -202,14 +212,14 @@ public:
         }
         if(nb_strong_candidates > 0) {
             for(auto && v : _graph.vertices()) {
-                if(_heap.state(v) == heap::POST_HEAP) continue;
+                if(_vertex_status_map[v] == POST_HEAP) continue;
                 _callback_strong(v);
             }
             return *this;
         }
         if(nb_weak_candidates > 0) {
             for(auto && v : _graph.vertices()) {
-                if(_heap.state(v) == heap::POST_HEAP) continue;
+                if(_vertex_status_map[v] == POST_HEAP) continue;
                 _callback_weak(v);
             }
         }

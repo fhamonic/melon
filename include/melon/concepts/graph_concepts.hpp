@@ -71,19 +71,17 @@ using graph_vertex_map = typename std::remove_reference_t<G>::vertex_map<T>;
 template <typename G, typename T>
 using graph_arc_map = typename std::remove_reference_t<G>::arc_map<T>;
 
-
-// clang-format off
+// clang-format off 
 namespace concepts {
 template <typename G>
 concept has_vertex_map = requires(G g, graph_arc_t<G> a) {
-    { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
-    { g.targets_map() } -> key_value_map_view<graph_vertex_t<G>, graph_vertex_t<G>>;
+    { g.template create_vertex_map<int>() } 
+            -> key_value_map<graph_vertex_t<G>, int>;
 };
 
 template <typename G>
 concept has_arc_map = requires(G g, graph_arc_t<G> a) {
-    { g.target(a) } -> std::same_as<graph_vertex_t<G>>;
-    { g.targets_map() } -> key_value_map_view<graph_vertex_t<G>, graph_vertex_t<G>>;
+    { g.template create_arc_map<int>() } -> key_value_map<graph_arc_t<G>, int>;
 };
 }  // namespace concepts
 // clang-format on
