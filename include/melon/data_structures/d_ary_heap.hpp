@@ -196,7 +196,7 @@ public:
         _heap_array.pop_back();
     }
     void promote(const key_type & k, const priority_type & p) noexcept {
-        assert(_cmp(p, priority(k)));
+        if(!_cmp(p, priority(k))) return;
         heap_push(_indices_map[k], entry(k, p));
     }
 };  // class d_ary_heap
