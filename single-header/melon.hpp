@@ -1700,7 +1700,7 @@ public:
                 const Value new_dist =
                     DijkstraSemiringTraits::plus(p.second, _length_map[a]);
                 if(DijkstraSemiringTraits::less(new_dist, _heap.priority(w))) {
-                    _heap.decrease(w, new_dist);
+                    _heap.promote(w, new_dist);
                     if constexpr(track_predecessor_vertices)
                         _pred_vertices_map[w] = p.first;
                     if constexpr(track_predecessor_arcs) _pred_arcs_map[w] = a;
