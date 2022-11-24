@@ -34,16 +34,16 @@ public:
         !(concepts::adjacency_list_graph<G> && traits::store_pred_arcs),
         "traversal on adjacency_list_graph cannot access predecessor arcs.");
 
-    using reached_map = typename G::vertex_map<bool>;
-    using pred_vertices_map = std::conditional<traits::store_pred_vertices,
-                                               typename G::vertex_map<vertex_t>,
-                                               std::monostate>::type;
+    using reached_map = graph_vertex_map<G, bool>;
+    using pred_vertices_map =
+        std::conditional<traits::store_pred_vertices,
+                         graph_vertex_map<G, vertex_t>, std::monostate>::type;
     using pred_arcs_map =
-        std::conditional<traits::store_pred_arcs, typename G::vertex_map<arc_t>,
+        std::conditional<traits::store_pred_arcs, graph_vertex_map<G, arc_t>,
                          std::monostate>::type;
-    using distances_map =
-        std::conditional<traits::store_distances,
-                         typename G::vertex_map<std::size_t>, std::monostate>::type;
+    using distances_map = std::conditional<traits::store_distances,
+                                           graph_vertex_map<G, std::size_t>,
+                                           std::monostate>::type;
 
 private:
     const G & _graph;
