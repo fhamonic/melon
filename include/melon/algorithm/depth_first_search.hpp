@@ -29,13 +29,13 @@ public:
     using vertex_t = G::vertex_t;
     using arc_t = G::arc_t;
     using traits = T;
-    using reached_map = typename G::vertex_map<bool>;
+    using reached_map = graph_vertex_map<G, bool>;
 
-    using pred_vertices_map = std::conditional<traits::store_pred_vertices,
-                                               typename G::vertex_map<vertex_t>,
-                                               std::monostate>::type;
+    using pred_vertices_map =
+        std::conditional<traits::store_pred_vertices,
+                         graph_vertex_map<G, vertex_t>, std::monostate>::type;
     using pred_arcs_map =
-        std::conditional<traits::store_pred_arcs, typename G::vertex_map<arc_t>,
+        std::conditional<traits::store_pred_arcs, graph_vertex_map<G, arc_t>,
                          std::monostate>::type;
 
 private:
