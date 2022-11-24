@@ -25,7 +25,7 @@ namespace melon {
 // clang-format off
 namespace concepts {
 template <typename T>
-concept bidir_dijkstra_trait = semiring<typename T::semiring> &&
+concept bidirectional_dijkstra_trait = semiring<typename T::semiring> &&
     updatable_priority_queue<typename T::heap> && requires() {
     { T::store_pred_vertices } -> std::convertible_to<bool>;
     { T::store_pred_arcs } -> std::convertible_to<bool>;
@@ -34,7 +34,7 @@ concept bidir_dijkstra_trait = semiring<typename T::semiring> &&
 // clang-format on
 
 template <typename G, typename L>
-struct bidir_dijkstra_default_traits {
+struct bidirectional_dijkstra_default_traits {
     using semiring =
         shortest_path_semiring<mapped_value_t<L, graph_vertex_t<G>>>;
     using heap =
@@ -45,12 +45,13 @@ struct bidir_dijkstra_default_traits {
     static constexpr bool store_pred_arcs = false;
 };
 
-template <
-    concepts::incidence_list_graph G, concepts::map_of<graph_vertex_t<G>> L,
-    concepts::bidir_dijkstra_trait T = bidir_dijkstra_default_traits<G, L>>
+template <concepts::incidence_list_graph G,
+          concepts::map_of<graph_vertex_t<G>> L,
+          concepts::bidirectional_dijkstra_trait T =
+              bidirectional_dijkstra_default_traits<G, L>>
 requires concepts::has_vertex_map<G> &&
     concepts::reversible_incidence_list_graph<G>
-class bidir_dijkstra {
+class bidirectional_dijkstra {
 public:
     using vertex_t = graph_vertex_t<G>;
     using arc_t = graph_arc_t<G>;
@@ -62,16 +63,11 @@ public:
                   "traversal_entry != heap_entry");
 
 private:
-    enum vertex_status : char {
-        PRE_HEAP = 0,
-        IN_FORWARD_HEAP = 1,
-        IN_REVERSE_HEAP = 2,
-        IN_BOTH_HEAPS = 3,
-        POST_HEAP = 4
-    };
+    enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
     using heap = traits::heap;
-    using vertex_status_map = graph_vertex_map<G, vertex_status>;
+    using vertex_status_map =
+        graph_vertex_map<G, std::pair<vertex_status, vertex_status>>;
     using pred_vertices_map =
         std::conditional<traits::store_pred_vertices,
                          graph_vertex_map<G, vertex_t>, std::monostate>::type;
@@ -90,43 +86,45 @@ private:
     pred_arcs_map _pred_arcs_map;
 
 public:
-    bidir_dijkstra(const G & g, const L & l)
+    bidirectional_dijkstra(const G & g, const L & l)
         : _graph(g)
         , _length_map(l)
         , _forward_heap(g.template create_vertex_map<std::size_t>())
         , _reverse_heap(g.template create_vertex_map<std::size_t>())
-        , _vertex_status_map(
-              g.template create_vertex_map<vertex_status>(PRE_HEAP))
+        , _vertex_status_map(g.template create_vertex_map<
+                             std::pair<vertex_status, vertex_status>>(
+              std::make_pair(PRE_HEAP, PRE_HEAP)))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
               g.template create_vertex_map<vertex_t>(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
               g.template create_vertex_map<arc_t>(), std::monostate{})) {}
 
-    bidir_dijkstra(const G & g, const L & l, const vertex_t s, const vertex_t t)
-        : bidir_dijkstra(g, l) {
+    bidirectional_dijkstra(const G & g, const L & l, const vertex_t s,
+                           const vertex_t t)
+        : bidirectional_dijkstra(g, l) {
         add_forward_source(s);
         add_reverse_source(t);
     }
 
-    bidir_dijkstra & reset() noexcept {
+    bidirectional_dijkstra & reset() noexcept {
         _forward_heap.clear();
         _reverse_heap.clear();
-        _vertex_status_map.fill(PRE_HEAP);
+        _vertex_status_map.fill(std::make_pair(PRE_HEAP, PRE_HEAP));
         return *this;
     }
-    bidir_dijkstra & add_forward_source(
+    bidirectional_dijkstra & add_forward_source(
         vertex_t s, value_t dist = traits::semiring::zero) noexcept {
-        assert(_vertex_status_map[s] == PRE_HEAP);
+        assert(_vertex_status_map[s].first == PRE_HEAP);
         _forward_heap.push(s, dist);
-        _vertex_status_map[s] = IN_HEAP_FORWARD;
+        _vertex_status_map[s].first = IN_HEAP;
         if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
         return *this;
     }
-    bidir_dijkstra & add_reverse_source(
+    bidirectional_dijkstra & add_reverse_source(
         vertex_t s, value_t dist = traits::semiring::zero) noexcept {
-        assert(_vertex_status_map[s] == PRE_HEAP);
+        assert(_vertex_status_map[s].second == PRE_HEAP);
         _reverse_heap.push(s, dist);
-        _vertex_status_map[s] = IN_HEAP_REVERSE;
+        _vertex_status_map[s].second = IN_HEAP;
         if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
         return *this;
     }
@@ -144,63 +142,89 @@ public:
                 prefetch_range(_graph.out_arcs(u1));
                 prefetch_map_values(_graph.out_arcs(u1), _graph.targets_map());
                 prefetch_map_values(_graph.out_arcs(u1), _length_map);
-                _vertex_status_map[u1] = POST_HEAP;
+                _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
                 for(const arc_t a : _graph.out_arcs(u1)) {
                     const vertex_t w = _graph.target(a);
-                    auto && w_status = _vertex_status_map[w];
-                    if(w_status == IN_HEAP_FORWARD) {
-                        const value_t new_dist =
+                    auto [w_forward_status, w_reverse_status] =
+                        _vertex_status_map[w];
+                    if(w_forward_status == IN_HEAP) {
+                        const value_t new_w_dist =
                             traits::semiring::plus(u1_dist, _length_map[a]);
-                        if(traits::semiring::less(new_dist,
+                        if(traits::semiring::less(new_w_dist,
                                                   _forward_heap.priority(w))) {
-                            _forward_heap.promote(w, new_dist);
+                            _forward_heap.promote(w, new_w_dist);
+                            if(w_reverse_status == IN_HEAP) {
+                                const value_t new_st_dist =
+                                    new_w_dist + _reverse_heap.priority(w);
+                                if(traits::semiring::less(new_st_dist, st_dist))
+                                    st_dist = new_st_dist;
+                            }
                             if constexpr(traits::store_pred_vertices)
                                 _pred_vertices_map[w] = u1;
                             if constexpr(traits::store_pred_arcs)
                                 _pred_arcs_map[w] = a;
                         }
-                    } else if(w_status == PRE_HEAP) {
-                        _forward_heap.push(
-                            w, traits::semiring::plus(u1_dist, _length_map[a]));
-                        _vertex_status_map[w] = IN_HEAP_FORWARD;
+                    } else if(w_forward_status == PRE_HEAP) {
+                        const value_t new_w_dist =
+                            traits::semiring::plus(u1_dist, _length_map[a]);
+                        _forward_heap.push(w, new_w_dist);
+                        _vertex_status_map[w].first = IN_HEAP;
+                        if(w_reverse_status == IN_HEAP) {
+                            const value_t new_st_dist =
+                                new_w_dist + _reverse_heap.priority(w);
+                            if(traits::semiring::less(new_st_dist, st_dist))
+                                st_dist = new_st_dist;
+                        }
                         if constexpr(traits::store_pred_vertices)
-                            _pred_vertices_map[w] = u1;
+                            _pred_vertices_map[w] = u2;
                         if constexpr(traits::store_pred_arcs)
                             _pred_arcs_map[w] = a;
-                    } else if(w_status == IN_HEAP_REVERSE)
-                        return
+                    }
                 }
             } else {
                 prefetch_range(_graph.in_arcs(u2));
                 prefetch_map_values(_graph.in_arcs(u2), _graph.sources_map());
                 prefetch_map_values(_graph.in_arcs(u2), _length_map);
-                _vertex_status_map[u2] = POST_HEAP;
+                _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
                 for(const arc_t a : _graph.in_arcs(u2)) {
                     const vertex_t w = _graph.source(a);
-                    auto && w_status = _vertex_status_map[w];
-                    if(w_status == IN_HEAP_FORWARD) {
-                        const value_t new_dist =
+                    auto [w_forward_status, w_reverse_status] =
+                        _vertex_status_map[w];
+                    if(w_reverse_status == IN_HEAP) {
+                        const value_t new_w_dist =
                             traits::semiring::plus(u2_dist, _length_map[a]);
-                        if(traits::semiring::less(new_dist,
+                        if(traits::semiring::less(new_w_dist,
                                                   _reverse_heap.priority(w))) {
-                            _reverse_heap.promote(w, new_dist);
+                            _reverse_heap.promote(w, new_w_dist);
+                            if(w_forward_status == IN_HEAP) {
+                                const value_t new_st_dist =
+                                    new_w_dist + _forward_heap.priority(w);
+                                if(traits::semiring::less(new_st_dist, st_dist))
+                                    st_dist = new_st_dist;
+                            }
                             if constexpr(traits::store_pred_vertices)
                                 _pred_vertices_map[w] = u2;
                             if constexpr(traits::store_pred_arcs)
                                 _pred_arcs_map[w] = a;
                         }
-                    } else if(w_status == PRE_HEAP) {
-                        _reverse_heap.push(
-                            w, traits::semiring::plus(u2_dist, _length_map[a]));
-                        _vertex_status_map[w] = IN_HEAP_FORWARD;
+                    } else if(w_reverse_status == PRE_HEAP) {
+                        const value_t new_w_dist =
+                            traits::semiring::plus(u2_dist, _length_map[a]);
+                        _reverse_heap.push(w, new_w_dist);
+                        _vertex_status_map[w].second = IN_HEAP;
+                        if(w_forward_status == IN_HEAP) {
+                            const value_t new_st_dist =
+                                new_w_dist + _forward_heap.priority(w);
+                            if(traits::semiring::less(new_st_dist, st_dist))
+                                st_dist = new_st_dist;
+                        }
                         if constexpr(traits::store_pred_vertices)
                             _pred_vertices_map[w] = u2;
                         if constexpr(traits::store_pred_arcs)
                             _pred_arcs_map[w] = a;
-                    } else if(w_status == IN_HEAP_REVERSE)
-                        return
+                    }
                 }
             }
         }
@@ -218,11 +242,6 @@ public:
         requires(traits::store_pred_arcs) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
-    }
-    value_t dist(const vertex_t u) const noexcept
-        requires(traits::store_distances) {
-        assert(_vertex_status_map[u] == POST_HEAP);
-        return _distances_map[u];
     }
 };
 
