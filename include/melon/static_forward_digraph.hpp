@@ -97,6 +97,24 @@ public:
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
+
+    template <typename T>
+    static_map<T> create_vertex_map() const noexcept {
+        return static_map<T>(nb_vertices());
+    }
+    template <typename T>
+    static_map<T> create_vertex_map(T default_value) const noexcept {
+        return static_map<T>(nb_vertices(), default_value);
+    }
+
+    template <typename T>
+    static_map<T> create_arc_map() const noexcept {
+        return static_map<T>(nb_arcs());
+    }
+    template <typename T>
+    static_map<T> create_arc_map(T default_value) const noexcept {
+        return static_map<T>(nb_arcs(), default_value);
+    }
 };
 
 }  // namespace melon
