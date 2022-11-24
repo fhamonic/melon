@@ -2,13 +2,9 @@
 #define MELON_ADAPTOR_REVERSE_HPP
 
 #include <algorithm>
-#include <cassert>
-#include <functional>
 #include <ranges>
-#include <vector>
 
 #include "melon/concepts/graph_concepts.hpp"
-#include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -19,11 +15,6 @@ class reverse {
 public:
     using vertex_t = typename G::vertex_t;
     using arc_t = typename G::arc_t;
-
-    template <typename T>
-    using vertex_map = typename G::vertex_map<T>;
-    template <typename T>
-    using arc_map = typename G::arc_map<T>;
 
 private:
     std::reference_wrapper<const G> _graph;
@@ -37,55 +28,92 @@ public:
     reverse & operator=(const reverse &) = default;
     reverse & operator=(reverse &&) = default;
 
-    auto nb_vertices() const requires requires(const G & g) { g.nb_vertices(); }
-    { return _graph.get().nb_vertices(); }
-    auto nb_arcs() const noexcept requires requires(const G & g) {
-        g.nb_arcs();
+    auto nb_vertices() const
+        requires requires(const G & g) { g.nb_vertices(); }
+    {
+        return _graph.get().nb_vertices();
     }
-    { return _graph.get().nb_arcs(); }
+    auto nb_arcs() const noexcept
+        requires requires(const G & g) { g.nb_arcs(); }
+    {
+        return _graph.get().nb_arcs();
+    }
 
     auto vertices() const noexcept { return _graph.get().vertices(); }
     auto arcs() const noexcept { return _graph.get().arcs(); }
 
-    vertex_t source(
-        arc_t a) const noexcept requires concepts::has_arc_target<G> {
+    vertex_t source(arc_t a) const noexcept
+        requires concepts::has_arc_target<G>
+    {
         return _graph.get().target(a);
     }
-    vertex_t target(
-        arc_t a) const noexcept requires concepts::has_arc_source<G> {
+    vertex_t target(arc_t a) const noexcept
+        requires concepts::has_arc_source<G>
+    {
         return _graph.get().source(a);
     }
 
-    auto sources_map() const noexcept requires concepts::has_arc_target<G> {
+    auto sources_map() const noexcept
+        requires concepts::has_arc_target<G>
+    {
         return _graph.get().targets_map();
     }
-    auto targets_map() const noexcept requires concepts::has_arc_source<G> {
+    auto targets_map() const noexcept
+        requires concepts::has_arc_source<G>
+    {
         return _graph.get().sources_map();
     }
 
-    auto out_arcs(const vertex_t u)
-        const noexcept requires concepts::reversible_incidence_list_graph<G> {
+    auto out_arcs(const vertex_t u) const noexcept
+        requires concepts::reversible_incidence_list_graph<G>
+    {
         return _graph.get().in_arcs(u);
     }
-    auto in_arcs(const vertex_t u)
-        const noexcept requires concepts::incidence_list_graph<G> {
+    auto in_arcs(const vertex_t u) const noexcept
+        requires concepts::incidence_list_graph<G>
+    {
         return _graph.get().out_arcs(u);
     }
 
-    auto out_neighbors(const vertex_t u)
-        const noexcept requires concepts::reversible_adjacency_list_graph<G> {
+    auto out_neighbors(const vertex_t u) const noexcept
+        requires concepts::reversible_adjacency_list_graph<G>
+    {
         return _graph.get().in_neighbors(u);
     }
-    auto in_neighbors(const vertex_t u)
-        const noexcept requires concepts::adjacency_list_graph<G> {
+    auto in_neighbors(const vertex_t u) const noexcept
+        requires concepts::adjacency_list_graph<G>
+    {
         return _graph.get().out_neighbors(u);
     }
 
-    auto arcs_pairs()
-        const noexcept requires concepts::adjacency_list_graph<G> {
+    auto arcs_pairs() const noexcept
+        requires concepts::adjacency_list_graph<G>
+    {
         return std::views::transform(_graph.get().arcs_pairs(), [](auto && p) {
             return std::make_pair(p.second, p.first);
         });
+    }
+
+    template <typename T>
+        requires concepts::has_vertex_map<G> decltype(auto)
+    create_vertex_map() const noexcept {
+        return _graph.get().template create_vertex_map<T>();
+    }
+    template <typename T>
+        requires concepts::has_vertex_map<G> decltype(auto)
+    create_vertex_map(T default_value) const noexcept {
+        return _graph.get().template create_vertex_map<T>(default_value);
+    }
+
+    template <typename T>
+        requires concepts::has_arc_map<G> decltype(auto)
+    create_arc_map() const noexcept {
+        return _graph.get().template create_arc_map<T>();
+    }
+    template <typename T>
+        requires concepts::has_arc_map<G> decltype(auto)
+    create_arc_map(T default_value) const noexcept {
+        return _graph.get().template create_arc_map<T>(default_value);
     }
 };
 
