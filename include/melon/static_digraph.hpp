@@ -17,17 +17,12 @@ public:
     using vertex_t = unsigned int;
     using arc_t = unsigned int;
 
-    template <typename T>
-    using vertex_map = static_map<T>;
-    template <typename T>
-    using arc_map = static_map<T>;
-
 private:
-    vertex_map<arc_t> _out_arc_begin;
-    arc_map<vertex_t> _arc_target;
-    arc_map<vertex_t> _arc_source;
+    static_map<arc_t> _out_arc_begin;
+    static_map<vertex_t> _arc_target;
+    static_map<vertex_t> _arc_source;
 
-    vertex_map<arc_t> _in_arc_begin;
+    static_map<arc_t> _in_arc_begin;
     static_map<arc_t> _in_arcs;
 
 public:
@@ -43,7 +38,7 @@ public:
         assert(std::ranges::all_of(
             _arc_target, [n = nb_vertices](auto && v) { return v < n; }));
         assert(std::ranges::is_sorted(_arc_source));
-        vertex_map<arc_t> in_arc_count(nb_vertices, 0);
+        static_map<arc_t> in_arc_count(nb_vertices, 0);
         for(auto && s : _arc_source) ++_out_arc_begin[s];
         for(auto && t : _arc_target) ++in_arc_count[t];
         std::exclusive_scan(_out_arc_begin.begin(), _out_arc_begin.end(),
@@ -129,6 +124,24 @@ public:
     auto arcs_pairs() const {
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
+    }
+
+    template <typename T>
+    static_map<T> create_vertex_map() const noexcept {
+        return static_map<T>(nb_vertices());
+    }
+    template <typename T>
+    static_map<T> create_vertex_map(T default_value) const noexcept {
+        return static_map<T>(nb_vertices(), default_value);
+    }
+
+    template <typename T>
+    static_map<T> create_arc_map() const noexcept {
+        return static_map<T>(nb_arcs());
+    }
+    template <typename T>
+    static_map<T> create_arc_map(T default_value) const noexcept {
+        return static_map<T>(nb_arcs(), default_value);
     }
 };
 

@@ -11,8 +11,8 @@ template <typename M, typename K>
 using mapped_value_t = std::remove_const_t<
     std::remove_reference_t<decltype(std::declval<M>()[std::declval<K>()])>>;
 
+// clang-format off
 namespace concepts {
-
 template <typename M, typename K>
 concept map_of = !std::same_as<mapped_value_t<M,K>,void>;
 
@@ -26,6 +26,7 @@ concept key_value_map = key_value_map_view<M,K,V> &&
     };
 
 }  // namespace concepts
+// clang-format on
 
 template <typename F>
 class map_view {

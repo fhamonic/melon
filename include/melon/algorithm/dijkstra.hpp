@@ -50,6 +50,7 @@ struct dijkstra_default_traits {
 template <concepts::incidence_list_graph G,
           concepts::map_of<graph_vertex_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
+    requires concepts::has_vertex_map<G>
 class dijkstra {
 public:
     using vertex_t = graph_vertex_t<G>;
@@ -90,14 +91,15 @@ public:
     dijkstra(const G & g, const L & l)
         : _graph(g)
         , _length_map(l)
-        , _heap(g.nb_vertices())
-        , _vertex_status_map(g.nb_vertices(), PRE_HEAP)
+        , _heap(g.template create_vertex_map<std::size_t>())
+        , _vertex_status_map(
+              g.template create_vertex_map<vertex_status>(PRE_HEAP))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.nb_vertices(), std::monostate{}))
+              g.template create_vertex_map<vertex_t>(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.nb_vertices(), std::monostate{}))
+              g.template create_vertex_map<arc_t>(), std::monostate{}))
         , _distances_map(constexpr_ternary<traits::store_distances>(
-              g.nb_vertices(), std::monostate{})) {}
+              g.template create_vertex_map<value_t>(), std::monostate{})) {}
 
     dijkstra(const G & g, const L & l, const vertex_t s) : dijkstra(g, l) {
         add_source(s);
@@ -158,17 +160,20 @@ public:
     auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(traits::store_pred_vertices) {
+        requires(traits::store_pred_vertices)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t u) const noexcept
-        requires(traits::store_pred_arcs) {
+        requires(traits::store_pred_arcs)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }
     value_t dist(const vertex_t u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(_vertex_status_map[u] == POST_HEAP);
         return _distances_map[u];
     }

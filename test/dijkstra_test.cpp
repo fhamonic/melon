@@ -8,7 +8,7 @@
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(Dijkstra, test) {
+GTEST_TEST(dijkstra, test) {
     arc_list_builder<static_digraph, int> builder(6);
 
     builder.add_arc(0, 1, 7);
