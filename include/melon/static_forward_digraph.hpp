@@ -33,7 +33,7 @@ public:
         assert(std::ranges::is_sorted(sources));
         for(auto && s : sources) ++_out_arc_begin[s];
         std::exclusive_scan(_out_arc_begin.data(),
-                            _out_arc_begin.data() + nb_arcs(),
+                            _out_arc_begin.data() + nb_vertices,
                             _out_arc_begin.data(), 0);
     }
 
