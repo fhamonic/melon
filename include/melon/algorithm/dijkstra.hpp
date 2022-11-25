@@ -51,7 +51,7 @@ struct dijkstra_default_traits {
 template <concepts::incidence_list_graph G,
           concepts::map_of<graph_vertex_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G>
+    requires concepts::has_vertex_map<G>
 class dijkstra {
 public:
     using vertex_t = graph_vertex_t<G>;
@@ -102,17 +102,19 @@ public:
         , _distances_map(constexpr_ternary<traits::store_distances>(
               g.template create_vertex_map<value_t>(), std::monostate{})) {}
 
-    dijkstra(const G & g, const L & l, const vertex_t s) : dijkstra(g, l) {
+    dijkstra(const G & g, const L & l, const vertex_t & s) : dijkstra(g, l) {
         add_source(s);
     }
 
     dijkstra & reset() noexcept {
         _heap.clear();
-        for(auto && u : _graph.vertices()) _vertex_status_map[u] = PRE_HEAP;
+        for(const vertex_t & u : _graph.vertices())
+            _vertex_status_map[u] = PRE_HEAP;
         return *this;
     }
-    dijkstra & add_source(vertex_t s,
-                          value_t dist = traits::semiring::zero) noexcept {
+    dijkstra & add_source(
+        const vertex_t & s,
+        const value_t & dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(s, dist);
         _vertex_status_map[s] = IN_HEAP;
@@ -123,15 +125,15 @@ public:
     bool empty_queue() const noexcept { return _heap.empty(); }
 
     traversal_entry next_entry() noexcept {
-        const traversal_entry p = _heap.top();
+        const traversal_entry & p = _heap.top();
         _vertex_status_map[p.first] = POST_HEAP;
         prefetch_range(_graph.out_arcs(p.first));
         prefetch_map_values(_graph.out_arcs(p.first), _graph.targets_map());
         prefetch_map_values(_graph.out_arcs(p.first), _length_map);
         _heap.pop();
-        for(const arc_t a : _graph.out_arcs(p.first)) {
-            const vertex_t w = _graph.target(a);
-            auto && w_status = _vertex_status_map[w];
+        for(const arc_t & a : _graph.out_arcs(p.first)) {
+            const vertex_t & w = _graph.target(a);
+            const vertex_status & w_status = _vertex_status_map[w];
             if(w_status == IN_HEAP) {
                 const value_t new_dist =
                     traits::semiring::plus(p.second, _length_map[a]);
@@ -160,18 +162,21 @@ public:
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
 
-    vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(traits::store_pred_vertices) {
+    vertex_t pred_vertex(const vertex_t & u) const noexcept
+        requires(traits::store_pred_vertices)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
-    arc_t pred_arc(const vertex_t u) const noexcept
-        requires(traits::store_pred_arcs) {
+    arc_t pred_arc(const vertex_t & u) const noexcept
+        requires(traits::store_pred_arcs)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }
-    value_t dist(const vertex_t u) const noexcept
-        requires(traits::store_distances) {
+    value_t dist(const vertex_t & u) const noexcept
+        requires(traits::store_distances)
+    {
         assert(_vertex_status_map[u] == POST_HEAP);
         return _distances_map[u];
     }

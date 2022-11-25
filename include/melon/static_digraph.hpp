@@ -27,7 +27,7 @@ private:
 
 public:
     template <std::ranges::range S, std::ranges::range T>
-    static_digraph(std::size_t nb_vertices, S && sources, T && targets)
+    static_digraph(const std::size_t & nb_vertices, S && sources, T && targets)
         : _out_arc_begin(nb_vertices, 0)
         , _arc_target(std::move(targets))
         , _arc_source(std::move(sources))
@@ -62,28 +62,30 @@ public:
     static_digraph & operator=(const static_digraph &) = default;
     static_digraph & operator=(static_digraph &&) = default;
 
-    auto nb_vertices() const { return _out_arc_begin.size(); }
-    auto nb_arcs() const { return _arc_target.size(); }
+    auto nb_vertices() const noexcept { return _out_arc_begin.size(); }
+    auto nb_arcs() const noexcept { return _arc_target.size(); }
 
-    bool is_valid_node(vertex_t u) const { return u < nb_vertices(); }
-    bool is_valid_arc(arc_t u) const { return u < nb_arcs(); }
+    bool is_valid_node(const vertex_t & u) const noexcept {
+        return u < nb_vertices();
+    }
+    bool is_valid_arc(const arc_t & u) const noexcept { return u < nb_arcs(); }
 
-    auto vertices() const {
+    auto vertices() const noexcept {
         return std::views::iota(static_cast<vertex_t>(0),
                                 static_cast<vertex_t>(nb_vertices()));
     }
-    auto arcs() const {
+    auto arcs() const noexcept {
         return std::views::iota(static_cast<arc_t>(0),
                                 static_cast<arc_t>(nb_arcs()));
     }
 
-    auto out_arcs(const vertex_t u) const {
+    auto out_arcs(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
         return std::views::iota(
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    auto in_arcs(const vertex_t u) const {
+    auto in_arcs(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             _in_arcs.begin() + _in_arc_begin[u],
@@ -91,37 +93,37 @@ public:
                                    : _in_arcs.end()));
     }
 
-    vertex_t source(arc_t a) const {
+    vertex_t source(const arc_t & a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_source[a];
     }
-    vertex_t target(arc_t a) const {
+    vertex_t target(const arc_t & a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
 
-    const auto & sources_map() const { return _arc_source; }
-    const auto & targets_map() const { return _arc_target; }
+    const auto & sources_map() const noexcept { return _arc_source; }
+    const auto & targets_map() const noexcept { return _arc_target; }
 
-    auto out_neighbors(const vertex_t u) const {
+    auto out_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
         return std::ranges::subrange(
             _arc_target.begin() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u + 1]
                                    : _arc_target.end()));
     }
-    auto in_neighbors(const vertex_t u) const {
+    auto in_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
         return std::views::transform(in_arcs(u),
                                      [this](auto a) { return source(a); });
     }
 
-    auto out_arcs_pairs(const vertex_t u) const {
+    auto out_arcs_pairs(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
         return std::views::transform(
             out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
     }
-    auto arcs_pairs() const {
+    auto arcs_pairs() const noexcept {
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
@@ -131,7 +133,7 @@ public:
         return static_map<T>(nb_vertices());
     }
     template <typename T>
-    static_map<T> create_vertex_map(T default_value) const noexcept {
+    static_map<T> create_vertex_map(const T & default_value) const noexcept {
         return static_map<T>(nb_vertices(), default_value);
     }
 
@@ -140,7 +142,7 @@ public:
         return static_map<T>(nb_arcs());
     }
     template <typename T>
-    static_map<T> create_arc_map(T default_value) const noexcept {
+    static_map<T> create_arc_map(const T & default_value) const noexcept {
         return static_map<T>(nb_arcs(), default_value);
     }
 };

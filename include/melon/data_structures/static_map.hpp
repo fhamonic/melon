@@ -26,11 +26,11 @@ private:
 
 public:
     static_map() : _data(nullptr), _data_end(nullptr){};
-    static_map(size_type size)
+    static_map(const size_type & size)
         : _data(std::make_unique_for_overwrite<value_type[]>(size))
         , _data_end(begin() + size){};
 
-    static_map(size_type size, value_type init_value) : static_map(size) {
+    static_map(const size_type & size, const value_type & init_value) : static_map(size) {
         std::ranges::fill(*this, init_value);
     }
 
@@ -61,17 +61,17 @@ public:
     size_type size() const noexcept {
         return static_cast<size_type>(std::distance(begin(), end()));
     }
-    void resize(size_type n) {
+    void resize(const size_type & n) {
         if(n == size()) return;
         _data = std::make_unique_for_overwrite<value_type[]>(n);
         _data_end = begin() + n;
     }
 
-    reference operator[](size_type i) noexcept {
+    reference operator[](const size_type & i) noexcept {
         assert(i < size());
         return _data[i];
     }
-    const_reference operator[](size_type i) const noexcept {
+    const_reference operator[](const size_type & i) const noexcept {
         assert(i < size());
         return _data[i];
     }
