@@ -43,15 +43,15 @@ public:
     void clear() noexcept { _heap_array.resize(0); }
 
 private:
-    static constexpr size_type parent_of(size_type i) noexcept {
+    static constexpr size_type parent_of(const size_type & i) noexcept {
         return (i - sizeof(entry)) / (sizeof(entry) * D) * sizeof(entry);
     }
-    static constexpr size_type first_child_of(size_type i) noexcept {
+    static constexpr size_type first_child_of(const size_type & i) noexcept {
         return i * D + sizeof(entry);
     }
     template <int I = D>
     constexpr size_type minimum_child(
-        const size_type first_child) const noexcept {
+        const size_type & first_child) const noexcept {
         if constexpr(I == 1)
             return first_child;
         else if constexpr(I == 2)
@@ -71,8 +71,8 @@ private:
         }
     }
     constexpr size_type minimum_remaining_child(
-        const size_type first_child,
-        const size_type nb_children) const noexcept {
+        const size_type & first_child,
+        const size_type & nb_children) const noexcept {
         if constexpr(D == 2)
             return first_child;
         else if constexpr(D == 4) {
@@ -106,19 +106,19 @@ private:
         }
     }
 
-    constexpr entry & pair_ref(size_type i) noexcept {
+    constexpr entry & pair_ref(const size_type & i) noexcept {
         assert(0 <= (i / sizeof(entry)) &&
                (i / sizeof(entry)) < _heap_array.size());
         return *(reinterpret_cast<entry *>(
             reinterpret_cast<std::byte *>(_heap_array.data()) + i));
     }
-    constexpr const entry & pair_ref(size_type i) const noexcept {
+    constexpr const entry & pair_ref(const size_type & i) const noexcept {
         assert(0 <= (i / sizeof(entry)) &&
                (i / sizeof(entry)) < _heap_array.size());
         return *(reinterpret_cast<const entry *>(
             reinterpret_cast<const std::byte *>(_heap_array.data()) + i));
     }
-    void heap_move(size_type i, entry && p) noexcept {
+    void heap_move(const size_type & i, entry && p) noexcept {
         assert(0 <= (i / sizeof(entry)) &&
                (i / sizeof(entry)) < _heap_array.size());
         _indices_map[p.first] = i;
@@ -135,7 +135,7 @@ private:
         heap_move(hole_index, std::move(p));
     }
 
-    void adjust_heap(size_type hole_index, const size_type end,
+    void adjust_heap(size_type hole_index, const size_type & end,
                      entry && p) noexcept {
         size_type child_end;
         if constexpr(D > 2)
