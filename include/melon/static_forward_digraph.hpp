@@ -29,11 +29,12 @@ public:
         assert(std::ranges::all_of(
             sources, [n = nb_vertices](auto && v) { return v < n; }));
         assert(std::ranges::all_of(
-            _arc_target, [n = nb_vertices](auto && v) { return v < n; }));
+            targets, [n = nb_vertices](auto && v) { return v < n; }));
         assert(std::ranges::is_sorted(sources));
         for(auto && s : sources) ++_out_arc_begin[s];
-        std::exclusive_scan(_out_arc_begin.begin(), _out_arc_begin.end(),
-                            _out_arc_begin.begin(), 0);
+        std::exclusive_scan(_out_arc_begin.data(),
+                            _out_arc_begin.data() + nb_arcs(),
+                            _out_arc_begin.data(), 0);
     }
 
     static_forward_digraph() = default;
@@ -73,13 +74,12 @@ public:
     const auto & targets_map() const { return _arc_target; }
     auto out_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
-        // return std::ranges::values_view(std::ranges::subrange(
-        //     _arc_target.begin() + _out_arc_begin[u],
-        //     (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u +
-        //     1]
-        //                            : _arc_target.end())));
-        return std::views::transform(out_arcs(u),
-                                      [this](auto && a) { return target(a); });
+        return std::ranges::subrange(
+            _arc_target.data() + _out_arc_begin[u],
+            (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
+                                   : _arc_target.data() + nb_arcs()));
+        // return std::views::transform(out_arcs(u),
+        //                              [this](auto && a) { return target(a); });
     }
 
     auto out_arcs_pairs(const vertex_t & u) const noexcept {

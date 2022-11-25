@@ -30,7 +30,7 @@ public:
 
 public:
     template <typename... indice_map_args>
-    d_ary_heap(indice_map_args &&... args)
+    explicit d_ary_heap(indice_map_args &&... args)
         : _heap_array()
         , _indices_map(std::forward<indice_map_args>(args)...)
         , _cmp() {}

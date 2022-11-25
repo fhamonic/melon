@@ -42,10 +42,10 @@ public:
         static_map<vertex_t, arc_t> in_arc_count(nb_vertices, 0);
         for(auto && s : sources) ++_out_arc_begin[s];
         for(auto && t : targets) ++in_arc_count[t];
-        std::exclusive_scan(_out_arc_begin.begin(), _out_arc_begin.end(),
-                            _out_arc_begin.begin(), 0);
-        std::exclusive_scan(in_arc_count.begin(), in_arc_count.end(),
-                            _in_arc_begin.begin(), 0);
+        std::exclusive_scan(_out_arc_begin.data(), _out_arc_begin.data() + nb_arcs(),
+                            _out_arc_begin.data(), 0);
+        std::exclusive_scan(in_arc_count.data(), in_arc_count.data() + nb_arcs(),
+                            _in_arc_begin.data(), 0);
         for(auto && a : arcs()) {
             vertex_t t = _arc_target[a];
             arc_t end = (t + 1 < static_cast<vertex_t>(nb_vertices)

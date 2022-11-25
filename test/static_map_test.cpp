@@ -7,6 +7,8 @@
 
 using namespace fhamonic::melon;
 
+static_assert(std::ranges::random_access_range<static_map<std::size_t, int>>);
+
 GTEST_TEST(static_map, empty_constructor) {
     static_map<std::size_t, int> map;
     ASSERT_EQ(map.size(), 0);
@@ -38,7 +40,7 @@ GTEST_TEST(static_map, size_init_constructor) {
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
     auto test = [](const int & a) { return a == 113; };
-    // ASSERT_TRUE(std::ranges::all_of(std::views::values(map2), test));
+    ASSERT_TRUE(std::ranges::all_of(std::views::values(map2), test));
     ASSERT_TRUE(
         std::ranges::all_of(std::views::values(std::as_const(map2)), test));
 }
