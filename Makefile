@@ -18,7 +18,7 @@ $(BUILD_DIR):
 
 test: all
 	@cd $(BUILD_DIR) && \
-	ctest --output-on-failure
+	ctest --output-on-failure --extra-verbose
 	
 clean:
 	@rm -rf $(BUILD_DIR)

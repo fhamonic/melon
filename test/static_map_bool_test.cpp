@@ -2,12 +2,17 @@
 
 #include <random>
 
+#include "melon/concepts/key_value_map.hpp"
 #include "melon/data_structures/static_map.hpp"
 #include "melon/static_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace fhamonic::melon;
+
+static_assert(std::ranges::random_access_range<static_map<std::size_t, bool>>);
+static_assert(
+    fhamonic::melon::concepts::key_value_map<static_map<std::size_t, bool>, std::size_t, bool>);
 
 GTEST_TEST(static_map_bool, empty_constructor) {
     static_map<std::size_t, bool> map;
@@ -40,9 +45,9 @@ GTEST_TEST(static_map_bool, size_init_constructor) {
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
     auto test = [](const bool a) { return a; };
-    ASSERT_TRUE(std::all_of(map2.begin(), map2.end(), test));
-    ASSERT_TRUE(std::all_of(std::as_const(map2).begin(),
-                            std::as_const(map2).end(), test));
+    ASSERT_TRUE(std::ranges::all_of(std::views::values(map2), test));
+    ASSERT_TRUE(
+        std::ranges::all_of(std::views::values(std::as_const(map2)), test));
 
     static_map<std::size_t, bool> map3(5, false);
     ASSERT_EQ(map3.size(), 5);
@@ -50,9 +55,9 @@ GTEST_TEST(static_map_bool, size_init_constructor) {
     ASSERT_NE(std::as_const(map3).begin(), std::as_const(map).end());
 
     auto test2 = [](const bool a) { return !a; };
-    ASSERT_TRUE(std::all_of(map3.begin(), map3.end(), test2));
-    ASSERT_TRUE(std::all_of(std::as_const(map3).begin(),
-                            std::as_const(map3).end(), test2));
+    ASSERT_TRUE(std::ranges::all_of(std::views::values(map3), test2));
+    ASSERT_TRUE(
+        std::ranges::all_of(std::views::values(std::as_const(map3)), test2));
 }
 
 GTEST_TEST(static_map_bool, accessor_uniform_read) {
@@ -127,5 +132,5 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
     static_assert(
         std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
 
-    ASSERT_TRUE(std::ranges::equal(map, datas));
+    ASSERT_TRUE(std::ranges::equal(std::views::values(map), datas));
 }

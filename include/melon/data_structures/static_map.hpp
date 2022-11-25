@@ -12,17 +12,17 @@ namespace fhamonic {
 namespace melon {
 
 template <typename K, typename V>
-    requires std::integral<K>
+requires std::integral<K>
 class static_map {
 public:
     using key_type = K;
     using mapped_type = V;
-    using value_type = std::pair<const K, V>;
+    using value_type = std::pair<const K, V &>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    using reference = std::pair<const K, V &>;
-    using const_reference = value_type;
+    using reference = value_type;
+    using const_reference = const value_type;
 
     template <typename R>
     class iterator_base {
@@ -30,16 +30,16 @@ public:
         using I = iterator_base<R>;
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = static_map<K, V>::difference_type;
-        using value_type = bool;
+        using value_type = std::pair<const K, V &>;
         using pointer = void;
         using reference = R;
 
     protected:
-        mapped_type * const _p;
+        mapped_type * _p;
         size_type _index;
 
     public:
-        iterator_base(const mapped_type & p, const size_type & index)
+        iterator_base(mapped_type * p, const size_type & index)
             : _p(p), _index(index) {}
 
         iterator_base() = default;
@@ -49,7 +49,6 @@ public:
         iterator_base & operator=(const iterator_base &) = default;
         iterator_base & operator=(iterator_base &&) = default;
 
-    public:
         friend bool operator==(const iterator_base & x,
                                const iterator_base & y) noexcept {
             return x._p == y._p && x._index == y._index;
@@ -140,31 +139,29 @@ private:
 
 public:
     static_map() : _data(nullptr), _size(0){};
-    static_map(const size_type & size)
+    explicit static_map(const size_type & size)
         : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
         , _size(size){};
 
     static_map(const size_type & size, const mapped_type & init_value)
         : static_map(size) {
-        std::ranges::fill(*this, init_value);
+        std::fill(_data.get(), _data.get() + _size, init_value);
     }
 
     template <std::random_access_iterator IT>
     static_map(IT && it_begin, IT && it_end)
         : static_map(static_cast<size_type>(std::distance(it_begin, it_end))) {
-        std::copy(it_begin, it_end, begin());
+        std::copy(it_begin, it_end, _data.get());
     }
     template <std::ranges::random_access_range R>
-    explicit static_map(R && r) : static_map(std::ranges::size(r)) {
-        std::ranges::copy(r, begin());
-    }
+    explicit static_map(R && r) : static_map(r.begin(), r.end()) {}
     static_map(const static_map & other)
-        : static_map(other.begin(), other.end()){};
+        : static_map(other.data(), other.data() + other.size()){};
     static_map(static_map &&) = default;
 
     static_map & operator=(const static_map & other) {
         resize(other.size());
-        std::ranges::copy(other, begin());
+        std::copy(other.data(), other.data() + other.size(), _data.get());
     }
     static_map & operator=(static_map &&) = default;
 
@@ -177,21 +174,24 @@ public:
         return const_iterator(_data.get(), _size);
     }
 
-    size_type size() const noexcept { return _size; }
-    void resize(const size_type & n) {
+    constexpr size_type size() const noexcept { return _size; }
+    constexpr void resize(const size_type & n) {
         if(n == size()) return;
         _data = std::make_unique_for_overwrite<mapped_type[]>(n);
         _size = n;
     }
 
-    mapped_type & operator[](const key_type & i) noexcept {
+    constexpr mapped_type & operator[](const key_type & i) noexcept {
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
-    mapped_type operator[](const key_type & i) const noexcept {
+    constexpr mapped_type operator[](const key_type & i) const noexcept {
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
+
+    constexpr mapped_type * data() noexcept { return _data.get(); }
+    constexpr mapped_type * data() const noexcept { return _data.get(); }
 };
 
 }  // namespace melon
