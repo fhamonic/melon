@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <iterator>
 #include <memory>
 #include <ranges>
@@ -10,27 +11,141 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename T>
+template <typename K, typename V>
+    requires std::integral<K>
 class static_map {
 public:
-    using value_type = T;
-    using reference = T &;
-    using const_reference = const T &;
-    using iterator = T *;
-    using const_iterator = const T *;
+    using key_type = K;
+    using mapped_type = V;
+    using value_type = std::pair<const K, V>;
     using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    using reference = std::pair<const K, V &>;
+    using const_reference = value_type;
+
+    template <typename R>
+    class iterator_base {
+    public:
+        using I = iterator_base<R>;
+        using iterator_category = std::random_access_iterator_tag;
+        using difference_type = static_map<K, V>::difference_type;
+        using value_type = bool;
+        using pointer = void;
+        using reference = R;
+
+    protected:
+        mapped_type * const _p;
+        size_type _index;
+
+    public:
+        iterator_base(const mapped_type & p, const size_type & index)
+            : _p(p), _index(index) {}
+
+        iterator_base() = default;
+        iterator_base(const iterator_base &) = default;
+        iterator_base(iterator_base &&) = default;
+
+        iterator_base & operator=(const iterator_base &) = default;
+        iterator_base & operator=(iterator_base &&) = default;
+
+    public:
+        friend bool operator==(const iterator_base & x,
+                               const iterator_base & y) noexcept {
+            return x._p == y._p && x._index == y._index;
+        }
+        friend constexpr std::strong_ordering operator<=>(
+            const iterator_base & x, const iterator_base & y) noexcept {
+            assert(x._p == y._p);
+            return x._index <=> y._index;
+        }
+        difference_type operator-(const iterator_base & other) const noexcept {
+            assert(_p == other._p);
+            return static_cast<difference_type>(_index) -
+                   static_cast<difference_type>(other._index);
+        }
+        I & operator++() noexcept {
+            ++_index;
+            return *static_cast<I *>(this);
+        }
+        I operator++(int) noexcept {
+            I tmp = *static_cast<I *>(this);
+            ++_index;
+            return tmp;
+        }
+        I & operator--() noexcept {
+            --_index;
+            return *static_cast<I *>(this);
+        }
+        I operator--(int) noexcept {
+            I tmp = *static_cast<I *>(this);
+            --_index;
+            return tmp;
+        }
+        I & operator+=(difference_type i) noexcept {
+            _index += i;
+            return *static_cast<I *>(this);
+        }
+
+        I & operator-=(difference_type i) noexcept {
+            _index -= i;
+            return *static_cast<I *>(this);
+        }
+
+        friend I operator+(const I & x, difference_type n) {
+            I tmp = x;
+            return tmp += n;
+        }
+        friend I operator+(difference_type n, const I & x) { return x + n; }
+        friend I operator-(const I & x, difference_type n) {
+            I tmp = x;
+            return tmp -= n;
+        }
+
+        reference operator*() const noexcept {
+            return reference(static_cast<key_type>(_index), _p[_index]);
+        }
+        reference operator[](difference_type i) const { return *(*this + i); }
+    };
+
+    // class iterator : public iterator_base<iterator> {
+    //     using iterator_base<iterator>::iterator_base;
+    //     using reference = std::pair<const K, V &>;
+
+    //     reference operator*() const noexcept {
+    //         return reference(static_cast<key_type>(_index), _p[_index]);
+    //     }
+    //     reference operator[](difference_type i) const { return *(*this + i);
+    //     }
+    // };
+
+    // class const_iterator
+    //     : public iterator_base<const_iterator> {
+    //     using iterator_base<const_iterator>::iterator_base;
+    //     using reference = std::pair<const K, V>;
+
+    //     reference operator*() const noexcept {
+    //         return reference(static_cast<key_type>(_index), _p[_index]);
+    //     }
+    //     reference operator[](difference_type i) const { return *(*this + i);
+    //     }
+    // };
+
+    using iterator = iterator_base<std::pair<const K, V &>>;
+    using const_iterator = iterator_base<std::pair<const K, V>>;
 
 private:
-    std::unique_ptr<value_type[]> _data;
-    value_type * _data_end;
+    std::unique_ptr<mapped_type[]> _data;
+    size_type _size;
 
 public:
-    static_map() : _data(nullptr), _data_end(nullptr){};
+    static_map() : _data(nullptr), _size(0){};
     static_map(const size_type & size)
-        : _data(std::make_unique_for_overwrite<value_type[]>(size))
-        , _data_end(begin() + size){};
+        : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
+        , _size(size){};
 
-    static_map(const size_type & size, const value_type & init_value) : static_map(size) {
+    static_map(const size_type & size, const mapped_type & init_value)
+        : static_map(size) {
         std::ranges::fill(*this, init_value);
     }
 
@@ -53,34 +168,36 @@ public:
     }
     static_map & operator=(static_map &&) = default;
 
-    iterator begin() noexcept { return _data.get(); }
-    iterator end() noexcept { return _data_end; }
-    const_iterator begin() const noexcept { return _data.get(); }
-    const_iterator end() const noexcept { return _data_end; }
-
-    size_type size() const noexcept {
-        return static_cast<size_type>(std::distance(begin(), end()));
+    iterator begin() noexcept { return iterator(_data.get(), 0); }
+    iterator end() noexcept { return iterator(_data.get(), _size); }
+    const_iterator begin() const noexcept {
+        return const_iterator(_data.get(), 0);
     }
+    const_iterator end() const noexcept {
+        return const_iterator(_data.get(), _size);
+    }
+
+    size_type size() const noexcept { return _size; }
     void resize(const size_type & n) {
         if(n == size()) return;
-        _data = std::make_unique_for_overwrite<value_type[]>(n);
-        _data_end = begin() + n;
+        _data = std::make_unique_for_overwrite<mapped_type[]>(n);
+        _size = n;
     }
 
-    reference operator[](const size_type & i) noexcept {
-        assert(i < size());
-        return _data[i];
+    mapped_type & operator[](const key_type & i) noexcept {
+        assert(static_cast<size_type>(i) < size());
+        return _data[static_cast<size_type>(i)];
     }
-    const_reference operator[](const size_type & i) const noexcept {
-        assert(i < size());
-        return _data[i];
+    mapped_type operator[](const key_type & i) const noexcept {
+        assert(static_cast<size_type>(i) < size());
+        return _data[static_cast<size_type>(i)];
     }
 };
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#include "melon/data_structures/static_map_atomic_bool.hpp"
-#include "melon/data_structures/static_map_bool.hpp"
+// #include "melon/data_structures/static_map_atomic_bool.hpp"
+// #include "melon/data_structures/static_map_bool.hpp"
 
 #endif  // MELON_STATIC_MAP_HPP

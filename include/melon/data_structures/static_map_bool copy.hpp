@@ -14,9 +14,8 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename K>
-    requires std::integral<K>
-class static_map<K, bool> {
+template <>
+class static_map<bool> {
 public:
     using value_type = bool;
     using size_type = std::size_t;
@@ -59,12 +58,10 @@ public:
     //     }
     // };
 
-    class reference {
-    private:
+    struct reference {
         span_type * _p;
         span_type _mask;
 
-    public:
         reference(span_type * x, size_type y)
             : _p(x), _mask(span_type(1) << y) {}
         reference() noexcept : _p(0), _mask(0) {}
@@ -195,7 +192,7 @@ public:
 
     class iterator : public iterator_base<iterator> {
     public:
-        using iterator_base<iterator>::iterator_base;
+        using iterator_base::iterator_base;
         using reference = static_map<bool>::reference;
 
         reference operator*() const noexcept {
@@ -206,7 +203,7 @@ public:
 
     class const_iterator : public iterator_base<const_iterator> {
     public:
-        using iterator_base<const_iterator>::iterator_base;
+        using iterator_base::iterator_base;
         using reference = const_reference;
 
         const_reference operator*() const noexcept {

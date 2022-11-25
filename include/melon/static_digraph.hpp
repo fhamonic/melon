@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "melon/data_structures/static_map.hpp"
+#include "melon/utils/map_view.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -18,12 +19,12 @@ public:
     using arc_t = unsigned int;
 
 private:
-    static_map<arc_t> _out_arc_begin;
-    static_map<vertex_t> _arc_target;
-    static_map<vertex_t> _arc_source;
+    static_map<vertex_t, arc_t> _out_arc_begin;
+    static_map<arc_t, vertex_t> _arc_target;
+    static_map<arc_t, vertex_t> _arc_source;
 
-    static_map<arc_t> _in_arc_begin;
-    static_map<arc_t> _in_arcs;
+    static_map<vertex_t, arc_t> _in_arc_begin;
+    std::vector<arc_t> _in_arcs;
 
 public:
     template <std::ranges::range S, std::ranges::range T>
@@ -34,13 +35,13 @@ public:
         , _in_arc_begin(nb_vertices, 0)
         , _in_arcs(_arc_target.size()) {
         assert(std::ranges::all_of(
-            _arc_source, [n = nb_vertices](auto && v) { return v < n; }));
+            sources, [n = nb_vertices](auto && v) { return v < n; }));
         assert(std::ranges::all_of(
-            _arc_target, [n = nb_vertices](auto && v) { return v < n; }));
-        assert(std::ranges::is_sorted(_arc_source));
-        static_map<arc_t> in_arc_count(nb_vertices, 0);
-        for(auto && s : _arc_source) ++_out_arc_begin[s];
-        for(auto && t : _arc_target) ++in_arc_count[t];
+            targets, [n = nb_vertices](auto && v) { return v < n; }));
+        assert(std::ranges::is_sorted(sources));
+        static_map<vertex_t, arc_t> in_arc_count(nb_vertices, 0);
+        for(auto && s : sources) ++_out_arc_begin[s];
+        for(auto && t : targets) ++in_arc_count[t];
         std::exclusive_scan(_out_arc_begin.begin(), _out_arc_begin.end(),
                             _out_arc_begin.begin(), 0);
         std::exclusive_scan(in_arc_count.begin(), in_arc_count.end(),
@@ -107,10 +108,13 @@ public:
 
     auto out_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
-        return std::ranges::subrange(
-            _arc_target.begin() + _out_arc_begin[u],
-            (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u + 1]
-                                   : _arc_target.end()));
+        // return std::ranges::subrange(
+        //     _arc_target.begin() + _out_arc_begin[u],
+        //     (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u +
+        //     1]
+        //                            : _arc_target.end()));
+        return std::views::transform(out_arcs(u),
+                                     [this](auto && a) { return target(a); });
     }
     auto in_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
@@ -129,21 +133,23 @@ public:
     }
 
     template <typename T>
-    static_map<T> create_vertex_map() const noexcept {
-        return static_map<T>(nb_vertices());
+    static_map<vertex_t, T> create_vertex_map() const noexcept {
+        return static_map<vertex_t, T>(nb_vertices());
     }
     template <typename T>
-    static_map<T> create_vertex_map(const T & default_value) const noexcept {
-        return static_map<T>(nb_vertices(), default_value);
+    static_map<vertex_t, T> create_vertex_map(
+        const T & default_value) const noexcept {
+        return static_map<vertex_t, T>(nb_vertices(), default_value);
     }
 
     template <typename T>
-    static_map<T> create_arc_map() const noexcept {
-        return static_map<T>(nb_arcs());
+    static_map<arc_t, T> create_arc_map() const noexcept {
+        return static_map<arc_t, T>(nb_arcs());
     }
     template <typename T>
-    static_map<T> create_arc_map(const T & default_value) const noexcept {
-        return static_map<T>(nb_arcs(), default_value);
+    static_map<arc_t, T> create_arc_map(
+        const T & default_value) const noexcept {
+        return static_map<arc_t, T>(nb_arcs(), default_value);
     }
 };
 

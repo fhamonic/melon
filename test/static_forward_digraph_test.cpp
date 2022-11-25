@@ -18,7 +18,6 @@ GTEST_TEST(static_forward_digraph, empty_constructor) {
     ASSERT_FALSE(graph.is_valid_arc(0));
 
     EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.source(0), "");
     EXPECT_DEATH(graph.target(0), "");
     EXPECT_DEATH(graph.out_arcs(0), "");
 }
@@ -38,7 +37,6 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_no_elements) {
     ASSERT_FALSE(graph.is_valid_arc(0));
 
     EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.source(0), "");
     EXPECT_DEATH(graph.target(0), "");
     EXPECT_DEATH(graph.out_neighbors(0), "");
 }
@@ -114,8 +112,4 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
         std::ranges::empty_view<static_forward_digraph::vertex_t>());
 
     ASSERT_EQ_RANGES(graph.arcs_pairs(), arc_pairs);
-
-    for(static_forward_digraph::arc_t a : graph.arcs()) {
-        ASSERT_EQ(graph.source(a), arc_pairs[a].first);
-    }
 }
