@@ -17,14 +17,9 @@ public:
     using vertex_t = unsigned int;
     using arc_t = unsigned int;
 
-    template <typename T>
-    using vertex_map = static_map<T>;
-    template <typename T>
-    using arc_map = static_map<T>;
-
 private:
-    vertex_map<arc_t> _out_arc_begin;
-    arc_map<vertex_t> _arc_target;
+    static_map<vertex_t, arc_t> _out_arc_begin;
+    static_map<arc_t, vertex_t> _arc_target;
 
 public:
     template <std::ranges::range S, std::ranges::range T>
@@ -71,13 +66,6 @@ public:
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    vertex_t source(const arc_t & a) const noexcept {  // O(\log |V|)
-        assert(is_valid_arc(a));
-        auto it = std::ranges::lower_bound(_out_arc_begin, a,
-                                           std::less_equal<arc_t>());
-        return static_cast<vertex_t>(
-            std::distance(_out_arc_begin.begin(), --it));
-    }
     vertex_t target(const arc_t & a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_target[a];
@@ -85,10 +73,13 @@ public:
     const auto & targets_map() const { return _arc_target; }
     auto out_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
-        return std::ranges::subrange(
-            _arc_target.begin() + _out_arc_begin[u],
-            (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u + 1]
-                                   : _arc_target.end()));
+        // return std::ranges::values_view(std::ranges::subrange(
+        //     _arc_target.begin() + _out_arc_begin[u],
+        //     (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u +
+        //     1]
+        //                            : _arc_target.end())));
+        return std::views::transform(out_arcs(u),
+                                      [this](auto && a) { return target(a); });
     }
 
     auto out_arcs_pairs(const vertex_t & u) const noexcept {
@@ -102,21 +93,23 @@ public:
     }
 
     template <typename T>
-    static_map<T> create_vertex_map() const noexcept {
-        return static_map<T>(nb_vertices());
+    static_map<vertex_t, T> create_vertex_map() const noexcept {
+        return static_map<vertex_t, T>(nb_vertices());
     }
     template <typename T>
-    static_map<T> create_vertex_map(const T & default_value) const noexcept {
-        return static_map<T>(nb_vertices(), default_value);
+    static_map<vertex_t, T> create_vertex_map(
+        const T & default_value) const noexcept {
+        return static_map<vertex_t, T>(nb_vertices(), default_value);
     }
 
     template <typename T>
-    static_map<T> create_arc_map() const noexcept {
-        return static_map<T>(nb_arcs());
+    static_map<arc_t, T> create_arc_map() const noexcept {
+        return static_map<arc_t, T>(nb_arcs());
     }
     template <typename T>
-    static_map<T> create_arc_map(const T & default_value) const noexcept {
-        return static_map<T>(nb_arcs(), default_value);
+    static_map<arc_t, T> create_arc_map(
+        const T & default_value) const noexcept {
+        return static_map<arc_t, T>(nb_arcs(), default_value);
     }
 };
 
