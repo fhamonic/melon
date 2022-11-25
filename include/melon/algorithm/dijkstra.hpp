@@ -108,7 +108,7 @@ public:
 
     dijkstra & reset() noexcept {
         _heap.clear();
-        _vertex_status_map.fill(PRE_HEAP);
+        for(auto && u : _graph.vertices()) _vertex_status_map[u] = PRE_HEAP;
         return *this;
     }
     dijkstra & add_source(vertex_t s,

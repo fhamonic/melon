@@ -1,26 +1,19 @@
-#ifndef MELON_TRAVERSAL_ITERATOR_HPP
-#define MELON_TRAVERSAL_ITERATOR_HPP
+#ifndef MELON_UTILS_TRAVERSAL_ITERATOR_HPP
+#define MELON_UTILS_TRAVERSAL_ITERATOR_HPP
 
 #include <concepts>
 #include <iterator>
 
+#include "melon/concepts/traversal.hpp"
+
 namespace fhamonic {
 namespace melon {
-
-namespace concepts {
-template <typename A>
-concept traversal_algorithm =
-    requires(A alg, typename A::traversal_entry) {
-        { alg.empty_queue() } -> std::convertible_to<bool>;
-        { alg.next_entry() } -> std::same_as<typename A::traversal_entry>;
-    };
-}
 
 struct traversal_end_sentinel {};
 
 template <typename A>
-    requires concepts::traversal_algorithm<A> &&
-             std::default_initializable<typename A::traversal_entry>
+requires concepts::traversal_algorithm<A> &&
+    std::default_initializable<typename A::traversal_entry>
 class traversal_iterator {
 public:
     using iterator_category = std::input_iterator_tag;
@@ -52,4 +45,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_TRAVERSAL_ITERATOR_HPP
+#endif  // MELON_UTILS_TRAVERSAL_ITERATOR_HPP

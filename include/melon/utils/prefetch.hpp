@@ -1,5 +1,5 @@
-#ifndef MELON_PREFETCH_HPP
-#define MELON_PREFETCH_HPP
+#ifndef MELON_UTILS_PREFETCH_HPP
+#define MELON_UTILS_PREFETCH_HPP
 
 #include <concepts>
 #include <ranges>
@@ -32,4 +32,4 @@ constexpr void prefetch_map_values(const V & values, const M & map) {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_PREFETCH_HPP
+#endif  // MELON_UTILS_PREFETCH_HPP

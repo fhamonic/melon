@@ -28,16 +28,6 @@ concept key_value_map = key_value_map_view<M,K,V> &&
 }  // namespace concepts
 // clang-format on
 
-template <typename F>
-class map_view {
-private:
-    F _func;
-
-public:
-    map_view(F && f) : _func(std::forward<F>(f)) {}
-    auto operator[](const auto & k) { return _func(k); }
-};
-
 }  // namespace melon
 }  // namespace fhamonic
 
