@@ -1,5 +1,5 @@
-#ifndef MELON_CONCEPT_SEMIRING_HPP
-#define MELON_CONCEPT_SEMIRING_HPP
+#ifndef MELON_CONCEPTS_SEMIRING_HPP
+#define MELON_CONCEPTS_SEMIRING_HPP
 
 #include <concepts>
 
@@ -21,4 +21,4 @@ concept semiring = requires(typename S::value_type v) {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_CONCEPT_SEMIRING_HPP
+#endif  // MELON_CONCEPTS_SEMIRING_HPP

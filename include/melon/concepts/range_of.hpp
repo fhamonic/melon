@@ -1,5 +1,5 @@
-#ifndef MELON_CONCEPTS_DETAIL_RANGE_OF_HPP
-#define MELON_CONCEPTS_DETAIL_RANGE_OF_HPP
+#ifndef MELON_CONCEPTS_RANGE_OF_HPP
+#define MELON_CONCEPTS_RANGE_OF_HPP
 
 #include <concepts>
 #include <ranges>
@@ -27,4 +27,4 @@ concept contiguous_range_of =
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_CONCEPTS_DETAIL_RANGE_OF_HPP
+#endif  // MELON_CONCEPTS_RANGE_OF_HPP

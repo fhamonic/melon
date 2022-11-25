@@ -109,7 +109,8 @@ public:
     bidirectional_dijkstra & reset() noexcept {
         _forward_heap.clear();
         _reverse_heap.clear();
-        _vertex_status_map.fill(std::make_pair(PRE_HEAP, PRE_HEAP));
+        for(auto && u : _graph.vertices())
+            _vertex_status_map[u] = std::make_pair(PRE_HEAP, PRE_HEAP);
         return *this;
     }
     bidirectional_dijkstra & add_forward_source(

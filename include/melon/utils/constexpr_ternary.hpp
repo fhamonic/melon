@@ -1,5 +1,5 @@
-#ifndef MELON_CONSTEXPR_TERNARY_HPP
-#define MELON_CONSTEXPR_TERNARY_HPP
+#ifndef MELON_UTILS_CONSTEXPR_TERNARY_HPP
+#define MELON_UTILS_CONSTEXPR_TERNARY_HPP
 
 #include <type_traits>
 #include <utility>
@@ -19,4 +19,4 @@ decltype(auto) constexpr_ternary(T && t, F && f) {
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_CONSTEXPR_TERNARY_HPP
+#endif  // MELON_UTILS_CONSTEXPR_TERNARY_HPP

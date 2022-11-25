@@ -83,21 +83,13 @@ concept has_arc_map = requires(G g, graph_arc_t<G> a, T v) {
 }  // namespace concepts
 // clang-format on
 
-// template <typename G, typename T>
-// requires concepts::has_vertex_map<G,T>
-// using graph_vertex_map = typename std::remove_reference_t<G>::vertex_map<T>;
-
-// template <typename G, typename T>
-// requires concepts::has_arc_map<G,T>
-// using graph_arc_map = typename std::remove_reference_t<G>::arc_map<T>;
-
 template <typename G, typename T>
-    requires concepts::has_vertex_map<G, T>
+requires concepts::has_vertex_map<G, T>
 using graph_vertex_map =
     decltype(std::declval<G>().template create_vertex_map<T>());
 
 template <typename G, typename T>
-    requires concepts::has_arc_map<G, T>
+requires concepts::has_arc_map<G, T>
 using graph_arc_map = decltype(std::declval<G>().template create_arc_map<T>());
 
 }  // namespace melon
