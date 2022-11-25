@@ -48,10 +48,7 @@ static_digraph graph = ...;
 static_digraph::arc_map<double> length_map = ...;
 static_digraph::vertex_t s = ...; 
 
-Dijkstra dijkstra(graph, length_map);
-dijkstra.add_source(s);
-
-for(auto && [u, dist] : dijkstra) {
+for(auto && [u, dist] : dijkstra(graph, length_map, s)) {
     ...;
 }
 ```
