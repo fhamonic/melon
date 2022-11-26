@@ -139,11 +139,11 @@ private:
 
 public:
     static_map() : _data(nullptr), _size(0){};
-    explicit static_map(const size_type & size)
+    explicit static_map(const size_type size)
         : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
         , _size(size){};
 
-    static_map(const size_type & size, const mapped_type & init_value)
+    static_map(const size_type size, const mapped_type & init_value)
         : static_map(size) {
         std::fill(_data.get(), _data.get() + _size, init_value);
     }
@@ -175,17 +175,17 @@ public:
     }
 
     constexpr size_type size() const noexcept { return _size; }
-    constexpr void resize(const size_type & n) {
+    constexpr void resize(const size_type n) {
         if(n == size()) return;
         _data = std::make_unique_for_overwrite<mapped_type[]>(n);
         _size = n;
     }
 
-    constexpr mapped_type & operator[](const key_type & i) noexcept {
+    constexpr mapped_type & operator[](const key_type i) noexcept {
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
-    constexpr mapped_type operator[](const key_type & i) const noexcept {
+    constexpr mapped_type operator[](const key_type i) const noexcept {
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
