@@ -202,7 +202,7 @@ public:
 };  // class d_ary_heap
 
 template <typename K, typename P, typename C = std::less<P>,
-          typename M = std::map<K, std::size_t>>
+          typename M = std::unordered_map<K, std::size_t>>
 using binary_heap = d_ary_heap<2, K, P, C, M>;
 
 }  // namespace melon
