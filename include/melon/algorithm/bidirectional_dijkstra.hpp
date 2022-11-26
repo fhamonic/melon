@@ -141,8 +141,8 @@ public:
                 break;
             if(traits::semiring::less(u1_dist, u2_dist)) {
                 prefetch_range(_graph.out_arcs(u1));
-                prefetch_map_values(_graph.out_arcs(u1), _graph.targets_map());
-                prefetch_map_values(_graph.out_arcs(u1), _length_map);
+                prefetch_mapped_values(_graph.out_arcs(u1), _graph.targets_map());
+                prefetch_mapped_values(_graph.out_arcs(u1), _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
                 for(const arc_t a : _graph.out_arcs(u1)) {
@@ -185,8 +185,8 @@ public:
                 }
             } else {
                 prefetch_range(_graph.in_arcs(u2));
-                prefetch_map_values(_graph.in_arcs(u2), _graph.sources_map());
-                prefetch_map_values(_graph.in_arcs(u2), _length_map);
+                prefetch_mapped_values(_graph.in_arcs(u2), _graph.sources_map());
+                prefetch_mapped_values(_graph.in_arcs(u2), _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
                 for(const arc_t a : _graph.in_arcs(u2)) {

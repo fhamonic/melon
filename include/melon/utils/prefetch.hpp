@@ -16,7 +16,7 @@ constexpr void prefetch_range(const R & range) {
 }
 
 template <std::ranges::range V, typename M>
-constexpr void prefetch_map_values(const V & values, const M & map) {
+constexpr void prefetch_mapped_values(const V & values, const M & map) {
     using key_type = typename std::ranges::range_value_t<V>;
     if constexpr(std::integral<key_type> && requires() { map.data(); }) {
         if(values.size()) {
