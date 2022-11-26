@@ -65,7 +65,7 @@ public:
         _stack.reserve(g.nb_vertices());
     }
 
-    explicit depth_first_search(const G & g, cosnt vertex_t & s)
+    explicit depth_first_search(const G & g, const vertex_t & s)
         : depth_first_search(g) {
         add_source(s);
     }

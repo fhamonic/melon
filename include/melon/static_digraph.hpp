@@ -5,6 +5,7 @@
 #include <cassert>
 #include <numeric>
 #include <ranges>
+#include <span>
 #include <vector>
 
 #include "melon/data_structures/static_map.hpp"
@@ -28,10 +29,11 @@ private:
 
 public:
     template <std::ranges::range S, std::ranges::range T>
-    static_digraph(const std::size_t & nb_vertices, S && sources, T && targets)
+    static_digraph(const std::size_t & nb_vertices, S && sources,
+                   T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0)
-        , _arc_target(std::move(targets))
-        , _arc_source(std::move(sources))
+        , _arc_target(std::forward<T>(targets))
+        , _arc_source(std::forward<S>(sources))
         , _in_arc_begin(nb_vertices, 0)
         , _in_arcs(_arc_target.size()) {
         assert(std::ranges::all_of(
@@ -42,9 +44,11 @@ public:
         static_map<vertex_t, arc_t> in_arc_count(nb_vertices, 0);
         for(auto && s : sources) ++_out_arc_begin[s];
         for(auto && t : targets) ++in_arc_count[t];
-        std::exclusive_scan(_out_arc_begin.data(), _out_arc_begin.data() + nb_vertices,
-                             _out_arc_begin.data(), 0);
-        std::exclusive_scan(in_arc_count.data(), in_arc_count.data() + nb_vertices,
+        std::exclusive_scan(_out_arc_begin.data(),
+                            _out_arc_begin.data() + nb_vertices,
+                            _out_arc_begin.data(), 0);
+        std::exclusive_scan(in_arc_count.data(),
+                            in_arc_count.data() + nb_vertices,
                             _in_arc_begin.data(), 0);
         for(auto && a : arcs()) {
             vertex_t t = _arc_target[a];
@@ -88,7 +92,7 @@ public:
     }
     auto in_arcs(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
-        return std::ranges::subrange(
+        return std::span(
             _in_arcs.data() + _in_arc_begin[u],
             (u + 1 < nb_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
                                    : _in_arcs.data() + nb_arcs()));
@@ -108,13 +112,10 @@ public:
 
     auto out_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
-        // return std::ranges::subrange(
-        //     _arc_target.begin() + _out_arc_begin[u],
-        //     (u + 1 < nb_vertices() ? _arc_target.begin() + _out_arc_begin[u +
-        //     1]
-        //                            : _arc_target.end()));
-        return std::views::transform(out_arcs(u),
-                                     [this](auto && a) { return target(a); });
+        return std::span(
+            _arc_target.data() + _out_arc_begin[u],
+            (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
+                                   : _arc_target.data() + nb_arcs()));
     }
     auto in_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));

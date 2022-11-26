@@ -124,12 +124,21 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
+private:
+    void prefetch_vertex(const vertex_t & u) const noexcept {
+        if constexpr(std::ranges::borrowed_range<decltype(_graph.out_arcs(
+                         u))>) {
+            prefetch_range(_graph.out_arcs(u));
+            prefetch_map_values(_graph.out_arcs(u), _graph.targets_map());
+            prefetch_map_values(_graph.out_arcs(u), _length_map);
+        }
+    }
+
+public:
     traversal_entry next_entry() noexcept {
         const traversal_entry & p = _heap.top();
         _vertex_status_map[p.first] = POST_HEAP;
-        prefetch_range(_graph.out_arcs(p.first));
-        prefetch_map_values(_graph.out_arcs(p.first), _graph.targets_map());
-        prefetch_map_values(_graph.out_arcs(p.first), _length_map);
+        prefetch_vertex(p.first);
         _heap.pop();
         for(const arc_t & a : _graph.out_arcs(p.first)) {
             const vertex_t & w = _graph.target(a);

@@ -33,7 +33,7 @@ private:
 
 public:
     // Branchless version
-    // class reference {
+    // class bit_reference {
     // private:
     //     span_type * _p;
     //     size_type _local_index;
@@ -46,7 +46,7 @@ public:
     //     operator bool() const noexcept { return (*_p >> _local_index) & 1; }
     //     reference & operator=(bool b) noexcept {
     //         *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
-    //         *_p ^= *_p ^ (static_cast<span_type>(b) << _local_index);
+    //         *_p ^= (*_p & ~(static_cast<span_type>(b) << _local_index)) | (*_p & (static_cast<span_type>(b) << _local_index));
     //         return *this;
     //     }
     //     reference & operator=(const reference & other) noexcept {
@@ -60,7 +60,7 @@ public:
     //     }
     // };
 
-    class reference {
+    class bit_reference {
     private:
         span_type * _p;
         span_type _mask;

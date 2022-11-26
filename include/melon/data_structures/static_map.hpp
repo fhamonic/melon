@@ -115,7 +115,7 @@ private:
     size_type _size;
 
 public:
-    static_map() : _data(nullptr), _size(0){};
+    static_map() noexcept : _data(nullptr), _size(0){};
     explicit static_map(const size_type size)
         : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
         , _size(size){};

@@ -29,20 +29,20 @@ private:
     PropertyMaps _arc_property_maps;
 
 public:
-    static_digraph_builder() : _nb_vertices(0) {}
-    static_digraph_builder(std::size_t nb_vertices)
+    static_digraph_builder() noexcept : _nb_vertices(0) {}
+    static_digraph_builder(std::size_t nb_vertices) noexcept
         : _nb_vertices(nb_vertices) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
     void add_properties(Maps && maps, Properties && properties,
-                        std::index_sequence<Is...>) {
+                        std::index_sequence<Is...>) noexcept {
         (get<Is>(maps).push_back(get<Is>(properties)), ...);
     }
 
 public:
     static_digraph_builder & add_arc(vertex_t u, vertex_t v,
-                                     ArcProperty... properties) {
+                                     ArcProperty... properties) noexcept {
         assert(_nb_vertices > std::max(u, v));
         _arc_sources.push_back(u);
         _arc_targets.push_back(v);
@@ -67,9 +67,9 @@ public:
         ;
         return std::apply(
             [this](auto &&... property_map) {
-                return std::make_tuple(G(_nb_vertices, std::move(_arc_sources),
-                                         std::move(_arc_targets)),
-                                       property_map...);
+                return std::make_tuple(
+                    G(_nb_vertices, _arc_sources, _arc_targets),
+                    property_map...);
             },
             _arc_property_maps);
     }
