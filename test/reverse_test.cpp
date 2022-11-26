@@ -2,7 +2,7 @@
 
 #include "melon/adaptor/reverse.hpp"
 #include "melon/algorithm/dijkstra.hpp"
-#include "melon/arc_list_builder.hpp"
+#include "melon/static_digraph_builder.hpp"
 #include "melon/static_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -47,7 +47,7 @@ GTEST_TEST(reverse_adaptor, static_graph) {
 }
 
 GTEST_TEST(reverse_adaptor, dijkstra) {
-    arc_list_builder<static_digraph, int> builder(6);
+    static_digraph_builder<static_digraph, int> builder(6);
 
     builder.add_arc(0, 1, 7);
     builder.add_arc(0, 2, 9);

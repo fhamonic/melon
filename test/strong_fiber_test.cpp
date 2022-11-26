@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/algorithm/strong_fiber.hpp"
-#include "melon/arc_list_builder.hpp"
+#include "melon/static_digraph_builder.hpp"
 #include "melon/static_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -9,7 +9,7 @@
 using namespace fhamonic::melon;
 
 GTEST_TEST(strong_fiber, test) {
-    arc_list_builder<static_digraph, int, int> builder(8);
+    static_digraph_builder<static_digraph, int, int> builder(8);
 
     builder.add_arc(0, 1, 1, 2);
     builder.add_arc(0, 6, 1, 2);

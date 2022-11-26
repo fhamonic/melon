@@ -54,7 +54,7 @@ private:
     pred_arcs_map _pred_arcs_map;
 
 public:
-    depth_first_search(const G & g)
+    explicit depth_first_search(const G & g)
         : _graph(g)
         , _stack()
         , _reached_map(g.nb_vertices(), false)
@@ -65,12 +65,17 @@ public:
         _stack.reserve(g.nb_vertices());
     }
 
+    explicit depth_first_search(const G & g, cosnt vertex_t & s)
+        : depth_first_search(g) {
+        add_source(s);
+    }
+
     depth_first_search & reset() noexcept {
         _stack.resize(0);
         _reached_map.fill(false);
         return *this;
     }
-    depth_first_search & add_source(vertex_t s) noexcept {
+    depth_first_search & add_source(const vertex_t & s) noexcept {
         assert(!_reached_map[s]);
         push_node(s);
         if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
@@ -78,7 +83,7 @@ public:
     }
 
     bool empty_queue() const noexcept { return _stack.empty(); }
-    void push_node(vertex_t u) noexcept {
+    void push_node(const vertex_t & u) noexcept {
         out_arcs_range r = _graph.out_arcs(u);
         _stack.emplace_back(r.begin(), r.end());
         _reached_map[u] = true;
@@ -113,13 +118,13 @@ public:
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
 
-    bool reached(const vertex_t u) const noexcept { return _reached_map[u]; }
-    vertex_t pred_vertex(const vertex_t u) const noexcept
+    bool reached(const vertex_t & u) const noexcept { return _reached_map[u]; }
+    vertex_t pred_vertex(const vertex_t & u) const noexcept
         requires(traits::store_pred_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc_t pred_arc(const vertex_t u) const noexcept
+    arc_t pred_arc(const vertex_t & u) const noexcept
         requires(traits::store_pred_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];

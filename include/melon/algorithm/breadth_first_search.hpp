@@ -57,7 +57,7 @@ private:
     distances_map _dist_map;
 
 public:
-    breadth_first_search(const G & g)
+    explicit breadth_first_search(const G & g)
         : _graph(g)
         , _queue()
         , _reached_map(g.nb_vertices(), false)
@@ -69,6 +69,11 @@ public:
               g.nb_vertices(), std::monostate{})) {
         _queue.reserve(g.nb_vertices());
         _queue_current = _queue.begin();
+    }
+
+    breadth_first_search(const G & g, const vertex_t & s)
+        : breadth_first_search(g) {
+        add_source(s);
     }
 
     breadth_first_search & reset() noexcept {

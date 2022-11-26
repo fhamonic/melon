@@ -24,7 +24,7 @@ private:
     static_map<arc_t, vertex_t> _arc_source;
 
     static_map<vertex_t, arc_t> _in_arc_begin;
-    std::vector<arc_t> _in_arcs;
+    static_map<arc_t, arc_t> _in_arcs;
 
 public:
     template <std::ranges::range S, std::ranges::range T>
@@ -89,9 +89,9 @@ public:
     auto in_arcs(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
         return std::ranges::subrange(
-            _in_arcs.begin() + _in_arc_begin[u],
-            (u + 1 < nb_vertices() ? _in_arcs.begin() + _in_arc_begin[u + 1]
-                                   : _in_arcs.end()));
+            _in_arcs.data() + _in_arc_begin[u],
+            (u + 1 < nb_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
+                                   : _in_arcs.data() + nb_arcs()));
     }
 
     vertex_t source(const arc_t & a) const noexcept {
