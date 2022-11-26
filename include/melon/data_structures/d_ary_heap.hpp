@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <functional>
-#include <map>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -12,7 +12,7 @@ namespace fhamonic {
 namespace melon {
 
 template <int D, typename K, typename P, typename C = std::less<P>,
-          typename M = std::map<K, std::size_t>>
+          typename M = std::unordered_map<K, std::size_t>>
 class d_ary_heap {
 public:
     using key_type = K;

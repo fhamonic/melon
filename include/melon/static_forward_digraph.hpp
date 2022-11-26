@@ -5,6 +5,7 @@
 #include <cassert>
 #include <numeric>
 #include <ranges>
+#include <span>
 #include <vector>
 
 #include "melon/data_structures/static_map.hpp"
@@ -24,7 +25,7 @@ private:
 public:
     template <std::ranges::range S, std::ranges::range T>
     static_forward_digraph(const std::size_t & nb_vertices, S && sources,
-                           T && targets)
+                           T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0), _arc_target(std::move(targets)) {
         assert(std::ranges::all_of(
             sources, [n = nb_vertices](auto && v) { return v < n; }));
@@ -74,7 +75,7 @@ public:
     const auto & targets_map() const { return _arc_target; }
     auto out_neighbors(const vertex_t & u) const noexcept {
         assert(is_valid_node(u));
-        return std::ranges::subrange(
+        return std::span(
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
                                    : _arc_target.data() + nb_arcs()));
