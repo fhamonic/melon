@@ -193,7 +193,7 @@ public:
             prefetch_range(_graph.out_arcs(u));
             prefetch_range(_graph.out_neighbors(u));
             if(e.strong) {
-                prefetch_map_values(_graph.out_arcs(u), _length_map);
+                prefetch_mapped_values(_graph.out_arcs(u), _length_map);
                 _callback_strong(u);
                 _heap.pop();
                 --nb_strong_candidates;
@@ -201,7 +201,7 @@ public:
                     process_strong_vertex_out_arc(u, e.dist, a);
                 }
             } else {
-                prefetch_map_values(_graph.out_arcs(u), _reduced_length_map);
+                prefetch_mapped_values(_graph.out_arcs(u), _reduced_length_map);
                 _callback_weak(u);
                 _heap.pop();
                 --nb_weak_candidates;
