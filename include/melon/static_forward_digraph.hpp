@@ -78,8 +78,6 @@ public:
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
                                    : _arc_target.data() + nb_arcs()));
-        // return std::views::transform(out_arcs(u),
-        //                              [this](auto && a) { return target(a); });
     }
 
     auto out_arcs_pairs(const vertex_t & u) const noexcept {

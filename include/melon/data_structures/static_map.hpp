@@ -107,29 +107,6 @@ public:
         reference operator[](difference_type i) const { return *(*this + i); }
     };
 
-    // class iterator : public iterator_base<iterator> {
-    //     using iterator_base<iterator>::iterator_base;
-    //     using reference = std::pair<const K, V &>;
-
-    //     reference operator*() const noexcept {
-    //         return reference(static_cast<key_type>(_index), _p[_index]);
-    //     }
-    //     reference operator[](difference_type i) const { return *(*this + i);
-    //     }
-    // };
-
-    // class const_iterator
-    //     : public iterator_base<const_iterator> {
-    //     using iterator_base<const_iterator>::iterator_base;
-    //     using reference = std::pair<const K, V>;
-
-    //     reference operator*() const noexcept {
-    //         return reference(static_cast<key_type>(_index), _p[_index]);
-    //     }
-    //     reference operator[](difference_type i) const { return *(*this + i);
-    //     }
-    // };
-
     using iterator = iterator_base<std::pair<const K, V &>>;
     using const_iterator = iterator_base<std::pair<const K, V>>;
 

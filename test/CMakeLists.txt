@@ -10,7 +10,7 @@ add_executable(
     static_forward_digraph_test.cpp
     static_map_test.cpp
     static_map_bool_test.cpp
-    arc_list_builder_test.cpp
+    static_digraph_builder_test.cpp
     dijkstra_test.cpp
     bidirectional_dijkstra_test.cpp
     strong_fiber_test.cpp

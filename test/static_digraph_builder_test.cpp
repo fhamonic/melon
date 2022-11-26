@@ -1,14 +1,14 @@
 #include <gtest/gtest.h>
 
-#include "melon/arc_list_builder.hpp"
+#include "melon/static_digraph_builder.hpp"
 #include "melon/static_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(arc_list_builder, build_without_map) {
-    arc_list_builder<static_digraph> builder(8);
+GTEST_TEST(static_digraph_builder, build_without_map) {
+    static_digraph_builder<static_digraph> builder(8);
 
     builder.add_arc(3, 4);
     builder.add_arc(1, 7);
@@ -37,9 +37,9 @@ GTEST_TEST(arc_list_builder, build_without_map) {
              {6, 5}}));
 }
 
-GTEST_TEST(arc_list_builder, build_with_map) {
+GTEST_TEST(static_digraph_builder, build_with_map) {
     constexpr std::size_t n = 8;
-    arc_list_builder<static_digraph, int> builder(n);
+    static_digraph_builder<static_digraph, int> builder(n);
 
     std::vector<std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>
         pairs{{3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3},
