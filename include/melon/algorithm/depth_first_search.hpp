@@ -41,7 +41,8 @@ public:
 private:
     const G & _graph;
 
-    using out_arcs_range = decltype(std::declval<G>().out_arcs(vertex_t()));
+    using out_arcs_range =
+        decltype(std::declval<G>().out_arcs(std::declval<vertex_t>()));
     using out_arcs_it = decltype(std::declval<out_arcs_range>().begin());
     using out_arcs_sentinel = decltype(std::declval<out_arcs_range>().end());
 
@@ -49,23 +50,22 @@ private:
     std::vector<std::pair<out_arcs_it, out_arcs_sentinel>> _stack;
 
     reached_map _reached_map;
-
     pred_vertices_map _pred_vertices_map;
     pred_arcs_map _pred_arcs_map;
 
 public:
-    explicit depth_first_search(const G & g)
+    explicit depth_first_search(const G & g) noexcept
         : _graph(g)
         , _stack()
-        , _reached_map(g.nb_vertices(), false)
+        , _reached_map(g.template create_vertex_map<bool>(false))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.nb_vertices(), std::monostate{}))
+              g.template create_vertex_map<vertex_t>(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.nb_vertices(), std::monostate{})) {
+              g.template create_vertex_map<arc_t>(), std::monostate{})) {
         _stack.reserve(g.nb_vertices());
     }
 
-    explicit depth_first_search(const G & g, const vertex_t & s)
+    depth_first_search(const G & g, const vertex_t & s) noexcept
         : depth_first_search(g) {
         add_source(s);
     }
@@ -83,14 +83,15 @@ public:
     }
 
     bool empty_queue() const noexcept { return _stack.empty(); }
+
+private:
     void push_node(const vertex_t & u) noexcept {
         out_arcs_range r = _graph.out_arcs(u);
         _stack.emplace_back(r.begin(), r.end());
         _reached_map[u] = true;
     }
 
-private:
-    void advance_iterators() {
+    void advance_iterators() noexcept {
         assert(!_stack.empty());
         do {
             while(_stack.back().first != _stack.back().second) {
@@ -103,6 +104,7 @@ private:
 
 public:
     std::pair<arc_t, vertex_t> next_entry() noexcept {
+        assert(!_stack.empty());
         const arc_t a = *_stack.back().first;
         const vertex_t u = _graph.target(a);
         push_node(u);
