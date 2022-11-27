@@ -23,7 +23,7 @@ GTEST_TEST(static_digraph, empty_constructor) {
     EXPECT_DEATH(graph.out_arcs(0), "");
 }
 
-GTEST_TEST(static_digraph, vectors_constructor_no_elements) {
+GTEST_TEST(static_digraph, empty_vectors_constructor) {
     std::vector<static_digraph::vertex_t> sources;
     std::vector<static_digraph::vertex_t> targets;
 
