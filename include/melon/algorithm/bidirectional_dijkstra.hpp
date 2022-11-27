@@ -140,12 +140,13 @@ public:
                                       traits::semiring::plus(u1_dist, u2_dist)))
                 break;
             if(traits::semiring::less(u1_dist, u2_dist)) {
-                prefetch_range(_graph.out_arcs(u1));
-                prefetch_mapped_values(_graph.out_arcs(u1), _graph.targets_map());
-                prefetch_mapped_values(_graph.out_arcs(u1), _length_map);
+                const auto & out_arcs = _graph.out_arcs(u1);
+                prefetch_range(out_arcs);
+                prefetch_mapped_values(out_arcs, _graph.targets_map());
+                prefetch_mapped_values(out_arcs, _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
-                for(const arc_t a : _graph.out_arcs(u1)) {
+                for(const arc_t a : out_arcs) {
                     const vertex_t w = _graph.target(a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
@@ -184,12 +185,13 @@ public:
                     }
                 }
             } else {
-                prefetch_range(_graph.in_arcs(u2));
-                prefetch_mapped_values(_graph.in_arcs(u2), _graph.sources_map());
-                prefetch_mapped_values(_graph.in_arcs(u2), _length_map);
+                const auto & in_arcs = _graph.in_arcs(u2);
+                prefetch_range(in_arcs);
+                prefetch_mapped_values(in_arcs, _graph.sources_map());
+                prefetch_mapped_values(in_arcs, _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
-                for(const arc_t a : _graph.in_arcs(u2)) {
+                for(const arc_t a : in_arcs) {
                     const vertex_t w = _graph.source(a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
@@ -231,8 +233,8 @@ public:
         }
         return st_dist;
     }
-    auto begin() noexcept { return traversal_iterator(*this); }
-    auto end() noexcept { return traversal_end_sentinel(); }
+    // auto begin() noexcept { return traversal_iterator(*this); }
+    // auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t u) const noexcept
         requires(traits::store_pred_vertices) {
