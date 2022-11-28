@@ -162,8 +162,12 @@ public:
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
-    constexpr mapped_type operator[](const key_type i) const noexcept {
+    constexpr const mapped_type & operator[](const key_type i) const noexcept {
         assert(static_cast<size_type>(i) < size());
+        return _data[static_cast<size_type>(i)];
+    }
+    constexpr const mapped_type & at(const key_type i) const {
+        if(static_cast<size_type>(i) >= size()) throw std::out_of_range("Invalid key.");
         return _data[static_cast<size_type>(i)];
     }
 

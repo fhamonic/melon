@@ -13,6 +13,7 @@ add_executable(
   static_digraph_builder_test.cpp
   breadth_first_search_test.cpp
   depth_first_search_test.cpp
+  d_ary_heap_test.cpp
   dijkstra_test.cpp
   bidirectional_dijkstra_test.cpp
   strong_fiber_test.cpp
