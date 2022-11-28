@@ -11,7 +11,7 @@
 namespace fhamonic {
 namespace melon {
 
-template <int D, typename K, typename P, typename C = std::less<P>,
+template <int D, typename K, typename P, typename C = std::greater<P>,
           typename M = std::unordered_map<K, std::size_t>>
 class d_ary_heap {
 public:
@@ -106,13 +106,13 @@ private:
         }
     }
 
-    constexpr entry & pair_ref(const size_type & i) noexcept {
+    constexpr entry & pair_ref(const size_type i) noexcept {
         assert(0 <= (i / sizeof(entry)) &&
                (i / sizeof(entry)) < _heap_array.size());
         return *(reinterpret_cast<entry *>(
             reinterpret_cast<std::byte *>(_heap_array.data()) + i));
     }
-    constexpr const entry & pair_ref(const size_type & i) const noexcept {
+    constexpr const entry & pair_ref(const size_type i) const noexcept {
         assert(0 <= (i / sizeof(entry)) &&
                (i / sizeof(entry)) < _heap_array.size());
         return *(reinterpret_cast<const entry *>(
@@ -176,7 +176,8 @@ public:
         push(entry(k, p));
     }
     priority_type priority(const key_type & k) const noexcept {
-        return pair_ref(_indices_map[k]).second;
+        // return pair_ref(std::as_const(_indices_map[k])).second;
+        return pair_ref(_indices_map.at(k)).second;
     }
     bool contains(const key_type & k) const noexcept {
         const size_type i = _indices_map[k];

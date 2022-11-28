@@ -8,7 +8,6 @@
 
 using namespace fhamonic::melon;
 
-
 GTEST_TEST(depth_first_search, no_arcs_graph) {
     static_digraph_builder<static_digraph> builder(2);
 
@@ -22,7 +21,7 @@ GTEST_TEST(depth_first_search, no_arcs_graph) {
 }
 
 GTEST_TEST(depth_first_search, test) {
-    static_digraph_builder<static_digraph> builder(6);
+    static_digraph_builder<static_digraph> builder(8);
 
     builder.add_arc(0, 1);
     builder.add_arc(0, 2);
@@ -42,6 +41,7 @@ GTEST_TEST(depth_first_search, test) {
     builder.add_arc(5, 0);
     builder.add_arc(5, 2);
     builder.add_arc(5, 4);
+    builder.add_arc(7, 5);
 
     auto [graph] = builder.build();
 
