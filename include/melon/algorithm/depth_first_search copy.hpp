@@ -20,14 +20,10 @@ namespace melon {
 struct dfs_default_traits {
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
-    static constexpr bool store_distances = false;
 };
 
-// TODO ranges , requires out_neighbors : borrowed_range
+// TODO ranges , requires out_arcs : borrowed_range
 template <concepts::incidence_list_graph G, typename T = dfs_default_traits>
-    requires(concepts::incidence_list_graph<G> ||
-             concepts::adjacency_list_graph<G>) &&
-            concepts::has_vertex_map<G>
 class depth_first_search {
 public:
     using vertex_t = G::vertex_t;
@@ -35,28 +31,27 @@ public:
     using traits = T;
     using reached_map = graph_vertex_map<G, bool>;
 
-    static_assert(
-        !(concepts::adjacency_list_graph<G> && traits::store_pred_arcs),
-        "traversal on adjacency_list_graph cannot access predecessor arcs.");
-
     using pred_vertices_map =
         std::conditional<traits::store_pred_vertices,
                          graph_vertex_map<G, vertex_t>, std::monostate>::type;
     using pred_arcs_map =
         std::conditional<traits::store_pred_arcs, graph_vertex_map<G, arc_t>,
                          std::monostate>::type;
-    using distances_map =
-        std::conditional<traits::store_distances, graph_vertex_map<G, int>,
-                         std::monostate>::type;
 
 private:
     const G & _graph;
-    std::vector<vertex_t> _stack;
+
+    using out_arcs_range =
+        decltype(std::declval<G>().out_arcs(std::declval<vertex_t>()));
+    using out_arcs_it = decltype(std::declval<out_arcs_range>().begin());
+    using out_arcs_sentinel = decltype(std::declval<out_arcs_range>().end());
+
+    static_assert(std::ranges::borrowed_range<out_arcs_range>);
+    std::vector<std::pair<out_arcs_it, out_arcs_sentinel>> _stack;
 
     reached_map _reached_map;
     pred_vertices_map _pred_vertices_map;
     pred_arcs_map _pred_arcs_map;
-    distances_map _dist_map;
 
 public:
     explicit depth_first_search(const G & g) noexcept
@@ -66,9 +61,7 @@ public:
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
               g.template create_vertex_map<vertex_t>(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.template create_vertex_map<arc_t>(), std::monostate{}))
-        , _dist_map(constexpr_ternary<traits::store_distances>(
-              g.template create_vertex_map<int>(), std::monostate{})) {
+              g.template create_vertex_map<arc_t>(), std::monostate{})) {
         _stack.reserve(g.nb_vertices());
     }
 
@@ -84,44 +77,41 @@ public:
     }
     depth_first_search & add_source(const vertex_t & s) noexcept {
         assert(!_reached_map[s]);
-        _stack.push_back(s);
-        _reached_map[s] = true;
+        push_node(s);
         if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
-        if constexpr(traits::store_distances) _dist_map[s] = 0;
         return *this;
     }
 
     bool empty_queue() const noexcept { return _stack.empty(); }
 
-public:
-    vertex_t next_entry() noexcept {
+private:
+    void push_node(const vertex_t & u) noexcept {
+        out_arcs_range r = _graph.out_arcs(u);
+        _stack.emplace_back(r.begin(), r.end());
+        _reached_map[u] = true;
+    }
+
+    void advance_iterators() noexcept {
         assert(!_stack.empty());
-        const vertex_t u = _stack.back();
-        _stack.pop_back();
-        if constexpr(concepts::incidence_list_graph<G>) {
-            for(auto && a : _graph.out_arcs(u)) {
-                const vertex_t & w = _graph.target(a);
-                if(_reached_map[w]) continue;
-                _stack.push_back(w);
-                _reached_map[w] = true;
-                if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = u;
-                if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
-                if constexpr(traits::store_distances)
-                    _dist_map[w] = _dist_map[u] + 1;
+        do {
+            while(_stack.back().first != _stack.back().second) {
+                if(!reached(_graph.target(*_stack.back().first))) return;
+                ++_stack.back().first;
             }
-        } else {  // i.e., concepts::adjacency_list_graph<G>
-            for(auto && w : _graph.out_neighbors(u)) {
-                if(_reached_map[w]) continue;
-                _stack.push_back(w);
-                _reached_map[w] = true;
-                if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = u;
-                if constexpr(traits::store_distances)
-                    _dist_map[w] = _dist_map[u] + 1;
-            }
-        }
-        return u;
+            _stack.pop_back();
+        } while(!_stack.empty());
+    }
+
+public:
+    std::pair<arc_t, vertex_t> next_entry() noexcept {
+        assert(!_stack.empty());
+        const arc_t a = *_stack.back().first;
+        const vertex_t u = _graph.target(a);
+        push_node(u);
+        // if constexpr(traits::store_pred_vertices) _pred_vertices_map[u] = u;
+        if constexpr(traits::store_pred_arcs) _pred_arcs_map[u] = a;
+        advance_iterators();
+        return std::make_pair(a, u);
     }
 
     void run() noexcept {

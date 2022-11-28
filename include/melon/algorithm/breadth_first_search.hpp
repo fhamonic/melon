@@ -23,9 +23,10 @@ struct breadth_first_search_default_traits {
 };
 
 template <concepts::graph G, typename T = breadth_first_search_default_traits>
-requires(concepts::incidence_list_graph<G> ||
-         concepts::adjacency_list_graph<G>) &&
-    concepts::has_vertex_map<G> class breadth_first_search {
+    requires(concepts::incidence_list_graph<G> ||
+             concepts::adjacency_list_graph<G>) &&
+            concepts::has_vertex_map<G>
+class breadth_first_search {
 public:
     using vertex_t = G::vertex_t;
     using arc_t = G::arc_t;
@@ -98,7 +99,7 @@ public:
         if constexpr(concepts::incidence_list_graph<G>) {
             for(auto && a : _graph.out_arcs(u)) {
                 const vertex_t & w = _graph.target(a);
-                if(reached(w)) continue;
+                if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
                 if constexpr(traits::store_pred_vertices)
@@ -109,7 +110,7 @@ public:
             }
         } else {  // i.e., concepts::adjacency_list_graph<G>
             for(auto && w : _graph.out_neighbors(u)) {
-                if(reached(w)) continue;
+                if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
                 if constexpr(traits::store_pred_vertices)
@@ -130,17 +131,20 @@ public:
     bool reached(const vertex_t & u) const noexcept { return _reached_map[u]; }
 
     vertex_t pred_vertex(const vertex_t & u) const noexcept
-        requires(traits::store_pred_vertices) {
+        requires(traits::store_pred_vertices)
+    {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t & u) const noexcept
-        requires(traits::store_pred_arcs) {
+        requires(traits::store_pred_arcs)
+    {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
     int dist(const vertex_t & u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(reached(u));
         return _dist_map[u];
     }
