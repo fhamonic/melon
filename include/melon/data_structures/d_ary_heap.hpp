@@ -175,8 +175,11 @@ public:
     void push(const key_type & k, const priority_type & p) noexcept {
         push(entry(k, p));
     }
+    priority_type priority(const key_type & k) noexcept {
+        return pair_ref(std::as_const(_indices_map[k])).second;
+    }
     priority_type priority(const key_type & k) const noexcept {
-        // return pair_ref(std::as_const(_indices_map[k])).second;
+        // TODO : if const_operator[], use it, else use at()
         return pair_ref(_indices_map.at(k)).second;
     }
     bool contains(const key_type & k) const noexcept {
