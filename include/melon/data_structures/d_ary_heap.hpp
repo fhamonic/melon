@@ -43,15 +43,15 @@ public:
     void clear() noexcept { _heap_array.resize(0); }
 
 private:
-    static constexpr size_type parent_of(const size_type & i) noexcept {
+    static constexpr size_type parent_of(const size_type i) noexcept {
         return (i - sizeof(entry)) / (sizeof(entry) * D) * sizeof(entry);
     }
-    static constexpr size_type first_child_of(const size_type & i) noexcept {
+    static constexpr size_type first_child_of(const size_type i) noexcept {
         return i * D + sizeof(entry);
     }
     template <int I = D>
     constexpr size_type minimum_child(
-        const size_type & first_child) const noexcept {
+        const size_type first_child) const noexcept {
         if constexpr(I == 1)
             return first_child;
         else if constexpr(I == 2)
@@ -71,8 +71,8 @@ private:
         }
     }
     constexpr size_type minimum_remaining_child(
-        const size_type & first_child,
-        const size_type & nb_children) const noexcept {
+        const size_type first_child,
+        const size_type nb_children) const noexcept {
         if constexpr(D == 2)
             return first_child;
         else if constexpr(D == 4) {
@@ -118,13 +118,12 @@ private:
         return *(reinterpret_cast<const entry *>(
             reinterpret_cast<const std::byte *>(_heap_array.data()) + i));
     }
-    void heap_move(const size_type & i, entry && p) noexcept {
+    void heap_move(const size_type i, entry && p) noexcept {
         assert(0 <= (i / sizeof(entry)) &&
                (i / sizeof(entry)) < _heap_array.size());
         _indices_map[p.first] = i;
         pair_ref(i) = std::move(p);
     }
-
     void heap_push(size_type hole_index, entry && p) noexcept {
         while(hole_index > 0) {
             const size_type parent = parent_of(hole_index);
@@ -134,7 +133,6 @@ private:
         }
         heap_move(hole_index, std::move(p));
     }
-
     void adjust_heap(size_type hole_index, const size_type & end,
                      entry && p) noexcept {
         size_type child_end;
@@ -165,25 +163,27 @@ private:
     ok:
         heap_move(hole_index, std::move(p));
     }
-
-public:
+    size_type index_of(const key_type & k) const noexcept {
+        if constexpr(requires() { std::as_const(_indices_map)[k]; })
+            return _indices_map[k];
+        else
+            return _indices_map.at(k);
+    }
     void push(entry && p) noexcept {
         const size_type n = _heap_array.size();
         _heap_array.emplace_back();
         heap_push(size_type(n * sizeof(entry)), std::move(p));
     }
+
+public:
     void push(const key_type & k, const priority_type & p) noexcept {
         push(entry(k, p));
     }
-    priority_type priority(const key_type & k) noexcept {
-        return pair_ref(std::as_const(_indices_map[k])).second;
-    }
     priority_type priority(const key_type & k) const noexcept {
-        // TODO : if const_operator[], use it, else use at()
-        return pair_ref(_indices_map.at(k)).second;
+        return pair_ref(index_of(k)).second;
     }
     bool contains(const key_type & k) const noexcept {
-        const size_type i = _indices_map[k];
+        const size_type i = index_of(k);
         if(i >= _heap_array.size()) return false;
         return _heap_array[i].first == k;
     }
