@@ -51,7 +51,7 @@ struct dijkstra_default_traits {
 template <concepts::incidence_list_graph G,
           concepts::map_of<graph_vertex_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G>
+    requires concepts::has_vertex_map<G>
 class dijkstra {
 public:
     using vertex_t = graph_vertex_t<G>;
@@ -124,7 +124,6 @@ public:
 
     bool empty_queue() const noexcept { return _heap.empty(); }
 
-public:
     traversal_entry next_entry() noexcept {
         const traversal_entry & p = _heap.top();
         _vertex_status_map[p.first] = POST_HEAP;
@@ -165,19 +164,28 @@ public:
     auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex_t pred_vertex(const vertex_t & u) const noexcept
-        requires(traits::store_pred_vertices) {
+        requires(traits::store_pred_vertices)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc_t pred_arc(const vertex_t & u) const noexcept
-        requires(traits::store_pred_arcs) {
+        requires(traits::store_pred_arcs)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }
     value_t dist(const vertex_t & u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(_vertex_status_map[u] == POST_HEAP);
         return _distances_map[u];
+    }
+    bool reached(const vertex_t & u) const noexcept {
+        return _vertex_status_map[u] != PRE_HEAP;
+    }
+    bool visited(const vertex_t & u) const noexcept {
+        return _vertex_status_map[u] == POST_HEAP;
     }
 };
 
