@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <ranges>
 
-#include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/graph.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -12,11 +12,10 @@ namespace adaptors {
 
 template <typename G>
 class reverse {
-public:
-    using vertex_t = typename G::vertex_t;
-    using arc_t = typename G::arc_t;
-
 private:
+    using vertex = vertex_t<G>;
+    using arc = arc_t<G>;
+
     std::reference_wrapper<const G> _graph;
 
 public:
@@ -42,12 +41,12 @@ public:
     auto vertices() const noexcept { return _graph.get().vertices(); }
     auto arcs() const noexcept { return _graph.get().arcs(); }
 
-    vertex_t source(arc_t a) const noexcept
+    vertex source(arc a) const noexcept
         requires concepts::has_arc_target<G>
     {
         return _graph.get().target(a);
     }
-    vertex_t target(arc_t a) const noexcept
+    vertex target(arc a) const noexcept
         requires concepts::has_arc_source<G>
     {
         return _graph.get().source(a);
@@ -64,23 +63,23 @@ public:
         return _graph.get().sources_map();
     }
 
-    auto out_arcs(const vertex_t u) const noexcept
+    auto out_arcs(const vertex u) const noexcept
         requires concepts::reversible_incidence_list_graph<G>
     {
         return _graph.get().in_arcs(u);
     }
-    auto in_arcs(const vertex_t u) const noexcept
+    auto in_arcs(const vertex u) const noexcept
         requires concepts::incidence_list_graph<G>
     {
         return _graph.get().out_arcs(u);
     }
 
-    auto out_neighbors(const vertex_t u) const noexcept
+    auto out_neighbors(const vertex u) const noexcept
         requires concepts::reversible_adjacency_list_graph<G>
     {
         return _graph.get().in_neighbors(u);
     }
-    auto in_neighbors(const vertex_t u) const noexcept
+    auto in_neighbors(const vertex u) const noexcept
         requires concepts::adjacency_list_graph<G>
     {
         return _graph.get().out_neighbors(u);

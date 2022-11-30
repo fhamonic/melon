@@ -25,7 +25,7 @@ GTEST_TEST(static_digraph_builder, build_without_map) {
     ASSERT_EQ_RANGES(
         graph.arcs_pairs(),
         std::vector<
-            std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>(
+            std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>(
             {{1, 2},
              {1, 6},
              {1, 7},
@@ -41,11 +41,11 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
     constexpr std::size_t n = 8;
     static_digraph_builder<static_digraph, int> builder(n);
 
-    std::vector<std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>
+    std::vector<std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>
         pairs{{3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3},
               {6, 5}, {1, 2}, {1, 6}, {2, 3}};
 
-    auto weight = [n](static_digraph::vertex_t u, static_digraph::vertex_t v) {
+    auto weight = [n](vertex_t<static_digraph> u, vertex_t<static_digraph> v) {
         return static_cast<int>(u * n + v);
     };
 
@@ -56,7 +56,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
     ASSERT_EQ_RANGES(
         graph.arcs_pairs(),
         std::vector<
-            std::pair<static_digraph::vertex_t, static_digraph::vertex_t>>(
+            std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>(
             {{1, 2},
              {1, 6},
              {1, 7},
@@ -67,7 +67,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
              {5, 3},
              {6, 5}}));
 
-    for(static_digraph::arc_t a : graph.arcs()) {
+    for(arc_t<static_digraph> a : graph.arcs()) {
         auto u = graph.source(a);
         auto v = graph.target(a);
         ASSERT_EQ(map[a], weight(u, v));

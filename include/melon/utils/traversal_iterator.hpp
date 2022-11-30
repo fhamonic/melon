@@ -22,7 +22,7 @@ public:
     using pointer = value_type *;
     using difference_type = void;
 
-    traversal_iterator(A & alg) : algorithm(alg) {
+    explicit traversal_iterator(A & alg) : algorithm(alg) {
         if(!algorithm.empty_queue()) ++(*this);
     }
     traversal_iterator & operator++() noexcept {

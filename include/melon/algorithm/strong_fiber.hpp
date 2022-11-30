@@ -8,7 +8,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/graph.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/utils/prefetch.hpp"
 #include "melon/utils/semirings.hpp"
@@ -47,20 +47,20 @@ struct strong_fiber_default_traits {
         }
     };
 
-    using heap = d_ary_heap<2, typename G::vertex_t, entry, entry_cmp,
-                            graph_vertex_map<G, std::size_t>>;
+    using heap = d_ary_heap<2, vertex_t<G>, entry, entry_cmp,
+                            vertex_map_t<G, std::size_t>>;
 };
 
 template <concepts::adjacency_list_graph G, typename L1, typename L2,
           typename F1, typename F2,
           typename T = strong_fiber_default_traits<G, L1>>
-requires std::is_same_v<typename L1::value_type, typename L2::value_type>
+    requires std::is_same_v<typename L1::value_type, typename L2::value_type>
 class strong_fiber {
 public:
-    using vertex_t = G::vertex_t;
-    using arc_t = G::arc_t;
+    using vertex = vertex_t<G>;
+    using arc = arc_t<G>;
     using value_t = L1::value_type;
-    // using traversal_entry = std::pair<vertex_t, bool>;
+    // using traversal_entry = std::pair<vertex, bool>;
     using traits = T;
 
 private:
@@ -69,7 +69,7 @@ private:
     using entry = traits::entry;
     using entry_cmp = traits::entry_cmp;
     using heap = traits::heap;
-    using vertex_status_map = graph_vertex_map<G, vertex_status>;
+    using vertex_status_map = vertex_map_t<G, vertex_status>;
 
     const G & _graph;
     const L1 & _reduced_length_map;
@@ -104,17 +104,17 @@ public:
         return *this;
     }
 
-    strong_fiber & discard(vertex_t u) noexcept {
+    strong_fiber & discard(vertex u) noexcept {
         assert(_vertex_status_map[u] != IN_HEAP);
         _vertex_status_map[u] = POST_HEAP;
         return *this;
     }
 
     strong_fiber & add_strong_arc_source(
-        arc_t uv, value_t u_dist = traits::semiring::zero) noexcept {
-        vertex_t u = _graph.source(uv);
+        arc uv, value_t u_dist = traits::semiring::zero) noexcept {
+        vertex u = _graph.source(uv);
         discard(u);
-        for(const arc_t a : _graph.out_arcs(u)) {
+        for(const arc a : _graph.out_arcs(u)) {
             if(a == uv) continue;
             process_weak_vertex_out_arc(u, u_dist, a);
         }
@@ -124,10 +124,10 @@ public:
     }
 
     strong_fiber & add_useless_arc_source(
-        arc_t uv, value_t u_dist = traits::semiring::zero) noexcept {
-        vertex_t u = _graph.source(uv);
+        arc uv, value_t u_dist = traits::semiring::zero) noexcept {
+        vertex u = _graph.source(uv);
         discard(u);
-        for(const arc_t a : _graph.out_arcs(u)) {
+        for(const arc a : _graph.out_arcs(u)) {
             if(a == uv) continue;
             process_strong_vertex_out_arc(u, u_dist, a);
         }
@@ -136,17 +136,17 @@ public:
         return *this;
     }
 
-    strong_fiber & add_strong_source(vertex_t u, value_t dist) noexcept {
+    strong_fiber & add_strong_source(vertex u, value_t dist) noexcept {
         discard(u);
-        for(const arc_t a : _graph.out_arcs(u)) {
+        for(const arc a : _graph.out_arcs(u)) {
             process_strong_vertex_out_arc(u, entry(dist, true), a);
         }
         return *this;
     }
 
-    void process_strong_vertex_out_arc(const vertex_t u, const value_t dist,
-                                       const arc_t uw) noexcept {
-        const vertex_t w = _graph.target(uw);
+    void process_strong_vertex_out_arc(const vertex u, const value_t dist,
+                                       const arc uw) noexcept {
+        const vertex w = _graph.target(uw);
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const entry new_entry(dist + _length_map[uw], true);
@@ -165,9 +165,9 @@ public:
         }
     }
 
-    void process_weak_vertex_out_arc(const vertex_t u, const value_t dist,
-                                     const arc_t uw) noexcept {
-        const vertex_t w = _graph.target(uw);
+    void process_weak_vertex_out_arc(const vertex u, const value_t dist,
+                                     const arc uw) noexcept {
+        const vertex w = _graph.target(uw);
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const entry new_entry(dist + _reduced_length_map[uw], false);
@@ -197,7 +197,7 @@ public:
                 _callback_strong(u);
                 _heap.pop();
                 --nb_strong_candidates;
-                for(const arc_t a : _graph.out_arcs(u)) {
+                for(const arc a : _graph.out_arcs(u)) {
                     process_strong_vertex_out_arc(u, e.dist, a);
                 }
             } else {
@@ -205,7 +205,7 @@ public:
                 _callback_weak(u);
                 _heap.pop();
                 --nb_weak_candidates;
-                for(const arc_t a : _graph.out_arcs(u)) {
+                for(const arc a : _graph.out_arcs(u)) {
                     process_weak_vertex_out_arc(u, e.dist, a);
                 }
             }

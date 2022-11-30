@@ -36,8 +36,8 @@ GTEST_TEST(strong_fiber, test) {
 
     auto [graph, reduced_length_map, length_map] = builder.build();
 
-    std::vector<static_digraph::vertex_t> strong_nodes;
-    std::vector<static_digraph::vertex_t> weak_nodes;
+    std::vector<vertex_t<static_digraph>> strong_nodes;
+    std::vector<vertex_t<static_digraph>> weak_nodes;
 
     strong_fiber algo(
         graph, reduced_length_map, length_map,
