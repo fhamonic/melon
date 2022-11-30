@@ -21,8 +21,8 @@ private:
 public:
     reverse(const G & g) : _graph(g) {}
 
-    reverse(const reverse & graph) = default;
-    reverse(reverse && graph) = default;
+    reverse(const reverse &) = default;
+    reverse(reverse &&) = default;
 
     reverse & operator=(const reverse &) = default;
     reverse & operator=(reverse &&) = default;
