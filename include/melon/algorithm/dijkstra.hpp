@@ -76,8 +76,8 @@ private:
                          std::monostate>::type;
 
 private:
-    const G & _graph;
-    const L & _length_map;
+    std::reference_wrapper<const G> _graph;
+    std::reference_wrapper<const L> _length_map;
 
     heap _heap;
     vertex_status_map _vertex_status_map;
@@ -105,7 +105,7 @@ public:
 
     dijkstra & reset() noexcept {
         _heap.clear();
-        for(const vertex & u : _graph.vertices())
+        for(const vertex & u : _graph.get().vertices())
             _vertex_status_map[u] = PRE_HEAP;
         return *this;
     }
@@ -131,17 +131,17 @@ public:
         const auto [t, st_dist] = _heap.top();
         if constexpr(traits::store_distances) _distances_map[t] = st_dist;
         _vertex_status_map[t] = POST_HEAP;
-        const auto & out_arcs = _graph.out_arcs(t);
+        const auto & out_arcs = _graph.get().out_arcs(t);
         prefetch_range(out_arcs);
-        prefetch_mapped_values(out_arcs, _graph.targets_map());
-        prefetch_mapped_values(out_arcs, _length_map);
+        prefetch_mapped_values(out_arcs, _graph.get().targets_map());
+        prefetch_mapped_values(out_arcs, _length_map.get());
         _heap.pop();
         for(const arc & a : out_arcs) {
-            const vertex & w = _graph.target(a);
+            const vertex & w = _graph.get().target(a);
             const vertex_status & w_status = _vertex_status_map[w];
             if(w_status == IN_HEAP) {
                 const value_t new_dist =
-                    traits::semiring::plus(st_dist, _length_map[a]);
+                    traits::semiring::plus(st_dist, _length_map.get()[a]);
                 if(traits::semiring::less(new_dist, _heap.priority(w))) {
                     _heap.promote(w, new_dist);
                     if constexpr(traits::store_pred_vertices)
@@ -149,7 +149,8 @@ public:
                     if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
                 }
             } else if(w_status == PRE_HEAP) {
-                _heap.push(w, traits::semiring::plus(st_dist, _length_map[a]));
+                _heap.push(
+                    w, traits::semiring::plus(st_dist, _length_map.get()[a]));
                 _vertex_status_map[w] = IN_HEAP;
                 if constexpr(traits::store_pred_vertices)
                     _pred_vertices_map[w] = t;

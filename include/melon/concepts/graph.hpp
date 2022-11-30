@@ -31,13 +31,13 @@ requires(G g, vertex_t<G> u, arc_t<G> a) {
 template <typename G>
 concept has_arc_source = requires(G g, arc_t<G> a) {
     { g.source(a) } -> std::same_as<vertex_t<G>>;
-    { g.sources_map() } -> key_value_map_view<vertex_t<G>, vertex_t<G>>;
+    { g.sources_map() } -> key_value_map_view<arc_t<G>, vertex_t<G>>;
 };
 
 template <typename G>
 concept has_arc_target = requires(G g, arc_t<G> a) {
     { g.target(a) } -> std::same_as<vertex_t<G>>;
-    { g.targets_map() } -> key_value_map_view<vertex_t<G>, vertex_t<G>>;
+    { g.targets_map() } -> key_value_map_view<arc_t<G>, vertex_t<G>>;
 };
 
 template <typename G>

@@ -11,31 +11,35 @@ namespace melon {
 
 struct traversal_end_sentinel {};
 
-template <typename A>
-requires concepts::traversal_algorithm<A> &&
-    std::default_initializable<typename A::traversal_entry>
+template <concepts::traversal_algorithm A>
 class traversal_iterator {
 private:
-    A & algorithm;
+    std::reference_wrapper<A> algorithm;
 
 public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = typename A::traversal_entry;
+    using value_type = traversal_entry_t<A>;
     using reference = value_type const &;
     using pointer = value_type *;
-    using difference_type = void;
+    using difference_type = std::ptrdiff_t;
+
+    traversal_iterator(const traversal_iterator &) = default;
+    traversal_iterator(traversal_iterator &&) = default;
+
+    traversal_iterator & operator=(const traversal_iterator &) = default;
+    traversal_iterator & operator=(traversal_iterator &&) = default;
 
     explicit traversal_iterator(A & alg) : algorithm(alg) {}
     traversal_iterator & operator++() noexcept {
-        algorithm.advance();
+        algorithm.get().advance();
         return *this;
     }
+    traversal_iterator & operator++(int) noexcept { return operator++(); }
     friend bool operator==(const traversal_iterator & it,
                            traversal_end_sentinel) noexcept {
-        return it.algorithm.finished();
+        return it.algorithm.get().finished();
     }
-    reference operator*() const noexcept { return algorithm.current(); }
-
+    value_type operator*() const noexcept { return algorithm.get().current(); }
 };
 
 }  // namespace melon

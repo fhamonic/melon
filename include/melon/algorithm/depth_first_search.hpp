@@ -49,7 +49,7 @@ private:
         std::conditional<traits::store_distances, vertex_map_t<G, int>,
                          std::monostate>::type;
 
-    const G & _graph;
+    std::reference_wrapper<const G> _graph;
     std::vector<vertex> _stack;
 
     reached_map _reached_map;
@@ -102,8 +102,8 @@ public:
         const vertex u = _stack.back();
         _stack.pop_back();
         if constexpr(concepts::incidence_list_graph<G>) {
-            for(auto && a : _graph.out_arcs(u)) {
-                const vertex & w = _graph.target(a);
+            for(auto && a : _graph.get().out_arcs(u)) {
+                const vertex & w = _graph.get().target(a);
                 if(_reached_map[w]) continue;
                 _stack.push_back(w);
                 _reached_map[w] = true;
@@ -114,7 +114,7 @@ public:
                     _dist_map[w] = _dist_map[u] + 1;
             }
         } else {  // i.e., concepts::adjacency_list_graph<G>
-            for(auto && w : _graph.out_neighbors(u)) {
+            for(auto && w : _graph.get().out_neighbors(u)) {
                 if(_reached_map[w]) continue;
                 _stack.push_back(w);
                 _reached_map[w] = true;
@@ -130,7 +130,7 @@ public:
         while(!finished()) advance();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
-    auto end() noexcept { return traversal_end_sentinel(); }
+    auto end() const noexcept { return traversal_end_sentinel(); }
 
     bool reached(const vertex & u) const noexcept { return _reached_map[u]; }
     vertex pred_vertex(const vertex & u) const noexcept

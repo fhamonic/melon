@@ -48,7 +48,7 @@ public:
                          std::monostate>::type;
 
 private:
-    const G & _graph;
+    std::reference_wrapper<const G> _graph;
     std::vector<vertex> _queue;
     std::vector<vertex>::iterator _queue_current;
 
@@ -93,7 +93,7 @@ public:
 
     bool finished() const noexcept { return _queue_current == _queue.end(); }
 
-    const vertex & current() const noexcept {
+    vertex current() const noexcept {
         assert(!finished());
         return *_queue_current;
     }
@@ -103,8 +103,8 @@ public:
         const vertex & u = *_queue_current;
         ++_queue_current;
         if constexpr(concepts::incidence_list_graph<G>) {
-            for(auto && a : _graph.out_arcs(u)) {
-                const vertex & w = _graph.target(a);
+            for(auto && a : _graph.get().out_arcs(u)) {
+                const vertex & w = _graph.get().target(a);
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
@@ -115,7 +115,7 @@ public:
                     _dist_map[w] = _dist_map[u] + 1;
             }
         } else {  // i.e., concepts::adjacency_list_graph<G>
-            for(auto && w : _graph.out_neighbors(u)) {
+            for(auto && w : _graph.get().out_neighbors(u)) {
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
@@ -131,7 +131,7 @@ public:
         while(!finished()) advance();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
-    auto end() noexcept { return traversal_end_sentinel(); }
+    auto end() const noexcept { return traversal_end_sentinel(); }
 
     bool reached(const vertex & u) const noexcept { return _reached_map[u]; }
 
