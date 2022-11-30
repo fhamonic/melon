@@ -90,11 +90,15 @@ public:
         return *this;
     }
 
-    bool empty_queue() const noexcept { return _stack.empty(); }
+    bool finished() const noexcept { return _stack.empty(); }
 
-public:
-    vertex next_entry() noexcept {
-        assert(!_stack.empty());
+    vertex current() const noexcept {
+        assert(!finished());
+        return _stack.back();
+    }
+
+    void advance() noexcept {
+        assert(!finished());
         const vertex u = _stack.back();
         _stack.pop_back();
         if constexpr(concepts::incidence_list_graph<G>) {
@@ -120,11 +124,10 @@ public:
                     _dist_map[w] = _dist_map[u] + 1;
             }
         }
-        return u;
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_entry();
+        while(!finished()) advance();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }

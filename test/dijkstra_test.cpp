@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "melon/algorithm/dijkstra.hpp"
-#include "melon/static_digraph_builder.hpp"
 #include "melon/static_digraph.hpp"
+#include "melon/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -35,17 +35,23 @@ GTEST_TEST(dijkstra, test) {
     dijkstra alg(graph, length_map);
 
     alg.add_source(0);
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), std::make_pair(0u, 0));
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), std::make_pair(1u, 7));
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), std::make_pair(2u, 9));
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), std::make_pair(5u, 11));
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), std::make_pair(4u, 20));
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), std::make_pair(3u, 21));
-    ASSERT_TRUE(alg.empty_queue());
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), std::make_pair(0u, 0));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), std::make_pair(1u, 7));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), std::make_pair(2u, 9));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), std::make_pair(5u, 11));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), std::make_pair(4u, 20));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), std::make_pair(3u, 21));
+    alg.advance();
+    ASSERT_TRUE(alg.finished());
 }

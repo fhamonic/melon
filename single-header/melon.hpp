@@ -953,8 +953,8 @@ namespace melon {
 
 template <typename Algo>
 concept traversal_algorithm = requires(Algo alg) {
-    { alg.empty_queue() } -> std::convertible_to<bool>;
-    { alg.next_entry() } -> std::default_initializable;
+    { alg.finished() } -> std::convertible_to<bool>;
+    { alg.current() } -> std::default_initializable;
 };
 
 struct traversal_end_sentinel {};
@@ -964,21 +964,21 @@ requires traversal_algorithm<Algo>
 class traversal_iterator {
 public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = decltype(std::declval<Algo>().next_entry());
+    using value_type = decltype(std::declval<Algo>().current());
     using reference = value_type const &;
     using pointer = value_type *;
     using difference_type = void;
 
     traversal_iterator(Algo & alg) : algorithm(alg) {
-        if(!algorithm.empty_queue()) ++(*this);
+        if(!algorithm.finished()) ++(*this);
     }
     traversal_iterator & operator++() noexcept {
-        node = algorithm.next_entry();
+        node = algorithm.current();
         return *this;
     }
     friend bool operator==(const traversal_iterator & it,
                            traversal_end_sentinel) noexcept {
-        return it.algorithm.empty_queue();
+        return it.algorithm.finished();
     }
     reference operator*() const noexcept { return node; }
 
@@ -1057,7 +1057,7 @@ public:
         return *this;
     }
 
-    bool empty_queue() const noexcept { return _queue_current == _queue.end(); }
+    bool.finished() const noexcept { return _queue_current == _queue.end(); }
     
 private:
     void push_node(vertex u) noexcept {
@@ -1085,7 +1085,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_entry();
+        while(.finished()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
@@ -1183,7 +1183,7 @@ public:
         return *this;
     }
 
-    bool empty_queue() const noexcept { return _stack.empty(); }
+    bool.finished() const noexcept { return _stack.empty(); }
     void push_node(vertex u) noexcept {
         OutarcRange r = _graph.out_arcs(u);
         _stack.emplace_back(r.begin(), r.end());
@@ -1214,7 +1214,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_entry();
+        while(.finished()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
@@ -1689,7 +1689,7 @@ public:
         return *this;
     }
 
-    bool empty_queue() const noexcept { return _heap.empty(); }
+    bool.finished() const noexcept { return _heap.empty(); }
 
     std::pair<vertex_t, Value> next_entry() noexcept {
         const auto p = _heap.pop();
@@ -1718,7 +1718,7 @@ public:
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_entry();
+        while(.finished()) next_entry();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }

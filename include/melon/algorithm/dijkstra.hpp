@@ -122,13 +122,16 @@ public:
     bool finished() const noexcept { return _heap.empty(); }
 
     traversal_entry current() const noexcept {
+        assert(!finished());
         return _heap.top();
     }
 
     void advance() noexcept {
-        const traversal_entry & p = _heap.top();
-        _vertex_status_map[p.first] = POST_HEAP;
-        const auto & out_arcs = _graph.out_arcs(p.first);
+        assert(!finished());
+        const auto [t, st_dist] = _heap.top();
+        if constexpr(traits::store_distances) _distances_map[t] = st_dist;
+        _vertex_status_map[t] = POST_HEAP;
+        const auto & out_arcs = _graph.out_arcs(t);
         prefetch_range(out_arcs);
         prefetch_mapped_values(out_arcs, _graph.targets_map());
         prefetch_mapped_values(out_arcs, _length_map);
@@ -138,28 +141,25 @@ public:
             const vertex_status & w_status = _vertex_status_map[w];
             if(w_status == IN_HEAP) {
                 const value_t new_dist =
-                    traits::semiring::plus(p.second, _length_map[a]);
+                    traits::semiring::plus(st_dist, _length_map[a]);
                 if(traits::semiring::less(new_dist, _heap.priority(w))) {
                     _heap.promote(w, new_dist);
                     if constexpr(traits::store_pred_vertices)
-                        _pred_vertices_map[w] = p.first;
+                        _pred_vertices_map[w] = t;
                     if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
                 }
             } else if(w_status == PRE_HEAP) {
-                _heap.push(w, traits::semiring::plus(p.second, _length_map[a]));
+                _heap.push(w, traits::semiring::plus(st_dist, _length_map[a]));
                 _vertex_status_map[w] = IN_HEAP;
                 if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = p.first;
+                    _pred_vertices_map[w] = t;
                 if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
             }
         }
-        if constexpr(traits::store_distances)
-            _distances_map[p.first] = p.second;
-        return p;
     }
 
     void run() noexcept {
-        while(!empty_queue()) next_entry();
+        while(!finished()) advance();
     }
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
