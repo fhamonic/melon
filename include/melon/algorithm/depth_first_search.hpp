@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/graph.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
@@ -29,29 +29,28 @@ template <concepts::incidence_list_graph G, typename T = dfs_default_traits>
              concepts::adjacency_list_graph<G>) &&
             concepts::has_vertex_map<G>
 class depth_first_search {
-public:
-    using vertex_t = G::vertex_t;
-    using arc_t = G::arc_t;
+private:
+    using vertex = vertex_t<G>;
+    using arc = arc_t<G>;
     using traits = T;
-    using reached_map = graph_vertex_map<G, bool>;
+    using reached_map = vertex_map_t<G, bool>;
 
     static_assert(
         !(concepts::adjacency_list_graph<G> && traits::store_pred_arcs),
         "traversal on adjacency_list_graph cannot access predecessor arcs.");
 
     using pred_vertices_map =
-        std::conditional<traits::store_pred_vertices,
-                         graph_vertex_map<G, vertex_t>, std::monostate>::type;
+        std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
+                         std::monostate>::type;
     using pred_arcs_map =
-        std::conditional<traits::store_pred_arcs, graph_vertex_map<G, arc_t>,
+        std::conditional<traits::store_pred_arcs, vertex_map_t<G, arc>,
                          std::monostate>::type;
     using distances_map =
-        std::conditional<traits::store_distances, graph_vertex_map<G, int>,
+        std::conditional<traits::store_distances, vertex_map_t<G, int>,
                          std::monostate>::type;
 
-private:
     const G & _graph;
-    std::vector<vertex_t> _stack;
+    std::vector<vertex> _stack;
 
     reached_map _reached_map;
     pred_vertices_map _pred_vertices_map;
@@ -64,15 +63,15 @@ public:
         , _stack()
         , _reached_map(g.template create_vertex_map<bool>(false))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.template create_vertex_map<vertex_t>(), std::monostate{}))
+              g.template create_vertex_map<vertex>(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.template create_vertex_map<arc_t>(), std::monostate{}))
+              g.template create_vertex_map<arc>(), std::monostate{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
               g.template create_vertex_map<int>(), std::monostate{})) {
         _stack.reserve(g.nb_vertices());
     }
 
-    depth_first_search(const G & g, const vertex_t & s) noexcept
+    depth_first_search(const G & g, const vertex & s) noexcept
         : depth_first_search(g) {
         add_source(s);
     }
@@ -82,7 +81,7 @@ public:
         _reached_map.fill(false);
         return *this;
     }
-    depth_first_search & add_source(const vertex_t & s) noexcept {
+    depth_first_search & add_source(const vertex & s) noexcept {
         assert(!_reached_map[s]);
         _stack.push_back(s);
         _reached_map[s] = true;
@@ -94,13 +93,13 @@ public:
     bool empty_queue() const noexcept { return _stack.empty(); }
 
 public:
-    vertex_t next_entry() noexcept {
+    vertex next_entry() noexcept {
         assert(!_stack.empty());
-        const vertex_t u = _stack.back();
+        const vertex u = _stack.back();
         _stack.pop_back();
         if constexpr(concepts::incidence_list_graph<G>) {
             for(auto && a : _graph.out_arcs(u)) {
-                const vertex_t & w = _graph.target(a);
+                const vertex & w = _graph.target(a);
                 if(_reached_map[w]) continue;
                 _stack.push_back(w);
                 _reached_map[w] = true;
@@ -130,14 +129,16 @@ public:
     auto begin() noexcept { return traversal_iterator(*this); }
     auto end() noexcept { return traversal_end_sentinel(); }
 
-    bool reached(const vertex_t & u) const noexcept { return _reached_map[u]; }
-    vertex_t pred_vertex(const vertex_t & u) const noexcept
-        requires(traits::store_pred_vertices) {
+    bool reached(const vertex & u) const noexcept { return _reached_map[u]; }
+    vertex pred_vertex(const vertex & u) const noexcept
+        requires(traits::store_pred_vertices)
+    {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc_t pred_arc(const vertex_t & u) const noexcept
-        requires(traits::store_pred_arcs) {
+    arc pred_arc(const vertex & u) const noexcept
+        requires(traits::store_pred_arcs)
+    {
         assert(reached(u));
         return _pred_arcs_map[u];
     }

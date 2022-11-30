@@ -11,8 +11,8 @@ namespace melon {
 
 class mutable_digraph {
 public:
-    using vertex_t = unsigned int;
-    using arc_t = std::vector<vertex_t>::iterator;
+    using vertex = unsigned int;
+    using arc = std::vector<vertex_t>::iterator;
 
     template <typename T>
     using vertex_map = std::vector<T>;
@@ -28,14 +28,14 @@ public:
     mutable_digraph(mutable_digraph && graph) = default;
 
     auto nb_vertices() const { return _adjacency_list.size(); }
-    bool is_valid_node(vertex_t u) const { return u < nb_vertices(); }
+    bool is_valid_node(vertex u) const { return u < nb_vertices(); }
     auto vertices() const {
         return std::views::iota(static_cast<vertex_t>(0),
                                 static_cast<vertex_t>(nb_vertices()));
     }
 
 private:
-    auto out_arcs(const vertex_t u) const {
+    auto out_arcs(const vertex u) const {
         assert(is_valid_node(u));
         return std::views::iota(_adjacency_list[u].begin(),
                                 _adjacency_list[u].end());
@@ -47,11 +47,11 @@ public:
             vertices(), [this](auto u) { return out_arcs(u); }));
     }
     vertex_t target(arc_t a) const { return *a; }
-    const auto & out_neighbors(const vertex_t u) const {
+    const auto & out_neighbors(const vertex u) const {
         assert(is_valid_node(u));
         return _adjacency_list[u];
     }
-    auto out_arcs_pairs(const vertex_t u) const {
+    auto out_arcs_pairs(const vertex u) const {
         assert(is_valid_node(u));
         return std::views::transform(
             out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });

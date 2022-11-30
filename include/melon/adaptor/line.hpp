@@ -7,7 +7,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/graph.hpp"
 #include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
@@ -17,8 +17,8 @@ namespace adaptors {
 template <typename G>
 class line {
 public:
-    using vertex_t = typename G::arc_t;
-    // using arc_t = int;
+    using vertex = arc_t<G>;
+    // using arc = int;
 
     template <typename T>
     using vertex_map = typename G::arc_map<T>;
@@ -56,20 +56,20 @@ public:
     //     return _graph.get().source(a);
     // }
 
-    // auto out_arcs(const vertex_t u)
+    // auto out_arcs(const vertex u)
     //     const noexcept requires concepts::reversible_incidence_list_graph<G> {
     //     return _graph.get().in_arcs(u);
     // }
-    // auto in_arcs(const vertex_t u)
+    // auto in_arcs(const vertex u)
     //     const noexcept requires concepts::incidence_list_graph<G> {
     //     return _graph.get().out_arcs(u);
     // }
 
-    // auto out_neighbors(const vertex_t u)
+    // auto out_neighbors(const vertex u)
     //     const noexcept requires concepts::reversible_adjacency_list_graph<G> {
     //     return _graph.get().in_neighbors(u);
     // }
-    // auto in_neighbors(const vertex_t u)
+    // auto in_neighbors(const vertex u)
     //     const noexcept requires concepts::adjacency_list_graph<G> {
     //     return _graph.get().out_neighbors(u);
     // }

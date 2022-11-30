@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/graph.hpp"
 #include "melon/concepts/key_value_map.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
@@ -35,28 +35,28 @@ concept bidirectional_dijkstra_trait = semiring<typename T::semiring> &&
 
 template <typename G, typename L>
 struct bidirectional_dijkstra_default_traits {
-    using semiring =
-        shortest_path_semiring<mapped_value_t<L, graph_vertex_t<G>>>;
+    using semiring = shortest_path_semiring<mapped_value_t<L, vertex_t<G>>>;
     using heap =
-        d_ary_heap<2, graph_vertex_t<G>, mapped_value_t<L, graph_vertex_t<G>>,
-                   decltype(semiring::less), graph_vertex_map<G, std::size_t>>;
+        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, vertex_t<G>>,
+                   decltype(semiring::less), vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
 };
 
-template <concepts::incidence_list_graph G,
-          concepts::map_of<graph_vertex_t<G>> L,
+template <concepts::incidence_list_graph G, concepts::map_of<vertex_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G> &&
-    concepts::reversible_incidence_list_graph<G>
+    requires concepts::has_vertex_map<G> &&
+             concepts::reversible_incidence_list_graph<G>
 class bidirectional_dijkstra {
+private:
+    using vertex = vertex_t<G>;
+    using arc = arc_t<G>;
+
 public:
-    using vertex_t = graph_vertex_t<G>;
-    using arc_t = graph_arc_t<G>;
-    using value_t = mapped_value_t<L, graph_vertex_t<G>>;
-    using traversal_entry = std::pair<vertex_t, value_t>;
+    using value_t = mapped_value_t<L, vertex>;
+    using traversal_entry = std::pair<vertex, value_t>;
     using traits = T;
 
     static_assert(std::is_same_v<traversal_entry, typename traits::heap::entry>,
@@ -67,12 +67,12 @@ private:
 
     using heap = traits::heap;
     using vertex_status_map =
-        graph_vertex_map<G, std::pair<vertex_status, vertex_status>>;
+        vertex_map_t<G, std::pair<vertex_status, vertex_status>>;
     using pred_vertices_map =
-        std::conditional<traits::store_pred_vertices,
-                         graph_vertex_map<G, vertex_t>, std::monostate>::type;
+        std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
+                         std::monostate>::type;
     using pred_arcs_map =
-        std::conditional<traits::store_pred_arcs, graph_vertex_map<G, arc_t>,
+        std::conditional<traits::store_pred_arcs, vertex_map_t<G, arc>,
                          std::monostate>::type;
 
 private:
@@ -95,12 +95,12 @@ public:
                              std::pair<vertex_status, vertex_status>>(
               std::make_pair(PRE_HEAP, PRE_HEAP)))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.template create_vertex_map<vertex_t>(), std::monostate{}))
+              g.template create_vertex_map<vertex>(), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.template create_vertex_map<arc_t>(), std::monostate{})) {}
+              g.template create_vertex_map<arc>(), std::monostate{})) {}
 
-    bidirectional_dijkstra(const G & g, const L & l, const vertex_t s,
-                           const vertex_t t)
+    bidirectional_dijkstra(const G & g, const L & l, const vertex s,
+                           const vertex t)
         : bidirectional_dijkstra(g, l) {
         add_forward_source(s);
         add_reverse_source(t);
@@ -114,7 +114,7 @@ public:
         return *this;
     }
     bidirectional_dijkstra & add_forward_source(
-        vertex_t s, value_t dist = traits::semiring::zero) noexcept {
+        vertex s, value_t dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s].first == PRE_HEAP);
         _forward_heap.push(s, dist);
         _vertex_status_map[s].first = IN_HEAP;
@@ -122,7 +122,7 @@ public:
         return *this;
     }
     bidirectional_dijkstra & add_reverse_source(
-        vertex_t s, value_t dist = traits::semiring::zero) noexcept {
+        vertex s, value_t dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s].second == PRE_HEAP);
         _reverse_heap.push(s, dist);
         _vertex_status_map[s].second = IN_HEAP;
@@ -146,8 +146,8 @@ public:
                 prefetch_mapped_values(out_arcs, _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
-                for(const arc_t a : out_arcs) {
-                    const vertex_t w = _graph.target(a);
+                for(const arc a : out_arcs) {
+                    const vertex w = _graph.target(a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
                     if(w_forward_status == IN_HEAP) {
@@ -191,8 +191,8 @@ public:
                 prefetch_mapped_values(in_arcs, _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
-                for(const arc_t a : in_arcs) {
-                    const vertex_t w = _graph.source(a);
+                for(const arc a : in_arcs) {
+                    const vertex w = _graph.source(a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
                     if(w_reverse_status == IN_HEAP) {
@@ -236,13 +236,15 @@ public:
     // auto begin() noexcept { return traversal_iterator(*this); }
     // auto end() noexcept { return traversal_end_sentinel(); }
 
-    vertex_t pred_vertex(const vertex_t u) const noexcept
-        requires(traits::store_pred_vertices) {
+    vertex pred_vertex(const vertex u) const noexcept
+        requires(traits::store_pred_vertices)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
-    arc_t pred_arc(const vertex_t u) const noexcept
-        requires(traits::store_pred_arcs) {
+    arc pred_arc(const vertex u) const noexcept
+        requires(traits::store_pred_arcs)
+    {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }

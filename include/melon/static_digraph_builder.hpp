@@ -9,24 +9,22 @@
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/view/zip.hpp>
 
-#include "melon/concepts/graph_concepts.hpp"
+#include "melon/concepts/graph.hpp"
 
 namespace fhamonic {
 namespace melon {
 
 template <concepts::graph G, typename... ArcProperty>
 class static_digraph_builder {
-public:
-    using vertex_t = typename G::vertex_t;
-    using arc_t = typename G::arc_t;
-
-    using PropertyMaps = std::tuple<std::vector<ArcProperty>...>;
-
 private:
+    using vertex = vertex_t<G>;
+    using arc = arc_t<G>;
+    using property_maps = std::tuple<std::vector<ArcProperty>...>;
+
     std::size_t _nb_vertices;
-    std::vector<vertex_t> _arc_sources;
-    std::vector<vertex_t> _arc_targets;
-    PropertyMaps _arc_property_maps;
+    std::vector<vertex> _arc_sources;
+    std::vector<vertex> _arc_targets;
+    property_maps _arc_property_maps;
 
 public:
     static_digraph_builder() noexcept : _nb_vertices(0) {}
@@ -41,14 +39,14 @@ private:
     }
 
 public:
-    static_digraph_builder & add_arc(vertex_t u, vertex_t v,
+    static_digraph_builder & add_arc(vertex u, vertex v,
                                      ArcProperty... properties) noexcept {
         assert(_nb_vertices > std::max(u, v));
         _arc_sources.push_back(u);
         _arc_targets.push_back(v);
         add_properties(
             _arc_property_maps, std::make_tuple(properties...),
-            std::make_index_sequence<std::tuple_size<PropertyMaps>{}>{});
+            std::make_index_sequence<std::tuple_size<property_maps>{}>{});
         return *this;
     }
 
