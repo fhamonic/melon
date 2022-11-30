@@ -34,7 +34,9 @@ public:
         algorithm.get().advance();
         return *this;
     }
-    traversal_iterator & operator++(int) noexcept { return operator++(); }
+    // P0541 : post-increment on input iterators
+    // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0541r0.html
+    void operator++(int) noexcept { operator++(); }
     friend bool operator==(const traversal_iterator & it,
                            traversal_end_sentinel) noexcept {
         return it.algorithm.get().finished();
