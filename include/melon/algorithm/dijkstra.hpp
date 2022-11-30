@@ -119,9 +119,13 @@ public:
         return *this;
     }
 
-    bool empty_queue() const noexcept { return _heap.empty(); }
+    bool finished() const noexcept { return _heap.empty(); }
 
-    traversal_entry next_entry() noexcept {
+    traversal_entry current() const noexcept {
+        return _heap.top();
+    }
+
+    void advance() noexcept {
         const traversal_entry & p = _heap.top();
         _vertex_status_map[p.first] = POST_HEAP;
         const auto & out_arcs = _graph.out_arcs(p.first);
