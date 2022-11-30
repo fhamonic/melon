@@ -15,9 +15,10 @@ GTEST_TEST(breadth_first_search, no_arcs_graph) {
 
     breadth_first_search alg(graph, 0u);
 
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 0u);
-    ASSERT_TRUE(alg.empty_queue());
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 0u);
+    alg.advance();
+    ASSERT_TRUE(alg.finished());
 }
 
 GTEST_TEST(breadth_first_search, test) {
@@ -47,17 +48,23 @@ GTEST_TEST(breadth_first_search, test) {
 
     breadth_first_search alg(graph, 0u);
 
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 0u);
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 1u);
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 2u);
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 5u);
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 3u);
-    ASSERT_FALSE(alg.empty_queue());
-    ASSERT_EQ(alg.next_entry(), 4u);
-    ASSERT_TRUE(alg.empty_queue());
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 0u);
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 1u);
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 2u);
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 5u);
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 3u);
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_EQ(alg.current(), 4u);
+    alg.advance();
+    ASSERT_TRUE(alg.finished());
 }

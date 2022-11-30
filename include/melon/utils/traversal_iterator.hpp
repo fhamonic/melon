@@ -15,6 +15,9 @@ template <typename A>
 requires concepts::traversal_algorithm<A> &&
     std::default_initializable<typename A::traversal_entry>
 class traversal_iterator {
+private:
+    A & algorithm;
+
 public:
     using iterator_category = std::input_iterator_tag;
     using value_type = typename A::traversal_entry;
@@ -22,24 +25,17 @@ public:
     using pointer = value_type *;
     using difference_type = void;
 
-    explicit traversal_iterator(A & alg) : algorithm(alg) {
-        if(!algorithm.empty_queue()) ++(*this);
-    }
+    explicit traversal_iterator(A & alg) : algorithm(alg) {}
     traversal_iterator & operator++() noexcept {
-        node = algorithm.next_entry();
+        algorithm.advance();
         return *this;
     }
     friend bool operator==(const traversal_iterator & it,
                            traversal_end_sentinel) noexcept {
-        return it.algorithm.empty_queue();
+        return it.algorithm.finished();
     }
-    reference operator*() const noexcept { return node; }
+    reference operator*() const noexcept { return algorithm.current(); }
 
-private:
-    A & algorithm;
-
-public:
-    value_type node;
 };
 
 }  // namespace melon
