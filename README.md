@@ -45,7 +45,7 @@ then manage to #include it where needed with the range-v3 library.
 using namesapce fhamonic::melon;
 ....
 static_digraph graph = ...;
-arc_map<static_digraph, double> length_map = ...;
+arc_map_t<static_digraph, double> length_map = ...;
 vertex_t<static_digraph> s = ...; 
 
 for(auto && [u, dist] : dijkstra(graph, length_map, s)) {
