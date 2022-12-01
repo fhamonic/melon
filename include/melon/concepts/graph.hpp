@@ -5,7 +5,7 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/concepts/output_map_of.hpp"
+#include "melon/concepts/map_of.hpp"
 #include "melon/concepts/range_of.hpp"
 
 namespace fhamonic {

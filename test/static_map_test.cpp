@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/concepts/output_map_of.hpp"
+#include "melon/concepts/map_of.hpp"
 #include "melon/data_structures/static_map.hpp"
 #include "melon/static_digraph.hpp"
 
