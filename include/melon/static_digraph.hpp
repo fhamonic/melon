@@ -8,8 +8,8 @@
 #include <span>
 #include <vector>
 
+#include "melon/concepts/range_of.hpp"
 #include "melon/data_structures/static_map.hpp"
-#include "melon/utils/map_view.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -27,7 +27,8 @@ private:
     static_map<arc, arc> _in_arcs;
 
 public:
-    template <std::ranges::range S, std::ranges::range T>
+    template <concepts::forward_range_of<vertex> S,
+              concepts::forward_range_of<vertex> T>
     static_digraph(const std::size_t & nb_vertices, S && sources,
                    T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0)
@@ -52,8 +53,8 @@ public:
         for(auto && a : arcs()) {
             vertex t = _arc_target[a];
             arc end = (t + 1 < static_cast<vertex>(nb_vertices)
-                             ? _in_arc_begin[t + 1]
-                             : static_cast<arc>(nb_arcs()));
+                           ? _in_arc_begin[t + 1]
+                           : static_cast<arc>(nb_arcs()));
             _in_arcs[end - in_arc_count[t]] = a;
             --in_arc_count[t];
         }
@@ -147,8 +148,7 @@ public:
         return static_map<arc, T>(nb_arcs());
     }
     template <typename T>
-    static_map<arc, T> create_arc_map(
-        const T & default_value) const noexcept {
+    static_map<arc, T> create_arc_map(const T & default_value) const noexcept {
         return static_map<arc, T>(nb_arcs(), default_value);
     }
 };

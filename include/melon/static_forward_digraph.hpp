@@ -1,5 +1,5 @@
-#ifndef MELON_STATIC_DIGRAPH_HPP
-#define MELON_STATIC_DIGRAPH_HPP
+#ifndef MELON_STATIC_FORWARD_DIGRAPH_HPP
+#define MELON_STATIC_FORWARD_DIGRAPH_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -8,6 +8,7 @@
 #include <span>
 #include <vector>
 
+#include "melon/concepts/range_of.hpp"
 #include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
@@ -22,7 +23,8 @@ private:
     static_map<arc, vertex> _arc_target;
 
 public:
-    template <std::ranges::range S, std::ranges::range T>
+    template <concepts::forward_range_of<vertex> S,
+              concepts::forward_range_of<vertex> T>
     static_forward_digraph(const std::size_t & nb_vertices, S && sources,
                            T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0), _arc_target(std::move(targets)) {
@@ -105,8 +107,7 @@ public:
         return static_map<arc, T>(nb_arcs());
     }
     template <typename T>
-    static_map<arc, T> create_arc_map(
-        const T & default_value) const noexcept {
+    static_map<arc, T> create_arc_map(const T & default_value) const noexcept {
         return static_map<arc, T>(nb_arcs(), default_value);
     }
 };
@@ -114,4 +115,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_STATIC_DIGRAPH_HPP
+#endif  // MELON_STATIC_FORWARD_DIGRAPH_HPP
