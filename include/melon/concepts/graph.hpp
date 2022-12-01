@@ -5,7 +5,7 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/concepts/key_value_map.hpp"
+#include "melon/concepts/output_map_of.hpp"
 #include "melon/concepts/range_of.hpp"
 
 namespace fhamonic {
@@ -31,13 +31,13 @@ requires(G g, vertex_t<G> u, arc_t<G> a) {
 template <typename G>
 concept has_arc_source = requires(G g, arc_t<G> a) {
     { g.source(a) } -> std::same_as<vertex_t<G>>;
-    { g.sources_map() } -> key_value_map_view<arc_t<G>, vertex_t<G>>;
+    { g.sources_map() } -> input_map_of<arc_t<G>, vertex_t<G>>;
 };
 
 template <typename G>
 concept has_arc_target = requires(G g, arc_t<G> a) {
     { g.target(a) } -> std::same_as<vertex_t<G>>;
-    { g.targets_map() } -> key_value_map_view<arc_t<G>, vertex_t<G>>;
+    { g.targets_map() } -> input_map_of<arc_t<G>, vertex_t<G>>;
 };
 
 template <typename G>
@@ -70,15 +70,15 @@ namespace concepts {
 template <typename G, typename T = std::size_t>
 concept has_vertex_map = requires(G g, arc_t<G> a, T v) {
     { g.template create_vertex_map<T>() } -> 
-            key_value_map<vertex_t<G>, T>;
+            output_map_of<vertex_t<G>, T>;
     { g.template create_vertex_map<T>(v) } -> 
-            key_value_map<vertex_t<G>, T>;
+            output_map_of<vertex_t<G>, T>;
 };
 
 template <typename G, typename T = std::size_t>
 concept has_arc_map = requires(G g, arc_t<G> a, T v) {
-    { g.template create_arc_map<T>() } -> key_value_map<arc_t<G>, T>;
-    { g.template create_arc_map<T>(v) } -> key_value_map<arc_t<G>, T>;
+    { g.template create_arc_map<T>() } -> output_map_of<arc_t<G>, T>;
+    { g.template create_arc_map<T>(v) } -> output_map_of<arc_t<G>, T>;
 };
 }  // namespace concepts
 // clang-format on
