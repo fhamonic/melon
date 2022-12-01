@@ -37,24 +37,24 @@ concept dijkstra_trait = semiring<typename T::semiring> &&
 
 template <typename G, typename L>
 struct dijkstra_default_traits {
-    using semiring = shortest_path_semiring<mapped_value_t<L, vertex_t<G>>>;
+    using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
     using heap =
-        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, vertex_t<G>>,
-                   decltype(semiring::less), vertex_map_t<G, std::size_t>>;
+        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
+                   std::decay_t<decltype(semiring::less)>, vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
     static constexpr bool store_distances = false;
 };
 
-template <concepts::incidence_list_graph G, concepts::map_of<vertex_t<G>> L,
+template <concepts::incidence_list_graph G, concepts::map_of<arc_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
     requires concepts::has_vertex_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
-    using value_t = mapped_value_t<L, vertex_t<G>>;
+    using value_t = mapped_value_t<L, arc_t<G>>;
     using traversal_entry = std::pair<vertex, value_t>;
     using traits = T;
 
@@ -102,6 +102,12 @@ public:
     dijkstra(const G & g, const L & l, const vertex & s) : dijkstra(g, l) {
         add_source(s);
     }
+
+    dijkstra(const dijkstra & bin) = default;
+    dijkstra(dijkstra && bin) = default;
+
+    dijkstra & operator=(const dijkstra &) = default;
+    dijkstra & operator=(dijkstra &&) = default;
 
     dijkstra & reset() noexcept {
         _heap.clear();

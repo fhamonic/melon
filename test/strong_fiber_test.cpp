@@ -8,6 +8,8 @@
 
 using namespace fhamonic::melon;
 
+
+
 GTEST_TEST(strong_fiber, test) {
     static_digraph_builder<static_digraph, int, int> builder(8);
 
