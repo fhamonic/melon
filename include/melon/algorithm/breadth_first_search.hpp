@@ -77,6 +77,12 @@ public:
         add_source(s);
     }
 
+    breadth_first_search(const breadth_first_search & bin) = default;
+    breadth_first_search(breadth_first_search && bin) = default;
+
+    breadth_first_search & operator=(const breadth_first_search &) = default;
+    breadth_first_search & operator=(breadth_first_search &&) = default;
+
     breadth_first_search & reset() noexcept {
         _queue.resize(0);
         _reached_map.fill(false);
