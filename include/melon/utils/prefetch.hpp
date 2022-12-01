@@ -5,6 +5,8 @@
 #include <ranges>
 #include <type_traits>
 
+#include "melon/concepts/map_of.hpp"
+
 namespace fhamonic {
 namespace melon {
 
@@ -15,7 +17,8 @@ constexpr void prefetch_range(const R & range) {
     }
 }
 
-template <std::ranges::range V, typename M>
+template <std::ranges::input_range V,
+          concepts::input_map<std::ranges::range_value_t<V>> M>
 constexpr void prefetch_mapped_values(const V & values, const M & map) {
     using key_type = typename std::ranges::range_value_t<V>;
     if constexpr(std::integral<key_type> && requires() { map.data(); }) {
