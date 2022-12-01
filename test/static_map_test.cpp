@@ -8,6 +8,7 @@
 
 using namespace fhamonic::melon;
 
+static_assert(std::copyable<static_map<std::size_t, int>>);
 static_assert(std::ranges::random_access_range<static_map<std::size_t, int>>);
 static_assert(fhamonic::melon::concepts::output_map_of<
               static_map<std::size_t, int>, std::size_t, int>);

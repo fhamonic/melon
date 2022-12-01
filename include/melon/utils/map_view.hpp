@@ -13,7 +13,7 @@ private:
 
 public:
     map_view(F && f) : _func(std::forward<F>(f)) {}
-    auto operator[](const auto & k) noexcept { return _func(k); }
+    auto operator[](const auto & k) const noexcept { return _func(k); }
 };
 
 }  // namespace melon

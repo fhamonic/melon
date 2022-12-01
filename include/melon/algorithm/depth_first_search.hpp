@@ -76,6 +76,12 @@ public:
         add_source(s);
     }
 
+    depth_first_search(const depth_first_search & bin) = default;
+    depth_first_search(depth_first_search && bin) = default;
+
+    depth_first_search & operator=(const depth_first_search &) = default;
+    depth_first_search & operator=(depth_first_search &&) = default;
+
     depth_first_search & reset() noexcept {
         _stack.resize(0);
         _reached_map.fill(false);

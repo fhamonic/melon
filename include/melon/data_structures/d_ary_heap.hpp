@@ -37,6 +37,9 @@ public:
 
     d_ary_heap(const d_ary_heap & bin) = default;
     d_ary_heap(d_ary_heap && bin) = default;
+    
+    d_ary_heap & operator=(const d_ary_heap &) = default;
+    d_ary_heap & operator=(d_ary_heap &&) = default;
 
     size_type size() const noexcept { return _heap_array.size(); }
     bool empty() const noexcept { return _heap_array.empty(); }

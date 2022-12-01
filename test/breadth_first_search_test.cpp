@@ -15,6 +15,8 @@ GTEST_TEST(breadth_first_search, no_arcs_graph) {
 
     breadth_first_search alg(graph, 0u);
 
+    static_assert(std::copyable<decltype(alg)>);
+
     ASSERT_FALSE(alg.finished());
     ASSERT_EQ(alg.current(), 0u);
     alg.advance();
