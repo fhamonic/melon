@@ -25,7 +25,7 @@ concept input_map_of = input_map<M, K> && std::convertible_to<mapped_value_t<M,K
 template <typename M, typename K>
 concept output_map = input_map<M, K> &&
     requires(M map, K key, mapped_value_t<M,K> value) {
-        { map[key] = value } -> std::same_as<mapped_value_t<M,K>>;
+        { map[key] = value } -> std::convertible_to<mapped_value_t<M,K>>;
     };
 
 template <typename M, typename K, typename V>

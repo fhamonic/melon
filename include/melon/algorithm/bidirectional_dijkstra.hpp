@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "melon/concepts/graph.hpp"
-#include "melon/concepts/output_map_of.hpp"
+#include "melon/concepts/map_of.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
@@ -44,11 +44,12 @@ struct bidirectional_dijkstra_default_traits {
     static constexpr bool store_pred_arcs = false;
 };
 
-template <concepts::incidence_list_graph G, concepts::map_of<vertex_t<G>> L,
+template <concepts::incidence_list_graph G,
+          concepts::input_map<vertex_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-    requires concepts::has_vertex_map<G> &&
-             concepts::reversible_incidence_list_graph<G>
+requires concepts::has_vertex_map<G> &&
+    concepts::reversible_incidence_list_graph<G>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -237,14 +238,12 @@ public:
     // auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex pred_vertex(const vertex u) const noexcept
-        requires(traits::store_pred_vertices)
-    {
+        requires(traits::store_pred_vertices) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc pred_arc(const vertex u) const noexcept
-        requires(traits::store_pred_arcs)
-    {
+        requires(traits::store_pred_arcs) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }

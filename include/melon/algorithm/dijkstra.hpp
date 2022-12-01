@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "melon/concepts/graph.hpp"
-#include "melon/concepts/output_map_of.hpp"
+#include "melon/concepts/map_of.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/concepts/semiring.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
@@ -38,18 +38,18 @@ concept dijkstra_trait = semiring<typename T::semiring> &&
 template <typename G, typename L>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
-    using heap =
-        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
-                   std::decay_t<decltype(semiring::less)>, vertex_map_t<G, std::size_t>>;
+    using heap = d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
+                            std::decay_t<decltype(semiring::less)>,
+                            vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
     static constexpr bool store_distances = false;
 };
 
-template <concepts::incidence_list_graph G, concepts::map_of<arc_t<G>> L,
+template <concepts::incidence_list_graph G, concepts::input_map<arc_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-    requires concepts::has_vertex_map<G>
+requires concepts::has_vertex_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -172,20 +172,17 @@ public:
     auto end() noexcept { return traversal_end_sentinel(); }
 
     vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_pred_vertices)
-    {
+        requires(traits::store_pred_vertices) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_vertices_map[u];
     }
     arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_pred_arcs)
-    {
+        requires(traits::store_pred_arcs) {
         assert(_vertex_status_map[u] != PRE_HEAP);
         return _pred_arcs_map[u];
     }
     value_t dist(const vertex & u) const noexcept
-        requires(traits::store_distances)
-    {
+        requires(traits::store_distances) {
         assert(_vertex_status_map[u] == POST_HEAP);
         return _distances_map[u];
     }
