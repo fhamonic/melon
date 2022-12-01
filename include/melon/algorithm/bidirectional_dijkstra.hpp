@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "melon/concepts/graph.hpp"
-#include "melon/concepts/key_value_map.hpp"
+#include "melon/concepts/output_map_of.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"

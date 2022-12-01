@@ -2,7 +2,7 @@
 
 #include <random>
 
-#include "melon/concepts/key_value_map.hpp"
+#include "melon/concepts/output_map_of.hpp"
 #include "melon/data_structures/static_map.hpp"
 #include "melon/static_digraph.hpp"
 
@@ -12,7 +12,7 @@ using namespace fhamonic::melon;
 
 static_assert(std::ranges::random_access_range<static_map<std::size_t, bool>>);
 static_assert(
-    fhamonic::melon::concepts::key_value_map<static_map<std::size_t, bool>, std::size_t, bool>);
+    fhamonic::melon::concepts::output_map_of<static_map<std::size_t, bool>, std::size_t, bool>);
 
 GTEST_TEST(static_map_bool, empty_constructor) {
     static_map<std::size_t, bool> map;
