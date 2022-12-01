@@ -40,7 +40,7 @@ struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, vertex_t<G>>>;
     using heap =
         d_ary_heap<2, vertex_t<G>, mapped_value_t<L, vertex_t<G>>,
-                   decltype(semiring::less), vertex_map_t<G, std::size_t>>;
+                   std::decay_t<decltype(semiring::less)>, vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
@@ -102,6 +102,12 @@ public:
     dijkstra(const G & g, const L & l, const vertex & s) : dijkstra(g, l) {
         add_source(s);
     }
+
+    dijkstra(const dijkstra & bin) = default;
+    dijkstra(dijkstra && bin) = default;
+
+    dijkstra & operator=(const dijkstra &) = default;
+    dijkstra & operator=(dijkstra &&) = default;
 
     dijkstra & reset() noexcept {
         _heap.clear();

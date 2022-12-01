@@ -48,6 +48,8 @@ GTEST_TEST(depth_first_search, test) {
 
     depth_first_search alg(graph, 0u);
 
+    static_assert(std::copyable<decltype(alg)>);
+
     ASSERT_FALSE(alg.finished());
     ASSERT_EQ(alg.current(), 0u);
     alg.advance();
