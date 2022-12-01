@@ -5,7 +5,16 @@
 
 #include "ranges_test_helper.hpp"
 
+using namespace fhamonic;
 using namespace fhamonic::melon;
+
+static_assert(melon::concepts::graph<static_digraph>);
+static_assert(melon::concepts::incidence_list_graph<static_digraph>);
+static_assert(melon::concepts::adjacency_list_graph<static_digraph>);
+static_assert(melon::concepts::reversible_incidence_list_graph<static_digraph>);
+static_assert(melon::concepts::reversible_adjacency_list_graph<static_digraph>);
+static_assert(melon::concepts::has_vertex_map<static_digraph>);
+static_assert(melon::concepts::has_arc_map<static_digraph>);
 
 GTEST_TEST(static_digraph, empty_constructor) {
     static_digraph graph;
@@ -19,9 +28,9 @@ GTEST_TEST(static_digraph, empty_constructor) {
     ASSERT_FALSE(graph.is_valid_arc(0));
 
     EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.source(0), "");
     EXPECT_DEATH(graph.target(0), "");
     EXPECT_DEATH(graph.out_arcs(0), "");
+    EXPECT_DEATH(graph.source(0), "");
 }
 
 GTEST_TEST(static_digraph, empty_vectors_constructor) {
@@ -39,9 +48,9 @@ GTEST_TEST(static_digraph, empty_vectors_constructor) {
     ASSERT_FALSE(graph.is_valid_arc(0));
 
     EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.source(0), "");
     EXPECT_DEATH(graph.target(0), "");
-    EXPECT_DEATH(graph.out_neighbors(0), "");
+    EXPECT_DEATH(graph.out_arcs(0), "");
+    EXPECT_DEATH(graph.source(0), "");
 }
 
 GTEST_TEST(static_digraph, vectors_constructor_1) {

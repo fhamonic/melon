@@ -5,7 +5,14 @@
 
 #include "ranges_test_helper.hpp"
 
+using namespace fhamonic;
 using namespace fhamonic::melon;
+
+static_assert(melon::concepts::graph<static_forward_digraph>);
+static_assert(melon::concepts::incidence_list_graph<static_forward_digraph>);
+static_assert(melon::concepts::adjacency_list_graph<static_forward_digraph>);
+static_assert(melon::concepts::has_vertex_map<static_forward_digraph>);
+static_assert(melon::concepts::has_arc_map<static_forward_digraph>);
 
 GTEST_TEST(static_forward_digraph, empty_constructor) {
     static_forward_digraph graph;
@@ -20,7 +27,6 @@ GTEST_TEST(static_forward_digraph, empty_constructor) {
 
     EXPECT_DEATH(graph.out_arcs(0), "");
     EXPECT_DEATH(graph.target(0), "");
-    EXPECT_DEATH(graph.out_arcs(0), "");
 }
 
 GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
