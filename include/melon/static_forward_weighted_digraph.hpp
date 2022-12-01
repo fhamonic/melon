@@ -1,5 +1,5 @@
-#ifndef MELON_WEIGHTED_STATIC_FORWARD_DIGRAPH_HPP
-#define MELON_WEIGHTED_STATIC_FORWARD_DIGRAPH_HPP
+#ifndef MELON_STATIC_FORWARD_WEIGHTED_DIGRAPH_HPP
+#define MELON_STATIC_FORWARD_WEIGHTED_DIGRAPH_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -16,7 +16,7 @@ namespace fhamonic {
 namespace melon {
 
 template <typename W = int>
-class weighted_static_forward_digraph {
+class static_forward_weighted_digraph {
 private:
     using vertex = unsigned int;
     using arc = std::pair<vertex, W>;
@@ -27,7 +27,7 @@ private:
 public:
     template <concepts::forward_range_of<vertex> S,
               concepts::forward_range_of<arc> T>
-    weighted_static_forward_digraph(const std::size_t & nb_vertices,
+    static_forward_weighted_digraph(const std::size_t & nb_vertices,
                                     S && arcs_sources, T && arcs) noexcept
         : _out_arc_begin(nb_vertices, 0), _arcs(std::move(arcs)) {
         assert(std::ranges::all_of(
@@ -41,16 +41,16 @@ public:
                             _out_arc_begin.data(), 0);
     }
 
-    weighted_static_forward_digraph() = default;
-    weighted_static_forward_digraph(
-        const weighted_static_forward_digraph & graph) = default;
-    weighted_static_forward_digraph(weighted_static_forward_digraph && graph) =
+    static_forward_weighted_digraph() = default;
+    static_forward_weighted_digraph(
+        const static_forward_weighted_digraph & graph) = default;
+    static_forward_weighted_digraph(static_forward_weighted_digraph && graph) =
         default;
 
-    weighted_static_forward_digraph & operator=(
-        const weighted_static_forward_digraph &) = default;
-    weighted_static_forward_digraph & operator=(
-        weighted_static_forward_digraph &&) = default;
+    static_forward_weighted_digraph & operator=(
+        const static_forward_weighted_digraph &) = default;
+    static_forward_weighted_digraph & operator=(
+        static_forward_weighted_digraph &&) = default;
 
     auto nb_vertices() const noexcept { return _out_arc_begin.size(); }
     auto nb_arcs() const noexcept { return _arcs.size(); }
@@ -111,4 +111,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_WEIGHTED_STATIC_FORWARD_DIGRAPH_HPP
+#endif  // MELON_STATIC_FORWARD_WEIGHTED_DIGRAPH_HPP
