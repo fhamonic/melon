@@ -79,7 +79,7 @@ public:
         return map_view([](const arc & a) -> vertex { return a.first; });
     }
     W weight(const arc & a) const noexcept { return a.second; }
-    auto weight_map() const {
+    auto weights_map() const {
         return map_view([](const arc & a) -> W { return a.second; });
     }
     auto out_neighbors(const vertex & u) const noexcept {
