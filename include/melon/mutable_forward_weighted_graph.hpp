@@ -64,7 +64,22 @@ public:
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
 
-    vertex
+    vertex create_vertex() noexcept {
+        _adjacency_list.emplace_back();
+        return static_cast<vertex>(_adjacency_list.size() - 1);
+    }
+    template <std::convertible_to<W> T>
+    arc create_arc(const vertex from, const vertex to, T && weight) noexcept {
+        _adjacency_list[from].emplace_back(to, std::forward<T>(weight));
+        return static_cast<vertex>(_adjacency_list.size() - 1);
+    }
+    vertex remove_arc(const arc uv) noexcept {
+        const vertex u = uv->first;
+        if(_adjacency_list[u].size() > 1)
+            std::iter_swap(uv, _adjacency_list[u].end() - 1);
+        _adjacency_list[u].pop_back();
+        return static_cast<vertex>(_adjacency_list.size() - 1);
+    }
 };
 
 }  // namespace melon
