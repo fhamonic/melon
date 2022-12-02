@@ -35,9 +35,9 @@ concept bidirectional_dijkstra_trait = semiring<typename T::semiring> &&
 
 template <typename G, typename L>
 struct bidirectional_dijkstra_default_traits {
-    using semiring = shortest_path_semiring<mapped_value_t<L, vertex_t<G>>>;
+    using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
     using heap =
-        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, vertex_t<G>>,
+        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
                    decltype(semiring::less), vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_pred_vertices = false;
@@ -45,7 +45,7 @@ struct bidirectional_dijkstra_default_traits {
 };
 
 template <concepts::incidence_list_graph G,
-          concepts::input_map<vertex_t<G>> L,
+          concepts::input_map<arc_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
 requires concepts::has_vertex_map<G> &&
@@ -57,11 +57,8 @@ private:
 
 public:
     using value_t = mapped_value_t<L, vertex>;
-    using traversal_entry = std::pair<vertex, value_t>;
     using traits = T;
 
-    static_assert(std::is_same_v<traversal_entry, typename traits::heap::entry>,
-                  "traversal_entry != heap_entry");
 
 private:
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };

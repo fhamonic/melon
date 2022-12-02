@@ -3,53 +3,56 @@
 
 #include <algorithm>
 #include <cassert>
+#include <list>
 #include <ranges>
 #include <vector>
 
 namespace fhamonic {
 namespace melon {
 
-class mutable_digraph {
+template <typename W>
+class mutable_forward_weighted_digraph {
 public:
     using vertex = unsigned int;
-    using arc = std::vector<vertex_t>::iterator;
-
-    template <typename T>
-    using vertex_map = std::vector<T>;
-    template <typename T>
-    using arc_map = std::vector<T>;
+    using arc = std::vector<std::pair<vertex, W>>::iterator;
 
 private:
-    vertex_map<std::vector<vertex_t>> _adjacency_list;
+    std::vector<std::vector<std::pair<vertex, W>>> _adjacency_list;
 
 public:
-    mutable_digraph() = default;
-    mutable_digraph(const mutable_digraph & graph) = default;
-    mutable_digraph(mutable_digraph && graph) = default;
+    mutable_forward_weighted_digraph() = default;
+    mutable_forward_weighted_digraph(
+        const mutable_forward_weighted_digraph & graph) = default;
+    mutable_forward_weighted_digraph(
+        mutable_forward_weighted_digraph && graph) = default;
 
     auto nb_vertices() const { return _adjacency_list.size(); }
-    bool is_valid_node(vertex u) const { return u < nb_vertices(); }
     auto vertices() const {
-        return std::views::iota(static_cast<vertex_t>(0),
-                                static_cast<vertex_t>(nb_vertices()));
+        return std::views::iota(static_cast<vertex>(0),
+                                static_cast<vertex>(nb_vertices()));
     }
-
-private:
     auto out_arcs(const vertex u) const {
         assert(is_valid_node(u));
         return std::views::iota(_adjacency_list[u].begin(),
                                 _adjacency_list[u].end());
     }
-
-public:
     auto arcs() const {
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs(u); }));
     }
-    vertex_t target(arc_t a) const { return *a; }
+    vertex target(const arc & a) const { return a->first; }
+    auto targets_map() const {
+        return map_view([](const arc & a) -> vertex { return a->first; });
+    }
+    vertex weight(const arc & a) const { return a->second; }
+    auto weights_map() const {
+        return map_view([](const arc & a) -> vertex { return a->second; });
+    }
     const auto & out_neighbors(const vertex u) const {
         assert(is_valid_node(u));
-        return _adjacency_list[u];
+        return std::views::transform(
+            _adjacency_list[u],
+            [](const auto & p) -> vertex { return p.first; });
     }
     auto out_arcs_pairs(const vertex u) const {
         assert(is_valid_node(u));
@@ -60,6 +63,8 @@ public:
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs_pairs(u); }));
     }
+
+    vertex
 };
 
 }  // namespace melon
