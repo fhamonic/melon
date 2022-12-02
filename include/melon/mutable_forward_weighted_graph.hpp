@@ -27,6 +27,7 @@ public:
         mutable_forward_weighted_digraph && graph) = default;
 
     auto nb_vertices() const { return _adjacency_list.size(); }
+    bool is_valid_node(vertex u) const { return u < nb_vertices(); }
     auto vertices() const {
         return std::views::iota(static_cast<vertex>(0),
                                 static_cast<vertex>(nb_vertices()));
@@ -71,7 +72,7 @@ public:
     template <std::convertible_to<W> T>
     arc create_arc(const vertex from, const vertex to, T && weight) noexcept {
         _adjacency_list[from].emplace_back(to, std::forward<T>(weight));
-        return static_cast<vertex>(_adjacency_list.size() - 1);
+        return _adjacency_list[from].end() - 1;
     }
     vertex remove_arc(const arc uv) noexcept {
         const vertex u = uv->first;
