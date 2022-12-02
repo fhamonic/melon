@@ -1,5 +1,5 @@
-#ifndef MELON_MUTABLE_DIGRAPH_HPP
-#define MELON_MUTABLE_DIGRAPH_HPP
+#ifndef MELON_MUTABLE_WEIGHTED_DIGRAPH_HPP
+#define MELON_MUTABLE_WEIGHTED_DIGRAPH_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -11,20 +11,18 @@ namespace fhamonic {
 namespace melon {
 
 template <typename W>
-class mutable_forward_weighted_digraph {
+class mutable_weighted_digraph {
 public:
     using vertex = unsigned int;
-    using arc = std::vector<std::pair<vertex, W>>::iterator;
+    using arc = std::list<std::tuple<vertex, vertex, W>>::iterator;
 
 private:
-    std::vector<std::vector<std::pair<vertex, W>>> _adjacency_list;
+    std::vector<std::list<std::tuple<vertex, vertex, W>>> _adjacency_list;
 
 public:
-    mutable_forward_weighted_digraph() = default;
-    mutable_forward_weighted_digraph(
-        const mutable_forward_weighted_digraph & graph) = default;
-    mutable_forward_weighted_digraph(
-        mutable_forward_weighted_digraph && graph) = default;
+    mutable_weighted_digraph() = default;
+    mutable_weighted_digraph(const mutable_weighted_digraph & graph) = default;
+    mutable_weighted_digraph(mutable_weighted_digraph && graph) = default;
 
     auto nb_vertices() const { return _adjacency_list.size(); }
     bool is_valid_node(vertex u) const { return u < nb_vertices(); }
@@ -41,13 +39,19 @@ public:
         return std::views::join(std::views::transform(
             vertices(), [this](auto u) { return out_arcs(u); }));
     }
-    vertex target(const arc & a) const { return a->first; }
-    auto targets_map() const {
-        return map_view([](const arc & a) -> vertex { return a->first; });
+    vertex source(const arc & a) const { return std::get<0>(*a); }
+    auto sources_map() const {
+        return map_view(
+            [](const arc & a) -> vertex { return std::get<0>(*a); });
     }
-    vertex weight(const arc & a) const { return a->second; }
+    vertex target(const arc & a) const { return std::get<1>(*a); }
+    auto targets_map() const {
+        return map_view(
+            [](const arc & a) -> vertex { return std::get<1>(*a); });
+    }
+    vertex weight(const arc & a) const { return std::get<2>(*a); }
     auto weights_map() const {
-        return map_view([](const arc & a) -> vertex { return a->second; });
+        return map_view([](const arc & a) -> W { return std::get<2>(*a); });
     }
     const auto & out_neighbors(const vertex u) const {
         assert(is_valid_node(u));
@@ -74,15 +78,16 @@ public:
         _adjacency_list[from].emplace_back(to, std::forward<T>(weight));
         return _adjacency_list[from].end() - 1;
     }
-    void remove_arc(const arc uv) noexcept {
+    void remove_arc(const arc & uv) noexcept {
         const vertex u = uv->first;
         if(_adjacency_list[u].size() > 1)
-            std::iter_swap(uv, _adjacency_list[u].end() - 1);
+            std::swap(*uv, _adjacency_list[u].back());
         _adjacency_list[u].pop_back();
     }
+    void charge_target(arc & a, const vertex v) noexcept { a->first = v; }
 };
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_MUTABLE_DIGRAPH_HPP
+#endif  // MELON_MUTABLE_WEIGHTED_DIGRAPH_HPP
