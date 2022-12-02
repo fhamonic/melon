@@ -85,6 +85,7 @@ public:
 
     breadth_first_search & reset() noexcept {
         _queue.resize(0);
+        _queue_current = _queue.begin();
         _reached_map.fill(false);
         return *this;
     }
