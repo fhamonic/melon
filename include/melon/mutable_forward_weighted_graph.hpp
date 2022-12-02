@@ -74,12 +74,11 @@ public:
         _adjacency_list[from].emplace_back(to, std::forward<T>(weight));
         return _adjacency_list[from].end() - 1;
     }
-    vertex remove_arc(const arc uv) noexcept {
+    void remove_arc(const arc uv) noexcept {
         const vertex u = uv->first;
         if(_adjacency_list[u].size() > 1)
             std::iter_swap(uv, _adjacency_list[u].end() - 1);
         _adjacency_list[u].pop_back();
-        return static_cast<vertex>(_adjacency_list.size() - 1);
     }
 };
 
