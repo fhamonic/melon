@@ -8,11 +8,14 @@
 #include <utility>
 #include <vector>
 
+#include "melon/concepts/map_of.hpp"
+
 namespace fhamonic {
 namespace melon {
 
 template <int D, typename K, typename P, typename C = std::greater<P>,
-          typename M = std::unordered_map<K, std::size_t>>
+          concepts::output_map_of<K, std::size_t> M =
+              std::unordered_map<K, std::size_t>>
 class d_ary_heap {
 public:
     using key_type = K;
@@ -37,7 +40,7 @@ public:
 
     d_ary_heap(const d_ary_heap & bin) = default;
     d_ary_heap(d_ary_heap && bin) = default;
-    
+
     d_ary_heap & operator=(const d_ary_heap &) = default;
     d_ary_heap & operator=(d_ary_heap &&) = default;
 

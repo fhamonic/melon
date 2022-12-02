@@ -12,16 +12,20 @@ namespace melon {
 
 template <std::ranges::range R>
 constexpr void prefetch_range(const R & range) {
-    if constexpr(std::ranges::contiguous_range<R>) {
+    if constexpr(requires { __builtin_prefetch(nullptr); } &&
+                 std::ranges::contiguous_range<R>) {
         __builtin_prefetch(range.data());
     }
 }
 
-template <std::ranges::input_range V,
-          concepts::input_map<std::ranges::range_value_t<V>> M>
-constexpr void prefetch_mapped_values(const V & values, const M & map) {
-    using key_type = typename std::ranges::range_value_t<V>;
-    if constexpr(std::integral<key_type> && requires() { map.data(); }) {
+template <std::ranges::range K,
+          concepts::input_map<std::ranges::range_value_t<K>> M>
+constexpr void prefetch_mapped_values(const K & values, const M & map) {
+    if constexpr(std::ranges::sized_range<K> &&
+                 std::integral<std::ranges::range_value_t<K>> && requires {
+                     __builtin_prefetch(nullptr);
+                     map.data();
+                 }) {
         if(values.size()) {
             __builtin_prefetch(map.data() + values.front());
         }

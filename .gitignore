@@ -1,4 +1,5 @@
 .vscode
 /build
+/single-header
 *.log
 *.lp

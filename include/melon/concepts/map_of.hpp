@@ -8,8 +8,10 @@ namespace fhamonic {
 namespace melon {
 
 template <typename M, typename K>
-using mapped_value_t =
-    std::decay_t<decltype(std::declval<M>()[std::declval<K>()])>;
+using mapped_reference_t = decltype(std::declval<M>()[std::declval<K>()]);
+
+template <typename M, typename K>
+using mapped_value_t = std::decay_t<mapped_reference_t<M, K>>;
 
 // clang-format off
 namespace concepts {
@@ -18,15 +20,15 @@ concept input_map = requires(M m, K k) {
     m[k];
 };
 template <typename M, typename K, typename V>
-concept input_map_of = input_map<M, K> && std::convertible_to<mapped_value_t<M,K>,V>;
+concept input_map_of = input_map<M, K> && std::convertible_to<mapped_reference_t<M,K>,V>;
 
 template <typename M, typename K>
 concept output_map = input_map<M, K> &&
     requires(M map, K key, mapped_value_t<M,K> value) {
-        { map[key] = value } -> std::convertible_to<mapped_value_t<M,K>>;
+        { map[key] = value } -> std::same_as<mapped_reference_t<M,K>>;
     };
 template <typename M, typename K, typename V>
-concept output_map_of = output_map<M, K> && std::convertible_to<mapped_value_t<M,K>,V>;
+concept output_map_of = output_map<M, K> && std::convertible_to<mapped_reference_t<M,K>,V>;
 
 }  // namespace concepts
 // clang-format on
