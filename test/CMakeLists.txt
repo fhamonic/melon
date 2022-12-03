@@ -10,6 +10,7 @@ add_executable(
   static_forward_digraph_test.cpp
   static_forward_weighted_digraph_test.cpp
   mutable_forward_weighted_digraph_test.cpp
+  mutable_weighted_digraph_test.cpp
   static_map_test.cpp
   static_map_bool_test.cpp
   static_digraph_builder_test.cpp
@@ -19,6 +20,7 @@ add_executable(
   dijkstra_test.cpp
   bidirectional_dijkstra_test.cpp
   strong_fiber_test.cpp
+  intrusive_range_test.cpp
   reverse_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
