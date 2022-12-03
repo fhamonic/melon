@@ -9,7 +9,6 @@ add_executable(
   static_digraph_test.cpp
   static_forward_digraph_test.cpp
   static_forward_weighted_digraph_test.cpp
-  mutable_forward_weighted_digraph_test.cpp
   mutable_weighted_digraph_test.cpp
   static_map_test.cpp
   static_map_bool_test.cpp
