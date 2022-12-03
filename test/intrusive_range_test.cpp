@@ -49,6 +49,7 @@ GTEST_TEST(intrusive_range, test) {
     static_assert(std::semiregular<S>);
     static_assert(std::sentinel_for<S, I>);
     static_assert(std::ranges::range<R>);
+    static_assert(std::ranges::input_range<R>);
 
     ASSERT_FALSE(it == end);
     ASSERT_EQ(*it, 1);
