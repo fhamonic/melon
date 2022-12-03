@@ -45,21 +45,12 @@ public:
         return std::views::iota(static_cast<vertex>(0),
                                 static_cast<vertex>(nb_vertices()));
     }
-    auto out_arcs(const vertex u) {
-        assert(is_valid_node(u));
-        return intrusive_input_range(
-            _first_out_arc[u],
-            [this](const int arc_index) -> const arc & {
-                return _arcs[static_cast<std::size_t>(arc_index)];
-            },
-            [this](const int arc_index) -> int {
-                return _arcs[static_cast<std::size_t>(arc_index)].next_out_arc;
-            },
-            [](const int arc_index) -> bool {
-                return arc_index != -1;
-            });
-    }
     const auto & arcs() const { return _arcs; }
+    auto arcs_pairs() const {
+        return std::views::transform(_arcs, [](const auto & a) {
+            return std::make_pair(a.source, a.target);
+        });
+    }
     vertex source(const arc & a) const { return a.source; }
     auto sources_map() const {
         return map_view([](const arc & a) -> vertex { return a.source; });
@@ -72,23 +63,53 @@ public:
     auto weights_map() const {
         return map_view([](const arc & a) -> vertex { return a.weight; });
     }
-
-    // const auto & out_neighbors(const vertex u) const {
-    //     assert(is_valid_node(u));
-    //     return std::views::transform(
-    //         _adjacency_list[u],
-    //         [](const auto & p) -> vertex { return p.first; });
-    // }
-    // auto out_arcs_pairs(const vertex u) const {
-    //     assert(is_valid_node(u));
-    //     return std::views::transform(
-    //         out_neighbors(u), [u](auto v) { return std::make_pair(u, v);
-    //         });
-    // }
-    auto arcs_pairs() const {
-        return std::views::transform(_arcs, [](const auto & a) {
-            return std::make_pair(a.source, a.target);
-        });
+    auto out_arcs(const vertex u) const {
+        assert(is_valid_node(u));
+        return intrusive_input_range(
+            _first_out_arc[u],
+            [this](const int arc_index) -> const arc & {
+                return _arcs[static_cast<std::size_t>(arc_index)];
+            },
+            [this](const int arc_index) -> int {
+                return _arcs[static_cast<std::size_t>(arc_index)].next_out_arc;
+            },
+            [](const int arc_index) -> bool { return arc_index != -1; });
+    }
+    auto in_arcs(const vertex u) const {
+        assert(is_valid_node(u));
+        return intrusive_input_range(
+            _first_in_arc[u],
+            [this](const int arc_index) -> const arc & {
+                return _arcs[static_cast<std::size_t>(arc_index)];
+            },
+            [this](const int arc_index) -> int {
+                return _arcs[static_cast<std::size_t>(arc_index)].next_in_arc;
+            },
+            [](const int arc_index) -> bool { return arc_index != -1; });
+    }
+    auto out_neighbors(const vertex u) const {
+        assert(is_valid_node(u));
+        return intrusive_input_range(
+            _first_out_arc[u],
+            [this](const int arc_index) -> vertex {
+                return _arcs[static_cast<std::size_t>(arc_index)].target;
+            },
+            [this](const int arc_index) -> int {
+                return _arcs[static_cast<std::size_t>(arc_index)].next_out_arc;
+            },
+            [](const int arc_index) -> bool { return arc_index != -1; });
+    }
+    auto in_neighbors(const vertex u) const {
+        assert(is_valid_node(u));
+        return intrusive_input_range(
+            _first_in_arc[u],
+            [this](const int arc_index) -> vertex {
+                return _arcs[static_cast<std::size_t>(arc_index)].source;
+            },
+            [this](const int arc_index) -> int {
+                return _arcs[static_cast<std::size_t>(arc_index)].next_in_arc;
+            },
+            [](const int arc_index) -> bool { return arc_index != -1; });
     }
 
     vertex create_vertex() noexcept {
