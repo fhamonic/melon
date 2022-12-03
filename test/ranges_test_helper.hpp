@@ -16,11 +16,15 @@ void ASSERT_EQ_RANGES(R1 && r1, R2 && r2) {
 
 template <typename R, typename T>
 requires std::convertible_to<T, std::ranges::range_value_t<R>>
-void ASSERT_EQ_RANGES(R && r1, std::initializer_list<T> l) {
-    ASSERT_EQ(std::ranges::distance(r1), l.size());
-    for(const auto & [e1, e2] : ranges::views::zip(r1, l)) {
-        ASSERT_EQ(e1, static_cast<std::ranges::range_value_t<R>>(e2));
+void ASSERT_EQ_RANGES(R && r, std::initializer_list<T> l) {
+    ASSERT_EQ(std::ranges::distance(r), l.size());
+    auto it1 = r.begin();
+    auto it2 = l.begin();
+    while(it1 != r.end()) {
+        ASSERT_EQ(*it1, static_cast<std::ranges::range_value_t<R>>(*it2));
+        ++it1;
+        ++it2;
     }
 }
 
-#endif //RANGES_TEST_HELPER_HPP
+#endif  // RANGES_TEST_HELPER_HPP

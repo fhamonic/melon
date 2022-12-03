@@ -19,7 +19,7 @@ add_executable(
   dijkstra_test.cpp
   bidirectional_dijkstra_test.cpp
   strong_fiber_test.cpp
-  intrusive_range_test.cpp
+  intrusive_input_range_test.cpp
   reverse_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
