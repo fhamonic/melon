@@ -11,9 +11,11 @@
 #ifndef FHAMONIC_MELON_HPP
 #define FHAMONIC_MELON_HPP
 
+#include "melon/mutable_weighted_digraph.hpp"
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
 #include "melon/static_forward_digraph.hpp"
+#include "melon/static_forward_weighted_digraph.hpp"
 
 #include "melon/algorithm/bidirectional_dijkstra.hpp"
 #include "melon/algorithm/breadth_first_search.hpp"
