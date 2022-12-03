@@ -55,9 +55,8 @@ public:
             [this](const int arc_index) -> int {
                 return _arcs[static_cast<std::size_t>(arc_index)].next_out_arc;
             },
-            [this](const int arc_index) -> bool {
-                return _arcs[static_cast<std::size_t>(arc_index)]
-                           .next_out_arc != -1;
+            [](const int arc_index) -> bool {
+                return arc_index != -1;
             });
     }
     const auto & arcs() const { return _arcs; }
