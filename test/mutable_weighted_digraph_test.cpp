@@ -41,7 +41,7 @@ GTEST_TEST(mutable_weighted_digraph, create_vertices) {
     ASSERT_EQ(graph.nb_vertices(), 3);
     ASSERT_EQ_RANGES(graph.vertices(), {0, 1, 2});
 
-    // ASSERT_EQ(std::ranges::distance(graph.out_arcs(0)), 0);
+    ASSERT_EQ(std::ranges::distance(graph.out_arcs(0)), 0);
     // ASSERT_EQ(std::ranges::distance(graph.out_arcs(1)), 0);
     // ASSERT_EQ(std::ranges::distance(graph.out_arcs(2)), 0);
     ASSERT_FALSE(graph.is_valid_node(3));
