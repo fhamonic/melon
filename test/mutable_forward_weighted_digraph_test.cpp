@@ -30,88 +30,75 @@ GTEST_TEST(mutable_forward_weighted_digraph, empty_constructor) {
     EXPECT_DEATH(graph.out_arcs(0), "");
 }
 
-GTEST_TEST(mutable_forward_weighted_digraph, empty_vectors_constructor) {
+GTEST_TEST(mutable_forward_weighted_digraph, create_vertices) {
     using Graph = mutable_forward_weighted_digraph<double>;
-    std::vector<vertex_t<Graph>> arcs_sources;
-    std::vector<std::pair<vertex_t<Graph>, double>> arcs;
+    Graph graph;
 
-    Graph graph(0, std::move(arcs_sources), std::move(arcs));
-    ASSERT_EQ(graph.nb_vertices(), 0);
-    // ASSERT_EQ(graph.nb_arcs(), 0);
-    ASSERT_TRUE(std::ranges::empty(graph.vertices()));
-    ASSERT_EQ(std::ranges::distance(graph.arcs()), 0);
-    ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
+    auto a = graph.create_vertex();
+    auto b = graph.create_vertex();
+    auto c = graph.create_vertex();
 
-    ASSERT_FALSE(graph.is_valid_node(0));
-
-    EXPECT_DEATH(graph.out_arcs(0), "");
-}
-
-GTEST_TEST(mutable_forward_weighted_digraph, vectors_constructor_1) {
-    using Graph = mutable_forward_weighted_digraph<double>;
-    std::vector<std::pair<vertex_t<Graph>, vertex_t<Graph>>> arcs_pairs(
-        {{0, 1}, {0, 2}, {1, 2}, {2, 0}, {2, 1}});
-
-    std::vector<vertex_t<Graph>> arcs_sources = {0, 0, 1, 2, 2};
-    std::vector<std::pair<vertex_t<Graph>, double>> arcs = {
-        {1, 1.0}, {2, 1.0}, {2, 1.0}, {0, 1.0}, {1, 1.0}};
-    std::vector<std::pair<vertex_t<Graph>, double>> arcs_copy = arcs;
-
-    Graph graph(3, std::move(arcs_sources), std::move(arcs));
     ASSERT_EQ(graph.nb_vertices(), 3);
-    // ASSERT_EQ(graph.nb_arcs(), 5);
-
     ASSERT_EQ_RANGES(graph.vertices(), {0, 1, 2});
-    ASSERT_EQ_RANGES(graph.arcs(), arcs_copy);
 
-    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
-    ASSERT_FALSE(graph.is_valid_node(vertex_t<Graph>(graph.nb_vertices())));
-
-    ASSERT_EQ_RANGES(graph.out_neighbors(0), {1, 2});
-    ASSERT_EQ_RANGES(graph.out_neighbors(1), {2});
-    ASSERT_EQ_RANGES(graph.out_neighbors(2), {0, 1});
-    ASSERT_EQ_RANGES(graph.arcs_pairs(), arcs_pairs);
+    ASSERT_TRUE(std::ranges::empty(graph.out_arcs(0)));
+    ASSERT_TRUE(std::ranges::empty(graph.out_arcs(1)));
+    ASSERT_TRUE(std::ranges::empty(graph.out_arcs(2)));
+    ASSERT_FALSE(graph.is_valid_node(3));
+    EXPECT_DEATH(graph.out_arcs(3), "");
 }
 
-// GTEST_TEST(mutable_forward_weighted_digraph, vectors_constructor_2) {
-//     std::vector<std::pair<vertex_t<mutable_forward_weighted_digraph>,
-//                           vertex_t<mutable_forward_weighted_digraph>>>
-//         arc_pairs({{1, 2},
-//                    {1, 6},
-//                    {1, 7},
-//                    {2, 3},
-//                    {2, 4},
-//                    {3, 4},
-//                    {5, 2},
-//                    {5, 3},
-//                    {6, 5}});
+GTEST_TEST(mutable_forward_weighted_digraph, create_arcs) {
+    using Graph = mutable_forward_weighted_digraph<double>;
+    Graph graph;
 
-//     mutable_forward_weighted_digraph graph(
-//         8, std::ranges::views::keys(arc_pairs),
-//         std::ranges::views::values(arc_pairs));
-//     ASSERT_EQ(graph.nb_vertices(), 8);
-//     ASSERT_EQ(graph.nb_arcs(), 9);
+    auto a = graph.create_vertex();
+    auto b = graph.create_vertex();
+    auto c = graph.create_vertex();
 
-//     ASSERT_EQ_RANGES(graph.vertices(), {0, 1, 2, 3, 4, 5, 6, 7});
-//     ASSERT_EQ_RANGES(graph.arcs(), {0, 1, 2, 3, 4, 5, 6, 7, 8});
+    auto ab = graph.create_arc(a, b, 0.2);
+    auto ac = graph.create_arc(a, c, 1.0);
+    auto cb = graph.create_arc(c, b, 3.14);
 
-//     for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
-//     ASSERT_FALSE(graph.is_valid_node(
-//         vertex_t<mutable_forward_weighted_digraph>(graph.nb_vertices())));
+    ASSERT_EQ(graph.target(ab), b);
+    ASSERT_EQ(graph.target(ac), c);
+    ASSERT_EQ(graph.target(cb), b);
 
-//     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
-//     ASSERT_FALSE(graph.is_valid_arc(
-//         arc_t<mutable_forward_weighted_digraph>(graph.nb_arcs())));
+    ASSERT_EQ(graph.weight(ab), 0.2);
+    ASSERT_EQ(graph.weight(ac), 1.0);
+    ASSERT_EQ(graph.weight(cb), 3.14);
 
-//     ASSERT_EQ_RANGES(
-//         graph.out_neighbors(0),
-//         std::ranges::empty_view<vertex_t<mutable_forward_weighted_digraph>>());
-//     ASSERT_EQ_RANGES(graph.out_neighbors(1), {2, 6, 7});
-//     ASSERT_EQ_RANGES(graph.out_neighbors(2), {3, 4});
-//     ASSERT_EQ_RANGES(graph.out_neighbors(6), {5});
-//     ASSERT_EQ_RANGES(
-//         graph.out_neighbors(7),
-//         std::ranges::empty_view<vertex_t<mutable_forward_weighted_digraph>>());
+    std::vector<std::pair<vertex_t<Graph>, vertex_t<Graph>>> pairs = {
+        {a, c}, {a, b}, {c, b}};
+    ASSERT_EQ_RANGES(graph.arcs_pairs(), pairs);
 
-//     ASSERT_EQ_RANGES(graph.arcs_pairs(), arc_pairs);
-// }
+    ASSERT_EQ_RANGES(graph.out_neighbors(a), {c, b});
+    ASSERT_TRUE(std::ranges::empty(graph.out_neighbors(b)));
+    ASSERT_EQ_RANGES(graph.out_neighbors(c), {b});
+}
+
+GTEST_TEST(mutable_forward_weighted_digraph, remove_arcs) {
+    using Graph = mutable_forward_weighted_digraph<double>;
+    Graph graph;
+    auto a = graph.create_vertex();
+    auto b = graph.create_vertex();
+    auto c = graph.create_vertex();
+    auto ab = graph.create_arc(a, b, 0.2);
+    auto ac = graph.create_arc(a, c, 1.0);
+    auto cb = graph.create_arc(c, b, 3.14);
+
+    graph.remove_arc(ac);
+
+    ASSERT_EQ(graph.target(ab), b);
+    ASSERT_EQ(graph.target(cb), b);
+
+    ASSERT_EQ(graph.weight(ab), 0.2);
+    ASSERT_EQ(graph.weight(cb), 3.14);
+    std::vector<std::pair<vertex_t<Graph>, vertex_t<Graph>>> pairs = {{a, b},
+                                                                      {c, b}};
+    ASSERT_EQ_RANGES(graph.arcs_pairs(), pairs);
+
+    ASSERT_EQ_RANGES(graph.out_neighbors(a), {b});
+    ASSERT_TRUE(std::ranges::empty(graph.out_neighbors(b)));
+    ASSERT_EQ_RANGES(graph.out_neighbors(c), {b});
+}

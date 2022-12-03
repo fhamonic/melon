@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <list>
+#include <forward_list>
 #include <ranges>
 #include <vector>
 
@@ -17,10 +17,11 @@ template <typename W>
 class mutable_forward_weighted_digraph {
 public:
     using vertex = unsigned int;
-    using arc = std::list<std::pair<vertex, W>>::const_iterator;
+    using list_entry = std::pair<vertex, W>;
+    using arc = std::forward_list<list_entry>::const_iterator;
 
 private:
-    std::vector<std::list<std::pair<vertex, W>>> _adjacency_list;
+    std::vector<std::forward_list<list_entry>> _adjacency_list;
 
 public:
     mutable_forward_weighted_digraph() = default;
@@ -53,7 +54,7 @@ public:
     auto targets_map() const {
         return map_view([](const arc & a) -> vertex { return a->first; });
     }
-    vertex weight(const arc & a) const { return a->second; }
+    W weight(const arc & a) const { return a->second; }
     auto weights_map() const {
         return map_view([](const arc & a) -> W { return a->second; });
     }
@@ -79,14 +80,13 @@ public:
     }
     template <std::convertible_to<W> T>
     arc create_arc(const vertex from, const vertex to, T && weight) noexcept {
-        _adjacency_list[from].emplace_back(to, std::forward<T>(weight));
-        return _adjacency_list[from].end() - 1;
+        _adjacency_list[from].emplace_front(to, std::forward<T>(weight));
+        return _adjacency_list[from].begin();
     }
     void remove_arc(const arc & uv) noexcept {
         const vertex u = uv->first;
-        if(_adjacency_list[u].size() > 1)
-            std::swap(*uv, _adjacency_list[u].back());
-        _adjacency_list[u].pop_back();
+        std::swap(const_cast<list_entry &>(*uv), _adjacency_list[u].front());
+        _adjacency_list[u].pop_front();
     }
     void charge_target(const arc & a, const vertex v) noexcept {
         const_cast<vertex &>(a->first) = v;
