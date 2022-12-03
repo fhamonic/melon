@@ -1,8 +1,9 @@
-#ifndef MELON_UTILS_INTRUSIVE_INPUT_RANGE_HPP
-#define MELON_UTILS_INTRUSIVE_INPUT_RANGE_HPP
+#ifndef MELON_UTILS_INTRUSIVE_VIEW_HPP
+#define MELON_UTILS_INTRUSIVE_VIEW_HPP
 
 #include <functional>
 #include <iterator>
+#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -10,12 +11,12 @@ namespace fhamonic {
 namespace melon {
 
 template <typename I, typename Incr, typename Deref, typename Cond>
-class intrusive_input_range {
+class intrusive_view {
 private:
     I _begin;
-    Deref _deref;
-    Incr _incr;
-    Cond _cond;
+    std::optional<Deref> _deref;
+    std::optional<Incr> _incr;
+    std::optional<Cond> _cond;
 
 public:
     using reference = std::invoke_result_t<Deref, I>;
@@ -25,11 +26,35 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    intrusive_input_range(I begin, Deref && deref, Incr && incr, Cond && cond)
+    intrusive_view(I begin, Deref && deref, Incr && incr, Cond && cond)
         : _begin(begin)
         , _deref(std::forward<Deref>(deref))
         , _incr(std::forward<Incr>(incr))
         , _cond(std::forward<Cond>(cond)) {}
+
+    intrusive_view(const intrusive_view &) = default;
+    intrusive_view(intrusive_view &&) = default;
+
+    // intrusive_range would not be a viewable_range without opertor=
+    // https://www.fluentcpp.com/2020/10/02/how-to-implement-operator-when-a-data-member-is-a-lambda/
+    intrusive_view & operator=(const intrusive_view & that) noexcept {
+        _deref->reset();
+        if(that._deref) _deref->emplace(*that._deref);
+        _incr->reset();
+        if(that._incr) _incr->emplace(*that._incr);
+        _cond->reset();
+        if(that._cond) _cond->emplace(*that._cond);
+        return *this;
+    }
+    intrusive_view & operator=(intrusive_view && that) {
+        _deref->reset();
+        if(that._deref) _deref->emplace(std::move(*that._deref));
+        _incr->reset();
+        if(that._incr) _incr->emplace(std::move(*that._incr));
+        _cond->reset();
+        if(that._cond) _cond->emplace(std::move(*that._cond));
+        return *this;
+    }
 
     struct sentinel {};
 
@@ -52,7 +77,6 @@ public:
                  const Cond & cond)
             : _index(index), _deref(deref), _incr(incr), _cond(cond) {}
 
-        iterator() = default;
         iterator(const iterator &) = default;
         iterator(iterator &&) = default;
 
@@ -71,11 +95,11 @@ public:
         }
     };
 
-    iterator begin() const { return iterator(_begin, _deref, _incr, _cond); }
+    iterator begin() const { return iterator(_begin, *_deref, *_incr, *_cond); }
     sentinel end() const { return sentinel(); }
 };
 
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_UTILS_INTRUSIVE_INPUT_RANGE_HPP
+#endif  // MELON_UTILS_INTRUSIVE_VIEW_HPP
