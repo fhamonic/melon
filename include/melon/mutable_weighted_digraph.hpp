@@ -155,7 +155,7 @@ public:
         _first_out_arc[from] = n;
         return _arcs.back();
     }
-    void remove_arc(arc & a) noexcept {
+    void remove_arc(const arc & a) noexcept {
         const int i = index_of_arc(a);
         remove_from_source_out_arcs(a);
         remove_from_target_in_arcs(a);
@@ -163,7 +163,7 @@ public:
         _arcs.pop_back();
         change_arc_index(_arcs[i], i);
     }
-    void charge_target(arc & a, const vertex v) noexcept {
+    void change_target(arc & a, const vertex v) noexcept {
         if(a.target == v) return;
         const int i = index_of_arc(a);
         remove_from_target_in_arcs(a);
@@ -174,7 +174,7 @@ public:
             _arcs[static_cast<std::size_t>(_first_in_arc[v])].prev_in_arc = i;
         _first_in_arc[v] = i;
     }
-    void charge_source(arc & a, const vertex v) noexcept {
+    void change_source(arc & a, const vertex v) noexcept {
         if(a.source == v) return;
         const int i = index_of_arc(a);
         remove_from_source_out_arcs(a);
