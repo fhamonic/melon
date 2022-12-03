@@ -1,6 +1,7 @@
 #ifndef MELON_UTILS_INTRUSIVE_INPUT_RANGE_HPP
 #define MELON_UTILS_INTRUSIVE_INPUT_RANGE_HPP
 
+#include <functional>
 #include <iterator>
 #include <type_traits>
 #include <utility>
@@ -70,9 +71,7 @@ public:
         }
     };
 
-    iterator begin() const {
-        return iterator(_begin, _deref, _incr, _cond);
-    }
+    iterator begin() const { return iterator(_begin, _deref, _incr, _cond); }
     sentinel end() const { return sentinel(); }
 };
 
