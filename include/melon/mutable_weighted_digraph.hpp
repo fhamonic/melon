@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "melon/data_structures/static_map.hpp"
-#include "melon/utils/intrusive_input_range.hpp"
+#include "melon/utils/intrusive_view.hpp"
 #include "melon/utils/map_view.hpp"
 
 namespace fhamonic {
@@ -65,7 +65,7 @@ public:
     }
     auto out_arcs(const vertex u) const {
         assert(is_valid_node(u));
-        return intrusive_input_range(
+        return intrusive_view(
             _first_out_arc[u],
             [this](const int arc_index) -> const arc & {
                 return _arcs[static_cast<std::size_t>(arc_index)];
@@ -77,7 +77,7 @@ public:
     }
     auto in_arcs(const vertex u) const {
         assert(is_valid_node(u));
-        return intrusive_input_range(
+        return intrusive_view(
             _first_in_arc[u],
             [this](const int arc_index) -> const arc & {
                 return _arcs[static_cast<std::size_t>(arc_index)];
@@ -89,27 +89,13 @@ public:
     }
     auto out_neighbors(const vertex u) const {
         assert(is_valid_node(u));
-        return intrusive_input_range(
-            _first_out_arc[u],
-            [this](const int arc_index) -> vertex {
-                return _arcs[static_cast<std::size_t>(arc_index)].target;
-            },
-            [this](const int arc_index) -> int {
-                return _arcs[static_cast<std::size_t>(arc_index)].next_out_arc;
-            },
-            [](const int arc_index) -> bool { return arc_index != -1; });
+        return std::views::transform(
+            out_arcs(u), [this](const arc & a) { return a.target; });
     }
     auto in_neighbors(const vertex u) const {
         assert(is_valid_node(u));
-        return intrusive_input_range(
-            _first_in_arc[u],
-            [this](const int arc_index) -> vertex {
-                return _arcs[static_cast<std::size_t>(arc_index)].source;
-            },
-            [this](const int arc_index) -> int {
-                return _arcs[static_cast<std::size_t>(arc_index)].next_in_arc;
-            },
-            [](const int arc_index) -> bool { return arc_index != -1; });
+        return std::views::transform(
+            in_arcs(u), [this](const arc & a) { return a.source; });
     }
 
     vertex create_vertex() noexcept {

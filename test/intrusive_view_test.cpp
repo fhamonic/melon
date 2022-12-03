@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "melon/concepts/range_of.hpp"
-#include "melon/utils/intrusive_input_range.hpp"
+#include "melon/utils/intrusive_view.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -12,7 +12,7 @@ using namespace fhamonic::melon;
 GTEST_TEST(intrusive_range, test) {
     std::vector<int> values = {1, 2, 6, 3, 7};
 
-    auto r = intrusive_input_range(
+    auto r = intrusive_view(
         0ul, [&values](const std::size_t i) -> int & { return values[i]; },
         [](const std::size_t i) -> std::size_t { return i + 1; },
         [n = values.size()](const std::size_t i) -> std::size_t {
@@ -31,25 +31,33 @@ GTEST_TEST(intrusive_range, test) {
         { ++i } -> std::same_as<I &>;
         i++;
     });
-    static_assert(std::movable<I>);
-    static_assert(std::weakly_incrementable<I>);
-    static_assert(std::input_or_output_iterator<I>);
-
-    static_assert(requires(const I in) {
-        typename std::iter_value_t<I>;
-        typename std::iter_reference_t<I>;
-        typename std::iter_rvalue_reference_t<I>;
-        { *in } -> std::same_as<std::iter_reference_t<I>>;
+    {
         {
-            std::ranges::iter_move(in)
-            } -> std::same_as<std::iter_rvalue_reference_t<I>>;
-    });
-    static_assert(std::indirectly_readable<I>);
-    static_assert(std::input_iterator<I>);
-    static_assert(std::semiregular<S>);
-    static_assert(std::sentinel_for<S, I>);
-    static_assert(std::ranges::range<R>);
-    static_assert(std::ranges::input_range<R>);
+            {
+                static_assert(std::movable<I>);
+                static_assert(std::weakly_incrementable<I>);
+                static_assert(std::input_or_output_iterator<I>);
+            }
+            static_assert(requires(const I in) {
+                typename std::iter_value_t<I>;
+                typename std::iter_reference_t<I>;
+                typename std::iter_rvalue_reference_t<I>;
+                { *in } -> std::same_as<std::iter_reference_t<I>>;
+                {
+                    std::ranges::iter_move(in)
+                    } -> std::same_as<std::iter_rvalue_reference_t<I>>;
+            });
+            static_assert(std::indirectly_readable<I>);
+            static_assert(std::input_iterator<I>);
+        }
+        static_assert(std::semiregular<S>);
+        static_assert(std::sentinel_for<S, I>);
+        static_assert(std::ranges::range<R>);
+        static_assert(std::ranges::input_range<R>);
+    }
+    static_assert(std::movable<R>);
+    static_assert(std::ranges::viewable_range<R>);
+
 
     ASSERT_FALSE(it == end);
     ASSERT_EQ(*it, 1);
