@@ -11,10 +11,10 @@ using namespace fhamonic::melon;
 static_assert(melon::concepts::graph<mutable_weighted_digraph<int>>);
 static_assert(
     melon::concepts::incidence_list_graph<mutable_weighted_digraph<int>>);
-// static_assert(melon::concepts::adjacency_list_graph<
-//               mutable_weighted_digraph<int>>);
-// static_assert(
-//     melon::concepts::has_vertex_map<mutable_weighted_digraph<int>>);
+static_assert(melon::concepts::adjacency_list_graph<
+              mutable_weighted_digraph<int>>);
+static_assert(
+    melon::concepts::has_vertex_map<mutable_weighted_digraph<int>>);
 
 GTEST_TEST(mutable_weighted_digraph, empty_constructor) {
     using Graph = mutable_weighted_digraph<int>;
