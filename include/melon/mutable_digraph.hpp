@@ -196,6 +196,7 @@ private:
     }
     void remove_incident_arcs(const vertex v) noexcept {
         assert(is_valid_vertex(v));
+        // in_arcs are already linked by .next_in_arc
         arc last_in_arc;
         for(const arc & a : in_arcs(v)) {
             last_in_arc = a;
@@ -206,10 +207,15 @@ private:
         for(const arc & a : out_arcs(v)) {
             last_out_arc = a;
             remove_from_target_in_arcs(a);
+            // once removed from the targets in arcs .next_in_arc is free
             _arcs[a].next_in_arc = _arcs[a].next_out_arc;
             _arcs_filter[a] = false;
         }
+        // out_arcs were linked by .next_out_arc
+        // [first_out_arc, last_out_arc] are now linked by .next_in_arc
         vertex_struct & vs = _vertices[v];
+        // join the sequences [first_in_arc, last_in_arc] -> [first_out_arc,
+        // last_out_arc] -> _first_free_arc
         _arcs[last_out_arc].next_in_arc = _first_free_arc;
         _arcs[last_in_arc].next_in_arc = vs.first_out_arc;
         _first_free_arc = vs.first_in_arc;

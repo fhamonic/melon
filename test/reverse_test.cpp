@@ -24,9 +24,9 @@ GTEST_TEST(reverse_adaptor, static_graph) {
     ASSERT_TRUE(EQ_RANGES(graph.vertices(), reverse_graph.vertices()));
     ASSERT_TRUE(EQ_RANGES(graph.arcs(), reverse_graph.arcs()));
 
-    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
+    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
     ASSERT_FALSE(
-        graph.is_valid_node(vertex_t<static_digraph>(graph.nb_vertices())));
+        graph.is_valid_vertex(vertex_t<static_digraph>(graph.nb_vertices())));
 
     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
     ASSERT_FALSE(graph.is_valid_arc(arc_t<static_digraph>(graph.nb_arcs())));

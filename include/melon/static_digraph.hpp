@@ -70,7 +70,7 @@ public:
     auto nb_vertices() const noexcept { return _out_arc_begin.size(); }
     auto nb_arcs() const noexcept { return _arc_target.size(); }
 
-    bool is_valid_node(const vertex & u) const noexcept {
+    bool is_valid_vertex(const vertex & u) const noexcept {
         return u < nb_vertices();
     }
     bool is_valid_arc(const arc & u) const noexcept { return u < nb_arcs(); }
@@ -85,13 +85,13 @@ public:
     }
 
     auto out_arcs(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::views::iota(
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
     auto in_arcs(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::span(
             _in_arcs.data() + _in_arc_begin[u],
             (u + 1 < nb_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
@@ -111,20 +111,20 @@ public:
     const auto & targets_map() const noexcept { return _arc_target; }
 
     auto out_neighbors(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
                                    : _arc_target.data() + nb_arcs()));
     }
     auto in_neighbors(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::views::transform(in_arcs(u),
                                      [this](auto a) { return source(a); });
     }
 
     auto out_arcs_pairs(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::views::transform(
             out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
     }

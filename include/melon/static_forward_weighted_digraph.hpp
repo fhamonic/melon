@@ -55,7 +55,7 @@ public:
     auto nb_vertices() const noexcept { return _out_arc_begin.size(); }
     auto nb_arcs() const noexcept { return _arcs.size(); }
 
-    bool is_valid_node(const vertex & u) const noexcept {
+    bool is_valid_vertex(const vertex & u) const noexcept {
         return u < nb_vertices();
     }
 
@@ -68,7 +68,7 @@ public:
             vertices(), [this](auto && u) { return out_arcs(u); }));
     }
     auto out_arcs(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::span(
             _arcs.data() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arcs.data() + _out_arc_begin[u + 1]
@@ -83,12 +83,12 @@ public:
         return map_view([](const arc & a) -> W { return a.second; });
     }
     auto out_neighbors(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::views::keys(out_arcs(u));
     }
 
     auto out_arcs_pairs(const vertex & u) const noexcept {
-        assert(is_valid_node(u));
+        assert(is_valid_vertex(u));
         return std::views::transform(
             out_neighbors(u), [u](auto && v) { return std::make_pair(u, v); });
     }
