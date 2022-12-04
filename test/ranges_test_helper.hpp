@@ -12,6 +12,13 @@ void ASSERT_EQ_RANGES(R1 && r1, R2 && r2) {
     for(const auto & [e1, e2] : ranges::views::zip(r1, r2)) {
         ASSERT_EQ(e1, e2);
     }
+    // auto it1 = r1.begin();
+    // auto it2 = r2.begin();
+    // while(it1 != r1.end()) {
+    //     ASSERT_EQ(*it1, *it2);
+    //     ++it1;
+    //     ++it2;
+    // }
 }
 
 template <typename R, typename T>

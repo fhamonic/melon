@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <functional>
+#include <limits>
 #include <ranges>
 #include <vector>
 
@@ -13,24 +15,30 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename W>
+template <typename VW, typename AW>
 class mutable_weighted_digraph {
 public:
     using vertex = unsigned int;
-    struct arc {
-        vertex source;
-        vertex target;
-        int prev_in_arc;
-        int next_in_arc;
-        int prev_out_arc;
-        int next_out_arc;
-        W weight;
-    };
+    using arc = unsigned int;
 
 private:
-    std::vector<int> _first_in_arc;
-    std::vector<int> _first_out_arc;
-    std::vector<arc> _arcs;
+    static constexpr arc INVALID_ARC = std::numeric_limits<arc>::max();
+    struct vertex_struct {
+        arc first_in_arc;
+        arc first_out_arc;
+        VW weight;
+    };
+    struct arc_struct {
+        vertex source;
+        vertex target;
+        arc prev_in_arc;
+        arc next_in_arc;
+        arc prev_out_arc;
+        arc next_out_arc;
+        AW weight;
+    };
+    std::vector<vertex_struct> _vertices;
+    std::vector<arc_struct> _arcs;
 
 public:
     mutable_weighted_digraph() = default;
@@ -41,149 +49,154 @@ public:
         default;
     mutable_weighted_digraph & operator=(mutable_weighted_digraph &&) = default;
 
-    auto nb_vertices() const { return _first_out_arc.size(); }
-    bool is_valid_node(vertex u) const { return u < nb_vertices(); }
-    auto vertices() const {
+    auto nb_vertices() const noexcept { return _vertices.size(); }
+    auto nb_arcs() const noexcept { return _arcs.size(); }
+    bool is_valid_node(vertex u) const noexcept { return u < nb_vertices(); }
+    auto vertices() const noexcept {
         return std::views::iota(static_cast<vertex>(0),
                                 static_cast<vertex>(nb_vertices()));
     }
-    const auto & arcs() const { return _arcs; }
-    auto arcs_pairs() const {
-        return std::views::transform(_arcs, [](const auto & a) {
-            return std::make_pair(a.source, a.target);
+    auto arcs() const noexcept {
+        return std::views::iota(static_cast<arc>(0),
+                                static_cast<arc>(nb_arcs()));
+    }
+    auto arcs_pairs() const noexcept {
+        return std::views::transform(_arcs, [](const arc_struct & as) {
+            return std::make_pair(as.source, as.target);
         });
     }
-    vertex source(const arc & a) const { return a.source; }
-    auto sources_map() const {
-        return map_view([](const arc & a) -> vertex { return a.source; });
+    vertex source(const arc a) const noexcept { return _arcs[a].source; }
+    auto sources_map() const noexcept {
+        return map_view(
+            [this](const arc a) -> vertex { return _arcs[a].source; });
     }
-    vertex target(const arc & a) const { return a.target; }
-    auto targets_map() const {
-        return map_view([](const arc & a) -> vertex { return a.target; });
+    vertex target(const arc a) const noexcept { return _arcs[a].target; }
+    auto targets_map() const noexcept {
+        return map_view(
+            [this](const arc a) -> vertex { return _arcs[a].target; });
     }
-    W weight(const arc & a) const { return a.weight; }
-    auto weights_map() const {
-        return map_view([](const arc & a) -> vertex { return a.weight; });
+    VW vertex_weight(const vertex v) const noexcept {
+        return _vertices[v].weight;
     }
-    auto out_arcs(const vertex u) const {
+    auto vertices_weights_map() const noexcept {
+        return map_view(
+            [this](const vertex v) -> VW { return _vertices[v].weight; });
+    }
+    AW arc_weight(const arc a) const noexcept { return _arcs[a].weight; }
+    auto arcs_weights_map() const noexcept {
+        return map_view([this](const arc a) -> AW { return _arcs[a].weight; });
+    }
+    auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_node(u));
         return intrusive_view(
-            _first_out_arc[u],
-            [this](const int arc_index) -> const arc & {
-                return _arcs[static_cast<std::size_t>(arc_index)];
-            },
-            [this](const int arc_index) -> int {
-                return _arcs[static_cast<std::size_t>(arc_index)].next_out_arc;
-            },
-            [](const int arc_index) -> bool { return arc_index != -1; });
+            _vertices[u].first_out_arc, std::identity(),
+            [this](const arc a) -> arc { return _arcs[a].next_out_arc; },
+            [](const arc a) -> bool { return a != INVALID_ARC; });
     }
-    auto in_arcs(const vertex u) const {
+    auto in_arcs(const vertex u) const noexcept {
         assert(is_valid_node(u));
         return intrusive_view(
-            _first_in_arc[u],
-            [this](const int arc_index) -> const arc & {
-                return _arcs[static_cast<std::size_t>(arc_index)];
-            },
-            [this](const int arc_index) -> int {
-                return _arcs[static_cast<std::size_t>(arc_index)].next_in_arc;
-            },
-            [](const int arc_index) -> bool { return arc_index != -1; });
+            _vertices[u].first_in_arc, std::identity(),
+            [this](const arc a) -> arc { return _arcs[a].next_in_arc; },
+            [](const arc a) -> bool { return a != INVALID_ARC; });
     }
-    auto out_neighbors(const vertex u) const {
+    auto out_neighbors(const vertex u) const noexcept {
         assert(is_valid_node(u));
         return std::views::transform(
-            out_arcs(u), [this](const arc & a) { return a.target; });
+            out_arcs(u),
+            [this](const arc & a) -> vertex { return _arcs[a].target; });
     }
-    auto in_neighbors(const vertex u) const {
+    auto in_neighbors(const vertex u) const noexcept {
         assert(is_valid_node(u));
         return std::views::transform(
-            in_arcs(u), [this](const arc & a) { return a.source; });
+            in_arcs(u),
+            [this](const arc & a) -> vertex { return _arcs[a].source; });
     }
 
-    vertex create_vertex() noexcept {
-        _first_in_arc.emplace_back(-1);
-        _first_out_arc.emplace_back(-1);
-        return static_cast<vertex>(_first_out_arc.size() - 1);
+    template <std::convertible_to<VW> T>
+    vertex create_vertex(T && weight) noexcept {
+        _vertices.emplace_back(INVALID_ARC, INVALID_ARC,
+                               std::forward<T>(weight));
+        return static_cast<vertex>(_vertices.size() - 1);
     }
 
 private:
-    int index_of_arc(const arc & a) const noexcept {
-        if(a.prev_out_arc != -1) return _arcs[a.prev_out_arc].next_out_arc;
-        return _first_out_arc[a.source];
+    void remove_from_source_out_arcs(const arc a) noexcept {
+        const arc_struct & as = _arcs[a];
+        if(as.prev_out_arc == INVALID_ARC)
+            _vertices[as.source].first_out_arc = as.next_out_arc;
+        else
+            _arcs[as.prev_out_arc].next_out_arc = as.next_out_arc;
+        if(as.next_out_arc != INVALID_ARC)
+            _arcs[as.next_out_arc].prev_out_arc = as.prev_out_arc;
     }
-    void remove_from_source_out_arcs(const arc & a) noexcept {
-        if(a.prev_out_arc == -1)
-            _first_out_arc[a.source] = a.next_out_arc;
+    void remove_from_target_in_arcs(const arc a) noexcept {
+        const arc_struct & as = _arcs[a];
+        if(as.prev_in_arc == INVALID_ARC)
+            _vertices[as.target].first_in_arc = as.next_in_arc;
         else
-            _arcs[a.prev_out_arc].next_out_arc = a.next_out_arc;
-        if(a.next_out_arc != -1)
-            _arcs[a.next_out_arc].prev_out_arc = a.prev_out_arc;
+            _arcs[as.prev_in_arc].next_in_arc = as.next_in_arc;
+        if(as.next_in_arc != INVALID_ARC)
+            _arcs[as.next_in_arc].prev_in_arc = as.prev_in_arc;
     }
-    void remove_from_target_in_arcs(const arc & a) noexcept {
-        if(a.prev_in_arc == -1)
-            _first_in_arc[a.target] = a.next_in_arc;
+    void notify_new_arc_index(const arc a) noexcept {
+        const arc_struct & as = _arcs[a];
+        if(as.prev_out_arc == INVALID_ARC)
+            _vertices[as.source].first_out_arc = a;
         else
-            _arcs[a.prev_in_arc].next_in_arc = a.next_in_arc;
-        if(a.next_in_arc != -1)
-            _arcs[a.next_in_arc].prev_in_arc = a.prev_in_arc;
-    }
-    void change_arc_index(arc & a, const int i) noexcept {
-        if(a.prev_out_arc == -1)
-            _first_out_arc[a.source] = i;
+            _arcs[as.prev_out_arc].next_out_arc = a;
+        if(as.next_out_arc != INVALID_ARC)
+            _arcs[as.next_out_arc].prev_out_arc = a;
+        if(as.prev_in_arc == INVALID_ARC)
+            _vertices[as.target].first_in_arc = a;
         else
-            _arcs[a.prev_out_arc].next_out_arc = i;
-        if(a.next_out_arc != -1) _arcs[a.next_out_arc].prev_out_arc = i;
-        if(a.prev_in_arc == -1)
-            _first_in_arc[a.target] = i;
-        else
-            _arcs[a.prev_in_arc].next_in_arc = i;
-        if(a.next_in_arc != -1) _arcs[a.next_in_arc].prev_in_arc = i;
+            _arcs[as.prev_in_arc].next_in_arc = a;
+        if(as.next_in_arc != INVALID_ARC) _arcs[as.next_in_arc].prev_in_arc = a;
     }
 
 public:
-    template <std::convertible_to<W> T>
+    template <std::convertible_to<AW> T>
     arc create_arc(const vertex from, const vertex to, T && weight) noexcept {
-        const int n = static_cast<int>(_arcs.size());
-        _arcs.emplace_back(from, to, -1, -1, _first_in_arc[to],
-                           _first_out_arc[from], weight);
-        if(_first_in_arc[to] != -1)
-            _arcs[static_cast<std::size_t>(_first_in_arc[to])].prev_in_arc = n;
-        _first_in_arc[to] = n;
-        if(_first_out_arc[from] != -1)
-            _arcs[static_cast<std::size_t>(_first_out_arc[from])].prev_in_arc =
-                n;
-        _first_out_arc[from] = n;
-        return _arcs.back();
+        const arc a = static_cast<arc>(_arcs.size());
+        _arcs.emplace_back(
+            from, to, INVALID_ARC, INVALID_ARC, _vertices[to].first_in_arc,
+            _vertices[from].first_out_arc, std::forward<T>(weight));
+        if(_vertices[to].first_in_arc != INVALID_ARC)
+            _arcs[_vertices[to].first_in_arc].prev_in_arc = a;
+        _vertices[to].first_in_arc = a;
+        if(_vertices[from].first_out_arc != INVALID_ARC)
+            _arcs[_vertices[from].first_out_arc].prev_in_arc = a;
+        _vertices[from].first_out_arc = a;
+        return a;
     }
-    void remove_arc(const arc & a) noexcept {
-        const int i = index_of_arc(a);
+    void remove_arc(const arc a) noexcept {
         remove_from_source_out_arcs(a);
         remove_from_target_in_arcs(a);
-        std::swap(_arcs[static_cast<std::size_t>(i)], _arcs.back());
+        std::swap(_arcs[a], _arcs.back());
         _arcs.pop_back();
-        change_arc_index(_arcs[i], i);
+        notify_new_arc_index(a);
     }
-    void change_target(arc & a, const vertex v) noexcept {
-        if(a.target == v) return;
-        const int i = index_of_arc(a);
+    void change_target(const arc a, const vertex v) noexcept {
+        const arc_struct & as = _arcs[a];
+        if(as.target == v) return;
         remove_from_target_in_arcs(a);
-        a.target = v;
-        a.prev_in_arc = -1;
-        a.next_in_arc = _first_in_arc[v];
-        if(_first_in_arc[v] != -1)
-            _arcs[static_cast<std::size_t>(_first_in_arc[v])].prev_in_arc = i;
-        _first_in_arc[v] = i;
+        as.target = v;
+        as.prev_in_arc = INVALID_ARC;
+        as.next_in_arc = _vertices[v].first_in_arc;
+        if(_vertices[v].first_in_arc != INVALID_ARC)
+            _arcs[_vertices[v].first_in_arc].prev_in_arc = a;
+        _vertices[v].first_in_arc = a;
     }
-    void change_source(arc & a, const vertex v) noexcept {
-        if(a.source == v) return;
-        const int i = index_of_arc(a);
+    void change_source(const arc a, const vertex u) noexcept {
+        const arc_struct & as = _arcs[a];
+        if(as.source == u) return;
         remove_from_source_out_arcs(a);
-        a.source = v;
-        a.prev_out_arc = -1;
-        a.next_out_arc = _first_out_arc[v];
-        if(_first_out_arc[v] != -1)
-            _arcs[static_cast<std::size_t>(_first_out_arc[v])].prev_out_arc = i;
-        _first_out_arc[v] = i;
+        as.source = u;
+        as.prev_out_arc = INVALID_ARC;
+        as.next_out_arc = _vertices[u].first_out_arc;
+        if(_vertices[u].first_out_arc != INVALID_ARC)
+            _arcs[_vertices[u].first_out_arc].prev_out_arc = a;
+        _vertices[u].first_out_arc = a;
     }
 
     template <typename T>
