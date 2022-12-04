@@ -78,18 +78,18 @@ requires std::convertible_to<T, std::ranges::range_value_t<R>>
 template <typename R1, typename R2>
 requires std::same_as<std::ranges::range_value_t<R1>,
                       std::ranges::range_value_t<R2>>
-    testing::AssertionResult EQ_SETS(R1 && r1, R2 && r2) {
+    testing::AssertionResult EQ_MULTISETS(R1 && r1, R2 && r2) {
     using vector_t = std::vector<std::ranges::range_value_t<R1>>;
 
     vector_t s1 = ranges::to_vector(r1);
     std::ranges::sort(s1);
-    const auto ret1 = std::ranges::unique(s1);
-    s1.erase(ret1.begin(), ret1.end());
+    // const auto ret1 = std::ranges::unique(s1);
+    // s1.erase(ret1.begin(), ret1.end());
 
     vector_t s2 = ranges::to_vector(r2);
     std::ranges::sort(s2);
-    const auto ret2 = std::ranges::unique(s2);
-    s2.erase(ret2.begin(), ret2.end());
+    // const auto ret2 = std::ranges::unique(s2);
+    // s2.erase(ret2.begin(), ret2.end());
 
     vector_t s1_minus_s2;
     std::ranges::set_difference(s1, s2, std::back_inserter(s1_minus_s2));
@@ -97,7 +97,7 @@ requires std::same_as<std::ranges::range_value_t<R1>,
     std::ranges::set_difference(s2, s1, std::back_inserter(s2_minus_s1));
 
     if(s1_minus_s2.empty() && s2_minus_s1.empty()) {
-        return ::testing::AssertionSuccess() << "sets are equal";
+        return ::testing::AssertionSuccess();
     }
     auto result = ::testing::AssertionFailure();
     if(!s1_minus_s2.empty()) {
@@ -112,11 +112,11 @@ requires std::same_as<std::ranges::range_value_t<R1>,
 
 template <typename R, typename T>
 requires std::convertible_to<T, std::ranges::range_value_t<R>>
-    testing::AssertionResult EQ_SETS(R && r1, std::initializer_list<T> l) {
+    testing::AssertionResult EQ_MULTISETS(R && r1, std::initializer_list<T> l) {
     auto r2 = ranges::to_vector(std::views::transform(l, [](const auto & e) {
         return static_cast<std::ranges::range_value_t<R>>(e);
     }));
-    return EQ_SETS(r1, r2);
+    return EQ_MULTISETS(r1, r2);
 }
 
 #endif  // RANGES_TEST_HELPER_HPP
