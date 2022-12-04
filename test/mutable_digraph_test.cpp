@@ -37,7 +37,7 @@ GTEST_TEST(mutable_digraph, create_vertices) {
     auto b = graph.create_vertex();
     auto c = graph.create_vertex();
 
-    ASSERT_EQ_SETS(graph.vertices(), {a, b, c});
+    ASSERT_TRUE(EQ_SETS(graph.vertices(), {a, b, c}));
     ASSERT_TRUE(EMPTY(graph.arcs()));
     ASSERT_TRUE(EMPTY(graph.out_arcs(0)));
     ASSERT_TRUE(EMPTY(graph.out_arcs(1)));
@@ -58,7 +58,7 @@ GTEST_TEST(mutable_digraph, create_arcs) {
     auto ac = graph.create_arc(a, c);
     auto cb = graph.create_arc(c, b);
 
-    ASSERT_EQ_SETS(graph.vertices(), {ab, ac, cb});
+    ASSERT_TRUE(EQ_SETS(graph.vertices(), {ab, ac, cb}));
 
     ASSERT_EQ(graph.source(ab), a);
     ASSERT_EQ(graph.source(ac), a);
@@ -67,12 +67,12 @@ GTEST_TEST(mutable_digraph, create_arcs) {
     ASSERT_EQ(graph.target(ac), c);
     ASSERT_EQ(graph.target(cb), b);
 
-    ASSERT_EQ_SETS(graph.arcs_pairs(),
-                   vertices_pair_list{{c, b}, {a, c}, {a, b}});
+    ASSERT_TRUE(EQ_SETS(graph.arcs_pairs(),
+                   vertices_pair_list{{c, b}, {a, c}, {a, b}}));
 
-    ASSERT_EQ_SETS(graph.out_neighbors(a), {b, c});
+    ASSERT_TRUE(EQ_SETS(graph.out_neighbors(a), {b, c}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));
-    ASSERT_EQ_SETS(graph.out_neighbors(c), {b});
+    ASSERT_TRUE(EQ_SETS(graph.out_neighbors(c), {b}));
 }
 
 GTEST_TEST(mutable_digraph, remove_arcs) {
@@ -89,9 +89,9 @@ GTEST_TEST(mutable_digraph, remove_arcs) {
     ASSERT_EQ(graph.target(ab), b);
     ASSERT_EQ(graph.target(cb), b);
 
-    ASSERT_EQ_SETS(graph.arcs_pairs(), vertices_pair_list{{c, b}, {a, b}});
+    ASSERT_TRUE(EQ_SETS(graph.arcs_pairs(), vertices_pair_list{{c, b}, {a, b}}));
 
-    ASSERT_EQ_SETS(graph.out_neighbors(a), {b});
+    ASSERT_TRUE(EQ_SETS(graph.out_neighbors(a), {b}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));
-    ASSERT_EQ_SETS(graph.out_neighbors(c), {b});
+    ASSERT_TRUE(EQ_SETS(graph.out_neighbors(c), {b}));
 }
