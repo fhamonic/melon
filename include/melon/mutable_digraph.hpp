@@ -57,56 +57,68 @@ public:
     mutable_digraph & operator=(mutable_digraph &&) = default;
 
     bool is_valid_vertex(const vertex a) const noexcept {
-        if(a > _vertices.size()) return false;
+        if(a >= _vertices.size()) return false;
         return _vertices_filter[a];
     }
     bool is_valid_arc(const arc a) const noexcept {
-        if(a > _arcs.size()) return false;
+        if(a >= _arcs.size()) return false;
         return _arcs_filter[a];
     }
 
     auto vertices() const noexcept {
         return intrusive_view(
             _first_vertex, std::identity(),
-            [this](const vertex v) -> arc { return _vertices[v].next_vertex; },
-            [](const arc a) -> bool { return a != INVALID_VERTEX; });
+            [this](const vertex v) -> vertex {
+                return _vertices[v].next_vertex;
+            },
+            [](const vertex a) -> bool { return a != INVALID_VERTEX; });
     }
-    vertex source(const arc a) const noexcept { return _arcs[a].source; }
+    vertex source(const arc a) const noexcept {
+        assert(is_valid_arc(a));
+        return _arcs[a].source;
+    }
     auto sources_map() const noexcept {
         return map_view(
             [this](const arc a) -> vertex { return _arcs[a].source; });
     }
-    vertex target(const arc a) const noexcept { return _arcs[a].target; }
+    vertex target(const arc a) const noexcept {
+        assert(is_valid_arc(a));
+        return _arcs[a].target;
+    }
     auto targets_map() const noexcept {
         return map_view(
             [this](const arc a) -> vertex { return _arcs[a].target; });
     }
-    auto out_arcs(const vertex u) const noexcept {
+    auto out_arcs(const vertex v) const noexcept {
+        assert(is_valid_vertex(v));
         return intrusive_view(
-            _vertices[u].first_out_arc, std::identity(),
+            _vertices[v].first_out_arc, std::identity(),
             [this](const arc a) -> arc { return _arcs[a].next_out_arc; },
             [](const arc a) -> bool { return a != INVALID_ARC; });
     }
-    auto in_arcs(const vertex u) const noexcept {
+    auto in_arcs(const vertex v) const noexcept {
+        assert(is_valid_vertex(v));
         return intrusive_view(
-            _vertices[u].first_in_arc, std::identity(),
+            _vertices[v].first_in_arc, std::identity(),
             [this](const arc a) -> arc { return _arcs[a].next_in_arc; },
             [](const arc a) -> bool { return a != INVALID_ARC; });
     }
-    auto out_neighbors(const vertex u) const noexcept {
+    auto out_neighbors(const vertex v) const noexcept {
+        assert(is_valid_vertex(v));
         return std::views::transform(
-            out_arcs(u),
+            out_arcs(v),
             [this](const arc & a) -> vertex { return _arcs[a].target; });
     }
-    auto in_neighbors(const vertex u) const noexcept {
+    auto in_neighbors(const vertex v) const noexcept {
+        assert(is_valid_vertex(v));
         return std::views::transform(
-            in_arcs(u),
+            in_arcs(v),
             [this](const arc & a) -> vertex { return _arcs[a].source; });
     }
 
     auto arcs() const noexcept {
         return std::views::join(std::views::transform(
-            vertices(), [this](auto u) { return out_arcs(u); }));
+            vertices(), [this](auto v) { return out_arcs(v); }));
     }
     auto arcs_pairs() const noexcept {
         return std::views::transform(arcs(), [this](const arc & a) {

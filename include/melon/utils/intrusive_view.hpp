@@ -12,12 +12,6 @@ namespace melon {
 
 template <typename I, typename Incr, typename Deref, typename Cond>
 class intrusive_view {
-private:
-    I _begin;
-    std::optional<Deref> _deref;
-    std::optional<Incr> _incr;
-    std::optional<Cond> _cond;
-
 public:
     using reference = std::invoke_result_t<Deref, const I &>;
     using value_type = std::decay_t<reference>;
@@ -26,6 +20,13 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
+private:
+    I _begin;
+    std::optional<Deref> _deref;
+    std::optional<Incr> _incr;
+    std::optional<Cond> _cond;
+
+public:
     intrusive_view(I begin, Deref && deref, Incr && incr, Cond && cond)
         : _begin(begin)
         , _deref(std::forward<Deref>(deref))
