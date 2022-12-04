@@ -48,6 +48,6 @@ GTEST_TEST(strong_fiber, test) {
 
     algo.add_strong_arc_source(1).run();
 
-    ASSERT_EQ_RANGES(strong_nodes, {6, 5, 4});
-    ASSERT_EQ_RANGES(weak_nodes, {0, 1, 7, 2, 3});
+    ASSERT_TRUE(EQ_RANGES(strong_nodes, {6, 5, 4}));
+    ASSERT_TRUE(EQ_RANGES(weak_nodes, {0, 1, 7, 2, 3}));
 }

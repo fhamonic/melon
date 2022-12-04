@@ -44,14 +44,16 @@ GTEST_TEST(static_map, size_init_constructor) {
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
     int value = 113;
-    ASSERT_EQ_RANGES(
-        map2,
-        std::vector<std::pair<const std::size_t, int &>>(
-            {{0u, value}, {1u, value}, {2u, value}, {3u, value}, {4u, value}}));
-    ASSERT_EQ_RANGES(
+    ASSERT_TRUE(EQ_RANGES(
+        map2, std::vector<std::pair<const std::size_t, int &>>({{0u, value},
+                                                                {1u, value},
+                                                                {2u, value},
+                                                                {3u, value},
+                                                                {4u, value}})));
+    ASSERT_TRUE(EQ_RANGES(
         std::as_const(map2),
         std::vector<std::pair<const std::size_t, int>>(
-            {{0u, 113}, {1u, 113}, {2u, 113}, {3u, 113}, {4u, 113}}));
+            {{0u, 113}, {1u, 113}, {2u, 113}, {3u, 113}, {4u, 113}})));
 }
 
 GTEST_TEST(static_map, range_constructor) {
@@ -67,17 +69,18 @@ GTEST_TEST(static_map, range_constructor) {
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
     ASSERT_TRUE(std::ranges::equal(std::views::values(map2), datas));
-    ASSERT_EQ_RANGES(map2, std::vector<std::pair<const std::size_t, int &>>(
-                               {{0u, datas[0]},
-                                {1u, datas[1]},
-                                {2u, datas[2]},
-                                {3u, datas[3]},
-                                {4u, datas[4]},
-                                {5u, datas[5]}}));
-    ASSERT_EQ_RANGES(
+    ASSERT_TRUE(EQ_RANGES(
+        map2,
+        std::vector<std::pair<const std::size_t, int &>>({{0u, datas[0]},
+                                                          {1u, datas[1]},
+                                                          {2u, datas[2]},
+                                                          {3u, datas[3]},
+                                                          {4u, datas[4]},
+                                                          {5u, datas[5]}})));
+    ASSERT_TRUE(EQ_RANGES(
         std::as_const(map2),
         std::vector<std::pair<const std::size_t, int>>(
-            {{0u, 0}, {1u, 7}, {2u, 3}, {3u, 5}, {4u, 6}, {5u, 11}}));
+            {{0u, 0}, {1u, 7}, {2u, 3}, {3u, 5}, {4u, 6}, {5u, 11}})));
 }
 
 GTEST_TEST(static_map, read_operator) {

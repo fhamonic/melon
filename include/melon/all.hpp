@@ -11,7 +11,7 @@
 #ifndef FHAMONIC_MELON_HPP
 #define FHAMONIC_MELON_HPP
 
-#include "melon/mutable_weighted_digraph.hpp"
+#include "melon/mutable_digraph.hpp"
 #include "melon/static_digraph.hpp"
 #include "melon/static_digraph_builder.hpp"
 #include "melon/static_forward_digraph.hpp"

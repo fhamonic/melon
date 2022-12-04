@@ -22,7 +22,7 @@ GTEST_TEST(static_digraph_builder, build_without_map) {
 
     auto [graph] = builder.build();
 
-    ASSERT_EQ_RANGES(
+    ASSERT_TRUE(EQ_RANGES(
         graph.arcs_pairs(),
         std::vector<
             std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>(
@@ -34,7 +34,7 @@ GTEST_TEST(static_digraph_builder, build_without_map) {
              {3, 4},
              {5, 2},
              {5, 3},
-             {6, 5}}));
+             {6, 5}})));
 }
 
 GTEST_TEST(static_digraph_builder, build_with_map) {
@@ -53,7 +53,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
 
     auto [graph, map] = builder.build();
 
-    ASSERT_EQ_RANGES(
+    ASSERT_TRUE(EQ_RANGES(
         graph.arcs_pairs(),
         std::vector<
             std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>(
@@ -65,7 +65,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
              {3, 4},
              {5, 2},
              {5, 3},
-             {6, 5}}));
+             {6, 5}})));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
         auto u = graph.source(a);
