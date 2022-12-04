@@ -22,7 +22,7 @@ GTEST_TEST(static_forward_digraph, empty_constructor) {
     ASSERT_TRUE(std::ranges::empty(graph.arcs()));
     ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
 
-    ASSERT_FALSE(graph.is_valid_node(0));
+    ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
 
     EXPECT_DEATH(graph.out_arcs(0), "");
@@ -40,7 +40,7 @@ GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
     ASSERT_TRUE(std::ranges::empty(graph.arcs()));
     ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
 
-    ASSERT_FALSE(graph.is_valid_node(0));
+    ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
 
     EXPECT_DEATH(graph.out_arcs(0), "");
@@ -61,8 +61,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_RANGES(graph.vertices(), {0, 1, 2}));
     ASSERT_TRUE(EQ_RANGES(graph.arcs(), {0, 1, 2, 3, 4}));
 
-    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
-    ASSERT_FALSE(graph.is_valid_node(
+    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
+    ASSERT_FALSE(graph.is_valid_vertex(
         vertex_t<static_forward_digraph>(graph.nb_vertices())));
 
     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
@@ -100,8 +100,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
     ASSERT_TRUE(EQ_RANGES(graph.vertices(), {0, 1, 2, 3, 4, 5, 6, 7}));
     ASSERT_TRUE(EQ_RANGES(graph.arcs(), {0, 1, 2, 3, 4, 5, 6, 7, 8}));
 
-    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_node(u));
-    ASSERT_FALSE(graph.is_valid_node(
+    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
+    ASSERT_FALSE(graph.is_valid_vertex(
         vertex_t<static_forward_digraph>(graph.nb_vertices())));
 
     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
