@@ -105,6 +105,7 @@ public:
     }
 
     void create_vertex(const vertex u) noexcept {
+        assert(!is_valid_vertex(u));
         if(u >= _vertex_filter.size()) {
             _vertex_filter.resize(u + 1, false);
         } else {
@@ -122,13 +123,12 @@ public:
         _vertex_filter[u] = false;
     }
     void create_arc(const arc a, const vertex s, const vertex t) noexcept {
+        assert(!is_valid_arc(a));
         assert(is_valid_vertex(s));
         assert(is_valid_vertex(t));
         if(a >= _arcs_structs.size()) {
             _arcs_structs.resize(
                 a + 1, {.arc_pair = {0, 0}, .id = 0, .exists = false});
-        } else {
-            assert(!_arcs_structs[a].exists);
         }
         _arcs_structs[a] = {.arc_pair = {s, t}, .id = a, .exists = true};
         assert(is_valid_arc(a));
@@ -145,7 +145,7 @@ public:
     void change_target(const arc a, const vertex t) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(t));
-        _arcs_structs[a].arc_pair.first = t;
+        _arcs_structs[a].arc_pair.second = t;
     }
 };
 

@@ -125,11 +125,11 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
         CHANGE_SOURCE,
         CHANGE_TARGET
     };
-    std::vector<Operation> operations = {CREATE_VERTEX, REMOVE_VERTEX,
-                                         CREATE_ARC,    REMOVE_ARC,
-                                         CHANGE_SOURCE, CHANGE_TARGET};
+    std::vector<Operation> operations = {
+        CREATE_VERTEX, REMOVE_VERTEX, CREATE_ARC,   CREATE_ARC,
+        REMOVE_ARC,    CHANGE_SOURCE, CHANGE_TARGET};
 
-    for(std::size_t i = 0; i < 100; ++i) {
+    for(std::size_t i = 0; i < 2000; ++i) {
         Operation op;
         for(;;) {
             op = random_element(operations);
@@ -146,13 +146,13 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
 
         if(op == CREATE_VERTEX) {
             auto u = graph.create_vertex();
-            std::cout << "create_vertex() -> " << u << std::endl;
+            // std::cout << "create_vertex() -> " << u << std::endl;
             dummy_graph.create_vertex(u);
         }
         if(op == REMOVE_VERTEX) {
             auto u = random_element(dummy_graph.vertices());
-            std::cout << "remove_vertex(" << u << ")" << std::endl;
-            // graph.remove_vertex(u);
+            // std::cout << "remove_vertex(" << u << ")" << std::endl;
+            graph.remove_vertex(u);
             dummy_graph.remove_vertex(u);
         }
         if(op == CREATE_ARC) {
@@ -160,51 +160,53 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
             auto t = random_element(dummy_graph.vertices());
             auto a = graph.create_arc(s, t);
             dummy_graph.create_arc(a, s, t);
-            std::cout << "create_arc(" << s << ", " << t << ") -> " << a
-                      << std::endl;
+            // std::cout << "create_arc(" << s << ", " << t << ") -> " << a
+            //           << std::endl;
         }
         if(op == REMOVE_ARC) {
             auto a = random_element(dummy_graph.arcs());
-            std::cout << "remove_arc(" << a << ")" << std::endl;
-            // graph.remove_arc(a);
+            // std::cout << "remove_arc(" << a << ")" << std::endl;
+            graph.remove_arc(a);
             dummy_graph.remove_arc(a);
         }
         if(op == CHANGE_SOURCE) {
             auto a = random_element(dummy_graph.arcs());
             auto s = random_element(dummy_graph.vertices());
-            std::cout << "change_source(" << a << ", " << s << ")" << std::endl;
-            // graph.change_source(a, s);
+            // std::cout << "change_source(" << a << ", " << s << ")" << std::endl;
+            graph.change_source(a, s);
             dummy_graph.change_source(a, s);
         }
         if(op == CHANGE_TARGET) {
             auto a = random_element(dummy_graph.arcs());
             auto t = random_element(dummy_graph.vertices());
-            std::cout << "change_target(" << a << ", " << t << ")" << std::endl;
-            // graph.change_target(a, t);
+            // std::cout << "change_target(" << a << ", " << t << ")" << std::endl;
+            graph.change_target(a, t);
             dummy_graph.change_target(a, t);
         }
 
-        // ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), dummy_graph.vertices()));
-        // ASSERT_TRUE(EQ_MULTISETS(graph.arcs(), dummy_graph.arcs()));
-        // ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(),
-        // dummy_graph.arcs_pairs()));
+        ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), dummy_graph.vertices()));
+        ASSERT_TRUE(EQ_MULTISETS(graph.arcs(), dummy_graph.arcs()));
+        ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(), dummy_graph.arcs_pairs()));
 
+        // std::cout << "v=";
         for(auto && v : graph.vertices()) {
+            // std::cout << v << ",";
             ASSERT_TRUE(graph.is_valid_vertex(v));
-            // ASSERT_TRUE(dummy_graph.is_valid_vertex(v));
-            // ASSERT_TRUE(EQ_MULTISETS(graph.in_arcs(v),
-            // dummy_graph.in_arcs(v))); ASSERT_TRUE(
-            //     EQ_MULTISETS(graph.out_arcs(v), dummy_graph.out_arcs(v)));
-            // ASSERT_TRUE(EQ_MULTISETS(graph.in_neighbors(v),
-            //                          dummy_graph.in_neighbors(v)));
-            // ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(v),
-            //                          dummy_graph.out_neighbors(v)));
+            ASSERT_TRUE(dummy_graph.is_valid_vertex(v));
+            ASSERT_TRUE(EQ_MULTISETS(graph.in_arcs(v), dummy_graph.in_arcs(v)));
+            ASSERT_TRUE(
+                EQ_MULTISETS(graph.out_arcs(v), dummy_graph.out_arcs(v)));
+            ASSERT_TRUE(EQ_MULTISETS(graph.in_neighbors(v),
+                                     dummy_graph.in_neighbors(v)));
+            ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(v),
+                                     dummy_graph.out_neighbors(v)));
         }
+        // std::cout << std::endl;
         for(auto && a : graph.arcs()) {
             ASSERT_TRUE(graph.is_valid_arc(a));
-            // ASSERT_TRUE(dummy_graph.is_valid_arc(a));
-            // ASSERT_EQ(graph.target(a), dummy_graph.target(a));
-            // ASSERT_EQ(graph.source(a), dummy_graph.source(a));
+            ASSERT_TRUE(dummy_graph.is_valid_arc(a));
+            ASSERT_EQ(graph.target(a), dummy_graph.target(a));
+            ASSERT_EQ(graph.source(a), dummy_graph.source(a));
         }
     }
 }
