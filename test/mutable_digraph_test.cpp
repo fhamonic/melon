@@ -126,8 +126,8 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
         CHANGE_TARGET
     };
     std::vector<Operation> operations = {
-        CREATE_VERTEX, REMOVE_VERTEX, CREATE_ARC,   CREATE_ARC,
-        REMOVE_ARC,    CHANGE_SOURCE, CHANGE_TARGET};
+        CREATE_VERTEX, REMOVE_VERTEX, CREATE_ARC,    CREATE_ARC,
+        CREATE_ARC,    REMOVE_ARC,    CHANGE_SOURCE, CHANGE_TARGET};
 
     for(std::size_t i = 0; i < 2000; ++i) {
         Operation op;
@@ -172,14 +172,16 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
         if(op == CHANGE_SOURCE) {
             auto a = random_element(dummy_graph.arcs());
             auto s = random_element(dummy_graph.vertices());
-            // std::cout << "change_source(" << a << ", " << s << ")" << std::endl;
+            // std::cout << "change_source(" << a << ", " << s << ")" <<
+            // std::endl;
             graph.change_source(a, s);
             dummy_graph.change_source(a, s);
         }
         if(op == CHANGE_TARGET) {
             auto a = random_element(dummy_graph.arcs());
             auto t = random_element(dummy_graph.vertices());
-            // std::cout << "change_target(" << a << ", " << t << ")" << std::endl;
+            // std::cout << "change_target(" << a << ", " << t << ")" <<
+            // std::endl;
             graph.change_target(a, t);
             dummy_graph.change_target(a, t);
         }
