@@ -13,7 +13,7 @@ static_assert(melon::concepts::incidence_list_graph<static_digraph>);
 static_assert(melon::concepts::adjacency_list_graph<static_digraph>);
 static_assert(melon::concepts::reversible_incidence_list_graph<static_digraph>);
 static_assert(melon::concepts::reversible_adjacency_list_graph<static_digraph>);
-static_assert(melon::concepts::has_vertex_map<static_digraph>);
+static_assert(melon::concepts::has_vertices_map<static_digraph>);
 static_assert(melon::concepts::has_arc_map<static_digraph>);
 
 GTEST_TEST(static_digraph, empty_constructor) {

@@ -59,6 +59,10 @@ GTEST_TEST(intrusive_range, test) {
     static_assert(std::ranges::viewable_range<R>);
 
 
+    // static_assert(std::forward_iterator<I>);
+    // static_assert(std::ranges::forward_range<R>);
+
+
     ASSERT_FALSE(it == end);
     ASSERT_EQ(*it, 1);
     ++it;

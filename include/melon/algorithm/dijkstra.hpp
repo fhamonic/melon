@@ -49,7 +49,7 @@ struct dijkstra_default_traits {
 
 template <concepts::incidence_list_graph G, concepts::input_map<arc_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G>
+requires concepts::has_vertices_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;

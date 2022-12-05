@@ -11,7 +11,7 @@ using namespace fhamonic::melon;
 static_assert(melon::concepts::graph<static_forward_digraph>);
 static_assert(melon::concepts::incidence_list_graph<static_forward_digraph>);
 static_assert(melon::concepts::adjacency_list_graph<static_forward_digraph>);
-static_assert(melon::concepts::has_vertex_map<static_forward_digraph>);
+static_assert(melon::concepts::has_vertices_map<static_forward_digraph>);
 static_assert(melon::concepts::has_arc_map<static_forward_digraph>);
 
 GTEST_TEST(static_forward_digraph, empty_constructor) {

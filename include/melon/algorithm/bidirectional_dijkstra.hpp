@@ -48,7 +48,7 @@ template <concepts::incidence_list_graph G,
           concepts::input_map<arc_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G> &&
+requires concepts::has_vertices_map<G> &&
     concepts::reversible_incidence_list_graph<G>
 class bidirectional_dijkstra {
 private:
