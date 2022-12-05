@@ -94,12 +94,12 @@ public:
     }
 
     template <typename T>
-        requires concepts::has_vertex_map<G> decltype(auto)
+        requires concepts::has_vertices_map<G> decltype(auto)
     create_vertex_map() const noexcept {
         return _graph.get().template create_vertex_map<T>();
     }
     template <typename T>
-        requires concepts::has_vertex_map<G> decltype(auto)
+        requires concepts::has_vertices_map<G> decltype(auto)
     create_vertex_map(T default_value) const noexcept {
         return _graph.get().template create_vertex_map<T>(default_value);
     }

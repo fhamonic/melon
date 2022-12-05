@@ -1,6 +1,8 @@
 #ifndef RANGES_TEST_HELPER_HPP
 #define RANGES_TEST_HELPER_HPP
 
+#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <initializer_list>
 #include <ranges>

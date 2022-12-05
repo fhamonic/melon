@@ -14,7 +14,7 @@ static_assert(melon::concepts::incidence_list_graph<
 static_assert(melon::concepts::adjacency_list_graph<
               static_forward_weighted_digraph<int>>);
 static_assert(
-    melon::concepts::has_vertex_map<static_forward_weighted_digraph<int>>);
+    melon::concepts::has_vertices_map<static_forward_weighted_digraph<int>>);
 
 GTEST_TEST(static_forward_weighted_digraph, empty_constructor) {
     using Graph = static_forward_weighted_digraph<int>;

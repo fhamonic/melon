@@ -5,7 +5,7 @@
 
 #include "melon/data_structures/d_ary_heap.hpp"
 
-#include "random_vector.hpp"
+#include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"
 
 using namespace fhamonic::melon;

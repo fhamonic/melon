@@ -68,7 +68,7 @@ requires(G g, vertex_t<G> u) {
 // clang-format off
 namespace concepts {
 template <typename G, typename T = std::size_t>
-concept has_vertex_map = requires(G g, arc_t<G> a, T v) {
+concept has_vertices_map = requires(G g, arc_t<G> a, T v) {
     { g.template create_vertex_map<T>() } -> 
             output_map_of<vertex_t<G>, T>;
     { g.template create_vertex_map<T>(v) } -> 
@@ -84,7 +84,7 @@ concept has_arc_map = requires(G g, arc_t<G> a, T v) {
 // clang-format on
 
 template <typename G, typename T>
-requires concepts::has_vertex_map<G, T>
+requires concepts::has_vertices_map<G, T>
 using vertex_map_t =
     decltype(std::declval<G &&>().template create_vertex_map<T>());
 
@@ -95,36 +95,36 @@ using arc_map_t = decltype(std::declval<G &&>().template create_arc_map<T>());
 // clang-format off
 namespace concepts {
 template <typename G>
-concept supports_vertex_creation = graph<G> && requires(G g) {
+concept has_vertex_creation = graph<G> && requires(G g) {
     { g.create_vertex() } -> std::same_as<vertex_t<G>>;
 };
 
 template <typename G>
-concept supports_vertex_removal = graph<G> && requires(G g, vertex_t<G> u) {
+concept has_vertex_removal = graph<G> && requires(G g, vertex_t<G> u) {
     g.remove_vertex(u);
     { g.is_valid_vertex(u) } -> std::convertible_to<bool>;
 };
 
 template <typename G>
-concept supports_arc_creation = graph<G> &&
+concept has_arc_creation = graph<G> &&
     requires(G g, vertex_t<G> s, vertex_t<G> t) {
     { g.create_arc(s, t) } -> std::same_as<arc_t<G>>;
 };
 
 template <typename G>
-concept supports_arc_removal = graph<G> && requires(G g, arc_t<G> a) {
+concept has_arc_removal = graph<G> && requires(G g, arc_t<G> a) {
     g.remove_arc(a);
     { g.is_valid_arc(a) } -> std::convertible_to<bool>;
 };
 
 template <typename G>
-concept supports_changing_arc_source = graph<G> &&
+concept has_arc_change_source = graph<G> &&
     requires(G g, arc_t<G> a, vertex_t<G> s) {
     g.change_source(a, s);
 };
 
 template <typename G>
-concept supports_changing_arc_target = graph<G> &&
+concept has_arc_change_target = graph<G> &&
     requires(G g, arc_t<G> a, vertex_t<G> t) {
     g.change_target(a, t);
 };
