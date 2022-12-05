@@ -168,7 +168,7 @@ public:
             _arcs[tos.first_in_arc].prev_in_arc = new_arc;
         tos.first_in_arc = new_arc;
         if(froms.first_out_arc != INVALID_ARC)
-            _arcs[froms.first_out_arc].prev_in_arc = new_arc;
+            _arcs[froms.first_out_arc].prev_out_arc = new_arc;
         froms.first_out_arc = new_arc;
         return new_arc;
     }
@@ -177,33 +177,33 @@ private:
     void remove_from_source_out_arcs(const arc a) noexcept {
         assert(is_valid_arc(a));
         const arc_struct & as = _arcs[a];
-        if(as.prev_out_arc == INVALID_ARC)
-            _vertices[as.source].first_out_arc = as.next_out_arc;
-        else
-            _arcs[as.prev_out_arc].next_out_arc = as.next_out_arc;
         if(as.next_out_arc != INVALID_ARC)
             _arcs[as.next_out_arc].prev_out_arc = as.prev_out_arc;
+        if(as.prev_out_arc != INVALID_ARC)
+            _arcs[as.prev_out_arc].next_out_arc = as.next_out_arc;
+        else
+            _vertices[as.source].first_out_arc = as.next_out_arc;
     }
     void remove_from_target_in_arcs(const arc a) noexcept {
         assert(is_valid_arc(a));
         const arc_struct & as = _arcs[a];
-        if(as.prev_in_arc == INVALID_ARC)
-            _vertices[as.target].first_in_arc = as.next_in_arc;
-        else
-            _arcs[as.prev_in_arc].next_in_arc = as.next_in_arc;
         if(as.next_in_arc != INVALID_ARC)
             _arcs[as.next_in_arc].prev_in_arc = as.prev_in_arc;
+        if(as.prev_in_arc != INVALID_ARC)
+            _arcs[as.prev_in_arc].next_in_arc = as.next_in_arc;
+        else
+            _vertices[as.target].first_in_arc = as.next_in_arc;
     }
     void remove_incident_arcs(const vertex v) noexcept {
         assert(is_valid_vertex(v));
         // in_arcs are already linked by .next_in_arc
-        arc last_in_arc;
+        arc last_in_arc = INVALID_ARC;
         for(const arc & a : in_arcs(v)) {
             last_in_arc = a;
             remove_from_source_out_arcs(a);
             _arcs_filter[a] = false;
         }
-        arc last_out_arc;
+        arc last_out_arc = INVALID_ARC;
         for(const arc & a : out_arcs(v)) {
             last_out_arc = a;
             remove_from_target_in_arcs(a);
@@ -213,12 +213,14 @@ private:
         }
         // out_arcs were linked by .next_out_arc
         // [first_out_arc, last_out_arc] are now linked by .next_in_arc
-        vertex_struct & vs = _vertices[v];
-        // join the sequences [first_in_arc, last_in_arc] -> [first_out_arc,
-        // last_out_arc] -> _first_free_arc
-        _arcs[last_out_arc].next_in_arc = _first_free_arc;
-        _arcs[last_in_arc].next_in_arc = vs.first_out_arc;
-        _first_free_arc = vs.first_in_arc;
+        if(last_in_arc != INVALID_ARC) {
+            _arcs[last_in_arc].next_in_arc = _first_free_arc;
+            _first_free_arc = last_in_arc;
+        }
+        if(last_out_arc != INVALID_ARC) {
+            _arcs[last_out_arc].next_in_arc = _first_free_arc;
+            _first_free_arc = last_out_arc;
+        }
     }
 
 public:
@@ -230,7 +232,7 @@ public:
             _vertices[vs.next_vertex].prev_vertex = vs.prev_vertex;
         }
         if(vs.prev_vertex != INVALID_VERTEX) {
-            _vertices[vs.prev_vertex].prev_vertex = vs.next_vertex;
+            _vertices[vs.prev_vertex].next_vertex = vs.next_vertex;
         } else {
             _first_vertex = vs.next_vertex;
         }
