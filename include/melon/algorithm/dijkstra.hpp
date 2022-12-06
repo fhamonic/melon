@@ -192,6 +192,10 @@ public:
     bool visited(const vertex & u) const noexcept {
         return _vertex_status_map[u] == POST_HEAP;
     }
+
+    auto path_to(const vertex & t) const noexcept {
+        
+    }
 };
 
 }  // namespace melon

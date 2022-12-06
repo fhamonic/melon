@@ -11,6 +11,8 @@
 #include <variant>
 #include <vector>
 
+#include <range/v3/view/concat.hpp>
+
 #include "melon/concepts/graph.hpp"
 #include "melon/concepts/map_of.hpp"
 #include "melon/concepts/priority_queue.hpp"
@@ -259,8 +261,9 @@ public:
     auto path() const noexcept
         requires(traits::store_path)
     {
-        assert(_midpoint.has_value());
-        return std::views::join(
+        assert(path_found());
+        // EXPECTED_CPP23
+        return ranges::views::concat(
             intrusive_view(
                 _forward_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },

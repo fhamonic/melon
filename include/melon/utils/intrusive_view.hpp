@@ -11,7 +11,7 @@ namespace fhamonic {
 namespace melon {
 
 template <typename I, typename Incr, typename Deref, typename Cond>
-class intrusive_view {
+class intrusive_view : std::ranges::view_base {
 public:
     using reference = std::invoke_result_t<Deref, const I &>;
     using value_type = std::decay_t<reference>;
@@ -123,5 +123,11 @@ public:
 
 }  // namespace melon
 }  // namespace fhamonic
+
+// EXPECTED_CPP23
+#include <range/v3/range/concepts.hpp>
+template <typename I, typename Incr, typename Deref, typename Cond>
+inline constexpr bool ranges::enable_borrowed_range<
+    fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> = true;
 
 #endif  // MELON_UTILS_INTRUSIVE_VIEW_HPP
