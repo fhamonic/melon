@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
+#include <optional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -15,6 +16,7 @@
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
+#include "melon/utils/intrusive_view.hpp"
 #include "melon/utils/prefetch.hpp"
 #include "melon/utils/semirings.hpp"
 #include "melon/utils/traversal_iterator.hpp"
@@ -27,8 +29,7 @@ namespace concepts {
 template <typename T>
 concept bidirectional_dijkstra_trait = semiring<typename T::semiring> &&
     updatable_priority_queue<typename T::heap> && requires() {
-    { T::store_pred_vertices } -> std::convertible_to<bool>;
-    { T::store_pred_arcs } -> std::convertible_to<bool>;
+    { T::store_path } -> std::convertible_to<bool>;
 };
 }  // namespace concepts
 // clang-format on
@@ -40,16 +41,13 @@ struct bidirectional_dijkstra_default_traits {
         d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
                    decltype(semiring::less), vertex_map_t<G, std::size_t>>;
 
-    static constexpr bool store_pred_vertices = false;
-    static constexpr bool store_pred_arcs = false;
+    static constexpr bool store_path = true;
 };
 
-template <concepts::outward_incidence_list G,
-          concepts::input_map<arc_t<G>> L,
+template <concepts::incidence_list G, concepts::input_map<arc_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G> &&
-    concepts::inward_incidence_list<G>
+    requires concepts::has_vertex_map<G>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -59,18 +57,20 @@ public:
     using value_t = mapped_value_t<L, vertex>;
     using traits = T;
 
-
 private:
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
     using heap = traits::heap;
     using vertex_status_map =
         vertex_map_t<G, std::pair<vertex_status, vertex_status>>;
-    using pred_vertices_map =
-        std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
-                         std::monostate>::type;
-    using pred_arcs_map =
-        std::conditional<traits::store_pred_arcs, vertex_map_t<G, arc>,
+
+
+    using optional_arc = std::optional<arc>;
+    using pred_arcs_map = std::conditional<traits::store_path,
+                                           vertex_map_t<G, optional_arc>,
+                                           std::monostate>::type;
+    using optional_midpoint =
+        std::conditional<traits::store_path, std::optional<vertex>,
                          std::monostate>::type;
 
 private:
@@ -80,8 +80,10 @@ private:
     heap _forward_heap;
     heap _reverse_heap;
     vertex_status_map _vertex_status_map;
-    pred_vertices_map _pred_vertices_map;
-    pred_arcs_map _pred_arcs_map;
+
+    pred_arcs_map _forward_pred_arcs_map;
+    pred_arcs_map _reverse_pred_arcs_map;
+    optional_midpoint _midpoint;
 
 public:
     bidirectional_dijkstra(const G & g, const L & l)
@@ -92,16 +94,16 @@ public:
         , _vertex_status_map(g.template create_vertex_map<
                              std::pair<vertex_status, vertex_status>>(
               std::make_pair(PRE_HEAP, PRE_HEAP)))
-        , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.template create_vertex_map<vertex>(), std::monostate{}))
-        , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.template create_vertex_map<arc>(), std::monostate{})) {}
+        , _forward_pred_arcs_map(constexpr_ternary<traits::store_path>(
+              g.template create_vertex_map<optional_arc>(), std::monostate{}))
+        , _reverse_pred_arcs_map(constexpr_ternary<traits::store_path>(
+              g.template create_vertex_map<optional_arc>(), std::monostate{})) {}
 
-    bidirectional_dijkstra(const G & g, const L & l, const vertex s,
-                           const vertex t)
+    bidirectional_dijkstra(const G & g, const L & l, const vertex & s,
+                           const vertex & t)
         : bidirectional_dijkstra(g, l) {
-        add_forward_source(s);
-        add_reverse_source(t);
+        add_source(s);
+        add_target(t);
     }
 
     bidirectional_dijkstra & reset() noexcept {
@@ -109,22 +111,23 @@ public:
         _reverse_heap.clear();
         for(auto && u : _graph.vertices())
             _vertex_status_map[u] = std::make_pair(PRE_HEAP, PRE_HEAP);
+        _midpoint.reset();
         return *this;
     }
-    bidirectional_dijkstra & add_forward_source(
-        vertex s, value_t dist = traits::semiring::zero) noexcept {
+    bidirectional_dijkstra & add_source(
+        const vertex & s, const value_t dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s].first == PRE_HEAP);
         _forward_heap.push(s, dist);
         _vertex_status_map[s].first = IN_HEAP;
-        if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
+        if constexpr(traits::store_path) _forward_pred_arcs_map[s].reset();
         return *this;
     }
-    bidirectional_dijkstra & add_reverse_source(
-        vertex s, value_t dist = traits::semiring::zero) noexcept {
-        assert(_vertex_status_map[s].second == PRE_HEAP);
-        _reverse_heap.push(s, dist);
-        _vertex_status_map[s].second = IN_HEAP;
-        if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
+    bidirectional_dijkstra & add_target(
+        const vertex & t, const value_t dist = traits::semiring::zero) noexcept {
+        assert(_vertex_status_map[t].second == PRE_HEAP);
+        _reverse_heap.push(t, dist);
+        _vertex_status_map[t].second = IN_HEAP;
+        if constexpr(traits::store_path) _reverse_pred_arcs_map[t].reset();
         return *this;
     }
 
@@ -157,13 +160,14 @@ public:
                             if(w_reverse_status == IN_HEAP) {
                                 const value_t new_st_dist =
                                     new_w_dist + _reverse_heap.priority(w);
-                                if(traits::semiring::less(new_st_dist, st_dist))
+                                if(traits::semiring::less(new_st_dist,
+                                                          st_dist)) {
                                     st_dist = new_st_dist;
+                                    _midpoint.emplace(w);
+                                }
                             }
-                            if constexpr(traits::store_pred_vertices)
-                                _pred_vertices_map[w] = u1;
-                            if constexpr(traits::store_pred_arcs)
-                                _pred_arcs_map[w] = a;
+                            if constexpr(traits::store_path)
+                                _forward_pred_arcs_map[w].emplace(a);
                         }
                     } else if(w_forward_status == PRE_HEAP) {
                         const value_t new_w_dist =
@@ -173,13 +177,13 @@ public:
                         if(w_reverse_status == IN_HEAP) {
                             const value_t new_st_dist =
                                 new_w_dist + _reverse_heap.priority(w);
-                            if(traits::semiring::less(new_st_dist, st_dist))
+                            if(traits::semiring::less(new_st_dist, st_dist)) {
                                 st_dist = new_st_dist;
+                                _midpoint.emplace(w);
+                            }
                         }
-                        if constexpr(traits::store_pred_vertices)
-                            _pred_vertices_map[w] = u2;
-                        if constexpr(traits::store_pred_arcs)
-                            _pred_arcs_map[w] = a;
+                        if constexpr(traits::store_path)
+                            _forward_pred_arcs_map[w].emplace(a);
                     }
                 }
             } else {
@@ -202,13 +206,14 @@ public:
                             if(w_forward_status == IN_HEAP) {
                                 const value_t new_st_dist =
                                     new_w_dist + _forward_heap.priority(w);
-                                if(traits::semiring::less(new_st_dist, st_dist))
+                                if(traits::semiring::less(new_st_dist,
+                                                          st_dist)) {
                                     st_dist = new_st_dist;
+                                    _midpoint.emplace(w);
+                                }
                             }
-                            if constexpr(traits::store_pred_vertices)
-                                _pred_vertices_map[w] = u2;
-                            if constexpr(traits::store_pred_arcs)
-                                _pred_arcs_map[w] = a;
+                            if constexpr(traits::store_path)
+                                _reverse_pred_arcs_map[w].emplace(a);
                         }
                     } else if(w_reverse_status == PRE_HEAP) {
                         const value_t new_w_dist =
@@ -218,31 +223,49 @@ public:
                         if(w_forward_status == IN_HEAP) {
                             const value_t new_st_dist =
                                 new_w_dist + _forward_heap.priority(w);
-                            if(traits::semiring::less(new_st_dist, st_dist))
+                            if(traits::semiring::less(new_st_dist, st_dist)) {
                                 st_dist = new_st_dist;
+                                _midpoint.emplace(w);
+                            }
                         }
-                        if constexpr(traits::store_pred_vertices)
-                            _pred_vertices_map[w] = u2;
-                        if constexpr(traits::store_pred_arcs)
-                            _pred_arcs_map[w] = a;
+                        if constexpr(traits::store_path)
+                            _reverse_pred_arcs_map[w].emplace(a);
                     }
                 }
             }
         }
         return st_dist;
     }
-    // auto begin() noexcept { return traversal_iterator(*this); }
-    // auto end() noexcept { return traversal_end_sentinel(); }
 
-    vertex pred_vertex(const vertex u) const noexcept
-        requires(traits::store_pred_vertices) {
-        assert(_vertex_status_map[u] != PRE_HEAP);
-        return _pred_vertices_map[u];
+    arc pred_arc(const vertex & u) const noexcept
+        requires(traits::store_path)
+    {
+        assert(_vertex_status_map[u].first != PRE_HEAP);
+        return _forward_pred_arcs_map[u].value();
     }
-    arc pred_arc(const vertex u) const noexcept
-        requires(traits::store_pred_arcs) {
-        assert(_vertex_status_map[u] != PRE_HEAP);
-        return _pred_arcs_map[u];
+    arc succ_arc(const vertex & u) const noexcept
+        requires(traits::store_path)
+    {
+        assert(_vertex_status_map[u].second != PRE_HEAP);
+        return _reverse_pred_arcs_map[u].value();
+    }
+    auto retrieve_path() const noexcept {
+        assert(_midpoint.has_value());
+        return std::views::join(
+            intrusive_view(
+                _forward_pred_arcs_map[_midpoint.value()],
+                [](const std::optional<arc> & oa) -> arc { return oa.value(); },
+                [this](const std::optional<arc> & oa) -> optional_arc {
+                    return _forward_pred_arcs_map[_graph.source(oa.value())];
+                },
+                [](const std::optional<arc> & oa) -> bool { return oa.has_value(); }),
+            intrusive_view(
+                _reverse_pred_arcs_map[_midpoint.value()],
+                [](const std::optional<arc> & oa) -> arc { return oa.value(); },
+                [this](const std::optional<arc> & oa) -> optional_arc {
+                    return _reverse_pred_arcs_map[_graph.target(oa.value())];
+                },
+                [](const std::optional<arc> & oa) -> bool { return oa.has_value(); }));
     }
 };
 
