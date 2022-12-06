@@ -71,14 +71,14 @@ public:
     }
 
     auto in_arcs(const vertex & v)
-        const noexcept requires concepts::incidence_list_graph<G> {
+        const noexcept requires concepts::outward_incidence_list<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().in_arcs(v),
             [this](const arc & a) { return _arc_filter[a]; });
     }
     auto out_arcs(const vertex & v)
-        const noexcept requires concepts::reversible_incidence_list_graph<G> {
+        const noexcept requires concepts::inward_incidence_list<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().out_arcs(v),
@@ -86,21 +86,21 @@ public:
     }
 
     auto in_neighbors(const vertex & v)
-        const noexcept requires concepts::adjacency_list_graph<G> {
+        const noexcept requires concepts::outward_adjacency_list<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().in_neighbors(v),
             [this](const vertex & v) { return _vertex_filter[v]; });
     }
     auto out_neighbors(const vertex & v)
-        const noexcept requires concepts::reversible_adjacency_list_graph<G> {
+        const noexcept requires concepts::inward_adjacency_list<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().out_neighbors(v),
             [this](const vertex & v) { return _vertex_filter[v]; });
     }
 
-    auto arcs_pairs() const noexcept {
+    auto arc_entries() const noexcept {
         // if constexpr(std::same_as<concepts::arcs_range_t<G>,
         //                           std::ranges::iota_view<arc, arc>> &&
         //              (std::integral<arc> ||
@@ -111,14 +111,14 @@ public:
         //         return std::make_pair(_graph.get().source(a),
         //                               _graph.get().target(a));
         //     });
-        // } else if constexpr(concepts::adjacency_list_graph<G>) {
+        // } else if constexpr(concepts::outward_adjacency_list<G>) {
         //     return std::views::join(
         //         std::views::transform(vertices(), [this](const vertex & s) {
         //             return std::views::transform(
         //                 out_neighbors(s),
         //                 [s](const vertex & t) { return std::make_pair(s, t); });
         //         }));
-        // } else if constexpr(concepts::reversible_adjacency_list_graph<G>) {
+        // } else if constexpr(concepts::inward_adjacency_list<G>) {
         //     return std::views::join(
         //         std::views::transform(vertices(), [this](const vertex & t) {
         //             return std::views::transform(
@@ -126,7 +126,7 @@ public:
         //                 [t](const vertex & s) { return std::make_pair(s, t); });
         //         }));
         // } else {
-        //     static_assert(false, "cannot enumerate arcs_pairs");
+        //     static_assert(false, "cannot enumerate arc_entries");
         // }
     }
 

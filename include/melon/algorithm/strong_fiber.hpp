@@ -17,7 +17,7 @@
 namespace fhamonic {
 namespace melon {
 
-template <concepts::incidence_list_graph G, typename L,
+template <concepts::outward_incidence_list G, typename L,
           bool strictly_strong = false>
 struct strong_fiber_default_traits {
     using value_t = typename L::value_type;
@@ -51,7 +51,7 @@ struct strong_fiber_default_traits {
                             vertex_map_t<G, std::size_t>>;
 };
 
-template <concepts::adjacency_list_graph G, typename L1, typename L2,
+template <concepts::outward_adjacency_list G, typename L1, typename L2,
           typename F1, typename F2,
           typename T = strong_fiber_default_traits<G, L1>>
     requires std::is_same_v<typename L1::value_type, typename L2::value_type>

@@ -49,7 +49,7 @@ GTEST_TEST(reverse_adaptor, static_graph) {
     ASSERT_TRUE(
         EQ_RANGES(graph.in_neighbors(2), reverse_graph.out_neighbors(2)));
 
-    ASSERT_TRUE(EQ_RANGES(graph.arcs_pairs(), arc_pairs));
+    ASSERT_TRUE(EQ_RANGES(graph.arc_entries(), arc_pairs));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
         ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);

@@ -123,15 +123,15 @@ public:
                                      [this](auto a) { return source(a); });
     }
 
-    auto out_arcs_pairs(const vertex s) const noexcept {
+    auto out_arc_entries(const vertex s) const noexcept {
         assert(is_valid_vertex(s));
         return std::views::transform(out_arcs(s), [this, s](const arc a) {
             return std::make_pair(a,std::make_pair(s, _arc_target[a]));
         });
     }
-    auto arcs_pairs() const noexcept {
+    auto arc_entries() const noexcept {
         return std::views::join(std::views::transform(
-            vertices(), [this](const vertex s) { return out_arcs_pairs(s); }));
+            vertices(), [this](const vertex s) { return out_arc_entries(s); }));
     }
 
     template <typename T>
