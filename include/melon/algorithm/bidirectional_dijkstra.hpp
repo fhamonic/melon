@@ -262,7 +262,7 @@ public:
         requires(traits::store_path)
     {
         assert(path_found());
-        // EXPECTED_CPP23
+        // EXPECTED_CPP23 std::ranges::concat
         return ranges::views::concat(
             intrusive_view(
                 _forward_pred_arcs_map[_midpoint.value()],
