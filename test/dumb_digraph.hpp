@@ -58,7 +58,7 @@ public:
     auto arcs_pairs() const noexcept {
         return valid_arcs_structs() |
                std::views::transform(
-                   [](const arc_struct & as) { return as.arc_pair; });
+                   [](const arc_struct & as) { return std::make_pair(as.id, as.arc_pair); });
     }
     auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));

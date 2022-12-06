@@ -13,7 +13,7 @@ using namespace fhamonic::melon;
 static_assert(melon::concepts::graph<mutable_digraph>);
 static_assert(melon::concepts::incidence_list_graph<mutable_digraph>);
 static_assert(melon::concepts::adjacency_list_graph<mutable_digraph>);
-static_assert(melon::concepts::has_vertices_map<mutable_digraph>);
+static_assert(melon::concepts::has_vertex_map<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_creation<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_removal<mutable_digraph>);
 static_assert(melon::concepts::has_arc_creation<mutable_digraph>);
@@ -22,8 +22,8 @@ static_assert(melon::concepts::has_arc_change_source<mutable_digraph>);
 static_assert(melon::concepts::has_arc_change_target<mutable_digraph>);
 
 using Graph = mutable_digraph;
-using vertices_pair_list =
-    std::initializer_list<std::pair<vertex_t<Graph>, vertex_t<Graph>>>;
+using arcs_pairs_list = std::initializer_list<
+    std::pair<arc_t<Graph>, std::pair<vertex_t<Graph>, vertex_t<Graph>>>>;
 
 GTEST_TEST(mutable_digraph, empty_constructor) {
     Graph graph;
@@ -77,9 +77,10 @@ GTEST_TEST(mutable_digraph, create_arcs) {
     ASSERT_EQ(graph.target(ac), c);
     ASSERT_EQ(graph.target(cb), b);
 
-    ASSERT_TRUE(
-        EQ_MULTISETS(graph.arcs_pairs(),
-                     vertices_pair_list{{a, b}, {a, c}, {c, b}, {c, a}}));
+    ASSERT_TRUE(EQ_MULTISETS(
+        graph.arcs_pairs(),
+        arcs_pairs_list{
+            {ab, {a, b}}, {ac, {a, c}}, {cb, {c, b}}, {ca, {c, a}}}));
 
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(a), {b, c}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));
@@ -105,8 +106,8 @@ GTEST_TEST(mutable_digraph, remove_arcs) {
     EXPECT_DEATH(graph.target(ac), "");
     ASSERT_EQ(graph.target(cb), b);
 
-    ASSERT_TRUE(
-        EQ_MULTISETS(graph.arcs_pairs(), vertices_pair_list{{c, b}, {a, b}}));
+    ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(),
+                             arcs_pairs_list{{cb, {c, b}}, {ab, {a, b}}}));
 
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(a), {b}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));

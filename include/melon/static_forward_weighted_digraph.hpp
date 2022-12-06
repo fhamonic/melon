@@ -87,14 +87,14 @@ public:
         return std::views::keys(out_arcs(u));
     }
 
-    auto out_arcs_pairs(const vertex & u) const noexcept {
-        assert(is_valid_vertex(u));
+    auto out_arcs_pairs(const vertex & s) const noexcept {
+        assert(is_valid_vertex(s));
         return std::views::transform(
-            out_neighbors(u), [u](auto && v) { return std::make_pair(u, v); });
+            out_arcs(s), [this,s](const arc & a) { return std::make_pair(a,std::make_pair(s, a.first)); });
     }
     auto arcs_pairs() const noexcept {
         return std::views::join(std::views::transform(
-            vertices(), [this](auto && u) { return out_arcs_pairs(u); }));
+            vertices(), [this](const vertex s) { return out_arcs_pairs(s); }));
     }
 
     template <typename T>

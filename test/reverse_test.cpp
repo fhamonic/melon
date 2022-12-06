@@ -10,11 +10,15 @@
 using namespace fhamonic::melon;
 
 GTEST_TEST(reverse_adaptor, static_graph) {
-    std::vector<std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>
-        arc_pairs({{0, 1}, {0, 2}, {1, 2}, {2, 0}, {2, 1}});
+    std::vector<
+        std::pair<arc_t<static_digraph>, std::pair<vertex_t<static_digraph>,
+                                                   vertex_t<static_digraph>>>>
+        arc_pairs(
+            {{0, {0, 1}}, {1, {0, 2}}, {2, {1, 2}}, {3, {2, 0}}, {4, {2, 1}}});
 
-    static_digraph graph(3, std::ranges::views::keys(arc_pairs),
-                         std::ranges::views::values(arc_pairs));
+    static_digraph graph(
+        3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
+        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
 
     auto reverse_graph = adaptors::reverse(graph);
 
@@ -31,18 +35,24 @@ GTEST_TEST(reverse_adaptor, static_graph) {
     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
     ASSERT_FALSE(graph.is_valid_arc(arc_t<static_digraph>(graph.nb_arcs())));
 
-    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0), reverse_graph.in_neighbors(0)));
-    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(1), reverse_graph.in_neighbors(1)));
-    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(2), reverse_graph.in_neighbors(2)));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(0), reverse_graph.in_neighbors(0)));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(1), reverse_graph.in_neighbors(1)));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(2), reverse_graph.in_neighbors(2)));
 
-    ASSERT_TRUE(EQ_RANGES(graph.in_neighbors(0), reverse_graph.out_neighbors(0)));
-    ASSERT_TRUE(EQ_RANGES(graph.in_neighbors(1), reverse_graph.out_neighbors(1)));
-    ASSERT_TRUE(EQ_RANGES(graph.in_neighbors(2), reverse_graph.out_neighbors(2)));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.in_neighbors(0), reverse_graph.out_neighbors(0)));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.in_neighbors(1), reverse_graph.out_neighbors(1)));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.in_neighbors(2), reverse_graph.out_neighbors(2)));
 
     ASSERT_TRUE(EQ_RANGES(graph.arcs_pairs(), arc_pairs));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
-        ASSERT_EQ(graph.source(a), arc_pairs[a].first);
+        ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);
     }
 }
 

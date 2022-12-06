@@ -122,7 +122,7 @@ public:
     }
     auto arcs_pairs() const noexcept {
         return std::views::transform(arcs(), [this](const arc & a) {
-            return std::make_pair(_arcs[a].source, _arcs[a].target);
+            return std::make_pair(a,std::make_pair(_arcs[a].source, _arcs[a].target));
         });
     }
 
