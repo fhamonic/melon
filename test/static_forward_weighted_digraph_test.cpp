@@ -14,16 +14,16 @@ static_assert(melon::concepts::incidence_list_graph<
 static_assert(melon::concepts::adjacency_list_graph<
               static_forward_weighted_digraph<int>>);
 static_assert(
-    melon::concepts::has_vertices_map<static_forward_weighted_digraph<int>>);
+    melon::concepts::has_vertex_map<static_forward_weighted_digraph<int>>);
 
 GTEST_TEST(static_forward_weighted_digraph, empty_constructor) {
     using Graph = static_forward_weighted_digraph<int>;
     Graph graph;
     ASSERT_EQ(graph.nb_vertices(), 0);
     ASSERT_EQ(graph.nb_arcs(), 0);
-    ASSERT_TRUE(std::ranges::empty(graph.vertices()));
-    ASSERT_EQ(std::ranges::distance(graph.arcs()), 0);
-    ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
+    ASSERT_TRUE(EMPTY(graph.vertices()));
+    ASSERT_TRUE(EMPTY(graph.arcs()));
+    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
 
@@ -38,9 +38,9 @@ GTEST_TEST(static_forward_weighted_digraph, empty_vectors_constructor) {
     Graph graph(0, std::move(arcs_sources), std::move(arcs));
     ASSERT_EQ(graph.nb_vertices(), 0);
     ASSERT_EQ(graph.nb_arcs(), 0);
-    ASSERT_TRUE(std::ranges::empty(graph.vertices()));
-    ASSERT_EQ(std::ranges::distance(graph.arcs()), 0);
-    ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
+    ASSERT_TRUE(EMPTY(graph.vertices()));
+    ASSERT_TRUE(EMPTY(graph.arcs()));
+    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
 
@@ -49,10 +49,10 @@ GTEST_TEST(static_forward_weighted_digraph, empty_vectors_constructor) {
 
 GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
     using Graph = static_forward_weighted_digraph<double>;
-    std::vector<std::pair<vertex_t<Graph>, vertex_t<Graph>>> arcs_pairs(
+    std::vector<std::pair<vertex_t<Graph>, vertex_t<Graph>>> arc_pairs(
         {{0, 1}, {0, 2}, {1, 2}, {2, 0}, {2, 1}});
 
-    std::vector<vertex_t<Graph>> arcs_sources = {0, 0, 1, 2, 2};
+    auto arcs_sources = std::ranges::views::keys(arc_pairs);
     std::vector<std::pair<vertex_t<Graph>, double>> arcs = {
         {1, 1.0}, {2, 1.0}, {2, 1.0}, {0, 1.0}, {1, 1.0}};
     std::vector<std::pair<vertex_t<Graph>, double>> arcs_copy = arcs;
@@ -70,7 +70,8 @@ GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0), {1, 2}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(1), {2}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(2), {0, 1}));
-    ASSERT_TRUE(EQ_RANGES(graph.arcs_pairs(), arcs_pairs));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.arcs_pairs(), ranges::zip_view(arcs_copy, arc_pairs)));
 }
 
 // GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_2) {

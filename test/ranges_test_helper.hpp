@@ -10,11 +10,21 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/zip.hpp>
 
+// template <typename T1, typename T2>
+// testing::AssertionResult & operator<<(testing::AssertionResult & result,
+//                                       const std::pair<T1, T2> & p);
 template <typename T1, typename T2>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const std::pair<T1, T2> & p) {
     return result << "(" << p.first << "," << p.second << ")";
 }
+
+template <typename T1, typename T2>
+testing::AssertionResult & operator<<(testing::AssertionResult & result,
+                                      const ranges::common_pair<T1, T2> & p) {
+    return result << "(" << p.first << "," << p.second << ")";
+}
+
 template <typename T>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const std::vector<T> & v) {

@@ -27,7 +27,7 @@ struct dfs_default_traits {
 template <concepts::incidence_list_graph G, typename T = dfs_default_traits>
     requires(concepts::incidence_list_graph<G> ||
              concepts::adjacency_list_graph<G>) &&
-            concepts::has_vertices_map<G>
+            concepts::has_vertex_map<G>
 class depth_first_search {
 private:
     using vertex = vertex_t<G>;

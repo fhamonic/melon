@@ -11,16 +11,16 @@ using namespace fhamonic::melon;
 static_assert(melon::concepts::graph<static_forward_digraph>);
 static_assert(melon::concepts::incidence_list_graph<static_forward_digraph>);
 static_assert(melon::concepts::adjacency_list_graph<static_forward_digraph>);
-static_assert(melon::concepts::has_vertices_map<static_forward_digraph>);
+static_assert(melon::concepts::has_vertex_map<static_forward_digraph>);
 static_assert(melon::concepts::has_arc_map<static_forward_digraph>);
 
 GTEST_TEST(static_forward_digraph, empty_constructor) {
     static_forward_digraph graph;
     ASSERT_EQ(graph.nb_vertices(), 0);
     ASSERT_EQ(graph.nb_arcs(), 0);
-    ASSERT_TRUE(std::ranges::empty(graph.vertices()));
-    ASSERT_TRUE(std::ranges::empty(graph.arcs()));
-    ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
+    ASSERT_TRUE(EMPTY(graph.vertices()));
+    ASSERT_TRUE(EMPTY(graph.arcs()));
+    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
@@ -36,9 +36,9 @@ GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
     static_forward_digraph graph(0, std::move(sources), std::move(targets));
     ASSERT_EQ(graph.nb_vertices(), 0);
     ASSERT_EQ(graph.nb_arcs(), 0);
-    ASSERT_TRUE(std::ranges::empty(graph.vertices()));
-    ASSERT_TRUE(std::ranges::empty(graph.arcs()));
-    ASSERT_EQ(std::ranges::distance(graph.arcs_pairs()), 0);
+    ASSERT_TRUE(EMPTY(graph.vertices()));
+    ASSERT_TRUE(EMPTY(graph.arcs()));
+    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
@@ -49,12 +49,15 @@ GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
 }
 
 GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
-    std::vector<std::pair<vertex_t<static_forward_digraph>,
-                          vertex_t<static_forward_digraph>>>
-        arc_pairs({{0, 1}, {0, 2}, {1, 2}, {2, 0}, {2, 1}});
+    std::vector<std::pair<arc_t<static_forward_digraph>,
+                          std::pair<vertex_t<static_forward_digraph>,
+                                    vertex_t<static_forward_digraph>>>>
+        arc_pairs(
+            {{0, {0, 1}}, {1, {0, 2}}, {2, {1, 2}}, {3, {2, 0}}, {4, {2, 1}}});
 
-    static_forward_digraph graph(3, std::ranges::views::keys(arc_pairs),
-                                 std::ranges::views::values(arc_pairs));
+    static_forward_digraph graph(
+        3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
+        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
     ASSERT_EQ(graph.nb_vertices(), 3);
     ASSERT_EQ(graph.nb_arcs(), 5);
 
@@ -80,20 +83,21 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
 }
 
 GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
-    std::vector<std::pair<vertex_t<static_forward_digraph>,
-                          vertex_t<static_forward_digraph>>>
-        arc_pairs({{1, 2},
-                   {1, 6},
-                   {1, 7},
-                   {2, 3},
-                   {2, 4},
-                   {3, 4},
-                   {5, 2},
-                   {5, 3},
-                   {6, 5}});
+    std::vector<std::pair<arc_t<static_forward_digraph>,std::pair<vertex_t<static_forward_digraph>,
+                          vertex_t<static_forward_digraph>>>>
+        arc_pairs({{0, {1, 2}},
+                   {1, {1, 6}},
+                   {2, {1, 7}},
+                   {3, {2, 3}},
+                   {4, {2, 4}},
+                   {5, {3, 4}},
+                   {6, {5, 2}},
+                   {7, {5, 3}},
+                   {8, {6, 5}}});
 
-    static_forward_digraph graph(8, std::ranges::views::keys(arc_pairs),
-                                 std::ranges::views::values(arc_pairs));
+    static_forward_digraph graph(
+        8, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
+        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
     ASSERT_EQ(graph.nb_vertices(), 8);
     ASSERT_EQ(graph.nb_arcs(), 9);
 
@@ -108,15 +112,15 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
     ASSERT_FALSE(
         graph.is_valid_arc(arc_t<static_forward_digraph>(graph.nb_arcs())));
 
-    ASSERT_TRUE(EQ_RANGES(
-        graph.out_neighbors(0),
-        std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(0),
+                  std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(1), {2, 6, 7}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(2), {3, 4}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(6), {5}));
-    ASSERT_TRUE(EQ_RANGES(
-        graph.out_neighbors(7),
-        std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(7),
+                  std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
 
     ASSERT_TRUE(EQ_RANGES(graph.arcs_pairs(), arc_pairs));
 }

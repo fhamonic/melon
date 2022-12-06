@@ -13,7 +13,7 @@ static_assert(melon::concepts::incidence_list_graph<static_digraph>);
 static_assert(melon::concepts::adjacency_list_graph<static_digraph>);
 static_assert(melon::concepts::reversible_incidence_list_graph<static_digraph>);
 static_assert(melon::concepts::reversible_adjacency_list_graph<static_digraph>);
-static_assert(melon::concepts::has_vertices_map<static_digraph>);
+static_assert(melon::concepts::has_vertex_map<static_digraph>);
 static_assert(melon::concepts::has_arc_map<static_digraph>);
 
 GTEST_TEST(static_digraph, empty_constructor) {
@@ -54,11 +54,15 @@ GTEST_TEST(static_digraph, empty_vectors_constructor) {
 }
 
 GTEST_TEST(static_digraph, vectors_constructor_1) {
-    std::vector<std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>
-        arc_pairs({{0, 1}, {0, 2}, {1, 2}, {2, 0}, {2, 1}});
+    std::vector<
+        std::pair<arc_t<static_digraph>, std::pair<vertex_t<static_digraph>,
+                                                   vertex_t<static_digraph>>>>
+        arc_pairs(
+            {{0, {0, 1}}, {1, {0, 2}}, {2, {1, 2}}, {3, {2, 0}}, {4, {2, 1}}});
 
-    static_digraph graph(3, std::ranges::views::keys(arc_pairs),
-                         std::ranges::views::values(arc_pairs));
+    static_digraph graph(
+        3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
+        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
     ASSERT_EQ(graph.nb_vertices(), 3);
     ASSERT_EQ(graph.nb_arcs(), 5);
     ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), {0, 1, 2}));
@@ -82,25 +86,28 @@ GTEST_TEST(static_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(), arc_pairs));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
-        ASSERT_EQ(graph.source(a), arc_pairs[a].first);
-        ASSERT_EQ(graph.target(a), arc_pairs[a].second);
+        ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);
+        ASSERT_EQ(graph.target(a), arc_pairs[a].second.second);
     }
 }
 
 GTEST_TEST(static_digraph, vectors_constructor_2) {
-    std::vector<std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>
-        arc_pairs({{1, 2},
-                   {1, 6},
-                   {1, 7},
-                   {2, 3},
-                   {2, 4},
-                   {3, 4},
-                   {5, 2},
-                   {5, 3},
-                   {6, 5}});
+    std::vector<
+        std::pair<arc_t<static_digraph>, std::pair<vertex_t<static_digraph>,
+                                                   vertex_t<static_digraph>>>>
+        arc_pairs({{0, {1, 2}},
+                   {1, {1, 6}},
+                   {2, {1, 7}},
+                   {3, {2, 3}},
+                   {4, {2, 4}},
+                   {5, {3, 4}},
+                   {6, {5, 2}},
+                   {7, {5, 3}},
+                   {8, {6, 5}}});
 
-    static_digraph graph(8, std::ranges::views::keys(arc_pairs),
-                         std::ranges::views::values(arc_pairs));
+    static_digraph graph(
+        8, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
+        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
     ASSERT_EQ(graph.nb_vertices(), 8);
     ASSERT_EQ(graph.nb_arcs(), 9);
 
@@ -123,6 +130,7 @@ GTEST_TEST(static_digraph, vectors_constructor_2) {
     ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(), arc_pairs));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
-        ASSERT_EQ(graph.source(a), arc_pairs[a].first);
+        ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);
+        ASSERT_EQ(graph.target(a), arc_pairs[a].second.second);
     }
 }

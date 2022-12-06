@@ -12,11 +12,16 @@ namespace fhamonic {
 namespace melon {
 
 template <typename G>
-using vertex_t =
-    std::ranges::range_value_t<decltype(std::declval<G &&>().vertices())>;
+using vertices_range_t = decltype(std::declval<G &&>().vertices());
 
 template <typename G>
-using arc_t = std::ranges::range_value_t<decltype(std::declval<G &&>().arcs())>;
+using vertex_t = std::ranges::range_value_t<vertices_range_t<G>>;
+
+template <typename G>
+using arcs_range_t = decltype(std::declval<G &&>().arcs());
+
+template <typename G>
+using arc_t = std::ranges::range_value_t<arcs_range_t<G>>;
 
 // clang-format off
 namespace concepts {
@@ -25,7 +30,7 @@ concept graph = std::copyable<G> &&
 requires(G g, vertex_t<G> u, arc_t<G> a) {
     { g.vertices() } -> std::ranges::input_range;
     { g.arcs() } -> std::ranges::input_range;
-    { g.arcs_pairs() } -> input_range_of<std::pair<vertex_t<G>, vertex_t<G>>>;
+    { g.arcs_pairs() } -> input_range_of<std::pair<arc_t<G>,std::pair<vertex_t<G>, vertex_t<G>>>>;
 };
 
 template <typename G>
@@ -68,7 +73,7 @@ requires(G g, vertex_t<G> u) {
 // clang-format off
 namespace concepts {
 template <typename G, typename T = std::size_t>
-concept has_vertices_map = requires(G g, arc_t<G> a, T v) {
+concept has_vertex_map = requires(G g, arc_t<G> a, T v) {
     { g.template create_vertex_map<T>() } -> 
             output_map_of<vertex_t<G>, T>;
     { g.template create_vertex_map<T>(v) } -> 
@@ -84,7 +89,7 @@ concept has_arc_map = requires(G g, arc_t<G> a, T v) {
 // clang-format on
 
 template <typename G, typename T>
-requires concepts::has_vertices_map<G, T>
+requires concepts::has_vertex_map<G, T>
 using vertex_map_t =
     decltype(std::declval<G &&>().template create_vertex_map<T>());
 

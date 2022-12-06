@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "melon/static_digraph_builder.hpp"
 #include "melon/static_digraph.hpp"
+#include "melon/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -24,17 +24,18 @@ GTEST_TEST(static_digraph_builder, build_without_map) {
 
     ASSERT_TRUE(EQ_RANGES(
         graph.arcs_pairs(),
-        std::vector<
-            std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>(
-            {{1, 2},
-             {1, 6},
-             {1, 7},
-             {2, 3},
-             {2, 4},
-             {3, 4},
-             {5, 2},
-             {5, 3},
-             {6, 5}})));
+        std::vector<std::pair<
+            arc_t<static_digraph>,
+            std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>>(
+            {{0, {1, 2}},
+             {1, {1, 6}},
+             {2, {1, 7}},
+             {3, {2, 3}},
+             {4, {2, 4}},
+             {5, {3, 4}},
+             {6, {5, 2}},
+             {7, {5, 3}},
+             {8, {6, 5}}})));
 }
 
 GTEST_TEST(static_digraph_builder, build_with_map) {
@@ -55,17 +56,18 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
 
     ASSERT_TRUE(EQ_RANGES(
         graph.arcs_pairs(),
-        std::vector<
-            std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>(
-            {{1, 2},
-             {1, 6},
-             {1, 7},
-             {2, 3},
-             {2, 4},
-             {3, 4},
-             {5, 2},
-             {5, 3},
-             {6, 5}})));
+        std::vector<std::pair<
+            arc_t<static_digraph>,
+            std::pair<vertex_t<static_digraph>, vertex_t<static_digraph>>>>(
+            {{0, {1, 2}},
+             {1, {1, 6}},
+             {2, {1, 7}},
+             {3, {2, 3}},
+             {4, {2, 4}},
+             {5, {3, 4}},
+             {6, {5, 2}},
+             {7, {5, 3}},
+             {8, {6, 5}}})));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
         auto u = graph.source(a);

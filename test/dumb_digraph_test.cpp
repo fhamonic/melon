@@ -17,8 +17,8 @@ static_assert(melon::concepts::has_arc_change_source<dumb_digraph>);
 static_assert(melon::concepts::has_arc_change_target<dumb_digraph>);
 
 using Graph = dumb_digraph;
-using vertices_pair_list =
-    std::initializer_list<std::pair<vertex_t<Graph>, vertex_t<Graph>>>;
+using arcs_pairs_list = std::initializer_list<
+    std::pair<arc_t<Graph>, std::pair<vertex_t<Graph>, vertex_t<Graph>>>>;
 
 GTEST_TEST(dumb_digraph, empty_constructor) {
     Graph graph;
@@ -70,8 +70,9 @@ GTEST_TEST(dumb_digraph, create_arcs) {
     ASSERT_EQ(graph.target(1), 2);
     ASSERT_EQ(graph.target(2), 1);
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(),
-                             vertices_pair_list{{0, 1}, {0, 2}, {2, 1}}));
+    ASSERT_TRUE(
+        EQ_MULTISETS(graph.arcs_pairs(),
+                     arcs_pairs_list{{0, {0, 1}}, {1, {0, 2}}, {2, {2, 1}}}));
 
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(0), {1, 2}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(1)));
@@ -98,7 +99,8 @@ GTEST_TEST(dumb_digraph, create_arcs) {
 //     ASSERT_EQ(graph.target(cb), b);
 
 //     ASSERT_TRUE(
-//         EQ_MULTISETS(graph.arcs_pairs(), vertices_pair_list{{c, b}, {a, b}}));
+//         EQ_MULTISETS(graph.arcs_pairs(), arcs_pairs_list{{c, b}, {a,
+//         b}}));
 
 //     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(a), {b}));
 //     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));

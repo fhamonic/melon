@@ -70,10 +70,10 @@ public:
     auto nb_vertices() const noexcept { return _out_arc_begin.size(); }
     auto nb_arcs() const noexcept { return _arc_target.size(); }
 
-    bool is_valid_vertex(const vertex & u) const noexcept {
+    bool is_valid_vertex(const vertex u) const noexcept {
         return u < nb_vertices();
     }
-    bool is_valid_arc(const arc & u) const noexcept { return u < nb_arcs(); }
+    bool is_valid_arc(const arc u) const noexcept { return u < nb_arcs(); }
 
     auto vertices() const noexcept {
         return std::views::iota(static_cast<vertex>(0),
@@ -84,13 +84,13 @@ public:
                                 static_cast<arc>(nb_arcs()));
     }
 
-    auto out_arcs(const vertex & u) const noexcept {
+    auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::iota(
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    auto in_arcs(const vertex & u) const noexcept {
+    auto in_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::span(
             _in_arcs.data() + _in_arc_begin[u],
@@ -98,11 +98,11 @@ public:
                                    : _in_arcs.data() + nb_arcs()));
     }
 
-    vertex source(const arc & a) const noexcept {
+    vertex source(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_source[a];
     }
-    vertex target(const arc & a) const noexcept {
+    vertex target(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
@@ -110,27 +110,28 @@ public:
     const auto & sources_map() const noexcept { return _arc_source; }
     const auto & targets_map() const noexcept { return _arc_target; }
 
-    auto out_neighbors(const vertex & u) const noexcept {
+    auto out_neighbors(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
                                    : _arc_target.data() + nb_arcs()));
     }
-    auto in_neighbors(const vertex & u) const noexcept {
+    auto in_neighbors(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::transform(in_arcs(u),
                                      [this](auto a) { return source(a); });
     }
 
-    auto out_arcs_pairs(const vertex & u) const noexcept {
-        assert(is_valid_vertex(u));
-        return std::views::transform(
-            out_neighbors(u), [u](auto v) { return std::make_pair(u, v); });
+    auto out_arcs_pairs(const vertex s) const noexcept {
+        assert(is_valid_vertex(s));
+        return std::views::transform(out_arcs(s), [this, s](const arc a) {
+            return std::make_pair(a,std::make_pair(s, _arc_target[a]));
+        });
     }
     auto arcs_pairs() const noexcept {
         return std::views::join(std::views::transform(
-            vertices(), [this](auto u) { return out_arcs_pairs(u); }));
+            vertices(), [this](const vertex s) { return out_arcs_pairs(s); }));
     }
 
     template <typename T>
