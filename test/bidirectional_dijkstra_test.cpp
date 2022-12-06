@@ -34,4 +34,6 @@ GTEST_TEST(bidirectional_dijkstra, test) {
 
     bidirectional_dijkstra alg(graph, length_map, 0u, 3u);
     ASSERT_EQ(alg.run(), 21);
+    ASSERT_TRUE(alg.path_found());
+    ASSERT_TRUE(EQ_MULTISETS(alg.path(), {1, 8}));
 }
