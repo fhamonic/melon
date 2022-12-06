@@ -55,7 +55,7 @@ public:
                std::views::transform(
                    [](const arc_struct & as) { return as.id; });
     }
-    auto arcs_pairs() const noexcept {
+    auto arc_entries() const noexcept {
         return valid_arcs_structs() |
                std::views::transform(
                    [](const arc_struct & as) { return std::make_pair(as.id, as.arc_pair); });

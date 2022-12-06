@@ -30,7 +30,7 @@ concept graph = std::copyable<G> &&
 requires(G g, vertex_t<G> u, arc_t<G> a) {
     { g.vertices() } -> std::ranges::input_range;
     { g.arcs() } -> std::ranges::input_range;
-    { g.arcs_pairs() } -> input_range_of<std::pair<arc_t<G>,std::pair<vertex_t<G>, vertex_t<G>>>>;
+    { g.arc_entries() } -> input_range_of<std::pair<arc_t<G>,std::pair<vertex_t<G>, vertex_t<G>>>>;
 };
 
 template <typename G>
@@ -46,27 +46,33 @@ concept has_arc_target = requires(G g, arc_t<G> a) {
 };
 
 template <typename G>
-concept incidence_list_graph = graph<G> && has_arc_target<G> &&
+concept outward_incidence_list = graph<G> && has_arc_target<G> &&
 requires(G g, vertex_t<G> u) {
     { g.out_arcs(u) } -> input_range_of<arc_t<G>>;
 };
 
 template <typename G>
-concept adjacency_list_graph = graph<G> && requires(G g, vertex_t<G> u) {
-    { g.out_neighbors(u) } -> input_range_of<vertex_t<G>>;
-};
-
-template <typename G>
-concept reversible_incidence_list_graph = graph<G> && has_arc_source<G> &&
+concept inward_incidence_list = graph<G> && has_arc_source<G> &&
 requires(G g, vertex_t<G> u) {
     { g.in_arcs(u) } -> input_range_of<arc_t<G>>;
 };
 
 template <typename G>
-concept reversible_adjacency_list_graph = graph<G> && 
+concept incidence_list = outward_incidence_list<G> && inward_incidence_list<G>;
+
+template <typename G>
+concept outward_adjacency_list = graph<G> && requires(G g, vertex_t<G> u) {
+    { g.out_neighbors(u) } -> input_range_of<vertex_t<G>>;
+};
+
+template <typename G>
+concept inward_adjacency_list = graph<G> && 
 requires(G g, vertex_t<G> u) {
     { g.in_neighbors(u) } -> input_range_of<vertex_t<G>>;
 };
+
+template <typename G>
+concept adjacency_list = outward_adjacency_list<G> && inward_adjacency_list<G>;
 }  // namespace concepts
 // clang-format on
 

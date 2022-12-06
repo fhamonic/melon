@@ -41,8 +41,8 @@ public:
 
     auto vertices() const noexcept { return _graph.vertices(); }
     auto arcs() const noexcept { return _graph.arcs(); }
-    auto arcs_pairs() const noexcept {
-        return std::views::transform(_graph.arcs_pairs(), [](auto && p) {
+    auto arc_entries() const noexcept {
+        return std::views::transform(_graph.arc_entries(), [](auto && p) {
             return std::make_pair(
                 p.first, std::make_pair(p.second.first, p.second.second));
         });
@@ -64,20 +64,20 @@ public:
     }
 
     auto out_arcs(const vertex & u)
-        const noexcept requires concepts::reversible_incidence_list_graph<G> {
+        const noexcept requires concepts::inward_incidence_list<G> {
         return _graph.in_arcs(u);
     }
     auto in_arcs(const vertex & u)
-        const noexcept requires concepts::incidence_list_graph<G> {
+        const noexcept requires concepts::outward_incidence_list<G> {
         return _graph.out_arcs(u);
     }
 
     auto out_neighbors(const vertex & u)
-        const noexcept requires concepts::reversible_adjacency_list_graph<G> {
+        const noexcept requires concepts::inward_adjacency_list<G> {
         return _graph.in_neighbors(u);
     }
     auto in_neighbors(const vertex & u)
-        const noexcept requires concepts::adjacency_list_graph<G> {
+        const noexcept requires concepts::outward_adjacency_list<G> {
         return _graph.out_neighbors(u);
     }
 

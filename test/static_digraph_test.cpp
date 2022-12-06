@@ -9,10 +9,10 @@ using namespace fhamonic;
 using namespace fhamonic::melon;
 
 static_assert(melon::concepts::graph<static_digraph>);
-static_assert(melon::concepts::incidence_list_graph<static_digraph>);
-static_assert(melon::concepts::adjacency_list_graph<static_digraph>);
-static_assert(melon::concepts::reversible_incidence_list_graph<static_digraph>);
-static_assert(melon::concepts::reversible_adjacency_list_graph<static_digraph>);
+static_assert(melon::concepts::outward_incidence_list<static_digraph>);
+static_assert(melon::concepts::outward_adjacency_list<static_digraph>);
+static_assert(melon::concepts::inward_incidence_list<static_digraph>);
+static_assert(melon::concepts::inward_adjacency_list<static_digraph>);
 static_assert(melon::concepts::has_vertex_map<static_digraph>);
 static_assert(melon::concepts::has_arc_map<static_digraph>);
 
@@ -22,7 +22,7 @@ GTEST_TEST(static_digraph, empty_constructor) {
     ASSERT_EQ(graph.nb_arcs(), 0);
     ASSERT_TRUE(EMPTY(graph.vertices()));
     ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
+    ASSERT_TRUE(EMPTY(graph.arc_entries()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
@@ -42,7 +42,7 @@ GTEST_TEST(static_digraph, empty_vectors_constructor) {
     ASSERT_EQ(graph.nb_arcs(), 0);
     ASSERT_TRUE(EMPTY(graph.vertices()));
     ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
+    ASSERT_TRUE(EMPTY(graph.arc_entries()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
@@ -83,7 +83,7 @@ GTEST_TEST(static_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_MULTISETS(graph.in_neighbors(1), {0, 2}));
     ASSERT_TRUE(EQ_MULTISETS(graph.in_neighbors(2), {0, 1}));
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(), arc_pairs));
+    ASSERT_TRUE(EQ_MULTISETS(graph.arc_entries(), arc_pairs));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
         ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);
@@ -127,7 +127,7 @@ GTEST_TEST(static_digraph, vectors_constructor_2) {
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(6), {5}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(7)));
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(), arc_pairs));
+    ASSERT_TRUE(EQ_MULTISETS(graph.arc_entries(), arc_pairs));
 
     for(arc_t<static_digraph> a : graph.arcs()) {
         ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);

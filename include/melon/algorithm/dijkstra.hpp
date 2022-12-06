@@ -47,7 +47,7 @@ struct dijkstra_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <concepts::incidence_list_graph G, concepts::input_map<arc_t<G>> L,
+template <concepts::outward_incidence_list G, concepts::input_map<arc_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
 requires concepts::has_vertex_map<G>
 class dijkstra {

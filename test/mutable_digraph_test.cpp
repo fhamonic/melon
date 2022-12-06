@@ -11,8 +11,8 @@ using namespace fhamonic;
 using namespace fhamonic::melon;
 
 static_assert(melon::concepts::graph<mutable_digraph>);
-static_assert(melon::concepts::incidence_list_graph<mutable_digraph>);
-static_assert(melon::concepts::adjacency_list_graph<mutable_digraph>);
+static_assert(melon::concepts::outward_incidence_list<mutable_digraph>);
+static_assert(melon::concepts::outward_adjacency_list<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_map<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_creation<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_removal<mutable_digraph>);
@@ -22,14 +22,14 @@ static_assert(melon::concepts::has_arc_change_source<mutable_digraph>);
 static_assert(melon::concepts::has_arc_change_target<mutable_digraph>);
 
 using Graph = mutable_digraph;
-using arcs_pairs_list = std::initializer_list<
+using arc_entries_list = std::initializer_list<
     std::pair<arc_t<Graph>, std::pair<vertex_t<Graph>, vertex_t<Graph>>>>;
 
 GTEST_TEST(mutable_digraph, empty_constructor) {
     Graph graph;
     ASSERT_TRUE(EMPTY(graph.vertices()));
     ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.arcs_pairs()));
+    ASSERT_TRUE(EMPTY(graph.arc_entries()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
     EXPECT_DEATH(graph.out_arcs(0), "");
@@ -78,8 +78,8 @@ GTEST_TEST(mutable_digraph, create_arcs) {
     ASSERT_EQ(graph.target(cb), b);
 
     ASSERT_TRUE(EQ_MULTISETS(
-        graph.arcs_pairs(),
-        arcs_pairs_list{
+        graph.arc_entries(),
+        arc_entries_list{
             {ab, {a, b}}, {ac, {a, c}}, {cb, {c, b}}, {ca, {c, a}}}));
 
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(a), {b, c}));
@@ -106,8 +106,8 @@ GTEST_TEST(mutable_digraph, remove_arcs) {
     EXPECT_DEATH(graph.target(ac), "");
     ASSERT_EQ(graph.target(cb), b);
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(),
-                             arcs_pairs_list{{cb, {c, b}}, {ab, {a, b}}}));
+    ASSERT_TRUE(EQ_MULTISETS(graph.arc_entries(),
+                             arc_entries_list{{cb, {c, b}}, {ab, {a, b}}}));
 
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(a), {b}));
     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));
@@ -189,7 +189,7 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
 
         ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), dummy_graph.vertices()));
         ASSERT_TRUE(EQ_MULTISETS(graph.arcs(), dummy_graph.arcs()));
-        ASSERT_TRUE(EQ_MULTISETS(graph.arcs_pairs(), dummy_graph.arcs_pairs()));
+        ASSERT_TRUE(EQ_MULTISETS(graph.arc_entries(), dummy_graph.arc_entries()));
 
         // std::cout << "v=";
         for(auto && v : graph.vertices()) {

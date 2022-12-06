@@ -24,9 +24,9 @@ struct dfs_default_traits {
 };
 
 // TODO ranges , requires out_neighbors : borrowed_range
-template <concepts::incidence_list_graph G, typename T = dfs_default_traits>
-    requires(concepts::incidence_list_graph<G> ||
-             concepts::adjacency_list_graph<G>) &&
+template <concepts::outward_incidence_list G, typename T = dfs_default_traits>
+    requires(concepts::outward_incidence_list<G> ||
+             concepts::outward_adjacency_list<G>) &&
             concepts::has_vertex_map<G>
 class depth_first_search {
 private:
@@ -36,8 +36,8 @@ private:
     using reached_map = vertex_map_t<G, bool>;
 
     static_assert(
-        !(concepts::adjacency_list_graph<G> && traits::store_pred_arcs),
-        "traversal on adjacency_list_graph cannot access predecessor arcs.");
+        !(concepts::outward_adjacency_list<G> && traits::store_pred_arcs),
+        "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
     using pred_vertices_map =
         std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
@@ -107,7 +107,7 @@ public:
         assert(!finished());
         const vertex u = _stack.back();
         _stack.pop_back();
-        if constexpr(concepts::incidence_list_graph<G>) {
+        if constexpr(concepts::outward_incidence_list<G>) {
             for(auto && a : _graph.get().out_arcs(u)) {
                 const vertex & w = _graph.get().target(a);
                 if(_reached_map[w]) continue;
@@ -119,7 +119,7 @@ public:
                 if constexpr(traits::store_distances)
                     _dist_map[w] = _dist_map[u] + 1;
             }
-        } else {  // i.e., concepts::adjacency_list_graph<G>
+        } else {  // i.e., concepts::outward_adjacency_list<G>
             for(auto && w : _graph.get().out_neighbors(u)) {
                 if(_reached_map[w]) continue;
                 _stack.push_back(w);

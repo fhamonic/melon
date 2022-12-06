@@ -57,26 +57,26 @@ public:
     // }
 
     // auto out_arcs(const vertex u)
-    //     const noexcept requires concepts::reversible_incidence_list_graph<G> {
+    //     const noexcept requires concepts::inward_incidence_list<G> {
     //     return _graph.get().in_arcs(u);
     // }
     // auto in_arcs(const vertex u)
-    //     const noexcept requires concepts::incidence_list_graph<G> {
+    //     const noexcept requires concepts::outward_incidence_list<G> {
     //     return _graph.get().out_arcs(u);
     // }
 
     // auto out_neighbors(const vertex u)
-    //     const noexcept requires concepts::reversible_adjacency_list_graph<G> {
+    //     const noexcept requires concepts::inward_adjacency_list<G> {
     //     return _graph.get().in_neighbors(u);
     // }
     // auto in_neighbors(const vertex u)
-    //     const noexcept requires concepts::adjacency_list_graph<G> {
+    //     const noexcept requires concepts::outward_adjacency_list<G> {
     //     return _graph.get().out_neighbors(u);
     // }
 
-    // auto arcs_pairs()
-    //     const noexcept requires concepts::adjacency_list_graph<G> {
-    //     return std::views::transform(_graph.get().arcs_pairs(), [](auto && p) {
+    // auto arc_entries()
+    //     const noexcept requires concepts::outward_adjacency_list<G> {
+    //     return std::views::transform(_graph.get().arc_entries(), [](auto && p) {
     //         return std::make_pair(p.second, p.first);
     //     });
     // }

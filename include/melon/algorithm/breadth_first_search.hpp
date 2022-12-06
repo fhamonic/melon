@@ -23,8 +23,8 @@ struct breadth_first_search_default_traits {
 };
 
 template <concepts::graph G, typename T = breadth_first_search_default_traits>
-    requires(concepts::incidence_list_graph<G> ||
-             concepts::adjacency_list_graph<G>) &&
+    requires(concepts::outward_incidence_list<G> ||
+             concepts::outward_adjacency_list<G>) &&
             concepts::has_vertex_map<G>
 class breadth_first_search {
 public:
@@ -33,8 +33,8 @@ public:
     using traits = T;
 
     static_assert(
-        !(concepts::adjacency_list_graph<G> && traits::store_pred_arcs),
-        "traversal on adjacency_list_graph cannot access predecessor arcs.");
+        !(concepts::outward_adjacency_list<G> && traits::store_pred_arcs),
+        "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
     using reached_map = vertex_map_t<G, bool>;
     using pred_vertices_map =
@@ -109,7 +109,7 @@ public:
         assert(!finished());
         const vertex & u = *_queue_current;
         ++_queue_current;
-        if constexpr(concepts::incidence_list_graph<G>) {
+        if constexpr(concepts::outward_incidence_list<G>) {
             for(auto && a : _graph.get().out_arcs(u)) {
                 const vertex & w = _graph.get().target(a);
                 if(_reached_map[w]) continue;
@@ -121,7 +121,7 @@ public:
                 if constexpr(traits::store_distances)
                     _dist_map[w] = _dist_map[u] + 1;
             }
-        } else {  // i.e., concepts::adjacency_list_graph<G>
+        } else {  // i.e., concepts::outward_adjacency_list<G>
             for(auto && w : _graph.get().out_neighbors(u)) {
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
