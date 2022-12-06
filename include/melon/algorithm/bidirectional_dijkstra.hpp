@@ -64,11 +64,10 @@ private:
     using vertex_status_map =
         vertex_map_t<G, std::pair<vertex_status, vertex_status>>;
 
-
     using optional_arc = std::optional<arc>;
-    using pred_arcs_map = std::conditional<traits::store_path,
-                                           vertex_map_t<G, optional_arc>,
-                                           std::monostate>::type;
+    using pred_arcs_map =
+        std::conditional<traits::store_path, vertex_map_t<G, optional_arc>,
+                         std::monostate>::type;
     using optional_midpoint =
         std::conditional<traits::store_path, std::optional<vertex>,
                          std::monostate>::type;
@@ -97,7 +96,8 @@ public:
         , _forward_pred_arcs_map(constexpr_ternary<traits::store_path>(
               g.template create_vertex_map<optional_arc>(), std::monostate{}))
         , _reverse_pred_arcs_map(constexpr_ternary<traits::store_path>(
-              g.template create_vertex_map<optional_arc>(), std::monostate{})) {}
+              g.template create_vertex_map<optional_arc>(), std::monostate{})) {
+    }
 
     bidirectional_dijkstra(const G & g, const L & l, const vertex & s,
                            const vertex & t)
@@ -115,7 +115,8 @@ public:
         return *this;
     }
     bidirectional_dijkstra & add_source(
-        const vertex & s, const value_t dist = traits::semiring::zero) noexcept {
+        const vertex & s,
+        const value_t dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s].first == PRE_HEAP);
         _forward_heap.push(s, dist);
         _vertex_status_map[s].first = IN_HEAP;
@@ -123,7 +124,8 @@ public:
         return *this;
     }
     bidirectional_dijkstra & add_target(
-        const vertex & t, const value_t dist = traits::semiring::zero) noexcept {
+        const vertex & t,
+        const value_t dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[t].second == PRE_HEAP);
         _reverse_heap.push(t, dist);
         _vertex_status_map[t].second = IN_HEAP;
@@ -249,7 +251,14 @@ public:
         assert(_vertex_status_map[u].second != PRE_HEAP);
         return _reverse_pred_arcs_map[u].value();
     }
-    auto retrieve_path() const noexcept {
+    bool path_found() const noexcept
+        requires(traits::store_path)
+    {
+        return _midpoint.has_value();
+    }
+    auto path() const noexcept
+        requires(traits::store_path)
+    {
         assert(_midpoint.has_value());
         return std::views::join(
             intrusive_view(
@@ -258,14 +267,18 @@ public:
                 [this](const std::optional<arc> & oa) -> optional_arc {
                     return _forward_pred_arcs_map[_graph.source(oa.value())];
                 },
-                [](const std::optional<arc> & oa) -> bool { return oa.has_value(); }),
+                [](const std::optional<arc> & oa) -> bool {
+                    return oa.has_value();
+                }),
             intrusive_view(
                 _reverse_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
                     return _reverse_pred_arcs_map[_graph.target(oa.value())];
                 },
-                [](const std::optional<arc> & oa) -> bool { return oa.has_value(); }));
+                [](const std::optional<arc> & oa) -> bool {
+                    return oa.has_value();
+                }));
     }
 };
 
