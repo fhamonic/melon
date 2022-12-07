@@ -25,7 +25,7 @@ struct dfs_default_traits {
 
 // TODO ranges , requires out_neighbors : borrowed_range
 template <concepts::outward_incidence_list G, typename T = dfs_default_traits>
-    requires(concepts::outward_incidence_list<G> ||
+    requires (concepts::forward_incidence_graph<G> ||
              concepts::outward_adjacency_list<G>) &&
             concepts::has_vertex_map<G>
 class depth_first_search {

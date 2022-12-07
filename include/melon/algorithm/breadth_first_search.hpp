@@ -23,7 +23,7 @@ struct breadth_first_search_default_traits {
 };
 
 template <concepts::graph G, typename T = breadth_first_search_default_traits>
-    requires(concepts::outward_incidence_list<G> ||
+    requires(concepts::forward_incidence_graph<G> ||
              concepts::outward_adjacency_list<G>) &&
             concepts::has_vertex_map<G>
 class breadth_first_search {

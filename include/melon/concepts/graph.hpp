@@ -46,19 +46,22 @@ concept has_arc_target = requires(G g, arc_t<G> a) {
 };
 
 template <typename G>
-concept outward_incidence_list = graph<G> && has_arc_target<G> &&
+concept outward_incidence_list = graph<G> &&
 requires(G g, vertex_t<G> u) {
     { g.out_arcs(u) } -> input_range_of<arc_t<G>>;
 };
 
 template <typename G>
-concept inward_incidence_list = graph<G> && has_arc_source<G> &&
+concept inward_incidence_list = graph<G> &&
 requires(G g, vertex_t<G> u) {
     { g.in_arcs(u) } -> input_range_of<arc_t<G>>;
 };
 
 template <typename G>
-concept incidence_list = outward_incidence_list<G> && inward_incidence_list<G>;
+concept forward_incidence_graph = outward_incidence_list<G> && has_arc_target<G>;
+
+template <typename G>
+concept reverse_incidence_graph = inward_incidence_list<G> && has_arc_source<G>;
 
 template <typename G>
 concept outward_adjacency_list = graph<G> && requires(G g, vertex_t<G> u) {
