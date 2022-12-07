@@ -29,6 +29,35 @@ In our library, a graph structure of type `G` must then provide :
 
 An arc is said to be *incident* to a vertex `v` if `v` is either its source or its target.
 
+```cpp
+template <typename G>
+concept outward_incidence_list = graph<G> && has_arc_target<G> &&
+requires(G g, vertex_t<G> u) {
+    { g.out_arcs(u) } -> input_range_of<arc_t<G>>;
+};
+```
+
+
 ## Adjacency list
 
 Two vertices `u` and `v` are said to be *adjacent* if they are connected by an arc.
+
+```cpp
+template <typename G>
+concept has_arc_target = requires(G g, arc_t<G> a) {
+    { g.target(a) } -> std::same_as<vertex_t<G>>;
+    { g.targets_map() } -> input_map_of<arc_t<G>, vertex_t<G>>;
+};
+```
+```cpp
+template <typename G>
+concept outward_adjacency_list = outward_incidence_list<G> && has_arc_target<G> && requires(G g, vertex_t<G> u) {
+    { g.out_neighbors(u) } -> input_range_of<vertex_t<G>>;
+};
+```
+
+
+We can define the arcs to be the iterators of the inner list of vertices. Indeed, this iterator is uniquely defining an out_ward arc
+
+The concepts `incidence_list` and `adjacency_list` may seem redundant, but it is not the case.
+For example, a graph that is a `forward_adjacency_list` may also be a `inward_incidence_list` but not a `inward_adjacency_list` because it is not capable of retrieving the source vertex of a given `arc`.
