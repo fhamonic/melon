@@ -18,7 +18,6 @@ requires(G g) {
         input_range_of<std::pair<arc_t<G>,std::pair<vertex_t<G>, vertex_t<G>>>>;
 };
 ```
-
 In our library, a graph structure of type `G` must then provide :
 - `.vertices()` that returns a range that describes the graph vertices, whose type can be retrieved as `vertex_t<G>`
 - `.arcs()` that returns a range that describes the graph arcs, whose type can be retrieved as `arc_t<G>`
@@ -58,16 +57,14 @@ We found that the independence of these concepts can be justified by the fact th
  
 ## Adjacency list
 
-Two vertices `u` and `v` are said to be *adjacent* if they are connected by an arc.
+Two vertices `u` and `v` are said to be *adjacent* if they are connected by an arc. Another common lookup operation on graph is iterating on the adjacent neighbors of a vertex.
 
 ```cpp
 template <typename G>
-concept outward_adjacency_list = outward_incidence_list<G> && has_arc_target<G> || requires(G g, vertex_t<G> u) {
+concept outward_adjacency_list = requires(G g, vertex_t<G> u) {
     { g.out_neighbors(u) } -> input_range_of<vertex_t<G>>;
 };
 ```
-
-
 We can define the arcs to be the iterators of the inner list of vertices. Indeed, this iterator is uniquely defining an out_ward arc
 
 The concepts `forward_incidence_graph` and `adjacency_list` may seem redundant, but it is not the case.
@@ -86,6 +83,6 @@ When creating such maps, the data attached is considered [default initialized](h
 This design choice has many advantages:
 - the graph implemention to be the only one needing to know the actual types of its vertices and arcs
 - graph algorithms requiring to attach data to vertices and arcs can express this requirement with concepts
-- the actual types of `vertex_map_t<G,T>` and `vertex_arc_t<G,T>` is chosen by the graph implementation and a fully customizable point, allowing, for example, to provide custom allocator
+- the actual types of `vertex_map_t<G,T>` and `vertex_arc_t<G,T>` are chosen by the graph implementation and fully customizable points, allowing, for example, to provide custom allocator
 - for some implementations, the graph and its maps can hold mutual references in order to resize adequately upon the creation of new vertices and arcs or to give back the ownership of the allocated memory to the parent graph, when the destructor is called, in order to recycle it.
 
