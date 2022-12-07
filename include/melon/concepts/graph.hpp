@@ -27,7 +27,7 @@ using arc_t = std::ranges::range_value_t<arcs_range_t<G>>;
 namespace concepts {
 template <typename G>
 concept graph = std::copyable<G> &&
-requires(G g, vertex_t<G> u, arc_t<G> a) {
+requires(G g) {
     { g.vertices() } -> std::ranges::input_range;
     { g.arcs() } -> std::ranges::input_range;
     { g.arc_entries() } -> input_range_of<std::pair<arc_t<G>,std::pair<vertex_t<G>, vertex_t<G>>>>;
