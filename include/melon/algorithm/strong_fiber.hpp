@@ -51,7 +51,7 @@ struct strong_fiber_default_traits {
                             vertex_map_t<G, std::size_t>>;
 };
 
-template <concepts::outward_adjacency_list G, typename L1, typename L2,
+template <concepts::forward_incidence_graph G, typename L1, typename L2,
           typename F1, typename F2,
           typename T = strong_fiber_default_traits<G, L1>>
     requires std::is_same_v<typename L1::value_type, typename L2::value_type>
