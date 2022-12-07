@@ -37,12 +37,17 @@ make single-header
 ```
 then manage to #include it where needed with the range-v3 library.
 
+## Concepts and design choices
+
+As mentioned above, this project makes extensive use of C++20 concepts to provide requirements for graph algorithms. These concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in [Concepts and design choices](docs/CONCEPTS.md).
+Thus, this library is intended to allow users to specify their own graph structures that would best fit their needs.
+However, we provide classical implementation of graph for different use cases such as 'static_digraph' that describes a non-mutable graph optimized for algorithms performance, and 'mutable_digraph' that describes a graph supporting all the common modification of a graph structure (creation and removal of vertices and arcs, and modification of an arc endpoints) at the expense of some performances.
+
 ## Code examples
 
 ```cpp
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/static_digraph.hpp"
-using namesapce fhamonic::melon;
 ....
 static_digraph graph = ...;
 arc_map_t<static_digraph, double> length_map = ...;
