@@ -114,10 +114,10 @@ public:
         return _arc_target[a];
     }
 
-    [[nodiscard]] decltype(auto) sources_map() const noexcept {
+    [[nodiscard]] const auto & sources_map() const noexcept {
         return _arc_source;
     }
-    [[nodiscard]] decltype(auto) targets_map() const noexcept {
+    [[nodiscard]] const auto & targets_map() const noexcept {
         return _arc_target;
     }
 
