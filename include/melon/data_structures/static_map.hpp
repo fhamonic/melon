@@ -39,72 +39,72 @@ public:
         size_type _index;
 
     public:
-        iterator_base(mapped_type * p, const size_type & index)
+        [[nodiscard]] constexpr iterator_base(mapped_type * p, const size_type & index)
             : _p(p), _index(index) {}
 
-        iterator_base() = default;
-        iterator_base(const iterator_base &) = default;
-        iterator_base(iterator_base &&) = default;
+        [[nodiscard]] constexpr iterator_base() = default;
+        [[nodiscard]] constexpr iterator_base(const iterator_base &) = default;
+        [[nodiscard]] constexpr iterator_base(iterator_base &&) = default;
 
-        iterator_base & operator=(const iterator_base &) = default;
-        iterator_base & operator=(iterator_base &&) = default;
+        constexpr iterator_base & operator=(const iterator_base &) = default;
+        constexpr iterator_base & operator=(iterator_base &&) = default;
 
-        friend bool operator==(const iterator_base & x,
+        [[nodiscard]] constexpr friend bool operator==(const iterator_base & x,
                                const iterator_base & y) noexcept {
             return x._p == y._p && x._index == y._index;
         }
-        friend constexpr std::strong_ordering operator<=>(
+        [[nodiscard]] friend constexpr std::strong_ordering operator<=>(
             const iterator_base & x, const iterator_base & y) noexcept {
             assert(x._p == y._p);
             return x._index <=> y._index;
         }
-        difference_type operator-(const iterator_base & other) const noexcept {
+        [[nodiscard]] constexpr difference_type operator-(const iterator_base & other) const noexcept {
             assert(_p == other._p);
             return static_cast<difference_type>(_index) -
                    static_cast<difference_type>(other._index);
         }
-        I & operator++() noexcept {
+        constexpr I & operator++() noexcept {
             ++_index;
             return *static_cast<I *>(this);
         }
-        I operator++(int) noexcept {
+        [[nodiscard]] constexpr I operator++(int) noexcept {
             I tmp = *static_cast<I *>(this);
             ++_index;
             return tmp;
         }
-        I & operator--() noexcept {
+        constexpr I & operator--() noexcept {
             --_index;
             return *static_cast<I *>(this);
         }
-        I operator--(int) noexcept {
+        [[nodiscard]] constexpr I operator--(int) noexcept {
             I tmp = *static_cast<I *>(this);
             --_index;
             return tmp;
         }
-        I & operator+=(difference_type i) noexcept {
+        constexpr I & operator+=(difference_type i) noexcept {
             _index += i;
             return *static_cast<I *>(this);
         }
 
-        I & operator-=(difference_type i) noexcept {
+        constexpr I & operator-=(difference_type i) noexcept {
             _index -= i;
             return *static_cast<I *>(this);
         }
 
-        friend I operator+(const I & x, difference_type n) {
+        [[nodiscard]] constexpr friend I operator+(const I & x, difference_type n) {
             I tmp = x;
             return tmp += n;
         }
-        friend I operator+(difference_type n, const I & x) { return x + n; }
-        friend I operator-(const I & x, difference_type n) {
+        [[nodiscard]] constexpr friend I operator+(difference_type n, const I & x) { return x + n; }
+        [[nodiscard]] constexpr friend I operator-(const I & x, difference_type n) {
             I tmp = x;
             return tmp -= n;
         }
 
-        reference operator*() const noexcept {
+        [[nodiscard]] constexpr reference operator*() const noexcept {
             return reference(static_cast<key_type>(_index), _p[_index]);
         }
-        reference operator[](difference_type i) const { return *(*this + i); }
+        [[nodiscard]] constexpr reference operator[](difference_type i) const { return *(*this + i); }
     };
 
     using iterator = iterator_base<std::pair<const K, V &>>;
@@ -115,26 +115,26 @@ private:
     size_type _size;
 
 public:
-    static_map() noexcept : _data(nullptr), _size(0){};
-    explicit static_map(const size_type size)
+    [[nodiscard]] constexpr static_map() noexcept : _data(nullptr), _size(0){};
+    [[nodiscard]] constexpr explicit static_map(const size_type size)
         : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
         , _size(size){};
 
-    static_map(const size_type size, const mapped_type & init_value)
+    [[nodiscard]] constexpr static_map(const size_type size, const mapped_type & init_value)
         : static_map(size) {
         std::fill(_data.get(), _data.get() + _size, init_value);
     }
 
     template <std::random_access_iterator IT>
-    static_map(IT && it_begin, IT && it_end)
+    [[nodiscard]] constexpr static_map(IT && it_begin, IT && it_end)
         : static_map(static_cast<size_type>(std::distance(it_begin, it_end))) {
         std::copy(it_begin, it_end, _data.get());
     }
     template <std::ranges::random_access_range R>
-    explicit static_map(R && r) : static_map(r.begin(), r.end()) {}
+    [[nodiscard]] constexpr explicit static_map(R && r) : static_map(r.begin(), r.end()) {}
     static_map(const static_map & other)
         : static_map(other.data(), other.data() + other.size()){};
-    static_map(static_map &&) = default;
+    [[nodiscard]] constexpr static_map(static_map &&) = default;
 
     static_map & operator=(const static_map & other) {
         resize(other.size());
@@ -142,37 +142,37 @@ public:
     }
     static_map & operator=(static_map &&) = default;
 
-    iterator begin() noexcept { return iterator(_data.get(), 0); }
-    iterator end() noexcept { return iterator(_data.get(), _size); }
-    const_iterator begin() const noexcept {
+    [[nodiscard]] constexpr iterator begin() noexcept { return iterator(_data.get(), 0); }
+    [[nodiscard]] constexpr iterator end() noexcept { return iterator(_data.get(), _size); }
+    [[nodiscard]] constexpr const_iterator begin() const noexcept {
         return const_iterator(_data.get(), 0);
     }
-    const_iterator end() const noexcept {
+    [[nodiscard]] constexpr const_iterator end() const noexcept {
         return const_iterator(_data.get(), _size);
     }
 
-    constexpr size_type size() const noexcept { return _size; }
+    [[nodiscard]] constexpr  size_type size() const noexcept { return _size; }
     constexpr void resize(const size_type n) {
         if(n == size()) return;
         _data = std::make_unique_for_overwrite<mapped_type[]>(n);
         _size = n;
     }
 
-    constexpr mapped_type & operator[](const key_type i) noexcept {
+    [[nodiscard]] constexpr mapped_type & operator[](const key_type i) noexcept {
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
-    constexpr const mapped_type & operator[](const key_type i) const noexcept {
+    [[nodiscard]] constexpr  const mapped_type & operator[](const key_type i) const noexcept {
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
-    constexpr const mapped_type & at(const key_type i) const {
+    [[nodiscard]] constexpr  const mapped_type & at(const key_type i) const {
         if(static_cast<size_type>(i) >= size()) throw std::out_of_range("Invalid key.");
         return _data[static_cast<size_type>(i)];
     }
 
-    constexpr mapped_type * data() noexcept { return _data.get(); }
-    constexpr mapped_type * data() const noexcept { return _data.get(); }
+    [[nodiscard]] constexpr  mapped_type * data() noexcept { return _data.get(); }
+    [[nodiscard]] constexpr  mapped_type * data() const noexcept { return _data.get(); }
 };
 
 }  // namespace melon
