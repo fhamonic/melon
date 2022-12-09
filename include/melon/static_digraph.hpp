@@ -29,8 +29,8 @@ private:
 public:
     template <concepts::forward_range_of<vertex> S,
               concepts::forward_range_of<vertex> T>
-    static_digraph(const std::size_t & nb_vertices, S && sources,
-                   T && targets) noexcept
+    [[nodiscard]] static_digraph(const std::size_t & nb_vertices, S && sources,
+                                 T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0)
         , _arc_target(std::forward<T>(targets))
         , _arc_source(std::forward<S>(sources))
@@ -60,37 +60,44 @@ public:
         }
     }
 
-    static_digraph() = default;
-    static_digraph(const static_digraph & graph) = default;
-    static_digraph(static_digraph && graph) = default;
+    [[nodiscard]] static_digraph() = default;
+    [[nodiscard]] static_digraph(const static_digraph & graph) = default;
+    [[nodiscard]] static_digraph(static_digraph && graph) = default;
 
     static_digraph & operator=(const static_digraph &) = default;
     static_digraph & operator=(static_digraph &&) = default;
 
-    auto nb_vertices() const noexcept { return _out_arc_begin.size(); }
-    auto nb_arcs() const noexcept { return _arc_target.size(); }
+    [[nodiscard]] constexpr auto nb_vertices() const noexcept {
+        return _out_arc_begin.size();
+    }
+    [[nodiscard]] constexpr auto nb_arcs() const noexcept {
+        return _arc_target.size();
+    }
 
-    bool is_valid_vertex(const vertex u) const noexcept {
+    [[nodiscard]] constexpr bool is_valid_vertex(
+        const vertex u) const noexcept {
         return u < nb_vertices();
     }
-    bool is_valid_arc(const arc u) const noexcept { return u < nb_arcs(); }
+    [[nodiscard]] constexpr bool is_valid_arc(const arc u) const noexcept {
+        return u < nb_arcs();
+    }
 
-    auto vertices() const noexcept {
+    [[nodiscard]] constexpr auto vertices() const noexcept {
         return std::views::iota(static_cast<vertex>(0),
                                 static_cast<vertex>(nb_vertices()));
     }
-    auto arcs() const noexcept {
+    [[nodiscard]] constexpr auto arcs() const noexcept {
         return std::views::iota(static_cast<arc>(0),
                                 static_cast<arc>(nb_arcs()));
     }
 
-    auto out_arcs(const vertex u) const noexcept {
+    [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::iota(
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    auto in_arcs(const vertex u) const noexcept {
+    [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::span(
             _in_arcs.data() + _in_arc_begin[u],
@@ -98,58 +105,64 @@ public:
                                    : _in_arcs.data() + nb_arcs()));
     }
 
-    vertex source(const arc a) const noexcept {
+    [[nodiscard]] constexpr vertex source(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_source[a];
     }
-    vertex target(const arc a) const noexcept {
+    [[nodiscard]] constexpr vertex target(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
 
-    const auto & sources_map() const noexcept { return _arc_source; }
-    const auto & targets_map() const noexcept { return _arc_target; }
+    [[nodiscard]] decltype(auto) sources_map() const noexcept {
+        return _arc_source;
+    }
+    [[nodiscard]] decltype(auto) targets_map() const noexcept {
+        return _arc_target;
+    }
 
-    auto out_neighbors(const vertex u) const noexcept {
+    [[nodiscard]] constexpr auto out_neighbors(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
                                    : _arc_target.data() + nb_arcs()));
     }
-    auto in_neighbors(const vertex u) const noexcept {
+    [[nodiscard]] constexpr auto in_neighbors(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::transform(in_arcs(u),
                                      [this](auto a) { return source(a); });
     }
 
-    auto out_arc_entries(const vertex s) const noexcept {
+    [[nodiscard]] constexpr auto out_arc_entries(
+        const vertex s) const noexcept {
         assert(is_valid_vertex(s));
         return std::views::transform(out_arcs(s), [this, s](const arc a) {
-            return std::make_pair(a,std::make_pair(s, _arc_target[a]));
+            return std::make_pair(a, std::make_pair(s, _arc_target[a]));
         });
     }
-    auto arc_entries() const noexcept {
+    [[nodiscard]] constexpr auto arc_entries() const noexcept {
         return std::views::join(std::views::transform(
             vertices(), [this](const vertex s) { return out_arc_entries(s); }));
     }
 
     template <typename T>
-    static_map<vertex, T> create_vertex_map() const noexcept {
+    [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
         return static_map<vertex, T>(nb_vertices());
     }
     template <typename T>
-    static_map<vertex, T> create_vertex_map(
+    [[nodiscard]] constexpr auto create_vertex_map(
         const T & default_value) const noexcept {
         return static_map<vertex, T>(nb_vertices(), default_value);
     }
 
     template <typename T>
-    static_map<arc, T> create_arc_map() const noexcept {
+    [[nodiscard]] constexpr auto create_arc_map() const noexcept {
         return static_map<arc, T>(nb_arcs());
     }
     template <typename T>
-    static_map<arc, T> create_arc_map(const T & default_value) const noexcept {
+    [[nodiscard]] constexpr auto create_arc_map(
+        const T & default_value) const noexcept {
         return static_map<arc, T>(nb_arcs(), default_value);
     }
 };

@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "melon/data_structures/static_map.hpp"
-#include "melon/expected_cpp23/generator.hpp"
+#include "melon/utils/intrusive_view.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -46,8 +46,9 @@ public:
     //     operator bool() const noexcept { return (*_p >> _local_index) & 1; }
     //     reference & operator=(bool b) noexcept {
     //         *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
-    //         *_p ^= (*_p & ~(static_cast<span_type>(b) << _local_index)) | (*_p & (static_cast<span_type>(b) << _local_index));
-    //         return *this;
+    //         *_p ^= (*_p & ~(static_cast<span_type>(b) << _local_index)) |
+    //         (*_p & (static_cast<span_type>(b) << _local_index)); return
+    //         *this;
     //     }
     //     reference & operator=(const reference & other) noexcept {
     //         return *this = bool(other);
@@ -278,25 +279,73 @@ public:
                   b ? ~span_type(0) : span_type(0));
     }
 
-    expected_cpp23::generator<size_type> true_keys() const {
-        span_type * p = _data.get();
-        size_type index = 0;
-        const span_type * p_end = _data.get() + _size / N;
-        const size_type index_end = _size & span_index_mask;
+    auto true_keys() const {
+        // span_type * p = _data.get();
+        // size_type index = 0;
+        // const span_type * p_end = _data.get() + _size / N;
+        // const size_type index_end = _size & span_index_mask;
 
+        // for(;;) {
+        //     index += static_cast<size_type>(std::countr_zero((*p) >> index));
+        //     if(p == p_end && index >= index_end) co_return;
+        //     if(index >= N) {
+        //         ++p;
+        //         index = 0;
+        //         continue;
+        //     }
+        //     co_yield static_cast<size_type>(
+        //         difference_type(N) * (p - _data.get()) +
+        //         static_cast<difference_type>(index));
+        //     ++index;
+        // }
+
+        const span_type * data = _data.get();
+        const size_type last_out_index = _size / N;
+        const size_type last_in_index = _size & span_index_mask;
+
+        struct {
+            size_type out_index;
+            size_type in_index;
+        } cursor(0, 0);
         for(;;) {
-            index += static_cast<size_type>(std::countr_zero((*p) >> index));
-            if(p == p_end && index >= index_end) co_return;
-            if(index >= N) {
-                ++p;
-                index = 0;
+            cursor.in_index += static_cast<size_type>(
+                std::countr_zero((data[cursor.out_index]) >> cursor.in_index));
+            if(cursor.out_index == last_out_index &&
+               cursor.in_index >= last_in_index)
+                break;
+            if(cursor.in_index >= N) {
+                ++cursor.out_index;
+                cursor.in_index = 0;
                 continue;
             }
-            co_yield static_cast<size_type>(
-                difference_type(N) * (p - _data.get()) +
-                static_cast<difference_type>(index));
-            ++index;
+            break;
         }
+
+        return intrusive_view(
+            cursor,
+            [](const auto & cur) -> size_type {
+                return cur.out_index * size_type(N) + cur.in_index;
+            },
+            [ data, last_out_index, last_in_index ](auto cur) -> auto{
+                ++cur.in_index;
+                for(;;) {
+                    cur.in_index += static_cast<size_type>(std::countr_zero(
+                        (data[cur.out_index]) >> cur.in_index));
+                    if(cur.out_index == last_out_index &&
+                       cur.in_index >= last_in_index)
+                        return cur;
+                    if(cur.in_index >= N) {
+                        ++cur.out_index;
+                        cur.in_index = 0;
+                        continue;
+                    }
+                    return cur;
+                }
+            },
+            [last_out_index, last_in_index](const arc a) -> bool {
+                return cur.out_index != last_out_index ||
+                       cur.in_index < last_in_index;
+            });
     }
 };
 

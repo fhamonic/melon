@@ -46,15 +46,16 @@ private:
     arc _first_free_arc;
 
 public:
-    mutable_digraph() noexcept
+    [[nodiscard]] constexpr mutable_digraph() noexcept
         : _first_vertex(INVALID_VERTEX)
         , _first_free_vertex(INVALID_VERTEX)
         , _first_free_arc(INVALID_ARC){};
-    mutable_digraph(const mutable_digraph & graph) = default;
-    mutable_digraph(mutable_digraph && graph) = default;
+    [[nodiscard]] constexpr mutable_digraph(const mutable_digraph & graph) =
+        default;
+    [[nodiscard]] constexpr mutable_digraph(mutable_digraph && graph) = default;
 
-    mutable_digraph & operator=(const mutable_digraph &) = default;
-    mutable_digraph & operator=(mutable_digraph &&) = default;
+    constexpr mutable_digraph & operator=(const mutable_digraph &) = default;
+    constexpr mutable_digraph & operator=(mutable_digraph &&) = default;
 
     [[nodiscard]] constexpr bool is_valid_vertex(
         const vertex v) const noexcept {
@@ -177,7 +178,7 @@ public:
     }
 
 private:
-    void remove_from_source_out_arcs(const arc a) noexcept {
+    constexpr void remove_from_source_out_arcs(const arc a) noexcept {
         assert(is_valid_arc(a));
         const arc_struct & as = _arcs[a];
         if(as.next_out_arc != INVALID_ARC)
@@ -187,7 +188,7 @@ private:
         else
             _vertices[as.source].first_out_arc = as.next_out_arc;
     }
-    void remove_from_target_in_arcs(const arc a) noexcept {
+    constexpr void remove_from_target_in_arcs(const arc a) noexcept {
         assert(is_valid_arc(a));
         const arc_struct & as = _arcs[a];
         if(as.next_in_arc != INVALID_ARC)
@@ -197,7 +198,7 @@ private:
         else
             _vertices[as.target].first_in_arc = as.next_in_arc;
     }
-    void remove_incident_arcs(const vertex v) noexcept {
+    constexpr void remove_incident_arcs(const vertex v) noexcept {
         assert(is_valid_vertex(v));
         // in_arcs are already linked by .next_in_arc
         arc last_in_arc = INVALID_ARC;
@@ -227,7 +228,7 @@ private:
     }
 
 public:
-    void remove_vertex(const vertex v) noexcept {
+    constexpr void remove_vertex(const vertex v) noexcept {
         assert(is_valid_vertex(v));
         remove_incident_arcs(v);
         vertex_struct & vs = _vertices[v];
@@ -243,7 +244,7 @@ public:
         _first_free_vertex = v;
         _vertices_filter[v] = false;
     }
-    void remove_arc(const arc a) noexcept {
+    constexpr void remove_arc(const arc a) noexcept {
         assert(is_valid_arc(a));
         remove_from_source_out_arcs(a);
         remove_from_target_in_arcs(a);
@@ -251,7 +252,7 @@ public:
         _first_free_arc = a;
         _arcs_filter[a] = false;
     }
-    void change_target(const arc a, const vertex t) noexcept {
+    constexpr void change_target(const arc a, const vertex t) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(t));
         arc_struct & as = _arcs[a];
@@ -265,7 +266,7 @@ public:
             _arcs[ts.first_in_arc].prev_in_arc = a;
         ts.first_in_arc = a;
     }
-    void change_source(const arc a, const vertex s) noexcept {
+    constexpr void change_source(const arc a, const vertex s) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(s));
         arc_struct & as = _arcs[a];
@@ -289,6 +290,15 @@ public:
     [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map(
         const T & default_value) const noexcept {
         return static_map<vertex, T>(_vertices.size(), default_value);
+    }
+    template <typename T>
+    [[nodiscard]] constexpr static_map<arc, T> create_arc_map() const noexcept {
+        return static_map<arc, T>(_arcs.size());
+    }
+    template <typename T>
+    [[nodiscard]] constexpr static_map<arc, T> create_arc_map(
+        const T & default_value) const noexcept {
+        return static_map<arc, T>(_arcs.size(), default_value);
     }
 };
 
