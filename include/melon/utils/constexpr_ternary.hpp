@@ -8,7 +8,7 @@ namespace fhamonic {
 namespace melon {
 
 template <bool B, typename T, typename F>
-decltype(auto) constexpr_ternary(T && t, F && f) {
+[[nodiscard]] constexpr decltype(auto) constexpr_ternary(T && t, F && f) {
     if constexpr(B) {
         return std::forward<T>(t);
     } else {

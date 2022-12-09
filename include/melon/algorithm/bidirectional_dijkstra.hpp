@@ -41,7 +41,7 @@ struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
     using heap =
         d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
-                   decltype(semiring::less), vertex_map_t<G, std::size_t>>;
+                   std::decay_t<decltype(semiring::less)>, vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_path = true;
 };

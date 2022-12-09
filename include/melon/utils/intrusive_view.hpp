@@ -27,18 +27,19 @@ private:
     std::optional<Cond> _cond;
 
 public:
-    intrusive_view(I begin, Deref && deref, Incr && incr, Cond && cond)
+    [[nodiscard]] constexpr intrusive_view(I begin, Deref && deref,
+                                           Incr && incr, Cond && cond)
         : _begin(begin)
         , _deref(std::forward<Deref>(deref))
         , _incr(std::forward<Incr>(incr))
         , _cond(std::forward<Cond>(cond)) {}
 
-    intrusive_view(const intrusive_view &) = default;
-    intrusive_view(intrusive_view &&) = default;
+    [[nodiscard]] constexpr intrusive_view(const intrusive_view &) = default;
+    [[nodiscard]] constexpr intrusive_view(intrusive_view &&) = default;
 
     // intrusive_view would not be a viewable_range without operator=
     // https://www.fluentcpp.com/2020/10/02/how-to-implement-operator-when-a-data-member-is-a-lambda/
-    intrusive_view & operator=(const intrusive_view & that) noexcept {
+    constexpr intrusive_view & operator=(const intrusive_view & that) noexcept {
         _begin = that._begin;
         _deref.reset();
         if(that._deref) _deref.emplace(*that._deref);
@@ -48,7 +49,7 @@ public:
         if(that._cond) _cond.emplace(*that._cond);
         return *this;
     }
-    intrusive_view & operator=(intrusive_view && that) {
+    constexpr intrusive_view & operator=(intrusive_view && that) {
         _begin = std::move(that._begin);
         _deref.reset();
         if(that._deref) _deref.emplace(std::move(*that._deref));
@@ -76,15 +77,15 @@ public:
         std::optional<Cond> _cond;
 
     public:
-        iterator(const I & index, const Deref & deref, const Incr & incr,
+        [[nodiscard]] constexpr iterator(const I & index, const Deref & deref, const Incr & incr,
                  const Cond & cond)
             : _index(index), _deref(deref), _incr(incr), _cond(cond) {}
 
-        iterator() = default;
-        iterator(const iterator &) = default;
-        iterator(iterator &&) = default;
+        [[nodiscard]] constexpr iterator() = default;
+        [[nodiscard]] constexpr iterator(const iterator &) = default;
+        [[nodiscard]] constexpr iterator(iterator &&) = default;
 
-        iterator & operator=(const iterator & that) noexcept {
+        constexpr iterator & operator=(const iterator & that) noexcept {
             _index = that._index;
             _deref.reset();
             if(that._deref) _deref.emplace(*that._deref);
@@ -94,7 +95,7 @@ public:
             if(that._cond) _cond.emplace(*that._cond);
             return *this;
         }
-        iterator & operator=(iterator && that) {
+        constexpr iterator & operator=(iterator && that) {
             _index = std::move(that._index);
             _deref.reset();
             if(that._deref) _deref.emplace(std::move(*that._deref));
@@ -105,20 +106,20 @@ public:
             return *this;
         }
 
-        friend bool operator==(const iterator & it, sentinel) noexcept {
+        [[nodiscard]] constexpr friend bool operator==(const iterator & it, sentinel) noexcept {
             return !it._cond.value()(it._index);
         }
 
-        reference operator*() const noexcept { return _deref.value()(_index); }
-        void operator++(int) noexcept { _index = _incr.value()(_index); }
-        iterator & operator++() noexcept {
+        [[nodiscard]] constexpr reference operator*() const noexcept { return _deref.value()(_index); }
+        constexpr void operator++(int) noexcept { _index = _incr.value()(_index); }
+        constexpr iterator & operator++() noexcept {
             _index = _incr.value()(_index);
             return *this;
         }
     };
 
-    iterator begin() const { return iterator(_begin, *_deref, *_incr, *_cond); }
-    sentinel end() const { return sentinel(); }
+    [[nodiscard]] constexpr iterator begin() const { return iterator(_begin, *_deref, *_incr, *_cond); }
+    [[nodiscard]] constexpr sentinel end() const { return sentinel(); }
 };
 
 }  // namespace melon

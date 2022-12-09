@@ -25,10 +25,9 @@ struct dfs_default_traits {
 
 // TODO ranges , requires out_neighbors : borrowed_range
 template <concepts::outward_incidence_list G, typename T = dfs_default_traits>
-    requires (concepts::forward_incidence_graph<G> ||
-             concepts::outward_adjacency_list<G>) &&
-            concepts::has_vertex_map<G>
-class depth_first_search {
+requires(concepts::forward_incidence_graph<G> ||
+         concepts::outward_adjacency_list<G>) &&
+    concepts::has_vertex_map<G> class depth_first_search {
 private:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
@@ -58,7 +57,7 @@ private:
     distances_map _dist_map;
 
 public:
-    explicit depth_first_search(const G & g) noexcept
+    [[nodiscard]] constexpr explicit depth_first_search(const G & g) noexcept
         : _graph(g)
         , _stack()
         , _reached_map(g.template create_vertex_map<bool>(false))
@@ -71,23 +70,27 @@ public:
         _stack.reserve(g.nb_vertices());
     }
 
-    depth_first_search(const G & g, const vertex & s) noexcept
+    [[nodiscard]] constexpr depth_first_search(const G & g,
+                                               const vertex & s) noexcept
         : depth_first_search(g) {
         add_source(s);
     }
 
-    depth_first_search(const depth_first_search & bin) = default;
-    depth_first_search(depth_first_search && bin) = default;
+    [[nodiscard]] constexpr depth_first_search(const depth_first_search & bin) =
+        default;
+    [[nodiscard]] constexpr depth_first_search(depth_first_search && bin) =
+        default;
 
-    depth_first_search & operator=(const depth_first_search &) = default;
-    depth_first_search & operator=(depth_first_search &&) = default;
+    constexpr depth_first_search & operator=(const depth_first_search &) =
+        default;
+    constexpr depth_first_search & operator=(depth_first_search &&) = default;
 
-    depth_first_search & reset() noexcept {
+    constexpr depth_first_search & reset() noexcept {
         _stack.resize(0);
         _reached_map.fill(false);
         return *this;
     }
-    depth_first_search & add_source(const vertex & s) noexcept {
+    constexpr depth_first_search & add_source(const vertex & s) noexcept {
         assert(!_reached_map[s]);
         _stack.push_back(s);
         _reached_map[s] = true;
@@ -96,14 +99,16 @@ public:
         return *this;
     }
 
-    bool finished() const noexcept { return _stack.empty(); }
+    [[nodiscard]] constexpr bool finished() const noexcept {
+        return _stack.empty();
+    }
 
-    vertex current() const noexcept {
+    [[nodiscard]] constexpr vertex current() const noexcept {
         assert(!finished());
         return _stack.back();
     }
 
-    void advance() noexcept {
+    constexpr void advance() noexcept {
         assert(!finished());
         const vertex u = _stack.back();
         _stack.pop_back();
@@ -132,22 +137,26 @@ public:
         }
     }
 
-    void run() noexcept {
+    constexpr void run() noexcept {
         while(!finished()) advance();
     }
-    auto begin() noexcept { return traversal_iterator(*this); }
-    auto end() const noexcept { return traversal_end_sentinel(); }
+    [[nodiscard]] constexpr auto begin() noexcept {
+        return traversal_iterator(*this);
+    }
+    [[nodiscard]] constexpr auto end() const noexcept {
+        return traversal_end_sentinel();
+    }
 
-    bool reached(const vertex & u) const noexcept { return _reached_map[u]; }
-    vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_pred_vertices)
-    {
+    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
+        return _reached_map[u];
+    }
+    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
+        requires(traits::store_pred_vertices) {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_pred_arcs)
-    {
+    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
+        requires(traits::store_pred_arcs) {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
