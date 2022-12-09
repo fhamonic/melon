@@ -27,10 +27,10 @@ GTEST_TEST(static_digraph, empty_constructor) {
     ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
 
-    EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.target(0), "");
-    EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.source(0), "");
+    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)graph.target(0), "");
+    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)graph.source(0), "");
 }
 
 GTEST_TEST(static_digraph, empty_vectors_constructor) {
@@ -47,10 +47,10 @@ GTEST_TEST(static_digraph, empty_vectors_constructor) {
     ASSERT_FALSE(graph.is_valid_vertex(0));
     ASSERT_FALSE(graph.is_valid_arc(0));
 
-    EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.target(0), "");
-    EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.source(0), "");
+    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)graph.target(0), "");
+    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)graph.source(0), "");
 }
 
 GTEST_TEST(static_digraph, vectors_constructor_1) {

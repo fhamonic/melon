@@ -32,10 +32,10 @@ GTEST_TEST(mutable_digraph, empty_constructor) {
     ASSERT_TRUE(EMPTY(graph.arc_entries()));
 
     ASSERT_FALSE(graph.is_valid_vertex(0));
-    EXPECT_DEATH(graph.out_arcs(0), "");
-    EXPECT_DEATH(graph.in_arcs(0), "");
-    EXPECT_DEATH(graph.out_neighbors(0), "");
-    EXPECT_DEATH(graph.in_neighbors(0), "");
+    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)graph.in_arcs(0), "");
+    EXPECT_DEATH((void)graph.out_neighbors(0), "");
+    EXPECT_DEATH((void)graph.in_neighbors(0), "");
 }
 
 GTEST_TEST(mutable_digraph, create_vertices) {
@@ -52,7 +52,7 @@ GTEST_TEST(mutable_digraph, create_vertices) {
     ASSERT_TRUE(EMPTY(graph.out_arcs(2)));
     ASSERT_TRUE(graph.is_valid_vertex(2));
     ASSERT_FALSE(graph.is_valid_vertex(3));
-    EXPECT_DEATH(graph.out_arcs(3), "");
+    EXPECT_DEATH((void)graph.out_arcs(3), "");
 }
 
 GTEST_TEST(mutable_digraph, create_arcs) {
@@ -100,10 +100,10 @@ GTEST_TEST(mutable_digraph, remove_arcs) {
 
     ASSERT_FALSE(graph.is_valid_arc(ac));
     ASSERT_EQ(graph.source(ab), a);
-    EXPECT_DEATH(graph.source(ac), "");
+    EXPECT_DEATH((void)graph.source(ac), "");
     ASSERT_EQ(graph.source(cb), c);
     ASSERT_EQ(graph.target(ab), b);
-    EXPECT_DEATH(graph.target(ac), "");
+    EXPECT_DEATH((void)graph.target(ac), "");
     ASSERT_EQ(graph.target(cb), b);
 
     ASSERT_TRUE(EQ_MULTISETS(graph.arc_entries(),

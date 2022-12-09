@@ -12,8 +12,10 @@ private:
     F _func;
 
 public:
-    map_view(F && f) : _func(std::forward<F>(f)) {}
-    auto operator[](const auto & k) const noexcept { return _func(k); }
+    [[nodiscard]] constexpr map_view(F && f) : _func(std::forward<F>(f)) {}
+    [[nodiscard]] constexpr auto operator[](const auto & k) const noexcept {
+        return _func(k);
+    }
 };
 
 }  // namespace melon

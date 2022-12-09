@@ -12,7 +12,7 @@ namespace melon {
 // clang-format off
 namespace concepts {
 template <typename Q>
-concept priority_queue = //std::semiregular<Q> &&
+concept priority_queue = std::semiregular<Q> &&
     requires(Q q, typename Q::key_type k, typename Q::priority_type v, typename Q::entry e) {
     { q.top() } -> std::same_as<typename Q::entry>;
     { e.first } -> std::common_with<typename Q::key_type>;

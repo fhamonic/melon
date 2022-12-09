@@ -43,7 +43,7 @@ private:
     std::vector<bool> _arcs_filter;
     vertex _first_vertex;
     vertex _first_free_vertex;
-    vertex _first_free_arc;
+    arc _first_free_arc;
 
 public:
     mutable_digraph() noexcept
@@ -56,16 +56,17 @@ public:
     mutable_digraph & operator=(const mutable_digraph &) = default;
     mutable_digraph & operator=(mutable_digraph &&) = default;
 
-    bool is_valid_vertex(const vertex a) const noexcept {
-        if(a >= _vertices.size()) return false;
-        return _vertices_filter[a];
+    [[nodiscard]] constexpr bool is_valid_vertex(
+        const vertex v) const noexcept {
+        if(v >= _vertices.size()) return false;
+        return _vertices_filter[v];
     }
-    bool is_valid_arc(const arc a) const noexcept {
+    [[nodiscard]] constexpr bool is_valid_arc(const arc a) const noexcept {
         if(a >= _arcs.size()) return false;
         return _arcs_filter[a];
     }
 
-    auto vertices() const noexcept {
+    [[nodiscard]] constexpr auto vertices() const noexcept {
         return intrusive_view(
             _first_vertex, std::identity(),
             [this](const vertex v) -> vertex {
@@ -73,60 +74,61 @@ public:
             },
             [](const vertex a) -> bool { return a != INVALID_VERTEX; });
     }
-    vertex source(const arc a) const noexcept {
+    [[nodiscard]] constexpr vertex source(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arcs[a].source;
     }
-    auto sources_map() const noexcept {
+    [[nodiscard]] constexpr auto sources_map() const noexcept {
         return map_view(
             [this](const arc a) -> vertex { return _arcs[a].source; });
     }
-    vertex target(const arc a) const noexcept {
+    [[nodiscard]] constexpr vertex target(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arcs[a].target;
     }
-    auto targets_map() const noexcept {
+    [[nodiscard]] constexpr auto targets_map() const noexcept {
         return map_view(
             [this](const arc a) -> vertex { return _arcs[a].target; });
     }
-    auto out_arcs(const vertex v) const noexcept {
+    [[nodiscard]] constexpr auto out_arcs(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
         return intrusive_view(
             _vertices[v].first_out_arc, std::identity(),
             [this](const arc a) -> arc { return _arcs[a].next_out_arc; },
             [](const arc a) -> bool { return a != INVALID_ARC; });
     }
-    auto in_arcs(const vertex v) const noexcept {
+    [[nodiscard]] constexpr auto in_arcs(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
         return intrusive_view(
             _vertices[v].first_in_arc, std::identity(),
             [this](const arc a) -> arc { return _arcs[a].next_in_arc; },
             [](const arc a) -> bool { return a != INVALID_ARC; });
     }
-    auto out_neighbors(const vertex v) const noexcept {
+    [[nodiscard]] constexpr auto out_neighbors(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
         return std::views::transform(
             out_arcs(v),
             [this](const arc & a) -> vertex { return _arcs[a].target; });
     }
-    auto in_neighbors(const vertex v) const noexcept {
+    [[nodiscard]] constexpr auto in_neighbors(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
         return std::views::transform(
             in_arcs(v),
             [this](const arc & a) -> vertex { return _arcs[a].source; });
     }
 
-    auto arcs() const noexcept {
+    [[nodiscard]] constexpr auto arcs() const noexcept {
         return std::views::join(std::views::transform(
             vertices(), [this](auto v) { return out_arcs(v); }));
     }
-    auto arc_entries() const noexcept {
+    [[nodiscard]] constexpr auto arc_entries() const noexcept {
         return std::views::transform(arcs(), [this](const arc & a) {
-            return std::make_pair(a,std::make_pair(_arcs[a].source, _arcs[a].target));
+            return std::make_pair(
+                a, std::make_pair(_arcs[a].source, _arcs[a].target));
         });
     }
 
-    vertex create_vertex() noexcept {
+    [[nodiscard]] constexpr vertex create_vertex() noexcept {
         vertex new_vertex;
         if(_first_free_vertex == INVALID_VERTEX) {
             new_vertex = static_cast<vertex>(_vertices.size());
@@ -147,7 +149,8 @@ public:
         return new_vertex;
     }
 
-    arc create_arc(const vertex from, const vertex to) noexcept {
+    [[nodiscard]] constexpr arc create_arc(const vertex from,
+                                           const vertex to) noexcept {
         arc new_arc;
         vertex_struct & tos = _vertices[to];
         vertex_struct & froms = _vertices[from];
@@ -278,11 +281,12 @@ public:
     }
 
     template <typename T>
-    static_map<vertex, T> create_vertex_map() const noexcept {
+    [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map()
+        const noexcept {
         return static_map<vertex, T>(_vertices.size());
     }
     template <typename T>
-    static_map<vertex, T> create_vertex_map(
+    [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map(
         const T & default_value) const noexcept {
         return static_map<vertex, T>(_vertices.size(), default_value);
     }

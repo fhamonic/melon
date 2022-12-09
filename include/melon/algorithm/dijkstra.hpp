@@ -85,7 +85,7 @@ private:
     distances_map _distances_map;
 
 public:
-    dijkstra(const G & g, const L & l)
+    [[nodiscard]] constexpr dijkstra(const G & g, const L & l)
         : _graph(g)
         , _length_map(l)
         , _heap(g.template create_vertex_map<std::size_t>())
@@ -100,23 +100,24 @@ public:
         , _distances_map(constexpr_ternary<traits::store_distances>(
               g.template create_vertex_map<value_t>(), std::monostate{})) {}
 
-    dijkstra(const G & g, const L & l, const vertex & s) : dijkstra(g, l) {
+    [[nodiscard]] constexpr dijkstra(const G & g, const L & l, const vertex & s)
+        : dijkstra(g, l) {
         add_source(s);
     }
 
-    dijkstra(const dijkstra & bin) = default;
-    dijkstra(dijkstra && bin) = default;
+    [[nodiscard]] constexpr dijkstra(const dijkstra & bin) = default;
+    [[nodiscard]] constexpr dijkstra(dijkstra && bin) = default;
 
-    dijkstra & operator=(const dijkstra &) = default;
-    dijkstra & operator=(dijkstra &&) = default;
+    constexpr dijkstra & operator=(const dijkstra &) = default;
+    constexpr dijkstra & operator=(dijkstra &&) = default;
 
-    dijkstra & reset() noexcept {
+    constexpr dijkstra & reset() noexcept {
         _heap.clear();
         for(const vertex & u : _graph.get().vertices())
             _vertex_status_map[u] = PRE_HEAP;
         return *this;
     }
-    dijkstra & add_source(
+    constexpr dijkstra & add_source(
         const vertex & s,
         const value_t & dist = traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
@@ -130,14 +131,16 @@ public:
         return *this;
     }
 
-    bool finished() const noexcept { return _heap.empty(); }
+    [[nodiscard]] constexpr bool finished() const noexcept {
+        return _heap.empty();
+    }
 
-    traversal_entry current() const noexcept {
+    [[nodiscard]] constexpr traversal_entry current() const noexcept {
         assert(!finished());
         return _heap.top();
     }
 
-    void advance() noexcept {
+    constexpr void advance() noexcept {
         assert(!finished());
         const auto [t, st_dist] = _heap.top();
         if constexpr(traits::store_distances) _distances_map[t] = st_dist;
@@ -174,24 +177,28 @@ public:
         }
     }
 
-    void run() noexcept {
+    constexpr void run() noexcept {
         while(!finished()) advance();
     }
-    auto begin() noexcept { return traversal_iterator(*this); }
-    auto end() noexcept { return traversal_end_sentinel(); }
+    [[nodiscard]] constexpr auto begin() noexcept {
+        return traversal_iterator(*this);
+    }
+    [[nodiscard]] constexpr auto end() noexcept {
+        return traversal_end_sentinel();
+    }
 
-    bool reached(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
         return _vertex_status_map[u] != PRE_HEAP;
     }
-    bool visited(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr bool visited(const vertex & u) const noexcept {
         return _vertex_status_map[u] == POST_HEAP;
     }
-    arc pred_arc(const vertex & u) const noexcept
+    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
         requires(traits::store_paths) {
         assert(reached(u));
         return _pred_arcs_map[u].value();
     }
-    vertex pred_vertex(const vertex & u) const noexcept
+    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
         requires(traits::store_paths) {
         assert(reached(u) && _pred_arcs_map[u].has_value());
         if constexpr(concepts::has_arc_source<G>)
@@ -199,18 +206,18 @@ public:
         else
             return _pred_vertices_map[u];
     }
-    value_t current_dist(const vertex & u) const noexcept
-        requires(traits::store_distances) {
+    [[nodiscard]] constexpr value_t current_dist(
+        const vertex & u) const noexcept requires(traits::store_distances) {
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }
-    value_t dist(const vertex & u) const noexcept
+    [[nodiscard]] constexpr value_t dist(const vertex & u) const noexcept
         requires(traits::store_distances) {
         assert(visited(u));
         return _distances_map[u];
     }
 
-    auto path_to(const vertex & t) const noexcept
+    [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
         requires(traits::store_distances) {
         return intrusive_view(
             t,
