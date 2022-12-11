@@ -95,13 +95,9 @@ requires std::same_as<std::ranges::range_value_t<R1>,
 
     vector_t s1 = ranges::to_vector(r1);
     std::ranges::sort(s1);
-    // const auto ret1 = std::ranges::unique(s1);
-    // s1.erase(ret1.begin(), ret1.end());
 
     vector_t s2 = ranges::to_vector(r2);
     std::ranges::sort(s2);
-    // const auto ret2 = std::ranges::unique(s2);
-    // s2.erase(ret2.begin(), ret2.end());
 
     vector_t s1_minus_s2;
     std::ranges::set_difference(s1, s2, std::back_inserter(s1_minus_s2));
