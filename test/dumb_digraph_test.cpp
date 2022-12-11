@@ -9,8 +9,8 @@ using namespace fhamonic;
 using namespace fhamonic::melon;
 
 static_assert(melon::concepts::graph<dumb_digraph>);
-static_assert(melon::concepts::outward_incidence_list<dumb_digraph>);
-static_assert(melon::concepts::outward_adjacency_list<dumb_digraph>);
+static_assert(melon::concepts::outward_incidence_graph<dumb_digraph>);
+static_assert(melon::concepts::outward_adjacency_graph<dumb_digraph>);
 static_assert(melon::concepts::has_vertex_removal<dumb_digraph>);
 static_assert(melon::concepts::has_arc_removal<dumb_digraph>);
 static_assert(melon::concepts::has_arc_change_source<dumb_digraph>);

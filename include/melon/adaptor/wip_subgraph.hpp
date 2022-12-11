@@ -71,14 +71,14 @@ public:
     }
 
     auto in_arcs(const vertex & v)
-        const noexcept requires concepts::outward_incidence_list<G> {
+        const noexcept requires concepts::outward_incidence_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().in_arcs(v),
             [this](const arc & a) { return _arc_filter[a]; });
     }
     auto out_arcs(const vertex & v)
-        const noexcept requires concepts::inward_incidence_list<G> {
+        const noexcept requires concepts::inward_incidence_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().out_arcs(v),
@@ -86,14 +86,14 @@ public:
     }
 
     auto in_neighbors(const vertex & v)
-        const noexcept requires concepts::outward_adjacency_list<G> {
+        const noexcept requires concepts::outward_adjacency_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().in_neighbors(v),
             [this](const vertex & v) { return _vertex_filter[v]; });
     }
     auto out_neighbors(const vertex & v)
-        const noexcept requires concepts::inward_adjacency_list<G> {
+        const noexcept requires concepts::inward_adjacency_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().out_neighbors(v),
@@ -111,14 +111,14 @@ public:
         //         return std::make_pair(_graph.get().source(a),
         //                               _graph.get().target(a));
         //     });
-        // } else if constexpr(concepts::outward_adjacency_list<G>) {
+        // } else if constexpr(concepts::outward_adjacency_graph<G>) {
         //     return std::views::join(
         //         std::views::transform(vertices(), [this](const vertex & s) {
         //             return std::views::transform(
         //                 out_neighbors(s),
         //                 [s](const vertex & t) { return std::make_pair(s, t); });
         //         }));
-        // } else if constexpr(concepts::inward_adjacency_list<G>) {
+        // } else if constexpr(concepts::inward_adjacency_graph<G>) {
         //     return std::views::join(
         //         std::views::transform(vertices(), [this](const vertex & t) {
         //             return std::views::transform(

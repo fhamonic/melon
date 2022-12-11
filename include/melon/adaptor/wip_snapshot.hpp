@@ -64,20 +64,20 @@ public:
     }
 
     auto out_arcs(const vertex & u)
-        const noexcept requires concepts::inward_incidence_list<G> {
+        const noexcept requires concepts::inward_incidence_graph<G> {
         return _graph.in_arcs(u);
     }
     auto in_arcs(const vertex & u)
-        const noexcept requires concepts::outward_incidence_list<G> {
+        const noexcept requires concepts::outward_incidence_graph<G> {
         return _graph.out_arcs(u);
     }
 
     auto out_neighbors(const vertex & u)
-        const noexcept requires concepts::inward_adjacency_list<G> {
+        const noexcept requires concepts::inward_adjacency_graph<G> {
         return _graph.in_neighbors(u);
     }
     auto in_neighbors(const vertex & u)
-        const noexcept requires concepts::outward_adjacency_list<G> {
+        const noexcept requires concepts::outward_adjacency_graph<G> {
         return _graph.out_neighbors(u);
     }
 

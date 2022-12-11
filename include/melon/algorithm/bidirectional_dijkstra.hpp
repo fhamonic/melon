@@ -46,10 +46,10 @@ struct bidirectional_dijkstra_default_traits {
     static constexpr bool store_path = true;
 };
 
-template <concepts::forward_incidence_graph G, concepts::input_map<arc_t<G>> L,
+template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-requires concepts::reverse_incidence_graph<G> && concepts::has_vertex_map<G>
+requires concepts::inward_incidence_graph<G> && concepts::has_vertex_map<G>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<G>;

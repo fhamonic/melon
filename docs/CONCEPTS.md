@@ -47,10 +47,10 @@ concept has_arc_target = graph<G> && requires(G g, arc_t<G> a) {
 Here, the graph must provide of function `.target(a)` that returns the target vertex of a given arc `a` and a function `.targets_map()` that return an entity that maps any arc to its target vertex. This entity can either be a constant reference to a plain container or a wrapper around the `.target` function and his usefulness will be explained later.
 <!-- TODO : link to map_view and prefetching -->
 Since they are very often required together, for example, in traversal algorithms, the `outward_incidence_list` and `has_arc_target` concepts are regrouped under the `forward_incidence_list` one.
-At the opposite, the `inward_incidence_list` and `has_arc_source` concepts are regrouped under the `reverse_incidence_graph` one.
+At the opposite, the `inward_incidence_list` and `has_arc_source` concepts are regrouped under the `inward_incidence_graph` one.
 ```cpp
 template <typename G>
-concept forward_incidence_graph = outward_incidence_list<G> && has_arc_target<G>;
+concept outward_incidence_graph = outward_incidence_list<G> && has_arc_target<G>;
 ```
 While these concepts are closely related, their independence is justified by the fact that some graph implementations can satisfy `has_arc_source` without satisfying `inward_incidence_list` or satisfy `inward_incidence_list` without `has_arc_source`, and that preserving the symmetry between out arcs and in arcs is useful.
  
@@ -65,7 +65,7 @@ concept outward_adjacency_list = requires(G g, vertex_t<G> u) {
 ```
 We can define the arcs to be the iterators of the inner list of vertices. Indeed, this iterator is uniquely defining an out_ward arc
 
-The concepts `forward_incidence_graph` and `outward_adjacency_list` may seem redundant, but it is not the case.
+The concepts `outward_incidence_graph` and `outward_adjacency_list` may seem redundant, but it is not the case.
 For example, a graph that is a `forward_incidence_list` may also be a `inward_incidence_list` but not a `inward_adjacency_list` because it is not capable of retrieving the source vertex of a given arc.
 
 ## Attaching data to vertices and arcs
