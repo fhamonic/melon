@@ -28,8 +28,8 @@ private:
     std::vector<std::vector<std::pair<vertex, W>>> _adjacency;
 
 public:
-    template <concepts::forward_range_of<std::pair<std::pair<vertex, vertex>,
-    W>> A>
+    template <
+        concepts::forward_range_of<std::pair<std::pair<vertex, vertex>, W>> A>
     [[nodiscard]] constexpr static_forward_weighted_digraph(
         const std::size_t & nb_vertices, A && arcs_entries) noexcept {
         assert(std::ranges::all_of(
@@ -84,6 +84,9 @@ public:
     }
     [[nodiscard]] constexpr auto weights_map() const noexcept {
         return map_view([](const arc & a) -> W { return a->second; });
+    }
+    [[nodiscard]] constexpr auto weights_map() noexcept {
+        return map_view([](const arc & a) mutable -> W & { return a->second; });
     }
     [[nodiscard]] constexpr auto out_neighbors(const vertex s) const noexcept {
         assert(is_valid_vertex(s));
