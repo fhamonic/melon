@@ -69,6 +69,9 @@ GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(2), {0, 1}));
     ASSERT_TRUE(EQ_MULTISETS(std::ranges::views::values(graph.arc_entries()),
                              std::ranges::views::keys(weighted_arcs_entries)));
+
+    // for(auto && a : graph.out_arcs(0))
+    //     ++(graph.weights_map()[a]);
 }
 
 // GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_2) {
