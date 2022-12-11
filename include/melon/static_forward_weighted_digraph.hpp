@@ -25,27 +25,20 @@ private:
     using vertex = unsigned int;
     using arc = std::vector<std::pair<vertex, W>>::const_iterator;
 
-    static_map<vertex, std::size_t> _out_arc_begin;
-    std::vector<std::pair<vertex, W>> _arcs;
+    std::vector<std::vector<std::pair<vertex, W>>> _adjacency;
 
 public:
-    // template <concepts::forward_range_of<vertex> S,
-    //           concepts::forward_range_of<std::pair<vertex, W>> T>
-    template <typename S, typename T>
+    template <concepts::forward_range_of<std::pair<std::pair<vertex, vertex>,
+    W>> A>
     [[nodiscard]] constexpr static_forward_weighted_digraph(
-        const std::size_t & nb_vertices, S && arcs_sources, T && arcs) noexcept
-        : _out_arc_begin(nb_vertices, 0), _arcs(std::forward<T>(arcs)) {
+        const std::size_t & nb_vertices, A && arcs_entries) noexcept {
         assert(std::ranges::all_of(
-            arcs_sources,
-            [n = nb_vertices](const vertex & v) { return v < n; }));
-        assert(std::ranges::all_of(
-            _arcs, [n = nb_vertices](const auto & a) { return a.first < n; }));
-        assert(std::ranges::is_sorted(arcs_sources));
-        for(auto && s : arcs_sources) ++_out_arc_begin[s];
-        std::exclusive_scan(
-            _out_arc_begin.data(),
-            _out_arc_begin.data() + static_cast<std::ptrdiff_t>(nb_vertices),
-            _out_arc_begin.data(), 0);
+            arcs_entries, [n = nb_vertices](const auto & p) {
+                return p.first.first < n && p.first.second < n;
+            }));
+        _adjacency.resize(nb_vertices);
+        for(auto && [arc_pair, weight] : arcs_entries)
+            _adjacency[arc_pair.first].emplace_back(arc_pair.second, weight);
     }
 
     [[nodiscard]] constexpr static_forward_weighted_digraph() = default;
@@ -60,10 +53,7 @@ public:
         static_forward_weighted_digraph &&) = default;
 
     [[nodiscard]] constexpr auto nb_vertices() const noexcept {
-        return _out_arc_begin.size();
-    }
-    [[nodiscard]] constexpr auto nb_arcs() const noexcept {
-        return _arcs.size();
+        return _adjacency.size();
     }
 
     [[nodiscard]] constexpr bool is_valid_vertex(
@@ -81,12 +71,7 @@ public:
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
-        return ranges::views::iota(
-            _arcs.begin() + static_cast<std::ptrdiff_t>(_out_arc_begin[u]),
-            (u + 1u < nb_vertices()
-                 ? _arcs.begin() +
-                       static_cast<std::ptrdiff_t>(_out_arc_begin[u + 1u])
-                 : _arcs.end()));
+        return ranges::views::iota(_adjacency[u].begin(), _adjacency[u].end());
     }
     [[nodiscard]] constexpr vertex target(const arc & a) const noexcept {
         return a->first;
