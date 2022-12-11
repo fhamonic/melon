@@ -85,9 +85,9 @@ public:
     [[nodiscard]] constexpr auto weights_map() const noexcept {
         return map_view([](const arc & a) -> W { return a->second; });
     }
-    [[nodiscard]] constexpr auto weights_map() noexcept {
-        return map_view([](const arc & a) mutable -> W & { return a->second; });
-    }
+    // [[nodiscard]] constexpr auto weights_map() noexcept {
+    //     return map_view([](arc & a) mutable -> W & { return a->second; });
+    // }
     [[nodiscard]] constexpr auto out_neighbors(const vertex s) const noexcept {
         assert(is_valid_vertex(s));
         return std::views::transform(
