@@ -8,6 +8,10 @@
 
 #include "melon/utils/map_view.hpp"
 
+// This is a dumb digraph, it implements all the lookups and modification
+// operations we need on a digraph, but do it very inefficiently in order to
+// guanranty its correctness because there is absolutely no additional data
+// except the arcs ids, sources and targets.
 class dumb_digraph {
 public:
     using vertex = unsigned int;
@@ -57,8 +61,9 @@ public:
     }
     auto arc_entries() const noexcept {
         return valid_arcs_structs() |
-               std::views::transform(
-                   [](const arc_struct & as) { return std::make_pair(as.id, as.arc_pair); });
+               std::views::transform([](const arc_struct & as) {
+                   return std::make_pair(as.id, as.arc_pair);
+               });
     }
     auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
