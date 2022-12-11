@@ -11,8 +11,8 @@ using namespace fhamonic;
 using namespace fhamonic::melon;
 
 static_assert(melon::concepts::graph<mutable_digraph>);
-static_assert(melon::concepts::outward_incidence_list<mutable_digraph>);
-static_assert(melon::concepts::outward_adjacency_list<mutable_digraph>);
+static_assert(melon::concepts::outward_incidence_graph<mutable_digraph>);
+static_assert(melon::concepts::outward_adjacency_graph<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_map<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_creation<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_removal<mutable_digraph>);

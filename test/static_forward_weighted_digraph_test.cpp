@@ -9,9 +9,9 @@ using namespace fhamonic;
 using namespace fhamonic::melon;
 
 static_assert(melon::concepts::graph<static_forward_weighted_digraph<int>>);
-static_assert(melon::concepts::outward_incidence_list<
+static_assert(melon::concepts::outward_incidence_graph<
               static_forward_weighted_digraph<int>>);
-static_assert(melon::concepts::outward_adjacency_list<
+static_assert(melon::concepts::outward_adjacency_graph<
               static_forward_weighted_digraph<int>>);
 static_assert(
     melon::concepts::has_vertex_map<static_forward_weighted_digraph<int>>);

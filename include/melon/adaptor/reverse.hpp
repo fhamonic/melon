@@ -62,25 +62,25 @@ public:
     }
 
     [[nodiscard]] constexpr decltype(auto) out_arcs(const vertex u)
-        const noexcept requires concepts::inward_incidence_list<G> {
+        const noexcept requires concepts::inward_incidence_graph<G> {
         return _graph.get().in_arcs(u);
     }
     [[nodiscard]] constexpr decltype(auto) in_arcs(const vertex u)
-        const noexcept requires concepts::outward_incidence_list<G> {
+        const noexcept requires concepts::outward_incidence_graph<G> {
         return _graph.get().out_arcs(u);
     }
 
     [[nodiscard]] constexpr decltype(auto) out_neighbors(const vertex u)
-        const noexcept requires concepts::inward_adjacency_list<G> {
+        const noexcept requires concepts::inward_adjacency_graph<G> {
         return _graph.get().in_neighbors(u);
     }
     [[nodiscard]] constexpr decltype(auto) in_neighbors(const vertex u)
-        const noexcept requires concepts::outward_adjacency_list<G> {
+        const noexcept requires concepts::outward_adjacency_graph<G> {
         return _graph.get().out_neighbors(u);
     }
 
     [[nodiscard]] constexpr decltype(auto) arc_entries()
-        const noexcept requires concepts::outward_adjacency_list<G> {
+        const noexcept requires concepts::outward_adjacency_graph<G> {
         return std::views::transform(_graph.get().arc_entries(), [](auto && p) {
             return std::make_pair(
                 p.first, std::make_pair(p.second.second, p.second.first));

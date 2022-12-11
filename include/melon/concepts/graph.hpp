@@ -1,3 +1,5 @@
+#include "melon/concepts/wip_graph.hpp"
+
 #ifndef MELON_GRAPH_HPP
 #define MELON_GRAPH_HPP
 
@@ -58,10 +60,10 @@ requires(G g, vertex_t<G> u) {
 };
 
 template <typename G>
-concept forward_incidence_graph = outward_incidence_list<G> && has_arc_target<G>;
+concept outward_incidence_graph = outward_incidence_list<G> && has_arc_target<G>;
 
 template <typename G>
-concept reverse_incidence_graph = inward_incidence_list<G> && has_arc_source<G>;
+concept inward_incidence_graph = inward_incidence_list<G> && has_arc_source<G>;
 
 template <typename G>
 concept outward_adjacency_list = graph<G> && requires(G g, vertex_t<G> u) {
@@ -75,7 +77,7 @@ requires(G g, vertex_t<G> u) {
 };
 
 template <typename G>
-concept adjacency_list = outward_adjacency_list<G> && inward_adjacency_list<G>;
+concept adjacency_list = outward_adjacency_graph<G> && inward_adjacency_graph<G>;
 }  // namespace concepts
 // clang-format on
 
