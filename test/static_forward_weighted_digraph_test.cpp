@@ -62,7 +62,7 @@ GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
     ASSERT_EQ(graph.nb_arcs(), 5);
 
     ASSERT_TRUE(EQ_RANGES(graph.vertices(), {0, 1, 2}));
-    ASSERT_TRUE(EQ_RANGES(graph.arcs(), arcs_copy));
+    // ASSERT_TRUE(EQ_RANGES(graph.arcs(), arcs_copy));
 
     for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
     ASSERT_FALSE(graph.is_valid_vertex(vertex_t<Graph>(graph.nb_vertices())));
@@ -70,8 +70,8 @@ GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0), {1, 2}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(1), {2}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(2), {0, 1}));
-    ASSERT_TRUE(
-        EQ_RANGES(graph.arc_entries(), ranges::zip_view(arcs_copy, arc_pairs)));
+    // ASSERT_TRUE(
+    //     EQ_RANGES(graph.arc_entries(), ranges::zip_view(arcs_copy, arc_pairs)));
 }
 
 // GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_2) {

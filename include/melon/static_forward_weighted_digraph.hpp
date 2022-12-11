@@ -8,6 +8,10 @@
 #include <span>
 #include <vector>
 
+#include <range/v3/view/iota.hpp>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/transform.hpp>
+
 #include "melon/concepts/range_of.hpp"
 #include "melon/data_structures/static_map.hpp"
 #include "melon/utils/map_view.hpp"
@@ -19,27 +23,29 @@ template <typename W = int>
 class static_forward_weighted_digraph {
 private:
     using vertex = unsigned int;
-    using arc = std::pair<vertex, W>;
+    using arc = std::vector<std::pair<vertex, W>>::const_iterator;
 
     static_map<vertex, std::size_t> _out_arc_begin;
-    std::vector<arc> _arcs;
+    std::vector<std::pair<vertex, W>> _arcs;
 
 public:
-    template <concepts::forward_range_of<vertex> S,
-              concepts::forward_range_of<arc> T>
+    // template <concepts::forward_range_of<vertex> S,
+    //           concepts::forward_range_of<std::pair<vertex, W>> T>
+    template <typename S, typename T>
     [[nodiscard]] constexpr static_forward_weighted_digraph(
         const std::size_t & nb_vertices, S && arcs_sources, T && arcs) noexcept
-        : _out_arc_begin(nb_vertices, 0), _arcs(std::move(arcs)) {
+        : _out_arc_begin(nb_vertices, 0), _arcs(std::forward<T>(arcs)) {
         assert(std::ranges::all_of(
             arcs_sources,
             [n = nb_vertices](const vertex & v) { return v < n; }));
         assert(std::ranges::all_of(
-            arcs, [n = nb_vertices](const arc & a) { return a.first < n; }));
+            _arcs, [n = nb_vertices](const auto & a) { return a.first < n; }));
         assert(std::ranges::is_sorted(arcs_sources));
         for(auto && s : arcs_sources) ++_out_arc_begin[s];
-        std::exclusive_scan(_out_arc_begin.data(),
-                            _out_arc_begin.data() + nb_vertices,
-                            _out_arc_begin.data(), 0);
+        std::exclusive_scan(
+            _out_arc_begin.data(),
+            _out_arc_begin.data() + static_cast<std::ptrdiff_t>(nb_vertices),
+            _out_arc_begin.data(), 0);
     }
 
     [[nodiscard]] constexpr static_forward_weighted_digraph() = default;
@@ -73,37 +79,41 @@ public:
         return std::views::join(std::views::transform(
             vertices(), [this](auto && u) { return out_arcs(u); }));
     }
-    [[nodiscard]] constexpr auto out_arcs(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
-        return std::span(
-            _arcs.data() + _out_arc_begin[u],
-            (u + 1 < nb_vertices() ? _arcs.data() + _out_arc_begin[u + 1]
-                                   : _arcs.data() + nb_arcs()));
+        return ranges::views::iota(
+            _arcs.begin() + static_cast<std::ptrdiff_t>(_out_arc_begin[u]),
+            (u + 1u < nb_vertices()
+                 ? _arcs.begin() +
+                       static_cast<std::ptrdiff_t>(_out_arc_begin[u + 1u])
+                 : _arcs.end()));
     }
     [[nodiscard]] constexpr vertex target(const arc & a) const noexcept {
-        return a.first;
+        return a->first;
     }
     [[nodiscard]] constexpr auto targets_map() const {
-        return map_view([](const arc & a) -> vertex { return a.first; });
+        return map_view([](const arc & a) -> vertex { return a->first; });
     }
     [[nodiscard]] constexpr W weight(const arc & a) const noexcept {
-        return a.second;
+        return a->second;
     }
     [[nodiscard]] constexpr auto weights_map() const noexcept {
-        return map_view([](const arc & a) -> W { return a.second; });
+        return map_view([](const arc & a) -> W { return a->second; });
     }
-    [[nodiscard]] constexpr auto out_neighbors(
-        const vertex & u) const noexcept {
-        assert(is_valid_vertex(u));
-        return std::views::keys(out_arcs(u));
+    [[nodiscard]] constexpr auto out_neighbors(const vertex s) const noexcept {
+        assert(is_valid_vertex(s));
+        return std::views::transform(
+            out_arcs(s), [](const arc & a) -> vertex { return a->first; });
     }
 
     [[nodiscard]] constexpr auto out_arc_entries(
-        const vertex & s) const noexcept {
+        const vertex s) const noexcept {
         assert(is_valid_vertex(s));
-        return std::views::transform(out_arcs(s), [this, s](const arc & a) {
-            return std::make_pair(a, std::make_pair(s, a.first));
-        });
+        return std::views::transform(
+            out_arcs(s),
+            [s](const arc & a) -> std::pair<arc, std::pair<vertex, vertex>> {
+                return std::make_pair(a, std::make_pair(s, a->first));
+            });
     }
     [[nodiscard]] constexpr auto arc_entries() const noexcept {
         return std::views::join(std::views::transform(
