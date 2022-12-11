@@ -219,6 +219,7 @@ public:
 
     [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
         requires(traits::store_distances) {
+        assert(reached(t));
         return intrusive_view(
             t,
             [this](const vertex & v) -> arc {

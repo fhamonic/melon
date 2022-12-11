@@ -39,9 +39,9 @@ concept bidirectional_dijkstra_trait = semiring<typename T::semiring> &&
 template <typename G, typename L>
 struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
-    using heap =
-        d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
-                   std::decay_t<decltype(semiring::less)>, vertex_map_t<G, std::size_t>>;
+    using heap = d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
+                            std::decay_t<decltype(semiring::less)>,
+                            vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_path = true;
 };
@@ -49,7 +49,7 @@ struct bidirectional_dijkstra_default_traits {
 template <concepts::forward_incidence_graph G, concepts::input_map<arc_t<G>> L,
           concepts::bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-    requires concepts::reverse_incidence_graph<G> && concepts::has_vertex_map<G>
+requires concepts::reverse_incidence_graph<G> && concepts::has_vertex_map<G>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -87,7 +87,7 @@ private:
     optional_midpoint _midpoint;
 
 public:
-    bidirectional_dijkstra(const G & g, const L & l)
+    [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l)
         : _graph(g)
         , _length_map(l)
         , _forward_heap(g.template create_vertex_map<std::size_t>())
@@ -101,8 +101,9 @@ public:
               g.template create_vertex_map<optional_arc>(), std::monostate{})) {
     }
 
-    bidirectional_dijkstra(const G & g, const L & l, const vertex & s,
-                           const vertex & t)
+    [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l,
+                                                   const vertex & s,
+                                                   const vertex & t)
         : bidirectional_dijkstra(g, l) {
         add_source(s);
         add_target(t);
@@ -136,7 +137,7 @@ public:
     }
 
 public:
-    value_t run() noexcept {
+    constexpr value_t run() noexcept {
         value_t st_dist = traits::semiring::infty;
         while(!_forward_heap.empty() && !_reverse_heap.empty()) {
             const auto && [u1, u1_dist] = _forward_heap.top();
@@ -241,26 +242,22 @@ public:
         return st_dist;
     }
 
-    arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_path)
-    {
+    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
+        requires(traits::store_path) {
         assert(_vertex_status_map[u].first != PRE_HEAP);
         return _forward_pred_arcs_map[u].value();
     }
-    arc succ_arc(const vertex & u) const noexcept
-        requires(traits::store_path)
-    {
+    [[nodiscard]] constexpr arc succ_arc(const vertex & u) const noexcept
+        requires(traits::store_path) {
         assert(_vertex_status_map[u].second != PRE_HEAP);
         return _reverse_pred_arcs_map[u].value();
     }
-    bool path_found() const noexcept
-        requires(traits::store_path)
-    {
+    [[nodiscard]] constexpr bool path_found() const noexcept
+        requires(traits::store_path) {
         return _midpoint.has_value();
     }
-    auto path() const noexcept
-        requires(traits::store_path)
-    {
+    [[nodiscard]] constexpr auto path() const noexcept
+        requires(traits::store_path) {
         assert(path_found());
         // EXPECTED_CPP23 std::ranges::concat
         return ranges::views::concat(
