@@ -24,8 +24,8 @@ private:
 public:
     subgraph(const G & g)
         : _graph(g)
-        , _vertex_filter(g.template create_vertex_map<bool>(true))
-        , _arc_filter(g.template create_arc_map<bool>()) {}
+        , _vertex_filter(create_vertex_map<bool>(g,true))
+        , _arc_filter(create_arc_map<bool>(g)) {}
 
     subgraph(const subgraph &) = default;
     subgraph(subgraph &&) = default;

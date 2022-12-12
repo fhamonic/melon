@@ -61,13 +61,13 @@ public:
     [[nodiscard]] constexpr explicit depth_first_search(const G & g) noexcept
         : _graph(g)
         , _stack()
-        , _reached_map(g.template create_vertex_map<bool>(false))
+        , _reached_map(create_vertex_map<bool>(g,false))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.template create_vertex_map<vertex>(), std::monostate{}))
+              create_vertex_map<vertex>(g), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.template create_vertex_map<arc>(), std::monostate{}))
+              create_vertex_map<arc>(g), std::monostate{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
-              g.template create_vertex_map<int>(), std::monostate{})) {
+              create_vertex_map<int>(g), std::monostate{})) {
         _stack.reserve(g.nb_vertices());
     }
 

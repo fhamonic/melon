@@ -236,3 +236,5 @@ concept has_arc_change_target = graph<G> &&
 }  // namespace fhamonic
 
 #endif  // MELON_GRAPH_HPP
+
+#include "melon/concepts/graph_free_functions.hpp"
