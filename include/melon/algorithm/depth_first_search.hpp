@@ -25,9 +25,10 @@ struct dfs_default_traits {
 
 // TODO ranges , requires out_neighbors : borrowed_range
 template <concepts::outward_incidence_graph G, typename T = dfs_default_traits>
-requires(concepts::outward_incidence_graph<G> ||
-         concepts::outward_adjacency_graph<G>) &&
-    concepts::has_vertex_map<G> class depth_first_search {
+    requires(concepts::outward_incidence_graph<G> ||
+             concepts::outward_adjacency_graph<G>) &&
+            concepts::has_vertex_map<G>
+class depth_first_search {
 private:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
@@ -151,12 +152,14 @@ public:
         return _reached_map[u];
     }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_pred_vertices) {
+        requires(traits::store_pred_vertices)
+    {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_pred_arcs) {
+        requires(traits::store_pred_arcs)
+    {
         assert(reached(u));
         return _pred_arcs_map[u];
     }

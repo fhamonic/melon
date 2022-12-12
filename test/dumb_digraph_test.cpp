@@ -22,87 +22,87 @@ using arc_entries_list = std::initializer_list<
 
 GTEST_TEST(dumb_digraph, empty_constructor) {
     Graph graph;
-    ASSERT_TRUE(EMPTY(graph.vertices()));
-    ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.arc_entries()));
+    ASSERT_TRUE(EMPTY(vertices(graph)));
+    ASSERT_TRUE(EMPTY(arcs(graph)));
+    ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(graph.is_valid_vertex(0));
-    EXPECT_DEATH((void)graph.out_arcs(0), "");
-    EXPECT_DEATH((void)graph.in_arcs(0), "");
-    EXPECT_DEATH((void)graph.out_neighbors(0), "");
-    EXPECT_DEATH((void)graph.in_neighbors(0), "");
+    ASSERT_FALSE(is_valid_vertex(graph,0));
+    EXPECT_DEATH((void)out_arcs(graph,0), "");
+    EXPECT_DEATH((void)in_arcs(graph,0), "");
+    EXPECT_DEATH((void)out_neighbors(graph,0), "");
+    EXPECT_DEATH((void)in_neighbors(graph,0), "");
 }
 
 GTEST_TEST(dumb_digraph, create_vertices) {
     Graph graph;
 
-    graph.create_vertex(0);
-    graph.create_vertex(1);
-    graph.create_vertex(2);
+    create_vertex(graph,0);
+    create_vertex(graph,1);
+    create_vertex(graph,2);
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), {0, 1, 2}));
-    ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.out_arcs(0)));
-    ASSERT_TRUE(EMPTY(graph.out_arcs(1)));
-    ASSERT_TRUE(EMPTY(graph.out_arcs(2)));
-    ASSERT_TRUE(graph.is_valid_vertex(2));
-    ASSERT_FALSE(graph.is_valid_vertex(3));
-    EXPECT_DEATH((void)graph.out_arcs(3), "");
+    ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2}));
+    ASSERT_TRUE(EMPTY(arcs(graph)));
+    ASSERT_TRUE(EMPTY(out_arcs(graph,0)));
+    ASSERT_TRUE(EMPTY(out_arcs(graph,1)));
+    ASSERT_TRUE(EMPTY(out_arcs(graph,2)));
+    ASSERT_TRUE(is_valid_vertex(graph,2));
+    ASSERT_FALSE(is_valid_vertex(graph,3));
+    EXPECT_DEATH((void)out_arcs(graph,3), "");
 }
 
 GTEST_TEST(dumb_digraph, create_arcs) {
     Graph graph;
 
-    graph.create_vertex(0);
-    graph.create_vertex(1);
-    graph.create_vertex(2);
+    create_vertex(graph,0);
+    create_vertex(graph,1);
+    create_vertex(graph,2);
 
-    graph.create_arc(0, 0, 1);
-    graph.create_arc(1, 0, 2);
-    graph.create_arc(2, 2, 1);
+    create_arc(graph,0, 0, 1);
+    create_arc(graph,1, 0, 2);
+    create_arc(graph,2, 2, 1);
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), {0, 1, 2}));
+    ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2}));
 
-    ASSERT_EQ(graph.source(0), 0);
-    ASSERT_EQ(graph.source(1), 0);
-    ASSERT_EQ(graph.source(2), 2);
-    ASSERT_EQ(graph.target(0), 1);
-    ASSERT_EQ(graph.target(1), 2);
-    ASSERT_EQ(graph.target(2), 1);
+    ASSERT_EQ(source(graph,0), 0);
+    ASSERT_EQ(source(graph,1), 0);
+    ASSERT_EQ(source(graph,2), 2);
+    ASSERT_EQ(target(graph,0), 1);
+    ASSERT_EQ(target(graph,1), 2);
+    ASSERT_EQ(target(graph,2), 1);
 
     ASSERT_TRUE(
-        EQ_MULTISETS(graph.arc_entries(),
+        EQ_MULTISETS(arcs_entries(graph),
                      arc_entries_list{{0, {0, 1}}, {1, {0, 2}}, {2, {2, 1}}}));
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(0), {1, 2}));
-    ASSERT_TRUE(EMPTY(graph.out_neighbors(1)));
-    ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(2), {1}));
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,0), {1, 2}));
+    ASSERT_TRUE(EMPTY(out_neighbors(graph,1)));
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,2), {1}));
 }
 
 // GTEST_TEST(dumb_digraph, remove_arcs) {
 //     Graph graph;
-//     auto a = graph.create_vertex();
-//     auto b = graph.create_vertex();
-//     auto c = graph.create_vertex();
-//     auto ab = graph.create_arc(a, b);
-//     auto ac = graph.create_arc(a, c);
-//     auto cb = graph.create_arc(c, b);
+//     auto a = create_vertex(graph);
+//     auto b = create_vertex(graph);
+//     auto c = create_vertex(graph);
+//     auto ab = create_arc(graph,a, b);
+//     auto ac = create_arc(graph,a, c);
+//     auto cb = create_arc(graph,c, b);
 
-//     graph.remove_arc(ac);
+//     remove_arc(graph,ac);
 
-//     ASSERT_FALSE(graph.is_valid_arc(ac));
-//     ASSERT_EQ(graph.source(ab), a);
-//     EXPECT_DEATH((void)graph.source(ac), "");
-//     ASSERT_EQ(graph.source(cb), c);
-//     ASSERT_EQ(graph.target(ab), b);
-//     EXPECT_DEATH((void)graph.target(ac), "");
-//     ASSERT_EQ(graph.target(cb), b);
+//     ASSERT_FALSE(is_valid_arc(graph,ac));
+//     ASSERT_EQ(source(graph,ab), a);
+//     EXPECT_DEATH((void)source(graph,ac), "");
+//     ASSERT_EQ(source(graph,cb), c);
+//     ASSERT_EQ(target(graph,ab), b);
+//     EXPECT_DEATH((void)target(graph,ac), "");
+//     ASSERT_EQ(target(graph,cb), b);
 
 //     ASSERT_TRUE(
-//         EQ_MULTISETS(graph.arc_entries(), arc_entries_list{{c, b}, {a,
+//         EQ_MULTISETS(arcs_entries(graph), arc_entries_list{{c, b}, {a,
 //         b}}));
 
-//     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(a), {b}));
-//     ASSERT_TRUE(EMPTY(graph.out_neighbors(b)));
-//     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(c), {b}));
+//     ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,a), {b}));
+//     ASSERT_TRUE(EMPTY(out_neighbors(graph,b)));
+//     ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,c), {b}));
 // }

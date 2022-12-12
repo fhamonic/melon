@@ -41,8 +41,8 @@ public:
 
     auto vertices() const noexcept { return _graph.vertices(); }
     auto arcs() const noexcept { return _graph.arcs(); }
-    auto arc_entries() const noexcept {
-        return std::views::transform(_graph.arc_entries(), [](auto && p) {
+    auto arcs_entries() const noexcept {
+        return std::views::transform(_graph.arcs_entries(), [](auto && p) {
             return std::make_pair(
                 p.first, std::make_pair(p.second.first, p.second.second));
         });

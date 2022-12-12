@@ -4,7 +4,7 @@
 
 The concept `graph` is the root requirement for all the graph structures supported by the library.
 Fundamentally, a graph is a way of representing relations between objects. 
-These objects are called the *vertices* (or nodes) of the graph and their relations are called *edges* (or links) that connects group of vertices. Usually edges connect only pairs of vertices and, in order to keep it simple, the library sticks to this basic case, i.e., it does not handle [hypergraphs](https://en.wikipedia.org/wiki/Hypergraph). Although it may seem counterintuitive, we consider directed graphs to be more general than undirected graph. Indeed, in computer memory, data is fundamentally ordered and specifying that it must be considered unordered requires more work. A *directed-edge* is often called an *arc* and represented by an arrow from its *source* vertex to its *target* vertex. A graph may contain many arcs between the same source and target vertices in which case it is called a [multigraph](https://en.wikipedia.org/wiki/Multigraph). In a multigraph, arcs cannot be identified solely by their endpoints, and must be joined with an identifier, like a number. That comes handy since we often need to associate data to the arcs and this identifier can allow a more direct indexing than a pair of vertices.
+These objects are called the *vertices* (or nodes) of the graph and their relations are called *edges* (or links) that connects group of vertices. Usually edges connect only pairs of vertices and, in order to keep it simple, the library sticks to this basic case, i.e., it does not handle [hypergraphs](https://en.wikipedia.org/wiki/Hypergraph). Although it may seem counterintuitive, we consider directed graphs to be more general than undirected  Indeed, in computer memory, data is fundamentally ordered and specifying that it must be considered unordered requires more work. A *directed-edge* is often called an *arc* and represented by an arrow from its *source* vertex to its *target* vertex. A graph may contain many arcs between the same source and target vertices in which case it is called a [multigraph](graph,https://en.wikipedia.org/wiki/Multigraph). In a multigraph, arcs cannot be identified solely by their endpoints, and must be joined with an identifier, like a number. That comes handy since we often need to associate data to the arcs and this identifier can allow a more direct indexing than a pair of vertices.
 
 All in all, the mathematical structure chosen to abstract all our graph concepts is the "directed multi-graph" and is expressed by the following concept.
 ```cpp
@@ -13,14 +13,14 @@ concept graph = std::copyable<G> &&
 requires(G g) {
     { g.vertices() } -> std::ranges::input_range;
     { g.arcs() } -> std::ranges::input_range;
-    { g.arc_entries() } -> 
+    { g.arcs_entries() } -> 
         input_range_of<std::pair<arc_t<G>,std::pair<vertex_t<G>, vertex_t<G>>>>;
 };
 ```
 Then, in our library, a graph structure of type `G` must provide :
 - `.vertices()` that returns a range of the graph vertices, which are of type `vertex_t<G>` 
 - `.arcs()` that returns a range of the graph arcs, which are of type `arc_t<G>`
-- `.arc_entries()` that returns a range where each element is a pair `(a,(s,t))` where `a` is the arc identifier and `s` and `t` are the source and target vertices.
+- `.arcs_entries()` that returns a range where each element is a pair `(a,(s,t))` where `a` is the arc identifier and `s` and `t` are the source and target vertices.
 
 There are no requirements on the vertices and arcs types `vertex_t<G>` and `arc_t<G>` beyond identifying unambiguously vertices and arcs, i.e., no duplicates are present in the ranges `.vertices()` and `.arcs()`. The most simple implementation being 
 

@@ -128,23 +128,6 @@ public:
             (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
                                    : _arc_target.data() + nb_arcs()));
     }
-    [[nodiscard]] constexpr auto in_neighbors(const vertex u) const noexcept {
-        assert(is_valid_vertex(u));
-        return std::views::transform(in_arcs(u),
-                                     [this](auto a) { return source(a); });
-    }
-
-    [[nodiscard]] constexpr auto out_arc_entries(
-        const vertex s) const noexcept {
-        assert(is_valid_vertex(s));
-        return std::views::transform(out_arcs(s), [this, s](const arc a) {
-            return std::make_pair(a, std::make_pair(s, _arc_target[a]));
-        });
-    }
-    [[nodiscard]] constexpr auto arc_entries() const noexcept {
-        return std::views::join(std::views::transform(
-            vertices(), [this](const vertex s) { return out_arc_entries(s); }));
-    }
 
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map() const noexcept {

@@ -100,7 +100,7 @@ public:
             [this](const vertex & v) { return _vertex_filter[v]; });
     }
 
-    auto arc_entries() const noexcept {
+    auto arcs_entries() const noexcept {
         // if constexpr(std::same_as<concepts::arcs_range_t<G>,
         //                           std::ranges::iota_view<arc, arc>> &&
         //              (std::integral<arc> ||
@@ -126,7 +126,7 @@ public:
         //                 [t](const vertex & s) { return std::make_pair(s, t); });
         //         }));
         // } else {
-        //     static_assert(false, "cannot enumerate arc_entries");
+        //     static_assert(false, "cannot enumerate arcs_entries");
         // }
     }
 

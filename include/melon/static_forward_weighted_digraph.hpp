@@ -103,7 +103,7 @@ public:
                 return std::make_pair(a, std::make_pair(s, a->first));
             });
     }
-    [[nodiscard]] constexpr auto arc_entries() const noexcept {
+    [[nodiscard]] constexpr auto arcs_entries() const noexcept {
         return std::views::join(std::views::transform(
             vertices(), [this](const vertex s) { return out_arc_entries(s); }));
     }
