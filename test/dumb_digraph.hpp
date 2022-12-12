@@ -57,13 +57,15 @@ public:
     auto arcs() const noexcept {
         return valid_arcs_structs() |
                std::views::transform(
-                   [](const arc_struct & as) { return as.id; });
+                   [](const arc_struct & as) -> arc { return as.id; });
     }
-    auto arc_entries() const noexcept {
+    auto arcs_entries() const noexcept {
         return valid_arcs_structs() |
-               std::views::transform([](const arc_struct & as) {
-                   return std::make_pair(as.id, as.arc_pair);
-               });
+               std::views::transform(
+                   [](const arc_struct & as)
+                       -> std::pair<arc, std::pair<vertex, vertex>> {
+                       return std::make_pair(as.id, as.arc_pair);
+                   });
     }
     auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));

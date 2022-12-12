@@ -74,9 +74,9 @@ public:
     //     return _graph.get().out_neighbors(u);
     // }
 
-    // auto arc_entries()
+    // auto arcs_entries()
     //     const noexcept requires concepts::outward_adjacency_graph<G> {
-    //     return std::views::transform(_graph.get().arc_entries(), [](auto && p) {
+    //     return std::views::transform(_graph.get().arcs_entries(), [](auto && p) {
     //         return std::make_pair(p.second, p.first);
     //     });
     // }

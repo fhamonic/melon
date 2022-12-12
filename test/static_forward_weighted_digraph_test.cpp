@@ -19,31 +19,31 @@ static_assert(
 GTEST_TEST(static_forward_weighted_digraph, empty_constructor) {
     using Graph = static_forward_weighted_digraph<int>;
     Graph graph;
-    ASSERT_EQ(graph.nb_vertices(), 0);
-    ASSERT_TRUE(EMPTY(graph.vertices()));
-    ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.arc_entries()));
+    ASSERT_EQ(nb_vertices(graph), 0);
+    ASSERT_TRUE(EMPTY(vertices(graph)));
+    ASSERT_TRUE(EMPTY(arcs(graph)));
+    ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(graph.is_valid_vertex(0));
+    ASSERT_FALSE(is_valid_vertex(graph,0));
 
-    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)out_arcs(graph,0), "");
 }
 
 GTEST_TEST(static_forward_weighted_digraph, empty_vectors_constructor) {
     using Graph = static_forward_weighted_digraph<double>;
     std::vector<vertex_t<Graph>> arcs_sources;
     std::vector<std::pair<std::pair<vertex_t<Graph>, vertex_t<Graph>>, double>>
-        arcs_entries;
+        arcs_entries_vector;
 
-    Graph graph(0ul, arcs_entries);
-    ASSERT_EQ(graph.nb_vertices(), 0);
-    ASSERT_TRUE(EMPTY(graph.vertices()));
-    ASSERT_TRUE(EMPTY(graph.arcs()));
-    ASSERT_TRUE(EMPTY(graph.arc_entries()));
+    Graph graph(0ul, arcs_entries_vector);
+    ASSERT_EQ(nb_vertices(graph), 0);
+    ASSERT_TRUE(EMPTY(vertices(graph)));
+    ASSERT_TRUE(EMPTY(arcs(graph)));
+    ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(graph.is_valid_vertex(0));
+    ASSERT_FALSE(is_valid_vertex(graph,0));
 
-    EXPECT_DEATH((void)graph.out_arcs(0), "");
+    EXPECT_DEATH((void)out_arcs(graph,0), "");
 }
 
 GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
@@ -56,22 +56,22 @@ GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
                                {{2, 1}, 1.0}});
 
     Graph graph(3ul, weighted_arcs_entries);
-    ASSERT_EQ(graph.nb_vertices(), 3);
+    ASSERT_EQ(nb_vertices(graph), 3);
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), {0, 1, 2}));
-    // ASSERT_TRUE(EQ_MULTISETS(graph.arcs(), arcs_copy));
+    ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2}));
+    // ASSERT_TRUE(EQ_MULTISETS(arcs(graph), arcs_copy));
 
-    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
-    ASSERT_FALSE(graph.is_valid_vertex(vertex_t<Graph>(graph.nb_vertices())));
+    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
+    ASSERT_FALSE(is_valid_vertex(graph,vertex_t<Graph>(nb_vertices(graph))));
 
-    ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(0), {1, 2}));
-    ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(1), {2}));
-    ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(2), {0, 1}));
-    ASSERT_TRUE(EQ_MULTISETS(std::ranges::views::values(graph.arc_entries()),
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,0), {1, 2}));
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,1), {2}));
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,2), {0, 1}));
+    ASSERT_TRUE(EQ_MULTISETS(std::ranges::views::values(arcs_entries(graph)),
                              std::ranges::views::keys(weighted_arcs_entries)));
 
-    // for(auto && a : graph.out_arcs(0))
-    //     ++(graph.weights_map()[a]);
+    // for(auto && a : out_arcs(graph,0))
+    //     ++(weights_map(graph)[a]);
 }
 
 // GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_2) {
@@ -90,29 +90,29 @@ GTEST_TEST(static_forward_weighted_digraph, vectors_constructor_1) {
 //     static_forward_weighted_digraph graph(
 //         8, std::ranges::views::keys(arc_pairs),
 //         std::ranges::views::values(arc_pairs));
-//     ASSERT_EQ(graph.nb_vertices(), 8);
-//     ASSERT_EQ(graph.nb_arcs(), 9);
+//     ASSERT_EQ(nb_vertices(graph), 8);
+//     ASSERT_EQ(nb_arcs(graph), 9);
 
-//     ASSERT_TRUE(EQ_MULTISETS(graph.vertices(), {0, 1, 2, 3, 4, 5, 6, 7}));
-//     ASSERT_TRUE(EQ_MULTISETS(graph.arcs(), {0, 1, 2, 3, 4, 5, 6, 7, 8}));
+//     ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2, 3, 4, 5, 6, 7}));
+//     ASSERT_TRUE(EQ_MULTISETS(arcs(graph), {0, 1, 2, 3, 4, 5, 6, 7, 8}));
 
-//     for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
-//     ASSERT_FALSE(graph.is_valid_vertex(
-//         vertex_t<static_forward_weighted_digraph>(graph.nb_vertices())));
+//     for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
+//     ASSERT_FALSE(is_valid_vertex(graph,
+//         vertex_t<static_forward_weighted_digraph>(nb_vertices(graph))));
 
-//     for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
-//     ASSERT_FALSE(graph.is_valid_arc(
-//         arc_t<static_forward_weighted_digraph>(graph.nb_arcs())));
+//     for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph,a));
+//     ASSERT_FALSE(is_valid_arc(graph,
+//         arc_t<static_forward_weighted_digraph>(nb_arcs(graph))));
 
 //     ASSERT_EQ_MULTISETS(
-//         graph.out_neighbors(0),
+//         out_neighbors(graph,0),
 //         std::ranges::empty_view<vertex_t<static_forward_weighted_digraph>>());
-//     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(1), {2, 6, 7}));
-//     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(2), {3, 4}));
-//     ASSERT_TRUE(EQ_MULTISETS(graph.out_neighbors(6), {5}));
+//     ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,1), {2, 6, 7}));
+//     ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,2), {3, 4}));
+//     ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,6), {5}));
 //     ASSERT_EQ_MULTISETS(
-//         graph.out_neighbors(7),
+//         out_neighbors(graph,7),
 //         std::ranges::empty_view<vertex_t<static_forward_weighted_digraph>>());
 
-//     ASSERT_TRUE(EQ_MULTISETS(graph.arc_entries(), arc_pairs));
+//     ASSERT_TRUE(EQ_MULTISETS(arcs_entries(graph), arc_pairs));
 // }

@@ -22,37 +22,37 @@ GTEST_TEST(reverse_adaptor, static_graph) {
 
     auto reverse_graph = adaptors::reverse(graph);
 
-    ASSERT_EQ(graph.nb_vertices(), reverse_graph.nb_vertices());
-    ASSERT_EQ(graph.nb_arcs(), reverse_graph.nb_arcs());
+    ASSERT_EQ(nb_vertices(graph), reverse_graph.nb_vertices());
+    ASSERT_EQ(nb_arcs(graph), reverse_graph.nb_arcs());
 
-    ASSERT_TRUE(EQ_RANGES(graph.vertices(), reverse_graph.vertices()));
-    ASSERT_TRUE(EQ_RANGES(graph.arcs(), reverse_graph.arcs()));
+    ASSERT_TRUE(EQ_RANGES(vertices(graph), reverse_graph.vertices()));
+    ASSERT_TRUE(EQ_RANGES(arcs(graph), reverse_graph.arcs()));
 
-    for(auto u : graph.vertices()) ASSERT_TRUE(graph.is_valid_vertex(u));
+    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
     ASSERT_FALSE(
-        graph.is_valid_vertex(vertex_t<static_digraph>(graph.nb_vertices())));
+        is_valid_vertex(graph,vertex_t<static_digraph>(nb_vertices(graph))));
 
-    for(auto a : graph.arcs()) ASSERT_TRUE(graph.is_valid_arc(a));
-    ASSERT_FALSE(graph.is_valid_arc(arc_t<static_digraph>(graph.nb_arcs())));
-
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(0), reverse_graph.in_neighbors(0)));
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(1), reverse_graph.in_neighbors(1)));
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(2), reverse_graph.in_neighbors(2)));
+    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph,a));
+    ASSERT_FALSE(is_valid_arc(graph,arc_t<static_digraph>(nb_arcs(graph))));
 
     ASSERT_TRUE(
-        EQ_RANGES(graph.in_neighbors(0), reverse_graph.out_neighbors(0)));
+        EQ_RANGES(out_neighbors(graph,0), reverse_graph.in_neighbors(0)));
     ASSERT_TRUE(
-        EQ_RANGES(graph.in_neighbors(1), reverse_graph.out_neighbors(1)));
+        EQ_RANGES(out_neighbors(graph,1), reverse_graph.in_neighbors(1)));
     ASSERT_TRUE(
-        EQ_RANGES(graph.in_neighbors(2), reverse_graph.out_neighbors(2)));
+        EQ_RANGES(out_neighbors(graph,2), reverse_graph.in_neighbors(2)));
 
-    ASSERT_TRUE(EQ_RANGES(graph.arc_entries(), arc_pairs));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph,0), reverse_graph.out_neighbors(0)));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph,1), reverse_graph.out_neighbors(1)));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph,2), reverse_graph.out_neighbors(2)));
 
-    for(arc_t<static_digraph> a : graph.arcs()) {
-        ASSERT_EQ(graph.source(a), arc_pairs[a].second.first);
+    ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
+
+    for(arc_t<static_digraph> a : arcs(graph)) {
+        ASSERT_EQ(source(graph,a), arc_pairs[a].second.first);
     }
 }
 

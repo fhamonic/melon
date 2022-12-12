@@ -87,7 +87,7 @@ public:
         return std::views::transform(
             out_arcs(s), [this, s](const arc a) { return std::make_pair(a,std::make_pair(s, _arc_target[a])); });
     }
-    auto arc_entries() const noexcept {
+    auto arcs_entries() const noexcept {
         return std::views::join(std::views::transform(
             vertices(), [this](const vertex s) { return out_arc_entries(s); }));
     }
