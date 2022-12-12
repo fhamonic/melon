@@ -62,15 +62,15 @@ public:
     [[nodiscard]] constexpr explicit breadth_first_search(const G & g)
         : _graph(g)
         , _queue()
-        , _reached_map(g.template create_vertex_map<bool>(false))
-        , _remaining_in_degree_map(g.template create_vertex_map<unsigned int>(
+        , _reached_map(create_vertex_map<bool>(g,false))
+        , _remaining_in_degree_map(create_vertex_map<unsigned int>(g,
               std::numeric_limits<unsigned int>::max()))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              g.template create_vertex_map<vertex>(), std::monostate{}))
+              create_vertex_map<vertex>(g), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              g.template create_vertex_map<arc>(), std::monostate{}))
+              create_vertex_map<arc>(g), std::monostate{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
-              g.template create_vertex_map<int>(), std::monostate{})) {
+              create_vertex_map<int>(g), std::monostate{})) {
         _queue.reserve(g.nb_vertices());
         _queue_current = _queue.begin();
     }

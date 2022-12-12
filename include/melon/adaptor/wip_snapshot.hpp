@@ -84,23 +84,23 @@ public:
     template <typename T>
     requires concepts::has_vertex_map<G>
     decltype(auto) create_vertex_map() const noexcept {
-        return _graph.template create_vertex_map<T>();
+        return create_vertex_map<T>(_graph);
     }
     template <typename T>
     requires concepts::has_vertex_map<G>
     decltype(auto) create_vertex_map(T default_value) const noexcept {
-        return _graph.template create_vertex_map<T>(default_value);
+        return create_vertex_map<T>(_graph,default_value);
     }
 
     template <typename T>
     requires concepts::has_arc_map<G>
     decltype(auto) create_arc_map() const noexcept {
-        return _graph.template create_arc_map<T>();
+        return create_arc_map<T>(_graph);
     }
     template <typename T>
     requires concepts::has_arc_map<G>
     decltype(auto) create_arc_map(T default_value) const noexcept {
-        return _graph.template create_arc_map<T>(default_value);
+        return create_arc_map<T>(_graph,default_value);
     }
 };
 

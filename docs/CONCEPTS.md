@@ -73,8 +73,8 @@ For example, a graph that is a `forward_incidence_list` may also be a `inward_in
 It is up to each graph implementation to describe the way data can be attached to its vertices and arcs. Indeed, no assumptions are made on the underlying types of vertices and arcs that can range from integers (in most cases) to plain old structs. The concepts `has_vertex_map<G,T>` and `has_arc_map<G,T>` express the prerequisite for a graph of type `G` to allows users to create maps for attaching data of type `T` to vertices and arcs as follows.
 ```cpp
 G g = ...;
-vertex_map_t<G,T> vertex_map = g.template create_vertex_map<T>();
-arc_map_t<G,T> arc_map = g.template create_arc_map<T>();
+vertex_map_t<G,T> vertex_map = create_vertex_map<T>(g);
+arc_map_t<G,T> arc_map = create_arc_map<T>(g);
 ```
 When creating such maps, the data attached is considered [default initialized](https://en.cppreference.com/w/cpp/language/default_initialization), but a default value can be passed in argument.
 

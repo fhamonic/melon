@@ -90,15 +90,15 @@ public:
     [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l)
         : _graph(g)
         , _length_map(l)
-        , _forward_heap(g.template create_vertex_map<std::size_t>())
-        , _reverse_heap(g.template create_vertex_map<std::size_t>())
+        , _forward_heap(create_vertex_map<std::size_t>(g))
+        , _reverse_heap(create_vertex_map<std::size_t>(g))
         , _vertex_status_map(g.template create_vertex_map<
                              std::pair<vertex_status, vertex_status>>(
               std::make_pair(PRE_HEAP, PRE_HEAP)))
         , _forward_pred_arcs_map(constexpr_ternary<traits::store_path>(
-              g.template create_vertex_map<optional_arc>(), std::monostate{}))
+              create_vertex_map<optional_arc>(g), std::monostate{}))
         , _reverse_pred_arcs_map(constexpr_ternary<traits::store_path>(
-              g.template create_vertex_map<optional_arc>(), std::monostate{})) {
+              create_vertex_map<optional_arc>(g), std::monostate{})) {
     }
 
     [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l,
