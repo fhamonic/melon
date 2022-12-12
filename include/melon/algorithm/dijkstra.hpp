@@ -47,7 +47,7 @@ struct dijkstra_default_traits {
 
 template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G>
+    requires concepts::has_vertex_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -88,17 +88,16 @@ public:
     [[nodiscard]] constexpr dijkstra(const G & g, const L & l)
         : _graph(g)
         , _length_map(l)
-        , _heap(g.template create_vertex_map<std::size_t>())
-        , _vertex_status_map(
-              g.template create_vertex_map<vertex_status>(PRE_HEAP))
+        , _heap(create_vertex_map<std::size_t>(g))
+        , _vertex_status_map(create_vertex_map<vertex_status>(g, PRE_HEAP))
         , _pred_vertices_map(
               constexpr_ternary < traits::store_paths &&
               !concepts::has_arc_source < G >>
-                  (g.template create_vertex_map<vertex>(), std::monostate{}))
+                  (create_vertex_map<vertex>(g), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_paths>(
-              g.template create_vertex_map<optional_arc>(), std::monostate{}))
+              create_vertex_map<optional_arc>(g), std::monostate{}))
         , _distances_map(constexpr_ternary<traits::store_distances>(
-              g.template create_vertex_map<value_t>(), std::monostate{})) {}
+              create_vertex_map<value_t>(g), std::monostate{})) {}
 
     [[nodiscard]] constexpr dijkstra(const G & g, const L & l, const vertex & s)
         : dijkstra(g, l) {
@@ -113,7 +112,7 @@ public:
 
     constexpr dijkstra & reset() noexcept {
         _heap.clear();
-        for(const vertex & u : _graph.get().vertices())
+        for(const vertex & u : vertices(_graph.get()))
             _vertex_status_map[u] = PRE_HEAP;
         return *this;
     }
@@ -145,13 +144,13 @@ public:
         const auto [t, st_dist] = _heap.top();
         if constexpr(traits::store_distances) _distances_map[t] = st_dist;
         _vertex_status_map[t] = POST_HEAP;
-        const auto & out_arcs = _graph.get().out_arcs(t);
-        prefetch_range(out_arcs);
-        prefetch_mapped_values(out_arcs, _graph.get().targets_map());
-        prefetch_mapped_values(out_arcs, _length_map.get());
+        const auto & out_arcs_range = out_arcs(_graph.get(), t);
+        prefetch_range(out_arcs_range);
+        prefetch_mapped_values(out_arcs_range, targets_map(_graph.get()));
+        prefetch_mapped_values(out_arcs_range, _length_map.get());
         _heap.pop();
-        for(const arc & a : out_arcs) {
-            const vertex & w = _graph.get().target(a);
+        for(const arc & a : out_arcs_range) {
+            const vertex & w = target(_graph.get(), a);
             const vertex_status & w_status = _vertex_status_map[w];
             if(w_status == IN_HEAP) {
                 const value_t new_dist =
@@ -194,31 +193,37 @@ public:
         return _vertex_status_map[u] == POST_HEAP;
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_paths) {
+        requires(traits::store_paths)
+    {
         assert(reached(u));
         return _pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_paths) {
+        requires(traits::store_paths)
+    {
         assert(reached(u) && _pred_arcs_map[u].has_value());
         if constexpr(concepts::has_arc_source<G>)
-            return _graph.source(pred_arc(u));
+            return source(_graph, pred_arc(u));
         else
             return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr value_t current_dist(
-        const vertex & u) const noexcept requires(traits::store_distances) {
+        const vertex & u) const noexcept
+        requires(traits::store_distances)
+    {
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }
     [[nodiscard]] constexpr value_t dist(const vertex & u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(visited(u));
         return _distances_map[u];
     }
 
     [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(reached(t));
         return intrusive_view(
             t,
