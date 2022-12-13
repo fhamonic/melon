@@ -60,7 +60,7 @@ public:
     [[nodiscard]] constexpr explicit breadth_first_search(const G & g)
         : _graph(g)
         , _queue()
-        , _reached_map(create_vertex_map<bool>(g,false))
+        , _reached_map(create_vertex_map<bool>(g, false))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
               create_vertex_map<vertex>(g), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
@@ -115,8 +115,8 @@ public:
         const vertex & u = *_queue_current;
         ++_queue_current;
         if constexpr(concepts::outward_incidence_graph<G>) {
-            for(auto && a : _graph.get().out_arcs(u)) {
-                const vertex & w = _graph.get().target(a);
+            for(auto && a : out_arcs(_graph.get(), u)) {
+                const vertex & w = target(_graph.get(), a);
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
@@ -127,7 +127,7 @@ public:
                     _dist_map[w] = _dist_map[u] + 1;
             }
         } else {  // i.e., concepts::outward_adjacency_graph<G>
-            for(auto && w : _graph.get().out_neighbors(u)) {
+            for(auto && w : out_neighbors(_graph.get(), u)) {
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
