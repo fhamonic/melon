@@ -182,28 +182,27 @@ template <concepts::has_arcs G>
 [[nodiscard]] constexpr std::size_t nb_arcs(const G &) noexcept;
 
 template <concepts::has_vertices G>
-[[nodiscard]] constexpr decltype(auto) create_vertex(const G &) noexcept;
+[[nodiscard]] constexpr decltype(auto) create_vertex(G &) noexcept;
 template <concepts::has_vertices G>
-constexpr void remove_vertex(const G &, const vertex_t<G> &) noexcept;
+constexpr void remove_vertex(G &, const vertex_t<G> &) noexcept;
 template <concepts::has_vertices G>
 [[nodiscard]] constexpr decltype(auto) is_valid_vertex(
     const G &, const vertex_t<G> &) noexcept;
 
 template <concepts::has_arcs G>
-[[nodiscard]] constexpr decltype(auto) create_arc(const G &,
-                                                  const vertex_t<G> &,
+[[nodiscard]] constexpr decltype(auto) create_arc(G &, const vertex_t<G> &,
                                                   const vertex_t<G> &) noexcept;
 template <concepts::has_arcs G>
-constexpr void remove_arc(const G &, const arc_t<G> &) noexcept;
+constexpr void remove_arc(G &, const arc_t<G> &) noexcept;
 template <concepts::has_arcs G>
 [[nodiscard]] constexpr decltype(auto) is_valid_arc(const G &,
                                                     const arc_t<G> &) noexcept;
 
 template <concepts::has_arcs G>
-constexpr void change_arc_source(const G &, const arc_t<G> &,
+constexpr void change_arc_source(G &, const arc_t<G> &,
                                  const vertex_t<G> &) noexcept;
 template <concepts::has_arcs G>
-constexpr void change_arc_target(const G &, const arc_t<G> &,
+constexpr void change_arc_target(G &, const arc_t<G> &,
                                  const vertex_t<G> &) noexcept;
 
 // clang-format off
