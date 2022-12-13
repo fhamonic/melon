@@ -97,7 +97,7 @@ template <concepts::has_arcs G>
         return std::views::join(
             std::views::transform(vertices(g), [&g](const vertex_t<G> & s) {
                 return std::views::transform(
-                    out_arcs(g, s), [&g, &s](const arc_t<G> & a) {
+                    out_arcs(g, s), [&g, s](const arc_t<G> & a) {
                         return std::make_pair(a,
                                               std::make_pair(s, target(g, a)));
                     });
@@ -108,7 +108,10 @@ template <concepts::has_arcs G>
         return std::views::join(
             std::views::transform(vertices(g), [&g](const vertex_t<G> & t) {
                 return std::views::transform(
-                    in_arcs(g, t), [&g, &t](const arc_t<G> & a) {
+                    in_arcs(g, t),
+                    [&g, t](const arc_t<G> & a)
+                        -> std::pair<arc_t<G>,
+                                     std::pair<vertex_t<G>, vertex_t<G>>> {
                         return std::make_pair(a,
                                               std::make_pair(source(g, a), t));
                     });
@@ -116,10 +119,13 @@ template <concepts::has_arcs G>
     } else if constexpr(concepts::has_arcs<G> && concepts::has_arc_source<G> &&
                         concepts::has_arc_target<G> &&
                         std::ranges::viewable_range<arcs_range_t<G>>) {
-        return std::views::transform(arcs(g), [&g](const arc_t<G> & a) {
-            return std::make_pair(a,
-                                  std::make_pair(source(g, a), target(g, a)));
-        });
+        return std::views::transform(
+            arcs(g),
+            [&g](const arc_t<G> & a)
+                -> std::pair<arc_t<G>, std::pair<vertex_t<G>, vertex_t<G>>> {
+                return std::make_pair(
+                    a, std::make_pair(source(g, a), target(g, a)));
+            });
     }
 }
 
@@ -142,10 +148,10 @@ template <concepts::has_vertices G>
     if constexpr(requires() { g.in_neighbors(t); }) {
         return g.in_neighbors(t);
     } else if constexpr(concepts::has_in_arcs<G> &&
-                        concepts::has_arc_target<G> &&
+                        concepts::has_arc_source<G> &&
                         std::ranges::viewable_range<in_arcs_range_t<G>>) {
         return std::views::transform(
-            in_arcs(g, t), [&g](const arc_t<G> & a) { return target(g, a); });
+            in_arcs(g, t), [&g](const arc_t<G> & a) { return source(g, a); });
     }
 }
 
@@ -197,13 +203,13 @@ template <concepts::has_arcs G>
 }
 
 template <concepts::has_vertices G>
-[[nodiscard]] constexpr decltype(auto) create_vertex(const G & g) noexcept {
+[[nodiscard]] constexpr decltype(auto) create_vertex(G & g) noexcept {
     if constexpr(requires() { g.create_vertex(); }) {
         return g.create_vertex();
     }
 }
 template <concepts::has_vertices G>
-constexpr void remove_vertex(const G & g, const vertex_t<G> & v) noexcept {
+constexpr void remove_vertex(G & g, const vertex_t<G> & v) noexcept {
     if constexpr(requires() { g.remove_vertex(v); }) {
         g.remove_vertex(v);
         return;
@@ -219,13 +225,13 @@ template <concepts::has_vertices G>
 
 template <concepts::has_arcs G>
 [[nodiscard]] constexpr decltype(auto) create_arc(
-    const G & g, const vertex_t<G> & s, const vertex_t<G> & t) noexcept {
+    G & g, const vertex_t<G> & s, const vertex_t<G> & t) noexcept {
     if constexpr(requires() { g.create_arc(s, t); }) {
         return g.create_arc(s, t);
     }
 }
 template <concepts::has_arcs G>
-constexpr void remove_arc(const G & g, const arc_t<G> & a) noexcept {
+constexpr void remove_arc(G & g, const arc_t<G> & a) noexcept {
     if constexpr(requires() { g.remove_arc(a); }) {
         g.remove_arc(a);
         return;
@@ -240,7 +246,7 @@ template <concepts::has_arcs G>
 }
 
 template <concepts::has_arcs G>
-constexpr void change_arc_source(const G & g, const arc_t<G> & a,
+constexpr void change_arc_source(G & g, const arc_t<G> & a,
                                  const vertex_t<G> & s) noexcept {
     if constexpr(requires() { g.change_arc_source(a, s); }) {
         g.change_arc_source(a, s);
@@ -248,7 +254,7 @@ constexpr void change_arc_source(const G & g, const arc_t<G> & a,
     }
 }
 template <concepts::has_arcs G>
-constexpr void change_arc_target(const G & g, const arc_t<G> & a,
+constexpr void change_arc_target(G & g, const arc_t<G> & a,
                                  const vertex_t<G> & t) noexcept {
     if constexpr(requires() { g.change_arc_target(a, t); }) {
         g.change_arc_target(a, t);
