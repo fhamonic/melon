@@ -98,8 +98,7 @@ public:
         , _forward_pred_arcs_map(constexpr_ternary<traits::store_path>(
               create_vertex_map<optional_arc>(g), std::monostate{}))
         , _reverse_pred_arcs_map(constexpr_ternary<traits::store_path>(
-              create_vertex_map<optional_arc>(g), std::monostate{})) {
-    }
+              create_vertex_map<optional_arc>(g), std::monostate{})) {}
 
     [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l,
                                                    const vertex & s,
@@ -112,7 +111,7 @@ public:
     bidirectional_dijkstra & reset() noexcept {
         _forward_heap.clear();
         _reverse_heap.clear();
-        for(auto && u : _graph.vertices())
+        for(auto && u : vertices(_graph))
             _vertex_status_map[u] = std::make_pair(PRE_HEAP, PRE_HEAP);
         _midpoint.reset();
         return *this;
@@ -146,14 +145,14 @@ public:
                                       traits::semiring::plus(u1_dist, u2_dist)))
                 break;
             if(traits::semiring::less(u1_dist, u2_dist)) {
-                const auto & out_arcs = _graph.out_arcs(u1);
-                prefetch_range(out_arcs);
-                prefetch_mapped_values(out_arcs, _graph.targets_map());
-                prefetch_mapped_values(out_arcs, _length_map);
+                const auto & out_arcs_range = out_arcs(_graph, u1);
+                prefetch_range(out_arcs_range);
+                prefetch_mapped_values(out_arcs_range, targets_map(_graph));
+                prefetch_mapped_values(out_arcs_range, _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
-                for(const arc a : out_arcs) {
-                    const vertex w = _graph.target(a);
+                for(const arc a : out_arcs_range) {
+                    const vertex w = target(_graph, a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
                     if(w_forward_status == IN_HEAP) {
@@ -192,14 +191,14 @@ public:
                     }
                 }
             } else {
-                const auto & in_arcs = _graph.in_arcs(u2);
-                prefetch_range(in_arcs);
-                prefetch_mapped_values(in_arcs, _graph.sources_map());
-                prefetch_mapped_values(in_arcs, _length_map);
+                const auto & in_arcs_range = in_arcs(_graph, u2);
+                prefetch_range(in_arcs_range);
+                prefetch_mapped_values(in_arcs_range, sources_map(_graph));
+                prefetch_mapped_values(in_arcs_range, _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
-                for(const arc a : in_arcs) {
-                    const vertex w = _graph.source(a);
+                for(const arc a : in_arcs_range) {
+                    const vertex w = source(_graph, a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
                     if(w_reverse_status == IN_HEAP) {
@@ -265,7 +264,7 @@ public:
                 _forward_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _forward_pred_arcs_map[_graph.source(oa.value())];
+                    return _forward_pred_arcs_map[source(_graph, oa.value())];
                 },
                 [](const std::optional<arc> & oa) -> bool {
                     return oa.has_value();
@@ -274,7 +273,7 @@ public:
                 _reverse_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _reverse_pred_arcs_map[_graph.target(oa.value())];
+                    return _reverse_pred_arcs_map[target(_graph, oa.value())];
                 },
                 [](const std::optional<arc> & oa) -> bool {
                     return oa.has_value();

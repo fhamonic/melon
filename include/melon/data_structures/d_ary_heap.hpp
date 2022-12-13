@@ -148,8 +148,8 @@ private:
         heap_move(hole_index, std::move(p));
     }
     // EXPECTED_CPP23 goto in constexpr functions
-    void adjust_heap(size_type hole_index, const size_type & end,
-                               entry && p) noexcept {
+    void adjust_heap(size_type hole_index, const size_type end,
+                     entry && p) noexcept {
         size_type child_end;
         if constexpr(D > 2)
             child_end =
@@ -216,9 +216,14 @@ public:
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
-    constexpr void promote(const key_type & k, const priority_type & p) noexcept {
+    constexpr void promote(const key_type & k,
+                           const priority_type & p) noexcept {
         assert(_cmp(p, priority(k)));
         heap_push(_indices_map[k], entry(k, p));
+    }
+    void demote(const key_type & k, const priority_type & p) noexcept {
+        assert(_cmp(p, priority(k)));
+        adjust_heap(_indices_map[k], entry(k, p));
     }
 };  // class d_ary_heap
 

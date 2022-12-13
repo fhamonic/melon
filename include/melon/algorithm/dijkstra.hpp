@@ -222,7 +222,7 @@ public:
     }
 
     [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
-        requires(traits::store_distances)
+        requires(traits::store_paths)
     {
         assert(reached(t));
         return intrusive_view(

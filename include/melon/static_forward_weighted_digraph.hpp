@@ -88,25 +88,6 @@ public:
     // [[nodiscard]] constexpr auto weights_map() noexcept {
     //     return map_view([](arc & a) mutable -> W & { return a->second; });
     // }
-    [[nodiscard]] constexpr auto out_neighbors(const vertex s) const noexcept {
-        assert(is_valid_vertex(s));
-        return std::views::transform(
-            out_arcs(s), [](const arc & a) -> vertex { return a->first; });
-    }
-
-    [[nodiscard]] constexpr auto out_arc_entries(
-        const vertex s) const noexcept {
-        assert(is_valid_vertex(s));
-        return std::views::transform(
-            out_arcs(s),
-            [s](const arc & a) -> std::pair<arc, std::pair<vertex, vertex>> {
-                return std::make_pair(a, std::make_pair(s, a->first));
-            });
-    }
-    [[nodiscard]] constexpr auto arcs_entries() const noexcept {
-        return std::views::join(std::views::transform(
-            vertices(), [this](const vertex s) { return out_arc_entries(s); }));
-    }
 
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
