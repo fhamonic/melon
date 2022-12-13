@@ -26,57 +26,57 @@ GTEST_TEST(dumb_digraph, empty_constructor) {
     ASSERT_TRUE(EMPTY(arcs(graph)));
     ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(is_valid_vertex(graph,0));
-    EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)in_arcs(graph,0), "");
-    EXPECT_DEATH((void)out_neighbors(graph,0), "");
-    EXPECT_DEATH((void)in_neighbors(graph,0), "");
+    ASSERT_FALSE(is_valid_vertex(graph, 0));
+    EXPECT_DEATH((void)out_arcs(graph, 0), "");
+    EXPECT_DEATH((void)in_arcs(graph, 0), "");
+    EXPECT_DEATH((void)out_neighbors(graph, 0), "");
+    EXPECT_DEATH((void)in_neighbors(graph, 0), "");
 }
 
 GTEST_TEST(dumb_digraph, create_vertices) {
     Graph graph;
 
-    create_vertex(graph,0);
-    create_vertex(graph,1);
-    create_vertex(graph,2);
+    graph.create_vertex(0);
+    graph.create_vertex(1);
+    graph.create_vertex(2);
 
     ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2}));
     ASSERT_TRUE(EMPTY(arcs(graph)));
-    ASSERT_TRUE(EMPTY(out_arcs(graph,0)));
-    ASSERT_TRUE(EMPTY(out_arcs(graph,1)));
-    ASSERT_TRUE(EMPTY(out_arcs(graph,2)));
-    ASSERT_TRUE(is_valid_vertex(graph,2));
-    ASSERT_FALSE(is_valid_vertex(graph,3));
-    EXPECT_DEATH((void)out_arcs(graph,3), "");
+    ASSERT_TRUE(EMPTY(out_arcs(graph, 0)));
+    ASSERT_TRUE(EMPTY(out_arcs(graph, 1)));
+    ASSERT_TRUE(EMPTY(out_arcs(graph, 2)));
+    ASSERT_TRUE(is_valid_vertex(graph, 2));
+    ASSERT_FALSE(is_valid_vertex(graph, 3));
+    EXPECT_DEATH((void)out_arcs(graph, 3), "");
 }
 
 GTEST_TEST(dumb_digraph, create_arcs) {
     Graph graph;
 
-    create_vertex(graph,0);
-    create_vertex(graph,1);
-    create_vertex(graph,2);
+    graph.create_vertex(0);
+    graph.create_vertex(1);
+    graph.create_vertex(2);
 
-    create_arc(graph,0, 0, 1);
-    create_arc(graph,1, 0, 2);
-    create_arc(graph,2, 2, 1);
+    graph.create_arc(0, 0, 1);
+    graph.create_arc(1, 0, 2);
+    graph.create_arc(2, 2, 1);
 
     ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2}));
 
-    ASSERT_EQ(source(graph,0), 0);
-    ASSERT_EQ(source(graph,1), 0);
-    ASSERT_EQ(source(graph,2), 2);
-    ASSERT_EQ(target(graph,0), 1);
-    ASSERT_EQ(target(graph,1), 2);
-    ASSERT_EQ(target(graph,2), 1);
+    ASSERT_EQ(source(graph, 0), 0);
+    ASSERT_EQ(source(graph, 1), 0);
+    ASSERT_EQ(source(graph, 2), 2);
+    ASSERT_EQ(target(graph, 0), 1);
+    ASSERT_EQ(target(graph, 1), 2);
+    ASSERT_EQ(target(graph, 2), 1);
 
     ASSERT_TRUE(
         EQ_MULTISETS(arcs_entries(graph),
                      arc_entries_list{{0, {0, 1}}, {1, {0, 2}}, {2, {2, 1}}}));
 
-    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,0), {1, 2}));
-    ASSERT_TRUE(EMPTY(out_neighbors(graph,1)));
-    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph,2), {1}));
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph, 0), {1, 2}));
+    ASSERT_TRUE(EMPTY(out_neighbors(graph, 1)));
+    ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph, 2), {1}));
 }
 
 // GTEST_TEST(dumb_digraph, remove_arcs) {
@@ -84,9 +84,9 @@ GTEST_TEST(dumb_digraph, create_arcs) {
 //     auto a = create_vertex(graph);
 //     auto b = create_vertex(graph);
 //     auto c = create_vertex(graph);
-//     auto ab = create_arc(graph,a, b);
-//     auto ac = create_arc(graph,a, c);
-//     auto cb = create_arc(graph,c, b);
+//     auto ab = graph.create_arc(a, b);
+//     auto ac = graph.create_arc(a, c);
+//     auto cb = graph.create_arc(c, b);
 
 //     remove_arc(graph,ac);
 

@@ -144,12 +144,12 @@ public:
         assert(is_valid_arc(a));
         _arcs_structs[a].exists = false;
     }
-    void change_source(const arc a, const vertex s) noexcept {
+    void change_arc_source(const arc a, const vertex s) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(s));
         _arcs_structs[a].arc_pair.first = s;
     }
-    void change_target(const arc a, const vertex t) noexcept {
+    void change_arc_target(const arc a, const vertex t) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(t));
         _arcs_structs[a].arc_pair.second = t;
