@@ -252,7 +252,7 @@ public:
         _first_free_arc = a;
         _arcs_filter[a] = false;
     }
-    constexpr void change_target(const arc a, const vertex t) noexcept {
+    constexpr void change_arc_target(const arc a, const vertex t) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(t));
         arc_struct & as = _arcs[a];
@@ -266,7 +266,7 @@ public:
             _arcs[ts.first_in_arc].prev_in_arc = a;
         ts.first_in_arc = a;
     }
-    constexpr void change_source(const arc a, const vertex s) noexcept {
+    constexpr void change_arc_source(const arc a, const vertex s) noexcept {
         assert(is_valid_arc(a));
         assert(is_valid_vertex(s));
         arc_struct & as = _arcs[a];

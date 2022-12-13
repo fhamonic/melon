@@ -179,8 +179,8 @@ template <typename T, concepts::has_arcs G>
     }
 }
 
-template <concepts::has_arcs G>
-[[nodiscard]] constexpr decltype(auto) nb_vertices(const G & g) noexcept {
+template <concepts::has_vertices G>
+[[nodiscard]] constexpr std::size_t nb_vertices(const G & g) noexcept {
     if constexpr(requires() { g.nb_vertices(); }) {
         return g.nb_vertices();
     } else {
@@ -188,18 +188,47 @@ template <concepts::has_arcs G>
     }
 }
 template <concepts::has_arcs G>
-[[nodiscard]] constexpr decltype(auto) nb_arcs(const G & g) noexcept {
+[[nodiscard]] constexpr std::size_t nb_arcs(const G & g) noexcept {
     if constexpr(requires() { g.nb_arcs(); }) {
         return g.nb_arcs();
     } else {
         return std::ranges::distance(arcs(g));
     }
 }
-template <concepts::has_arcs G>
+
+template <concepts::has_vertices G>
+[[nodiscard]] constexpr decltype(auto) create_vertex(const G & g) noexcept {
+    if constexpr(requires() { g.create_vertex(); }) {
+        return g.create_vertex();
+    }
+}
+template <concepts::has_vertices G>
+constexpr void remove_vertex(const G & g, const vertex_t<G> & v) noexcept {
+    if constexpr(requires() { g.remove_vertex(v); }) {
+        g.remove_vertex(v);
+        return;
+    }
+}
+template <concepts::has_vertices G>
 [[nodiscard]] constexpr decltype(auto) is_valid_vertex(
     const G & g, const vertex_t<G> & v) noexcept {
     if constexpr(requires() { g.is_valid_vertex(v); }) {
         return g.is_valid_vertex(v);
+    }
+}
+
+template <concepts::has_arcs G>
+[[nodiscard]] constexpr decltype(auto) create_arc(
+    const G & g, const vertex_t<G> & s, const vertex_t<G> & t) noexcept {
+    if constexpr(requires() { g.create_arc(s, t); }) {
+        return g.create_arc(s, t);
+    }
+}
+template <concepts::has_arcs G>
+constexpr void remove_arc(const G & g, const arc_t<G> & a) noexcept {
+    if constexpr(requires() { g.remove_arc(a); }) {
+        g.remove_arc(a);
+        return;
     }
 }
 template <concepts::has_arcs G>
@@ -207,6 +236,23 @@ template <concepts::has_arcs G>
     const G & g, const arc_t<G> & a) noexcept {
     if constexpr(requires() { g.is_valid_arc(a); }) {
         return g.is_valid_arc(a);
+    }
+}
+
+template <concepts::has_arcs G>
+constexpr void change_arc_source(const G & g, const arc_t<G> & a,
+                                 const vertex_t<G> & s) noexcept {
+    if constexpr(requires() { g.change_arc_source(a, s); }) {
+        g.change_arc_source(a, s);
+        return;
+    }
+}
+template <concepts::has_arcs G>
+constexpr void change_arc_target(const G & g, const arc_t<G> & a,
+                                 const vertex_t<G> & t) noexcept {
+    if constexpr(requires() { g.change_arc_target(a, t); }) {
+        g.change_arc_target(a, t);
+        return;
     }
 }
 
