@@ -40,7 +40,9 @@ template <typename G, typename L>
 struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
     using heap = d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
-                            std::decay_t<decltype(semiring::less)>,
+                            decltype([](const auto & e1, const auto & e2) {
+                                return semiring::less(e1.second, e2.second);
+                            }),
                             vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_path = true;

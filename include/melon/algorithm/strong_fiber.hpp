@@ -9,25 +9,36 @@
 #include <vector>
 
 #include "melon/concepts/graph.hpp"
+#include "melon/concepts/map_of.hpp"
+#include "melon/concepts/priority_queue.hpp"
+#include "melon/concepts/semiring.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
 #include "melon/utils/prefetch.hpp"
 #include "melon/utils/semirings.hpp"
-#include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <concepts::outward_incidence_graph G, typename L,
-          bool strictly_strong = false>
+// clang-format off
+namespace concepts {
+template <typename T>
+concept strong_fiber_trait = semiring<typename T::semiring> &&
+    updatable_priority_queue<typename T::heap> && requires() {
+    { T::store_distances } -> std::convertible_to<bool>;
+    { T::store_paths } -> std::convertible_to<bool>;
+};
+}  // namespace concepts
+// clang-format on
+
+template <concepts::outward_incidence_graph G, typename T>
 struct strong_fiber_default_traits {
-    using value_t = typename L::value_type;
-    using semiring = shortest_path_semiring<value_t>;
+    using semiring = shortest_path_semiring<T>;
 
     struct entry {
-        value_t dist;
+        T dist;
         bool strong;
 
-        entry operator+(value_t v) const noexcept {
+        entry operator+(T v) const noexcept {
             return entry(semiring::plus(dist, v), strong);
         }
         bool operator==(const entry & o) const noexcept {
@@ -36,25 +47,33 @@ struct strong_fiber_default_traits {
     };
 
     struct entry_cmp {
-        constexpr bool operator()(const entry & e1,
-                                  const entry & e2) const noexcept {
+        constexpr bool operator()(const auto & e1,
+                                  const auto & e2) const noexcept {
             if constexpr(strictly_strong) {
-                if(e1.dist == e2.dist) return !e1.strong && e2.strong;
+                if(e1.second.dist == e2.second.dist)
+                    return !e1.second.strong && e2.second.strong;
             } else {
-                if(e1.dist == e2.dist) return e1.strong && !e2.strong;
+                if(e1.second.dist == e2.second.dist)
+                    return e1.second.strong && !e2.second.strong;
             }
-            return semiring::less(e1.dist, e2.dist);
+            return semiring::less(e1.second.dist, e2.second.dist);
         }
     };
 
     using heap = d_ary_heap<2, vertex_t<G>, entry, entry_cmp,
                             vertex_map_t<G, std::size_t>>;
+
+    static constexpr bool strictly_strong = false;
+    static constexpr bool store_distances = false;
+    static constexpr bool store_paths = false;
 };
 
-template <concepts::outward_incidence_graph G, typename L1, typename L2,
-          typename F1, typename F2,
-          typename T = strong_fiber_default_traits<G, L1>>
-    requires std::is_same_v<typename L1::value_type, typename L2::value_type>
+template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L1,
+          concepts::input_map<arc_t<G>> L2, typename F1, typename F2,
+          concepts::strong_fiber_trait T =
+              strong_fiber_default_traits<G, mapped_value_t<L1, arc_t<G>>>>
+requires std::is_same_v<mapped_value_t<L1, arc_t<G>>,
+                        mapped_value_t<L2, arc_t<G>>>
 class strong_fiber {
 public:
     using vertex = vertex_t<G>;
@@ -151,7 +170,7 @@ public:
         if(w_status == IN_HEAP) {
             const entry new_entry(dist + _length_map[uw], true);
             const entry old_entry = _heap.priority(w);
-            if(cmp(new_entry, old_entry)) {
+            if(traits::semiring::less(new_entry.dist, old_entry.dist)) {
                 if(!old_entry.strong) {
                     --nb_weak_candidates;
                     ++nb_strong_candidates;
@@ -172,7 +191,7 @@ public:
         if(w_status == IN_HEAP) {
             const entry new_entry(dist + _reduced_length_map[uw], false);
             const entry old_entry = _heap.priority(w);
-            if(cmp(new_entry, old_entry)) {
+            if(traits::semiring::less(new_entry.dist, old_entry.dist)) {
                 if(old_entry.strong) {
                     --nb_strong_candidates;
                     ++nb_weak_candidates;

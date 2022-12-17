@@ -38,7 +38,9 @@ template <typename G, typename L>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
     using heap = d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
-                            std::decay_t<decltype(semiring::less)>,
+                            decltype([](const auto & e1, const auto & e2) {
+                                return semiring::less(e1.second, e2.second);
+                            }),
                             vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_distances = false;
@@ -47,7 +49,7 @@ struct dijkstra_default_traits {
 
 template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L,
           concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-    requires concepts::has_vertex_map<G>
+requires concepts::has_vertex_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -193,14 +195,12 @@ public:
         return _vertex_status_map[u] == POST_HEAP;
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_paths)
-    {
+        requires(traits::store_paths) {
         assert(reached(u));
         return _pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_paths)
-    {
+        requires(traits::store_paths) {
         assert(reached(u) && _pred_arcs_map[u].has_value());
         if constexpr(concepts::has_arc_source<G>)
             return source(_graph, pred_arc(u));
@@ -208,22 +208,18 @@ public:
             return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr value_t current_dist(
-        const vertex & u) const noexcept
-        requires(traits::store_distances)
-    {
+        const vertex & u) const noexcept requires(traits::store_distances) {
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }
     [[nodiscard]] constexpr value_t dist(const vertex & u) const noexcept
-        requires(traits::store_distances)
-    {
+        requires(traits::store_distances) {
         assert(visited(u));
         return _distances_map[u];
     }
 
     [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
-        requires(traits::store_paths)
-    {
+        requires(traits::store_paths) {
         assert(reached(t));
         return intrusive_view(
             t,
