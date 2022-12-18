@@ -24,7 +24,7 @@ namespace melon {
 namespace concepts {
 template <typename T>
 concept strong_fiber_trait = semiring<typename T::semiring> &&
-    updatable_priority_queue<typename T::heap> && requires() {
+    updatable_priority_queue<typename T::heap<>> && requires() {
     { T::store_distances } -> std::convertible_to<bool>;
     { T::store_paths } -> std::convertible_to<bool>;
 };
@@ -34,30 +34,9 @@ concept strong_fiber_trait = semiring<typename T::semiring> &&
 template <concepts::outward_incidence_graph G, typename T>
 struct strong_fiber_default_traits {
     using semiring = shortest_path_semiring<T>;
-
-    struct entry_cmp {
-        std::reference_wrapper<const vertex_map_t<G, bool>> _strong_map;
-
-        [[nodiscard]] constexpr explicit entry_cmp(
-            const vertex_map_t<G, bool> & strong_map)
-            : _strong_map(strong_map) {}
-
-        constexpr bool operator()(const auto & e1,
-                                  const auto & e2) const noexcept {
-            if(e1.second == e2.second) {
-                if constexpr(strictly_strong)
-                    return !_strong_map.get()[e1.first] &&
-                           _strong_map.get()[e2.first];
-                else
-                    return _strong_map.get()[e1.first] &&
-                           !_strong_map.get()[e2.first];
-            }
-            return semiring::less(e1.second, e2.second);
-        }
-    };
-
+    template <typename CMP = std::less<std::pair<vertex_t<G>, T>>>
     using heap =
-        d_ary_heap<2, vertex_t<G>, T, entry_cmp, vertex_map_t<G, std::size_t>>;
+        d_ary_heap<2, vertex_t<G>, T, CMP, vertex_map_t<G, std::size_t>>;
 
     static constexpr bool strictly_strong = false;
     static constexpr bool store_distances = false;
@@ -79,14 +58,34 @@ public:
 
 private:
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
-
     using vertex_status_map = vertex_map_t<G, vertex_status>;
     using vertex_strong_map = vertex_map_t<G, bool>;
-    using heap = traits::heap;
+
+    struct entry_cmp {
+        std::reference_wrapper<const vertex_map_t<G, bool>> _strong_map;
+
+        [[nodiscard]] constexpr explicit entry_cmp(
+            const vertex_map_t<G, bool> & strong_map)
+            : _strong_map(strong_map) {}
+
+        constexpr bool operator()(const auto & e1,
+                                  const auto & e2) const noexcept {
+            if(e1.second == e2.second) {
+                if constexpr(traits::strictly_strong)
+                    return !_strong_map.get()[e1.first] &&
+                           _strong_map.get()[e2.first];
+                else
+                    return _strong_map.get()[e1.first] &&
+                           !_strong_map.get()[e2.first];
+            }
+            return traits::semiring::less(e1.second, e2.second);
+        }
+    };
+    using heap = typename traits::heap<entry_cmp>;
 
     std::reference_wrapper<const G> _graph;
-    std::reference_wrapper<const L1> _reduced_length_map;
-    std::reference_wrapper<const L2> _length_map;
+    std::reference_wrapper<const L1> _lower_length_map;
+    std::reference_wrapper<const L2> _upper_length_map;
 
     vertex_status_map _vertex_status_map;
     vertex_strong_map _vertex_strong_map;
@@ -96,12 +95,12 @@ private:
 public:
     strong_fiber(const G & g, const L1 & l1, const L2 & l2)
         : _graph(g)
-        , _reduced_length_map(l1)
-        , _length_map(l2)
+        , _lower_length_map(l1)
+        , _upper_length_map(l2)
         , _vertex_status_map(create_vertex_map<vertex_status>(g, PRE_HEAP))
         , _vertex_strong_map(create_vertex_map<bool>(g))
         , _heap(create_vertex_map<std::size_t>(g),
-                typename traits::entry_cmp(_vertex_strong_map))
+                entry_cmp(_vertex_strong_map))
         , _nb_strong_candidates(0) {}
 
     strong_fiber & reset() noexcept {
@@ -159,7 +158,7 @@ public:
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t new_dist =
-                traits::semiring::plus(dist, _length_map.get()[uw]);
+                traits::semiring::plus(dist, _upper_length_map.get()[uw]);
             const value_t old_dist = _heap.priority(w);
             if(traits::semiring::less(new_dist, old_dist)) {
                 if(!_vertex_strong_map[w]) {
@@ -169,7 +168,8 @@ public:
                 _heap.promote(w, new_dist);
             }
         } else if(w_status == PRE_HEAP) {
-            _heap.push(w, traits::semiring::plus(dist, _length_map.get()[uw]));
+            _heap.push(
+                w, traits::semiring::plus(dist, _upper_length_map.get()[uw]));
             _vertex_status_map[w] = IN_HEAP;
             _vertex_strong_map[w] = true;
             ++_nb_strong_candidates;
@@ -182,7 +182,7 @@ public:
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t new_dist =
-                traits::semiring::plus(dist, _reduced_length_map.get()[uw]);
+                traits::semiring::plus(dist, _lower_length_map.get()[uw]);
             const value_t old_dist = _heap.priority(w);
             if(traits::semiring::less(new_dist, old_dist)) {
                 if(_vertex_strong_map[w]) {
@@ -193,7 +193,7 @@ public:
             }
         } else if(w_status == PRE_HEAP) {
             _heap.push(
-                w, traits::semiring::plus(dist, _reduced_length_map.get()[uw]));
+                w, traits::semiring::plus(dist, _lower_length_map.get()[uw]));
             _vertex_status_map[w] = IN_HEAP;
             _vertex_strong_map[w] = false;
         }
@@ -216,15 +216,14 @@ public:
             prefetch_range(out_arcs_range);
             prefetch_mapped_values(out_arcs_range, targets_map(_graph.get()));
             if(_vertex_strong_map[t]) {
-                prefetch_mapped_values(out_arcs_range, _length_map.get());
+                prefetch_mapped_values(out_arcs_range, _upper_length_map.get());
                 _heap.pop();
                 --_nb_strong_candidates;
                 for(const arc & a : out_arcs_range) {
                     process_strong_vertex_out_arc(t, t_dist, a);
                 }
             } else {
-                prefetch_mapped_values(out_arcs_range,
-                                       _reduced_length_map.get());
+                prefetch_mapped_values(out_arcs_range, _lower_length_map.get());
                 _heap.pop();
                 for(const arc a : out_arcs_range) {
                     process_weak_vertex_out_arc(t, t_dist, a);
