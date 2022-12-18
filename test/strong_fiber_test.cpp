@@ -38,16 +38,15 @@ GTEST_TEST(strong_fiber, test) {
 
     auto [graph, reduced_length_map, length_map] = builder.build();
 
-    std::vector<vertex_t<static_digraph>> strong_nodes;
-    std::vector<vertex_t<static_digraph>> weak_nodes;
-
     strong_fiber algo(
-        graph, reduced_length_map, length_map,
-        [&strong_nodes](auto && v) { strong_nodes.push_back(v); },
-        [&weak_nodes](auto && v) { weak_nodes.push_back(v); });
+        graph, reduced_length_map, length_map);
 
-    algo.add_strong_arc_source(1).run();
+    algo.add_strong_arc_source(1);
 
-    ASSERT_TRUE(EQ_RANGES(strong_nodes, {6, 5, 4}));
-    ASSERT_TRUE(EQ_RANGES(weak_nodes, {0, 1, 7, 2, 3}));
+    std::vector<vertex_t<static_digraph>> strong_nodes;
+    for(const auto & [u, u_dist] : algo) {
+        strong_nodes.push_back(u);
+    }
+
+    ASSERT_TRUE(EQ_MULTISETS(strong_nodes, {6, 5, 4}));
 }

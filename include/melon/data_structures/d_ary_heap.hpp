@@ -14,7 +14,7 @@ namespace fhamonic {
 namespace melon {
 
 template <int D, typename K, typename P,
-          typename C = decltype(
+          std::strict_weak_order<std::pair<K, P>, std::pair<K, P>> C = decltype(
               [](const std::pair<K, P> & e1, const std::pair<K, P> & e2) {
                   return e1.second > e2.second;
               }),
