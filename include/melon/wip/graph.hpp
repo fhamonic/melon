@@ -221,7 +221,7 @@ inline constexpr auto __join_incidence
 
 template <typename _Tp, typename _Incidence>
 concept __can_join_incidence = requires(_Tp & __t) {
-    __join_incidence(__t, _Incidence{});
+    { __join_incidence(__t, _Incidence{}) } -> std::ranges::input_range;
 };
 
 template <typename _Tp>
@@ -303,12 +303,12 @@ using arc_t = std::ranges::range_value_t<arcs_range_t<_Tp>>;
 namespace __cust_access {
 template <typename _Tp>
 concept __member_nb_arcs = requires(_Tp & __t) {
-    { __t.nb_arcs() } -> std::ranges::input_range;
+    { __t.nb_arcs() } -> std::integral;
 };
 
 template <typename _Tp>
 concept __adl_nb_arcs = requires(_Tp & __t) {
-    { nb_arcs(__t) } -> std::ranges::input_range;
+    { nb_arcs(__t) } -> std::integral;
 };
 
 struct _NbArcs {
@@ -346,7 +346,7 @@ inline constexpr __cust_access::_NbArcs nb_arcs{};
 namespace __cust_access {
 template <typename _Tp>
 concept __member_arc_source = requires(_Tp & __t, arc_t<_Tp> & __a) {
-    { __t.arc_source(__a) } -> std::ranges::input_range;
+    { __t.arc_source(__a) } -> std::convertible_to<vertex_t<_Tp>>;
 };
 
 template <typename _Tp>
@@ -381,7 +381,7 @@ public:
 
 template <typename _Tp>
 concept __member_arc_target = requires(_Tp & __t, arc_t<_Tp> & __a) {
-    { __t.arc_target(__a) } -> std::ranges::input_range;
+    { __t.arc_target(__a) } -> std::convertible_to<vertex_t<_Tp>>;
 };
 
 template <typename _Tp>
@@ -520,6 +520,10 @@ inline constexpr __cust_access::_ArcsEntries arcs_entries{};
 
 namespace __cust_access {
 template <typename _Tp, typename _Incidence, typename _EndPoint>
+requires requires(_Tp && __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    { _Incidence{}(__t, __v) } -> std::ranges::viewable_range;
+    _EndPoint{}(__t, __a);
+}
 inline constexpr auto __list_incidence_endpoints
     [[nodiscard]] (_Tp && __t, const vertex_t<_Tp> & __v,
                    _Incidence && __incidence, _EndPoint && __end_point) {
@@ -531,17 +535,25 @@ inline constexpr auto __list_incidence_endpoints
 template <typename _Tp, typename _Incidence, typename _EndPoint>
 concept __can_list_incidence_endpoints = requires(_Tp & __t,
                                                   vertex_t<_Tp> & __v) {
-    __list_incidence_endpoints(__t, __v, _Incidence{}, _EndPoint{});
+    {
+        __list_incidence_endpoints(__t, __v, _Incidence{}, _EndPoint{})
+        } -> std::ranges::input_range;
 };
 
 template <typename _Tp>
 concept __member_out_neighbors = requires(_Tp & __t, vertex_t<_Tp> & __v) {
     { __t.out_neighbors(__v) } -> std::ranges::input_range;
+    {
+        *std::ranges::begin(__t.out_neighbors(__v))
+        } -> std::convertible_to<vertex_t<_Tp>>;
 };
 
 template <typename _Tp>
 concept __adl_out_neighbors = requires(_Tp & __t, vertex_t<_Tp> & __v) {
     { out_neighbors(__t, __v) } -> std::ranges::input_range;
+    {
+        *std::ranges::begin(out_neighbors(__t, __v))
+        } -> std::convertible_to<vertex_t<_Tp>>;
 };
 
 struct _OutNeighbors {
@@ -578,13 +590,19 @@ public:
 };
 
 template <typename _Tp>
-concept __member_in_neighbors = requires(_Tp & __t, vertex_t<_Tp> v) {
-    { __t.in_neighbors(v) } -> std::ranges::input_range;
+concept __member_in_neighbors = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { __t.in_neighbors(__v) } -> std::ranges::input_range;
+    {
+        *std::ranges::begin(__t.in_neighbors(__v))
+        } -> std::convertible_to<vertex_t<_Tp>>;
 };
 
 template <typename _Tp>
-concept __adl_in_neighbors = requires(_Tp & __t, vertex_t<_Tp> v) {
-    { in_neighbors(__t, v) } -> std::ranges::input_range;
+concept __adl_in_neighbors = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { in_neighbors(__t, __v) } -> std::ranges::input_range;
+    {
+        *std::ranges::begin(in_neighbors(__t, __v))
+        } -> std::convertible_to<vertex_t<_Tp>>;
 };
 
 struct _InNeighbors {
@@ -636,26 +654,41 @@ using in_neighbors_range_t = decltype(melon::in_neighbors(
 
 template <typename _Tp>
 concept graph = requires(_Tp & __t) {
-    { melon::vertices(__t) } -> std::ranges::input_range;
-    { melon::arcs(__t) } -> std::ranges::input_range;
+    melon::vertices(__t);
+    melon::arcs(__t);
 };
 
 template <typename _Tp>
 concept copyable_graph = graph<_Tp> && requires(_Tp & __t) {
-    { melon::arcs_entries(__t) } -> std::ranges::input_range;
+    melon::arcs_entries(__t);
 };
 
 template <typename _Tp>
 concept outward_incidence_graph = graph<_Tp> &&
     requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
-    { melon::out_arcs(__t, __v) } -> std::ranges::input_range;
-    { melon::arc_target(__t, __a) } -> std::convertible_to<vertex_t<_Tp>>;
-};
+    melon::out_arcs(__t, __v);
+    melon::arc_target(__t, __a);
+} && std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<_Tp>>,
+                         arc_t<_Tp>>;
+
+template <typename _Tp>
+concept inward_incidence_graph = graph<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    melon::in_arcs(__t, __v);
+    melon::arc_source(__t, __a);
+} && std::convertible_to<std::ranges::range_value_t<in_arcs_range_t<_Tp>>,
+                         arc_t<_Tp>>;
 
 template <typename _Tp>
 concept outward_adjacency_graph = graph<_Tp> &&
     requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
-    { melon::out_neighbors(__t, __v) } -> std::ranges::input_range;
+    melon::out_neighbors(__t, __v);
+};
+
+template <typename _Tp>
+concept inward_adjacency_graph = graph<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    melon::in_neighbors(__t, __v);
 };
 
 }  // namespace melon
