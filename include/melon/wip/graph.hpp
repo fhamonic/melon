@@ -221,7 +221,7 @@ inline constexpr auto __join_incidence
 
 template <typename _Tp, typename _Incidence>
 concept __can_join_incidence = requires(_Tp & __t) {
-    { __join_incidence(__t, _Incidence{}) } -> std::ranges::input_range;
+    __join_incidence(__t, _Incidence{});
 };
 
 template <typename _Tp>
@@ -432,6 +432,66 @@ concept __adl_arcs_entries = requires(_Tp & __t) {
 };
 
 template <typename _Tp>
+requires requires(_Tp && __t, arc_t<_Tp> & __a) {
+    { _Arcs{}(__t) } -> std::ranges::viewable_range;
+    _ArcSource{}(__t, __a);
+    _ArcTarget{}(__t, __a);
+}
+inline constexpr auto __list_arcs_entries [[nodiscard]] (_Tp && __t) {
+    return std::views::transform(melon::arcs(__t), [&](const arc_t<_Tp> & a) {
+        return std::make_pair(
+            a, std::make_pair(_ArcSource{}(__t, a), _ArcTarget{}(__t, a)));
+    });
+}
+
+template <typename _Tp>
+concept __can_list_arcs_entries = requires(_Tp & __t) {
+    __list_arcs_entries(__t);
+};
+
+template <typename _Tp>
+requires requires(_Tp && __t, arc_t<_Tp> & __a) {
+    { _OutArcs{}(__t) } -> std::ranges::viewable_range;
+    _ArcTarget{}(__t, __a);
+}
+inline constexpr auto __join_out_arcs_entries [[nodiscard]] (_Tp && __t) {
+    return std::views::join(std::views::transform(
+        melon::vertices(__t), [&__t](const vertex_t<_Tp> & s) {
+            return std::views::transform(
+                melon::out_arcs(__t, s), [&__t, s](const arc_t<_Tp> & a) {
+                    return std::make_pair(
+                        a, std::make_pair(s, melon::arc_target(__t, a)));
+                });
+        }));
+}
+
+template <typename _Tp>
+concept __can_join_out_incidence_entries = requires(_Tp & __t) {
+    __join_out_arcs_entries(__t);
+};
+
+template <typename _Tp>
+requires requires(_Tp && __t, arc_t<_Tp> & __a) {
+    { _InArcs{}(__t) } -> std::ranges::viewable_range;
+    _ArcSource{}(__t, __a);
+}
+inline constexpr auto __join_in_arcs_entries [[nodiscard]] (_Tp && __t) {
+    return std::views::join(std::views::transform(
+        melon::vertices(__t), [&__t](const vertex_t<_Tp> & t) {
+            return std::views::transform(
+                melon::out_arcs(__t, t), [&__t, t](const arc_t<_Tp> & a) {
+                    return std::make_pair(
+                        a, std::make_pair(melon::arc_source(__t, a), t));
+                });
+        }));
+}
+
+template <typename _Tp>
+concept __can_join_in_arcs_entries = requires(_Tp & __t) {
+    __join_in_arcs_entries(__t);
+};
+
+template <typename _Tp>
 inline constexpr int __arcs_entries_range_rank() {
     if constexpr(__detail::__specialization_of<_Tp, std::ranges::iota_view>)
         return 3;
@@ -464,51 +524,13 @@ public:
             return __t.arcs_entries();
         else if constexpr(__adl_arcs_entries<_Tp>)
             return arcs_entries(__t);
-        // else if constexpr(concepts::has_out_arcs<G> &&
-        //                   concepts::has_arc_target<G> &&
-        //                   std::ranges::viewable_range<out_arcs_range_t<G>>) {
-        //     return std::views::join(std::views::transform(
-        //         melon::vertices(__t), [&__t](const vertex_t<_Tp> & s) {
-        //             return std::views::transform(
-        //                 melon::out_arcs(__t, s), [&__t, s](const arc_t<G> &
-        //                 a) {
-        //                     return std::make_pair(
-        //                         a,
-        //                         std::make_pair(s, melon::arc_target(__t,
-        //                         a)));
-        //                 });
-        //         }));
-        // } else if constexpr(concepts::has_in_arcs<G> &&
-        //                     concepts::has_arc_source<G> &&
-        //                     std::ranges::viewable_range<in_arcs_range_t<G>>)
-        //                     {
-        //     return std::views::join(std::views::transform(
-        //         melon::vertices(__t), [&__t](const vertex_t<G> & t) {
-        //             return std::views::transform(
-        //                 melon::in_arcs(__t, t),
-        //                 [&__t, t](const arc_t<G> & a)
-        //                     -> std::pair<arc_t<G>,
-        //                                  std::pair<vertex_t<G>, vertex_t<G>>>
-        //                                  {
-        //                     return std::make_pair(
-        //                         a,
-        //                         std::make_pair(melon::arc_source(__t, a),
-        //                         t));
-        //                 });
-        //         }));
-        // } else if constexpr(concepts::has_arcs<G> &&
-        //                     concepts::has_arc_source<G> &&
-        //                     concepts::has_arc_target<G> &&
-        //                     std::ranges::viewable_range<arcs_range_t<G>>) {
-        //     return std::views::transform(
-        //         _Arcs{}(__t),
-        //         [&__t](const arc_t<G> & a)
-        //             -> std::pair<arc_t<G>,
-        //                          std::pair<vertex_t<G>, vertex_t<G>>> {
-        //             return std::make_pair(
-        //                 a, std::make_pair(melon::arc_source(__t, a),
-        //                                   melon::arc_target(__t, a)));
-        //         });
+        // else if constexpr(__can_list_arcs_entries<_Tp> &&
+        //                   !__can_join_arcs_entries<_Tp>)
+        //     return __list_arcs_entries(__t);
+        // else if constexpr(__can_join_arcs_entries<_Tp> &&
+        //                   !__can_list_arcs_entries<_Tp>)
+        //     return __join_arcs_entries(__t);
+        // else {
         // }
     }
 };
@@ -535,9 +557,7 @@ inline constexpr auto __list_incidence_endpoints
 template <typename _Tp, typename _Incidence, typename _EndPoint>
 concept __can_list_incidence_endpoints = requires(_Tp & __t,
                                                   vertex_t<_Tp> & __v) {
-    {
-        __list_incidence_endpoints(__t, __v, _Incidence{}, _EndPoint{})
-        } -> std::ranges::input_range;
+    __list_incidence_endpoints(__t, __v, _Incidence{}, _EndPoint{});
 };
 
 template <typename _Tp>
@@ -681,13 +701,13 @@ concept inward_incidence_graph = graph<_Tp> &&
 
 template <typename _Tp>
 concept outward_adjacency_graph = graph<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
     melon::out_neighbors(__t, __v);
 };
 
 template <typename _Tp>
 concept inward_adjacency_graph = graph<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
     melon::in_neighbors(__t, __v);
 };
 
