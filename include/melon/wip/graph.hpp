@@ -9,11 +9,6 @@ namespace fhamonic {
 namespace melon {
 
 namespace __detail {
-template <int N>
-struct __priority_tag : __priority_tag<N - 1> {};
-template <>
-struct __priority_tag<0> {};
-
 template <typename _Tp, template <typename...> typename _Primary>
 struct __is_specialization_of : std::false_type {};
 
@@ -450,8 +445,8 @@ concept __can_list_arcs_entries = requires(_Tp & __t) {
 };
 
 template <typename _Tp>
-requires requires(_Tp && __t, arc_t<_Tp> & __a) {
-    { _OutArcs{}(__t) } -> std::ranges::viewable_range;
+requires requires(_Tp && __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    { _OutArcs{}(__t, __v) } -> std::ranges::viewable_range;
     _ArcTarget{}(__t, __a);
 }
 inline constexpr auto __join_out_arcs_entries [[nodiscard]] (_Tp && __t) {
@@ -466,13 +461,13 @@ inline constexpr auto __join_out_arcs_entries [[nodiscard]] (_Tp && __t) {
 }
 
 template <typename _Tp>
-concept __can_join_out_incidence_entries = requires(_Tp & __t) {
+concept __can_join_out_arcs_entries = requires(_Tp & __t) {
     __join_out_arcs_entries(__t);
 };
 
 template <typename _Tp>
-requires requires(_Tp && __t, arc_t<_Tp> & __a) {
-    { _InArcs{}(__t) } -> std::ranges::viewable_range;
+requires requires(_Tp && __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+    { _InArcs{}(__t, __v) } -> std::ranges::viewable_range;
     _ArcSource{}(__t, __a);
 }
 inline constexpr auto __join_in_arcs_entries [[nodiscard]] (_Tp && __t) {
@@ -517,21 +512,46 @@ private:
 
 public:
     template <typename _Tp>
-    requires __member_arcs_entries<_Tp> || __adl_arcs_entries<_Tp>
+    requires __member_arcs_entries<_Tp> || __adl_arcs_entries<_Tp> ||
+        __can_list_arcs_entries<_Tp> || __can_join_out_arcs_entries<_Tp> ||
+        __can_join_in_arcs_entries<_Tp>
     constexpr auto operator() [[nodiscard]] (_Tp && __t) const
         noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_arcs_entries<_Tp>)
             return __t.arcs_entries();
         else if constexpr(__adl_arcs_entries<_Tp>)
             return arcs_entries(__t);
-        // else if constexpr(__can_list_arcs_entries<_Tp> &&
-        //                   !__can_join_arcs_entries<_Tp>)
-        //     return __list_arcs_entries(__t);
-        // else if constexpr(__can_join_arcs_entries<_Tp> &&
-        //                   !__can_list_arcs_entries<_Tp>)
-        //     return __join_arcs_entries(__t);
-        // else {
-        // }
+        else if constexpr(__can_list_arcs_entries<_Tp>) {
+            if constexpr(!__can_join_out_arcs_entries<_Tp> &&
+                         !__can_join_in_arcs_entries<_Tp>)
+                return __list_arcs_entries(__t);
+            else if constexpr(__can_join_out_arcs_entries<_Tp> &&
+                              !__can_join_in_arcs_entries<_Tp>) {
+                if(__arcs_entries_range_rank<arcs_range_t<_Tp>>() >
+                   __arcs_entries_range_rank<out_arcs_range_t<_Tp>>())
+                    return __list_arcs_entries(__t);
+                else
+                    return __join_out_arcs_entries(__t);
+            } else {
+                if(__arcs_entries_range_rank<arcs_range_t<_Tp>>() >
+                   __arcs_entries_range_rank<in_arcs_range_t<_Tp>>())
+                    return __list_arcs_entries(__t);
+                else
+                    return __join_in_arcs_entries(__t);
+            }
+        } else {
+            if constexpr(!__can_join_in_arcs_entries<_Tp>)
+                return __join_out_arcs_entries(__t);
+            else if constexpr(!__can_join_out_arcs_entries<_Tp>)
+                return __join_in_arcs_entries(__t);
+            else {
+                if(__arcs_entries_range_rank<out_arcs_range_t<_Tp>>() >
+                   __arcs_entries_range_rank<in_arcs_range_t<_Tp>>())
+                    return __join_out_arcs_entries(__t);
+                else
+                    return __join_in_arcs_entries(__t);
+            }
+        }
     }
 };
 }  // namespace __cust_access
@@ -672,6 +692,95 @@ template <typename _Tp>
 using in_neighbors_range_t = decltype(melon::in_neighbors(
     std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
 
+namespace __cust_access {
+template <typename _Tp, typename _ValueType>
+concept __member_create_vertex_map = requires(_Tp & __t) {
+    {__t.template create_vertex_map<_ValueType>()};
+    //-> output_map<vertex_t<_Tp>, _ValueType>
+};
+
+template <typename _Tp, typename _ValueType>
+concept __adl_create_vertex_map = requires(_Tp & __t) {
+    {create_vertex_map<_ValueType>(__t)};
+};
+
+struct _CreateVertexMap {
+private:
+    template <typename _ValueType, typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
+            return noexcept(
+                std::declval<_Tp &>().template create_vertex_map<_ValueType>());
+        else
+            return noexcept(
+                create_vertex_map<_ValueType>(std::declval<_Tp &>()));
+    }
+
+public:
+    template <typename _ValueType, typename _Tp>
+    requires __member_create_vertex_map<_Tp, _ValueType> ||
+        __adl_create_vertex_map<_Tp, _ValueType>
+    constexpr auto operator() [[nodiscard]] (_Tp && __t) const
+        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
+        if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
+            return __t.template create_vertex_map<_ValueType>();
+        else
+            return create_vertex_map<_ValueType>(__t);
+    }
+};
+
+template <typename _Tp, typename _ValueType>
+concept __member_create_arc_map = requires(_Tp & __t) {
+    {__t.template create_arc_map<_ValueType>()};
+    //-> output_map<arc_t<_Tp>, _ValueType>
+};
+
+template <typename _Tp, typename _ValueType>
+concept __adl_create_arc_map = requires(_Tp & __t) {
+    {create_arc_map<_ValueType>(__t)};
+};
+
+struct _CreateArcMap {
+private:
+    template <typename _ValueType, typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_create_arc_map<_Tp, _ValueType>)
+            return noexcept(
+                std::declval<_Tp &>().template create_arc_map<_ValueType>());
+        else
+            return noexcept(create_arc_map<_ValueType>(std::declval<_Tp &>()));
+    }
+
+public:
+    template <typename _ValueType, typename _Tp>
+    requires __member_create_arc_map<_Tp, _ValueType> ||
+        __adl_create_arc_map<_Tp, _ValueType>
+    constexpr auto operator() [[nodiscard]] (_Tp && __t) const
+        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
+        if constexpr(__member_create_arc_map<_Tp, _ValueType>)
+            return __t.template create_arc_map<_ValueType>();
+        else
+            return create_arc_map<_ValueType>(__t);
+    }
+};
+}  // namespace __cust_access
+
+inline namespace __cust {
+template <typename _ValueType, typename _Tp>
+inline constexpr auto create_vertex_map(_Tp && __t) noexcept(
+    noexcept(__cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
+        std::declval<_Tp &>()))) {
+    return __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
+        __t);
+}
+template <typename _ValueType, typename _Tp>
+inline constexpr auto create_arc_map(_Tp && __t) noexcept(
+    noexcept(__cust_access::_CreateArcMap{}.template operator()<_ValueType>(
+        std::declval<_Tp &>()))) {
+    return __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
+}
+}  // namespace __cust
+
 template <typename _Tp>
 concept graph = requires(_Tp & __t) {
     melon::vertices(__t);
@@ -684,18 +793,27 @@ concept copyable_graph = graph<_Tp> && requires(_Tp & __t) {
 };
 
 template <typename _Tp>
-concept outward_incidence_graph = graph<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
-    melon::out_arcs(__t, __v);
+concept has_targeted_arcs = graph<_Tp> &&
+    requires(_Tp & __t, arc_t<_Tp> & __a) {
     melon::arc_target(__t, __a);
+};
+
+template <typename _Tp>
+concept has_sourced_arcs = graph<_Tp> && requires(_Tp & __t, arc_t<_Tp> & __a) {
+    melon::arc_source(__t, __a);
+};
+
+template <typename _Tp>
+concept outward_incidence_graph = graph<_Tp> && has_targeted_arcs<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::out_arcs(__t, __v);
 } && std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<_Tp>>,
                          arc_t<_Tp>>;
 
 template <typename _Tp>
-concept inward_incidence_graph = graph<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v, arc_t<_Tp> & __a) {
+concept inward_incidence_graph = graph<_Tp> && has_sourced_arcs<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
     melon::in_arcs(__t, __v);
-    melon::arc_source(__t, __a);
 } && std::convertible_to<std::ranges::range_value_t<in_arcs_range_t<_Tp>>,
                          arc_t<_Tp>>;
 
@@ -709,6 +827,16 @@ template <typename _Tp>
 concept inward_adjacency_graph = graph<_Tp> &&
     requires(_Tp & __t, vertex_t<_Tp> & __v) {
     melon::in_neighbors(__t, __v);
+};
+
+template <typename _Tp, typename _ValueType = std::size_t>
+concept has_vertex_map = graph<_Tp> && requires(_Tp & __t) {
+    melon::create_vertex_map<_ValueType>(__t);
+};
+
+template <typename _Tp, typename _ValueType = std::size_t>
+concept has_arc_map = graph<_Tp> && requires(_Tp & __t) {
+    melon::create_arc_map<_ValueType>(__t);
 };
 
 }  // namespace melon
