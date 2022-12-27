@@ -228,12 +228,12 @@ concept has_arc_removal = graph<G> && requires(G g, arc_t<G> a) {
 };
 
 template <typename G>
-concept has_arc_change_source = graph<G> &&
+concept has_change_arc_source = graph<G> &&
     requires(G g, arc_t<G> a, vertex_t<G> s) {
     change_arc_source(g, a, s);
 };
 template <typename G>
-concept has_arc_change_target = graph<G> &&
+concept has_change_arc_target = graph<G> &&
     requires(G g, arc_t<G> a, vertex_t<G> t) {
     change_arc_target(g, a, t);
 };

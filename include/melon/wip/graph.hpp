@@ -43,7 +43,7 @@ private:
 public:
     template <typename _Tp>
     requires __member_vertices<_Tp> || __adl_vertices<_Tp>
-    constexpr auto operator() [[nodiscard]] (_Tp && __t) const
+    constexpr decltype(auto) operator() [[nodiscard]] (_Tp && __t) const
         noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_vertices<_Tp>)
             return __t.vertices();
@@ -294,6 +294,95 @@ using arcs_range_t = decltype(melon::arcs(std::declval<_Tp &>()));
 
 template <typename _Tp>
 using arc_t = std::ranges::range_value_t<arcs_range_t<_Tp>>;
+
+namespace __cust_access {
+template <typename _Tp>
+concept __member_out_degree = requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    { __t.out_degree(__v) } -> std::integral;
+};
+
+template <typename _Tp>
+concept __adl_out_degree = requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    { out_degree(__t, __v) } -> std::integral;
+};
+
+struct _OutDegree {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_out_degree<_Tp>)
+            return noexcept(std::declval<_Tp &>().out_degree(
+                std::declval<vertex_t<_Tp> &>()));
+        else if constexpr(__adl_out_degree<_Tp>)
+            return noexcept(out_degree(std::declval<_Tp &>(),
+                                       std::declval<vertex_t<_Tp> &>()));
+        else
+            return noexcept(std::ranges::size(melon::out_arcs(
+                std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>())));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_out_degree<_Tp> || __adl_out_degree<_Tp> ||
+        std::ranges::sized_range<out_arcs_range_t<_Tp>>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const vertex_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_out_degree<_Tp>)
+            return __t.out_degree(__v);
+        else if constexpr(__adl_out_degree<_Tp>)
+            return out_degree(__t, __v);
+        else
+            return std::ranges::size(melon::out_arcs(__t, __v));
+    }
+};
+
+template <typename _Tp>
+concept __member_in_degree = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { __t.in_degree(__v) } -> std::integral;
+};
+
+template <typename _Tp>
+concept __adl_in_degree = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { in_degree(__t, __v) } -> std::integral;
+};
+
+struct _InDegree {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_in_degree<_Tp>)
+            return noexcept(std::declval<_Tp &>().in_degree(
+                std::declval<vertex_t<_Tp> &>()));
+        else if constexpr(__adl_in_degree<_Tp>)
+            return noexcept(in_degree(std::declval<_Tp &>(),
+                                      std::declval<vertex_t<_Tp> &>()));
+        else
+            return noexcept(std::ranges::size(melon::in_arcs(
+                std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>())));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_in_degree<_Tp> || __adl_in_degree<_Tp> ||
+        std::ranges::sized_range<in_arcs_range_t<_Tp>>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const vertex_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_in_degree<_Tp>)
+            return __t.in_degree(__v);
+        else if constexpr(__adl_in_degree<_Tp>)
+            return in_degree(__t, __v);
+        else
+            return std::ranges::size(melon::out_arcs(__t, __v));
+    }
+};
+}  // namespace __cust_access
+
+inline namespace __cust {
+inline constexpr __cust_access::_OutDegree out_degree{};
+inline constexpr __cust_access::_InDegree in_degree{};
+}  // namespace __cust
 
 namespace __cust_access {
 template <typename _Tp>
@@ -692,6 +781,404 @@ template <typename _Tp>
 using in_neighbors_range_t = decltype(melon::in_neighbors(
     std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
 
+template <typename _Tp>
+concept graph = requires(_Tp & __t) {
+    melon::vertices(__t);
+    melon::arcs(__t);
+};
+
+template <typename _Tp>
+concept copyable_graph = graph<_Tp> && requires(_Tp & __t) {
+    melon::arcs_entries(__t);
+};
+
+template <typename _Tp>
+concept has_nb_vertices = graph<_Tp> && requires(_Tp & __t) {
+    melon::nb_vertices(__t);
+};
+
+template <typename _Tp>
+concept has_nb_arcs = graph<_Tp> && requires(_Tp & __t) {
+    melon::nb_arcs(__t);
+};
+
+template <typename _Tp>
+concept has_arc_target = graph<_Tp> && requires(_Tp & __t, arc_t<_Tp> & __a) {
+    melon::arc_target(__t, __a);
+};
+
+template <typename _Tp>
+concept has_arc_source = graph<_Tp> && requires(_Tp & __t, arc_t<_Tp> & __a) {
+    melon::arc_source(__t, __a);
+};
+
+template <typename _Tp>
+concept has_out_arcs = graph<_Tp> && requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::out_arcs(__t, __v);
+} && std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<_Tp>>,
+                         arc_t<_Tp>>;
+
+template <typename _Tp>
+concept has_in_arcs = graph<_Tp> && requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::in_arcs(__t, __v);
+} && std::convertible_to<std::ranges::range_value_t<in_arcs_range_t<_Tp>>,
+                         arc_t<_Tp>>;
+
+template <typename _Tp>
+concept has_out_degree = graph<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::out_degree(__t, __v);
+};
+
+template <typename _Tp>
+concept has_in_degree = graph<_Tp> && requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::in_degree(__t, __v);
+};
+
+template <typename _Tp>
+concept outward_incidence_graph =
+    graph<_Tp> && has_out_arcs<_Tp> && has_arc_target<_Tp>;
+
+template <typename _Tp>
+concept inward_incidence_graph =
+    graph<_Tp> && has_in_arcs<_Tp> && has_arc_source<_Tp>;
+
+template <typename _Tp>
+concept outward_adjacency_graph = graph<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::out_neighbors(__t, __v);
+};
+
+template <typename _Tp>
+concept inward_adjacency_graph = graph<_Tp> &&
+    requires(_Tp & __t, vertex_t<_Tp> & __v) {
+    melon::in_neighbors(__t, __v);
+};
+
+namespace __cust_access {
+template <typename _Tp>
+concept __member_create_vertex = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { __t.create_vertex(__v) } -> std::convertible_to<vertex_t<_Tp>>;
+};
+
+template <typename _Tp>
+concept __adl_create_vertex = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { create_vertex(__t, __v) } -> std::convertible_to<vertex_t<_Tp>>;
+};
+
+struct _CreateVertex {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_create_vertex<_Tp>)
+            return noexcept(std::declval<_Tp &>().create_vertex(
+                std::declval<vertex_t<_Tp> &>()));
+        else
+            return noexcept(create_vertex(std::declval<_Tp &>(),
+                                          std::declval<vertex_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_create_vertex<_Tp> || __adl_create_vertex<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const vertex_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_create_vertex<_Tp>)
+            return __t.create_vertex(__v);
+        else
+            return create_vertex(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_remove_vertex = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    __t.remove_vertex(__v);
+};
+
+template <typename _Tp>
+concept __adl_remove_vertex = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    remove_vertex(__t, __v);
+};
+
+struct _RemoveVertex {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_remove_vertex<_Tp>)
+            return noexcept(std::declval<_Tp &>().remove_vertex(
+                std::declval<vertex_t<_Tp> &>()));
+        else
+            return noexcept(remove_vertex(std::declval<_Tp &>(),
+                                          std::declval<vertex_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_remove_vertex<_Tp> || __adl_remove_vertex<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const vertex_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_remove_vertex<_Tp>)
+            return __t.remove_vertex(__v);
+        else
+            return remove_vertex(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_is_valid_vertex = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { __t.is_valid_vertex(__v) } -> std::convertible_to<vertex_t<_Tp>>;
+};
+
+template <typename _Tp>
+concept __adl_is_valid_vertex = requires(_Tp & __t, vertex_t<_Tp> __v) {
+    { is_valid_vertex(__t, __v) } -> std::convertible_to<vertex_t<_Tp>>;
+};
+
+struct _IsValidVertex {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_is_valid_vertex<_Tp>)
+            return noexcept(std::declval<_Tp &>().is_valid_vertex(
+                std::declval<vertex_t<_Tp> &>()));
+        else
+            return noexcept(is_valid_vertex(std::declval<_Tp &>(),
+                                            std::declval<vertex_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_is_valid_vertex<_Tp> || __adl_is_valid_vertex<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const vertex_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_is_valid_vertex<_Tp>)
+            return __t.is_valid_vertex(__v);
+        else
+            return is_valid_vertex(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_create_arc = requires(_Tp & __t, arc_t<_Tp> __v) {
+    { __t.create_arc(__v) } -> std::convertible_to<arc_t<_Tp>>;
+};
+
+template <typename _Tp>
+concept __adl_create_arc = requires(_Tp & __t, arc_t<_Tp> __v) {
+    { create_arc(__t, __v) } -> std::convertible_to<arc_t<_Tp>>;
+};
+
+struct _CreateArc {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_create_arc<_Tp>)
+            return noexcept(
+                std::declval<_Tp &>().create_arc(std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(create_arc(std::declval<_Tp &>(),
+                                       std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_create_arc<_Tp> || __adl_create_arc<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const arc_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_create_arc<_Tp>)
+            return __t.create_arc(__v);
+        else
+            return create_arc(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_remove_arc = requires(_Tp & __t, arc_t<_Tp> __v) {
+    __t.remove_arc(__v);
+};
+
+template <typename _Tp>
+concept __adl_remove_arc = requires(_Tp & __t, arc_t<_Tp> __v) {
+    remove_arc(__t, __v);
+};
+
+struct _RemoveArc {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_remove_arc<_Tp>)
+            return noexcept(
+                std::declval<_Tp &>().remove_arc(std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(remove_arc(std::declval<_Tp &>(),
+                                       std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_remove_arc<_Tp> || __adl_remove_arc<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const arc_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_remove_arc<_Tp>)
+            return __t.remove_arc(__v);
+        else
+            return remove_arc(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_is_valid_arc = requires(_Tp & __t, arc_t<_Tp> __v) {
+    { __t.is_valid_arc(__v) } -> std::convertible_to<arc_t<_Tp>>;
+};
+
+template <typename _Tp>
+concept __adl_is_valid_arc = requires(_Tp & __t, arc_t<_Tp> __v) {
+    { is_valid_arc(__t, __v) } -> std::convertible_to<arc_t<_Tp>>;
+};
+
+struct _IsValidArc {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_is_valid_arc<_Tp>)
+            return noexcept(std::declval<_Tp &>().is_valid_arc(
+                std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(is_valid_arc(std::declval<_Tp &>(),
+                                         std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_is_valid_arc<_Tp> || __adl_is_valid_arc<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const arc_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_is_valid_arc<_Tp>)
+            return __t.is_valid_arc(__v);
+        else
+            return is_valid_arc(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_change_arc_source = requires(_Tp & __t, arc_t<_Tp> __v) {
+    __t.change_arc_source(__v);
+};
+
+template <typename _Tp>
+concept __adl_change_arc_source = requires(_Tp & __t, arc_t<_Tp> __v) {
+    change_arc_source(__t, __v);
+};
+
+struct _ChangeArcSource {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_change_arc_source<_Tp>)
+            return noexcept(std::declval<_Tp &>().change_arc_source(
+                std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(change_arc_source(std::declval<_Tp &>(),
+                                              std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_change_arc_source<_Tp> || __adl_change_arc_source<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const arc_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_change_arc_source<_Tp>)
+            return __t.change_arc_source(__v);
+        else
+            return change_arc_source(__t, __v);
+    }
+};
+
+template <typename _Tp>
+concept __member_change_arc_target = requires(_Tp & __t, arc_t<_Tp> __v) {
+    __t.change_arc_target(__v);
+};
+
+template <typename _Tp>
+concept __adl_change_arc_target = requires(_Tp & __t, arc_t<_Tp> __v) {
+    change_arc_target(__t, __v);
+};
+
+struct _ChangeArcTarget {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_change_arc_target<_Tp>)
+            return noexcept(std::declval<_Tp &>().change_arc_target(
+                std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(change_arc_target(std::declval<_Tp &>(),
+                                              std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+    requires __member_change_arc_target<_Tp> || __adl_change_arc_target<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (_Tp && __t, const arc_t<_Tp> & __v) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_change_arc_target<_Tp>)
+            return __t.change_arc_target(__v);
+        else
+            return change_arc_target(__t, __v);
+    }
+};
+}  // namespace __cust_access
+
+inline namespace __cust {
+inline constexpr __cust_access::_CreateVertex create_vertex{};
+inline constexpr __cust_access::_RemoveVertex remove_vertex{};
+inline constexpr __cust_access::_IsValidVertex is_valid_vertex{};
+inline constexpr __cust_access::_CreateArc create_arc{};
+inline constexpr __cust_access::_RemoveArc remove_arc{};
+inline constexpr __cust_access::_IsValidArc is_valid_arc{};
+inline constexpr __cust_access::_ChangeArcTarget change_arc_target{};
+inline constexpr __cust_access::_ChangeArcSource change_arc_source{};
+}  // namespace __cust
+
+template <typename G>
+concept has_vertex_creation = graph<G> && requires(G g) {
+    { melon::create_vertex(g) } -> std::same_as<vertex_t<G>>;
+};
+template <typename G>
+concept has_vertex_removal = graph<G> && requires(G g, vertex_t<G> v) {
+    melon::remove_vertex(g, v);
+    { melon::is_valid_vertex(g, v) } -> std::convertible_to<bool>;
+};
+
+template <typename G>
+concept has_arc_creation = graph<G> && requires(G g, vertex_t<G> v) {
+    { melon::create_arc(g, v, v) } -> std::same_as<arc_t<G>>;
+};
+template <typename G>
+concept has_arc_removal = graph<G> && requires(G g, arc_t<G> a) {
+    remove_arc(g, a);
+    { melon::is_valid_arc(g, a) } -> std::convertible_to<bool>;
+};
+
+template <typename G>
+concept has_change_arc_source = graph<G> &&
+    requires(G g, arc_t<G> a, vertex_t<G> s) {
+    melon::change_arc_source(g, a, s);
+};
+template <typename G>
+concept has_change_arc_target = graph<G> &&
+    requires(G g, arc_t<G> a, vertex_t<G> t) {
+    melon::change_arc_target(g, a, t);
+};
+
 namespace __cust_access {
 template <typename _Tp, typename _ValueType>
 concept __member_create_vertex_map = requires(_Tp & __t) {
@@ -767,6 +1254,9 @@ public:
 
 inline namespace __cust {
 template <typename _ValueType, typename _Tp>
+requires requires(_Tp & __t) {
+    __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(__t);
+}
 inline constexpr auto create_vertex_map(_Tp && __t) noexcept(
     noexcept(__cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
         std::declval<_Tp &>()))) {
@@ -774,60 +1264,15 @@ inline constexpr auto create_vertex_map(_Tp && __t) noexcept(
         __t);
 }
 template <typename _ValueType, typename _Tp>
+requires requires(_Tp & __t) {
+    __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
+}
 inline constexpr auto create_arc_map(_Tp && __t) noexcept(
     noexcept(__cust_access::_CreateArcMap{}.template operator()<_ValueType>(
         std::declval<_Tp &>()))) {
     return __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
 }
 }  // namespace __cust
-
-template <typename _Tp>
-concept graph = requires(_Tp & __t) {
-    melon::vertices(__t);
-    melon::arcs(__t);
-};
-
-template <typename _Tp>
-concept copyable_graph = graph<_Tp> && requires(_Tp & __t) {
-    melon::arcs_entries(__t);
-};
-
-template <typename _Tp>
-concept has_targeted_arcs = graph<_Tp> &&
-    requires(_Tp & __t, arc_t<_Tp> & __a) {
-    melon::arc_target(__t, __a);
-};
-
-template <typename _Tp>
-concept has_sourced_arcs = graph<_Tp> && requires(_Tp & __t, arc_t<_Tp> & __a) {
-    melon::arc_source(__t, __a);
-};
-
-template <typename _Tp>
-concept outward_incidence_graph = graph<_Tp> && has_targeted_arcs<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v) {
-    melon::out_arcs(__t, __v);
-} && std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<_Tp>>,
-                         arc_t<_Tp>>;
-
-template <typename _Tp>
-concept inward_incidence_graph = graph<_Tp> && has_sourced_arcs<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v) {
-    melon::in_arcs(__t, __v);
-} && std::convertible_to<std::ranges::range_value_t<in_arcs_range_t<_Tp>>,
-                         arc_t<_Tp>>;
-
-template <typename _Tp>
-concept outward_adjacency_graph = graph<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v) {
-    melon::out_neighbors(__t, __v);
-};
-
-template <typename _Tp>
-concept inward_adjacency_graph = graph<_Tp> &&
-    requires(_Tp & __t, vertex_t<_Tp> & __v) {
-    melon::in_neighbors(__t, __v);
-};
 
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_vertex_map = graph<_Tp> && requires(_Tp & __t) {

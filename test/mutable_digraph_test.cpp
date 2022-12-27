@@ -18,8 +18,8 @@ static_assert(melon::concepts::has_vertex_creation<mutable_digraph>);
 static_assert(melon::concepts::has_vertex_removal<mutable_digraph>);
 static_assert(melon::concepts::has_arc_creation<mutable_digraph>);
 static_assert(melon::concepts::has_arc_removal<mutable_digraph>);
-static_assert(melon::concepts::has_arc_change_source<mutable_digraph>);
-static_assert(melon::concepts::has_arc_change_target<mutable_digraph>);
+static_assert(melon::concepts::has_change_arc_source<mutable_digraph>);
+static_assert(melon::concepts::has_change_arc_target<mutable_digraph>);
 
 using Graph = mutable_digraph;
 using arc_entries_list = std::initializer_list<
