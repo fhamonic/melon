@@ -13,8 +13,8 @@ static_assert(melon::concepts::outward_incidence_graph<dumb_digraph>);
 static_assert(melon::concepts::outward_adjacency_graph<dumb_digraph>);
 static_assert(melon::concepts::has_vertex_removal<dumb_digraph>);
 static_assert(melon::concepts::has_arc_removal<dumb_digraph>);
-static_assert(melon::concepts::has_arc_change_source<dumb_digraph>);
-static_assert(melon::concepts::has_arc_change_target<dumb_digraph>);
+static_assert(melon::concepts::has_change_arc_source<dumb_digraph>);
+static_assert(melon::concepts::has_change_arc_target<dumb_digraph>);
 
 using Graph = dumb_digraph;
 using arc_entries_list = std::initializer_list<
