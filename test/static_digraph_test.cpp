@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/static_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -8,13 +8,14 @@
 using namespace fhamonic;
 using namespace fhamonic::melon;
 
-static_assert(melon::concepts::graph<static_digraph>);
-static_assert(melon::concepts::outward_incidence_graph<static_digraph>);
-static_assert(melon::concepts::outward_adjacency_graph<static_digraph>);
-static_assert(melon::concepts::inward_incidence_graph<static_digraph>);
-static_assert(melon::concepts::inward_adjacency_graph<static_digraph>);
-static_assert(melon::concepts::has_vertex_map<static_digraph>);
-static_assert(melon::concepts::has_arc_map<static_digraph>);
+static_assert(melon::graph<static_digraph>);
+static_assert(melon::copyable_graph<static_digraph>);
+static_assert(melon::outward_incidence_graph<static_digraph>);
+static_assert(melon::outward_adjacency_graph<static_digraph>);
+static_assert(melon::inward_incidence_graph<static_digraph>);
+static_assert(melon::inward_adjacency_graph<static_digraph>);
+static_assert(melon::has_vertex_map<static_digraph>);
+static_assert(melon::has_arc_map<static_digraph>);
 
 GTEST_TEST(static_digraph, empty_constructor) {
     static_digraph graph;
@@ -28,9 +29,9 @@ GTEST_TEST(static_digraph, empty_constructor) {
     ASSERT_FALSE(is_valid_arc(graph,0));
 
     EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)target(graph,0), "");
+    EXPECT_DEATH((void)arc_target(graph,0), "");
     EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)source(graph,0), "");
+    EXPECT_DEATH((void)arc_source(graph,0), "");
 }
 
 GTEST_TEST(static_digraph, empty_vectors_constructor) {
@@ -48,9 +49,9 @@ GTEST_TEST(static_digraph, empty_vectors_constructor) {
     ASSERT_FALSE(is_valid_arc(graph,0));
 
     EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)target(graph,0), "");
+    EXPECT_DEATH((void)arc_target(graph,0), "");
     EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)source(graph,0), "");
+    EXPECT_DEATH((void)arc_source(graph,0), "");
 }
 
 GTEST_TEST(static_digraph, vectors_constructor_1) {
@@ -86,8 +87,8 @@ GTEST_TEST(static_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_MULTISETS(arcs_entries(graph), arc_pairs));
 
     for(arc_t<static_digraph> a : arcs(graph)) {
-        ASSERT_EQ(source(graph,a), arc_pairs[a].second.first);
-        ASSERT_EQ(target(graph,a), arc_pairs[a].second.second);
+        ASSERT_EQ(arc_source(graph,a), arc_pairs[a].second.first);
+        ASSERT_EQ(arc_target(graph,a), arc_pairs[a].second.second);
     }
 }
 
@@ -130,7 +131,7 @@ GTEST_TEST(static_digraph, vectors_constructor_2) {
     ASSERT_TRUE(EQ_MULTISETS(arcs_entries(graph), arc_pairs));
 
     for(arc_t<static_digraph> a : arcs(graph)) {
-        ASSERT_EQ(source(graph,a), arc_pairs[a].second.first);
-        ASSERT_EQ(target(graph,a), arc_pairs[a].second.second);
+        ASSERT_EQ(arc_source(graph,a), arc_pairs[a].second.first);
+        ASSERT_EQ(arc_target(graph,a), arc_pairs[a].second.second);
     }
 }

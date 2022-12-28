@@ -14,7 +14,7 @@
 
 #include "melon/concepts/range_of.hpp"
 #include "melon/data_structures/static_map.hpp"
-#include "melon/utils/map_view.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -29,7 +29,7 @@ private:
 
 public:
     template <
-        concepts::forward_range_of<std::pair<std::pair<vertex, vertex>, W>> A>
+        forward_range_of<std::pair<std::pair<vertex, vertex>, W>> A>
     [[nodiscard]] constexpr static_forward_weighted_digraph(
         const std::size_t & nb_vertices, A && arcs_entries) noexcept {
         assert(std::ranges::all_of(
@@ -73,20 +73,20 @@ public:
         assert(is_valid_vertex(u));
         return ranges::views::iota(_adjacency[u].begin(), _adjacency[u].end());
     }
-    [[nodiscard]] constexpr vertex target(const arc & a) const noexcept {
+    [[nodiscard]] constexpr vertex arc_target(const arc & a) const noexcept {
         return a->first;
     }
     [[nodiscard]] constexpr auto targets_map() const {
-        return map_view([](const arc & a) -> vertex { return a->first; });
+        return views::map([](const arc & a) -> vertex { return a->first; });
     }
     [[nodiscard]] constexpr W weight(const arc & a) const noexcept {
         return a->second;
     }
     [[nodiscard]] constexpr auto weights_map() const noexcept {
-        return map_view([](const arc & a) -> W { return a->second; });
+        return views::map([](const arc & a) -> W { return a->second; });
     }
     // [[nodiscard]] constexpr auto weights_map() noexcept {
-    //     return map_view([](arc & a) mutable -> W & { return a->second; });
+    //     return views::map([](arc & a) mutable -> W & { return a->second; });
     // }
 
     template <typename T>

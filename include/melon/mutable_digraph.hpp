@@ -10,7 +10,7 @@
 
 #include "melon/data_structures/static_map.hpp"
 #include "melon/utils/intrusive_view.hpp"
-#include "melon/utils/map_view.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -75,20 +75,20 @@ public:
             },
             [](const vertex a) -> bool { return a != INVALID_VERTEX; });
     }
-    [[nodiscard]] constexpr vertex source(const arc a) const noexcept {
+    [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arcs[a].source;
     }
     [[nodiscard]] constexpr auto sources_map() const noexcept {
-        return map_view(
+        return views::map(
             [this](const arc a) -> vertex { return _arcs[a].source; });
     }
-    [[nodiscard]] constexpr vertex target(const arc a) const noexcept {
+    [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arcs[a].target;
     }
     [[nodiscard]] constexpr auto targets_map() const noexcept {
-        return map_view(
+        return views::map(
             [this](const arc a) -> vertex { return _arcs[a].target; });
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex v) const noexcept {

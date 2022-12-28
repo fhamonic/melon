@@ -9,12 +9,12 @@
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/view/zip.hpp>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <concepts::graph G, typename... ArcProperty>
+template <graph G, typename... ArcProperty>
 class static_digraph_builder {
 private:
     using vertex = vertex_t<G>;

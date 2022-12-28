@@ -40,11 +40,11 @@ Iterating over the outgoing arcs is not sufficient, for most algorithms we have 
 ```cpp
 template <typename G>
 concept has_arc_target = graph<G> && requires(G g, arc_t<G> a) {
-    { g.target(a) } -> std::same_as<vertex_t<G>>;
+    { g.arc_target(a) } -> std::same_as<vertex_t<G>>;
     { g.targets_map() } -> input_map_of<arc_t<G>, vertex_t<G>>;
 };
 ```
-Here, the graph must provide of function `.target(a)` that returns the target vertex of a given arc `a` and a function `.targets_map()` that return an entity that maps any arc to its target vertex. This entity can either be a constant reference to a plain container or a wrapper around the `.target` function and his usefulness will be explained later.
+Here, the graph must provide of function `.arc_target(a)` that returns the target vertex of a given arc `a` and a function `.targets_map()` that return an entity that maps any arc to its target vertex. This entity can either be a constant reference to a plain container or a wrapper around the `.target` function and his usefulness will be explained later.
 <!-- TODO : link to map_view and prefetching -->
 Since they are very often required together, for example, in traversal algorithms, the `outward_incidence_list` and `has_arc_target` concepts are regrouped under the `forward_incidence_list` one.
 At the opposite, the `inward_incidence_list` and `has_arc_source` concepts are regrouped under the `inward_incidence_graph` one.

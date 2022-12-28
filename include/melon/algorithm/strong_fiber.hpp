@@ -8,8 +8,8 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph.hpp"
-#include "melon/concepts/map_of.hpp"
+#include "melon/graph.hpp"
+#include "melon/utility/value_map.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/concepts/semiring.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
@@ -21,17 +21,15 @@ namespace fhamonic {
 namespace melon {
 
 // clang-format off
-namespace concepts {
 template <typename T>
 concept strong_fiber_trait = semiring<typename T::semiring> &&
     updatable_priority_queue<typename T::heap<>> && requires() {
     { T::store_distances } -> std::convertible_to<bool>;
     { T::store_paths } -> std::convertible_to<bool>;
 };
-}  // namespace concepts
 // clang-format on
 
-template <concepts::outward_incidence_graph G, typename T>
+template <outward_incidence_graph G, typename T>
 struct strong_fiber_default_traits {
     using semiring = shortest_path_semiring<T>;
     template <typename CMP = std::less<std::pair<vertex_t<G>, T>>>
@@ -43,9 +41,9 @@ struct strong_fiber_default_traits {
     static constexpr bool store_paths = false;
 };
 
-template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L1,
-          concepts::input_map<arc_t<G>> L2,
-          concepts::strong_fiber_trait T =
+template <outward_incidence_graph G, input_value_map<arc_t<G>> L1,
+          input_value_map<arc_t<G>> L2,
+          strong_fiber_trait T =
               strong_fiber_default_traits<G, mapped_value_t<L1, arc_t<G>>>>
 requires std::is_same_v<mapped_value_t<L1, arc_t<G>>,
                         mapped_value_t<L2, arc_t<G>>>
@@ -120,7 +118,7 @@ public:
     strong_fiber & add_strong_arc_source(
         const arc & uv,
         const value_t & u_dist = traits::semiring::zero) noexcept {
-        vertex u = source(_graph.get(), uv);
+        vertex u = arc_source(_graph.get(), uv);
         discard(u);
         for(const arc a : out_arcs(_graph.get(), u)) {
             if(a == uv) continue;
@@ -133,7 +131,7 @@ public:
     strong_fiber & add_useless_arc_source(
         const arc & uv,
         const value_t & u_dist = traits::semiring::zero) noexcept {
-        vertex u = source(_graph.get(), uv);
+        vertex u = arc_source(_graph.get(), uv);
         discard(u);
         for(const arc a : out_arcs(_graph.get(), u)) {
             if(a == uv) continue;
@@ -154,7 +152,7 @@ public:
 
     void process_strong_vertex_out_arc(const vertex & u, const value_t & dist,
                                        const arc & uw) noexcept {
-        const vertex & w = target(_graph.get(), uw);
+        const vertex & w = arc_target(_graph.get(), uw);
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t new_dist =
@@ -178,7 +176,7 @@ public:
 
     void process_weak_vertex_out_arc(const vertex & u, const value_t & dist,
                                      const arc & uw) noexcept {
-        const vertex & w = target(_graph.get(), uw);
+        const vertex & w = arc_target(_graph.get(), uw);
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t new_dist =
@@ -214,7 +212,7 @@ public:
             _vertex_status_map[t] = POST_HEAP;
             const auto & out_arcs_range = out_arcs(_graph.get(), t);
             prefetch_range(out_arcs_range);
-            prefetch_mapped_values(out_arcs_range, targets_map(_graph.get()));
+            prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph.get()));
             if(_vertex_strong_map[t]) {
                 prefetch_mapped_values(out_arcs_range, _upper_length_map.get());
                 _heap.pop();

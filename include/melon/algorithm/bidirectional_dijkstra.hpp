@@ -13,10 +13,10 @@
 
 #include <range/v3/view/concat.hpp>
 
-#include "melon/concepts/graph.hpp"
-#include "melon/concepts/map_of.hpp"
+#include "melon/utility/value_map.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/graph.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/intrusive_view.hpp"
 #include "melon/utils/prefetch.hpp"
@@ -27,13 +27,11 @@ namespace fhamonic {
 namespace melon {
 
 // clang-format off
-namespace concepts {
 template <typename T>
 concept bidirectional_dijkstra_trait = semiring<typename T::semiring> &&
     updatable_priority_queue<typename T::heap> && requires() {
     { T::store_path } -> std::convertible_to<bool>;
 };
-}  // namespace concepts
 // clang-format on
 
 template <typename G, typename L>
@@ -48,10 +46,10 @@ struct bidirectional_dijkstra_default_traits {
     static constexpr bool store_path = true;
 };
 
-template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L,
-          concepts::bidirectional_dijkstra_trait T =
+template <outward_incidence_graph G, input_value_map<arc_t<G>> L,
+          bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-requires concepts::inward_incidence_graph<G> && concepts::has_vertex_map<G>
+requires inward_incidence_graph<G> && has_vertex_map<G>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -149,12 +147,12 @@ public:
             if(traits::semiring::less(u1_dist, u2_dist)) {
                 const auto & out_arcs_range = out_arcs(_graph, u1);
                 prefetch_range(out_arcs_range);
-                prefetch_mapped_values(out_arcs_range, targets_map(_graph));
+                prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
                 prefetch_mapped_values(out_arcs_range, _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
                 for(const arc a : out_arcs_range) {
-                    const vertex w = target(_graph, a);
+                    const vertex w = arc_target(_graph, a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
                     if(w_forward_status == IN_HEAP) {
@@ -195,12 +193,12 @@ public:
             } else {
                 const auto & in_arcs_range = in_arcs(_graph, u2);
                 prefetch_range(in_arcs_range);
-                prefetch_mapped_values(in_arcs_range, sources_map(_graph));
+                prefetch_mapped_values(in_arcs_range, arc_sources_map(_graph));
                 prefetch_mapped_values(in_arcs_range, _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
                 for(const arc a : in_arcs_range) {
-                    const vertex w = source(_graph, a);
+                    const vertex w = arc_source(_graph, a);
                     auto [w_forward_status, w_reverse_status] =
                         _vertex_status_map[w];
                     if(w_reverse_status == IN_HEAP) {
@@ -266,7 +264,8 @@ public:
                 _forward_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _forward_pred_arcs_map[source(_graph, oa.value())];
+                    return _forward_pred_arcs_map[arc_source(
+                        _graph, oa.value())];
                 },
                 [](const std::optional<arc> & oa) -> bool {
                     return oa.has_value();
@@ -275,7 +274,8 @@ public:
                 _reverse_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _reverse_pred_arcs_map[target(_graph, oa.value())];
+                    return _reverse_pred_arcs_map[arc_target(
+                        _graph, oa.value())];
                 },
                 [](const std::optional<arc> & oa) -> bool {
                     return oa.has_value();

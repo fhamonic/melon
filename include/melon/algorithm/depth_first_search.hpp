@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
@@ -24,10 +24,10 @@ struct dfs_default_traits {
 };
 
 // TODO ranges , requires out_neighbors : borrowed_range
-template <concepts::outward_incidence_graph G, typename T = dfs_default_traits>
-requires(concepts::outward_incidence_graph<G> ||
-         concepts::outward_adjacency_graph<G>) &&
-    concepts::has_vertex_map<G> class depth_first_search {
+template <outward_incidence_graph G, typename T = dfs_default_traits>
+requires(outward_incidence_graph<G> ||
+         outward_adjacency_graph<G>) &&
+    has_vertex_map<G> class depth_first_search {
 private:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
@@ -35,7 +35,7 @@ private:
     using reached_map = vertex_map_t<G, bool>;
 
     static_assert(
-        !(concepts::outward_adjacency_graph<G> && traits::store_pred_arcs),
+        !(outward_adjacency_graph<G> && traits::store_pred_arcs),
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
     using pred_vertices_map =
@@ -112,9 +112,9 @@ public:
         assert(!finished());
         const vertex u = _stack.back();
         _stack.pop_back();
-        if constexpr(concepts::outward_incidence_graph<G>) {
+        if constexpr(outward_incidence_graph<G>) {
             for(auto && a : out_arcs(_graph.get(), u)) {
-                const vertex & w = target(_graph.get(), a);
+                const vertex & w = arc_target(_graph.get(), a);
                 if(_reached_map[w]) continue;
                 _stack.push_back(w);
                 _reached_map[w] = true;
@@ -124,7 +124,7 @@ public:
                 if constexpr(traits::store_distances)
                     _dist_map[w] = _dist_map[u] + 1;
             }
-        } else {  // i.e., concepts::outward_adjacency_graph<G>
+        } else {  // i.e., outward_adjacency_graph<G>
             for(auto && w : out_neighbors(_graph.get(), u)) {
                 if(_reached_map[w]) continue;
                 _stack.push_back(w);

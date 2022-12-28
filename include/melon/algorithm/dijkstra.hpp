@@ -10,11 +10,11 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph.hpp"
-#include "melon/concepts/map_of.hpp"
 #include "melon/concepts/priority_queue.hpp"
 #include "melon/concepts/semiring.hpp"
 #include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/graph.hpp"
+#include "melon/utility/value_map.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/prefetch.hpp"
 #include "melon/utils/semirings.hpp"
@@ -24,14 +24,12 @@ namespace fhamonic {
 namespace melon {
 
 // clang-format off
-namespace concepts {
 template <typename T>
 concept dijkstra_trait = semiring<typename T::semiring> &&
     updatable_priority_queue<typename T::heap> && requires() {
     { T::store_distances } -> std::convertible_to<bool>;
     { T::store_paths } -> std::convertible_to<bool>;
 };
-}  // namespace concepts
 // clang-format on
 
 template <typename G, typename L>
@@ -47,9 +45,9 @@ struct dijkstra_default_traits {
     static constexpr bool store_paths = false;
 };
 
-template <concepts::outward_incidence_graph G, concepts::input_map<arc_t<G>> L,
-          concepts::dijkstra_trait T = dijkstra_default_traits<G, L>>
-requires concepts::has_vertex_map<G>
+template <outward_incidence_graph G, input_value_map<arc_t<G>> L,
+          dijkstra_trait T = dijkstra_default_traits<G, L>>
+requires has_vertex_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -66,7 +64,7 @@ private:
     using heap = traits::heap;
     using vertex_status_map = vertex_map_t<G, vertex_status>;
     using pred_vertices_map =
-        std::conditional<traits::store_paths && !concepts::has_arc_source<G>,
+        std::conditional<traits::store_paths && !has_arc_source<G>,
                          vertex_map_t<G, vertex>, std::monostate>::type;
     using optional_arc = std::optional<arc>;
     using pred_arcs_map =
@@ -94,7 +92,7 @@ public:
         , _vertex_status_map(create_vertex_map<vertex_status>(g, PRE_HEAP))
         , _pred_vertices_map(
               constexpr_ternary < traits::store_paths &&
-              !concepts::has_arc_source < G >>
+              !has_arc_source < G >>
                   (create_vertex_map<vertex>(g), std::monostate{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_paths>(
               create_vertex_map<optional_arc>(g), std::monostate{}))
@@ -114,7 +112,7 @@ public:
 
     constexpr dijkstra & reset() noexcept {
         _heap.clear();
-        for(const vertex & u : vertices(_graph.get()))
+        for(const vertex & u : melon::vertices(_graph.get()))
             _vertex_status_map[u] = PRE_HEAP;
         return *this;
     }
@@ -126,8 +124,7 @@ public:
         _vertex_status_map[s] = IN_HEAP;
         if constexpr(traits::store_paths) {
             _pred_arcs_map[s].reset();
-            if constexpr(!concepts::has_arc_source<G>)
-                _pred_vertices_map[s] = s;
+            if constexpr(!has_arc_source<G>) _pred_vertices_map[s] = s;
         }
         return *this;
     }
@@ -146,13 +143,13 @@ public:
         const auto [t, st_dist] = _heap.top();
         if constexpr(traits::store_distances) _distances_map[t] = st_dist;
         _vertex_status_map[t] = POST_HEAP;
-        const auto & out_arcs_range = out_arcs(_graph.get(), t);
+        const auto & out_arcs_range = melon::out_arcs(_graph.get(), t);
         prefetch_range(out_arcs_range);
-        prefetch_mapped_values(out_arcs_range, targets_map(_graph.get()));
+        prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph.get()));
         prefetch_mapped_values(out_arcs_range, _length_map.get());
         _heap.pop();
         for(const arc & a : out_arcs_range) {
-            const vertex & w = target(_graph.get(), a);
+            const vertex & w = melon::arc_target(_graph.get(), a);
             const vertex_status & w_status = _vertex_status_map[w];
             if(w_status == IN_HEAP) {
                 const value_t new_dist =
@@ -161,7 +158,7 @@ public:
                     _heap.promote(w, new_dist);
                     if constexpr(traits::store_paths) {
                         _pred_arcs_map[w].emplace(a);
-                        if constexpr(!concepts::has_arc_source<G>)
+                        if constexpr(!has_arc_source<G>)
                             _pred_vertices_map[w] = t;
                     }
                 }
@@ -171,8 +168,7 @@ public:
                 _vertex_status_map[w] = IN_HEAP;
                 if constexpr(traits::store_paths) {
                     _pred_arcs_map[w].emplace(a);
-                    if constexpr(!concepts::has_arc_source<G>)
-                        _pred_vertices_map[w] = t;
+                    if constexpr(!has_arc_source<G>) _pred_vertices_map[w] = t;
                 }
             }
         }
@@ -202,8 +198,8 @@ public:
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
         requires(traits::store_paths) {
         assert(reached(u) && _pred_arcs_map[u].has_value());
-        if constexpr(concepts::has_arc_source<G>)
-            return source(_graph, pred_arc(u));
+        if constexpr(has_arc_source<G>)
+            return melon::arc_source(_graph, pred_arc(u));
         else
             return _pred_vertices_map[u];
     }

@@ -8,13 +8,13 @@
 #include <utility>
 #include <vector>
 
-#include "melon/concepts/map_of.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
 
 template <typename K, typename V,
-          concepts::output_map_of<K, std::size_t> M =
+          output_map_of<K, std::size_t> M =
               std::unordered_map<K, std::size_t>>
 class union_find {
 public:

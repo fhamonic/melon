@@ -11,7 +11,7 @@ namespace melon {
 
 struct traversal_end_sentinel {};
 
-template <concepts::traversal_algorithm A>
+template <traversal_algorithm A>
 class traversal_iterator {
 private:
     std::reference_wrapper<A> algorithm;

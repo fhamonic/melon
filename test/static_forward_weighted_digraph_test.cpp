@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/static_forward_weighted_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -8,13 +8,13 @@
 using namespace fhamonic;
 using namespace fhamonic::melon;
 
-static_assert(melon::concepts::graph<static_forward_weighted_digraph<int>>);
-static_assert(melon::concepts::outward_incidence_graph<
+static_assert(melon::graph<static_forward_weighted_digraph<int>>);
+static_assert(melon::outward_incidence_graph<
               static_forward_weighted_digraph<int>>);
-static_assert(melon::concepts::outward_adjacency_graph<
+static_assert(melon::outward_adjacency_graph<
               static_forward_weighted_digraph<int>>);
 static_assert(
-    melon::concepts::has_vertex_map<static_forward_weighted_digraph<int>>);
+    melon::has_vertex_map<static_forward_weighted_digraph<int>>);
 
 GTEST_TEST(static_forward_weighted_digraph, empty_constructor) {
     using Graph = static_forward_weighted_digraph<int>;

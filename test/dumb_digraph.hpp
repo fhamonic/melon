@@ -6,7 +6,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/utils/map_view.hpp"
+#include "melon/utility/value_map.hpp"
 
 // This is a dumb digraph, it implements all the lookups and modification
 // operations we need on a digraph, but do it very inefficiently in order to
@@ -84,31 +84,31 @@ public:
                std::views::transform([](auto && as) { return as.id; });
     }
 
-    vertex source(const arc a) const noexcept {
+    vertex arc_source(const arc a) const noexcept {
         assert(is_valid_arc(a));
         return _arcs_structs[a].arc_pair.first;
     }
-    vertex target(const arc & a) const noexcept {
+    vertex arc_target(const arc & a) const noexcept {
         assert(is_valid_arc(a));
         return _arcs_structs[a].arc_pair.second;
     }
     auto sources_map() const noexcept {
-        return fhamonic::melon::map_view(
-            [this](const arc a) -> vertex { return source(a); });
+        return fhamonic::melon::views::map(
+            [this](const arc a) -> vertex { return arc_source(a); });
     }
     auto targets_map() const noexcept {
-        return fhamonic::melon::map_view(
-            [this](const arc a) -> vertex { return target(a); });
+        return fhamonic::melon::views::map(
+            [this](const arc a) -> vertex { return arc_target(a); });
     }
     auto out_neighbors(const vertex & u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::transform(out_arcs(u),
-                                     [this](auto a) { return target(a); });
+                                     [this](auto a) { return arc_target(a); });
     }
     auto in_neighbors(const vertex & u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::transform(in_arcs(u),
-                                     [this](auto a) { return source(a); });
+                                     [this](auto a) { return arc_source(a); });
     }
 
     void create_vertex(const vertex u) noexcept {
