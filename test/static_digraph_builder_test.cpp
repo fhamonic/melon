@@ -70,8 +70,8 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
              {8, {6, 5}}})));
 
     for(arc_t<static_digraph> a : arcs(graph)) {
-        auto u = source(graph,a);
-        auto v = target(graph,a);
+        auto u = arc_source(graph,a);
+        auto v = arc_target(graph,a);
         ASSERT_EQ(map[a], weight(u, v));
     }
 }

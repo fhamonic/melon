@@ -6,7 +6,6 @@
 
 namespace fhamonic {
 namespace melon {
-namespace concepts {
 
 template <typename T, typename V>
 concept range_of = 
@@ -73,7 +72,6 @@ concept viewable_range_of =
 //         std::ranges::constant_range<T> && 
 //         std::same_as<std::ranges::range_value_t<T>, V>;
 
-}  // namespace concepts
 }  // namespace melon
 }  // namespace fhamonic
 

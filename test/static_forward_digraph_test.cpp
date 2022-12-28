@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/static_forward_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -8,11 +8,11 @@
 using namespace fhamonic;
 using namespace fhamonic::melon;
 
-static_assert(melon::concepts::graph<static_forward_digraph>);
-static_assert(melon::concepts::outward_incidence_graph<static_forward_digraph>);
-static_assert(melon::concepts::outward_adjacency_graph<static_forward_digraph>);
-static_assert(melon::concepts::has_vertex_map<static_forward_digraph>);
-static_assert(melon::concepts::has_arc_map<static_forward_digraph>);
+static_assert(melon::graph<static_forward_digraph>);
+static_assert(melon::outward_incidence_graph<static_forward_digraph>);
+static_assert(melon::outward_adjacency_graph<static_forward_digraph>);
+static_assert(melon::has_vertex_map<static_forward_digraph>);
+static_assert(melon::has_arc_map<static_forward_digraph>);
 
 GTEST_TEST(static_forward_digraph, empty_constructor) {
     static_forward_digraph graph;
@@ -26,7 +26,7 @@ GTEST_TEST(static_forward_digraph, empty_constructor) {
     ASSERT_FALSE(is_valid_arc(graph,0));
 
     EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)target(graph,0), "");
+    EXPECT_DEATH((void)arc_target(graph,0), "");
 }
 
 GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
@@ -44,7 +44,7 @@ GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
     ASSERT_FALSE(is_valid_arc(graph,0));
 
     EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)target(graph,0), "");
+    EXPECT_DEATH((void)arc_target(graph,0), "");
     EXPECT_DEATH((void)out_neighbors(graph,0), "");
 }
 
@@ -78,7 +78,7 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
 
     // for(arc_t<static_forward_digraph> a : arcs(graph)) {
-    //     ASSERT_EQ(source(graph,a), arc_pairs[a].first);
+    //     ASSERT_EQ(arc_source(graph,a), arc_pairs[a].first);
     // }
 }
 

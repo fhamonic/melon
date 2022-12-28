@@ -23,8 +23,8 @@ private:
     static_map<arc, vertex> _arc_target;
 
 public:
-    template <concepts::forward_range_of<vertex> S,
-              concepts::forward_range_of<vertex> T>
+    template <forward_range_of<vertex> S,
+              forward_range_of<vertex> T>
     static_forward_digraph(const std::size_t & nb_vertices, S && sources,
                            T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0), _arc_target(std::move(targets)) {
@@ -69,7 +69,7 @@ public:
             _out_arc_begin[u],
             (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
     }
-    vertex target(const arc & a) const noexcept {
+    vertex arc_target(const arc & a) const noexcept {
         assert(is_valid_arc(a));
         return _arc_target[a];
     }

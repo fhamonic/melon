@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <ranges>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace adaptors {
 
-template <concepts::graph G>
+template <graph G>
 class subgraph {
 public:
     using vertex = vertex_t<G>;
@@ -53,32 +53,32 @@ public:
         });
     }
 
-    auto source(
-        const arc & a) const noexcept requires concepts::has_arc_target<G> {
+    auto arc_source(
+        const arc & a) const noexcept requires has_arc_target<G> {
         assert(is_valid_arc(a));
-        return _graph.get().target(a);
+        return _graph.get().arc_target(a);
     }
-    auto sources_map() const noexcept requires concepts::has_arc_target<G> {
+    auto sources_map() const noexcept requires has_arc_target<G> {
         return _graph.get().targets_map();
     }
-    auto target(
-        const arc & a) const noexcept requires concepts::has_arc_source<G> {
+    auto arc_target(
+        const arc & a) const noexcept requires has_arc_source<G> {
         assert(is_valid_arc(a));
-        return _graph.get().source(a);
+        return _graph.get().arc_source(a);
     }
-    auto targets_map() const noexcept requires concepts::has_arc_source<G> {
+    auto targets_map() const noexcept requires has_arc_source<G> {
         return _graph.get().sources_map();
     }
 
     auto in_arcs(const vertex & v)
-        const noexcept requires concepts::outward_incidence_graph<G> {
+        const noexcept requires outward_incidence_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().in_arcs(v),
             [this](const arc & a) { return _arc_filter[a]; });
     }
     auto out_arcs(const vertex & v)
-        const noexcept requires concepts::inward_incidence_graph<G> {
+        const noexcept requires inward_incidence_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().out_arcs(v),
@@ -86,14 +86,14 @@ public:
     }
 
     auto in_neighbors(const vertex & v)
-        const noexcept requires concepts::outward_adjacency_graph<G> {
+        const noexcept requires outward_adjacency_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().in_neighbors(v),
             [this](const vertex & v) { return _vertex_filter[v]; });
     }
     auto out_neighbors(const vertex & v)
-        const noexcept requires concepts::inward_adjacency_graph<G> {
+        const noexcept requires inward_adjacency_graph<G> {
         assert(is_valid_vertex(v));
         return std::views::filter(
             _graph.get().out_neighbors(v),
@@ -101,24 +101,24 @@ public:
     }
 
     auto arcs_entries() const noexcept {
-        // if constexpr(std::same_as<concepts::arcs_range_t<G>,
+        // if constexpr(std::same_as<arcs_range_t<G>,
         //                           std::ranges::iota_view<arc, arc>> &&
         //              (std::integral<arc> ||
         //               std::contiguous_iterator<
-        //                   arc>)&&concepts::has_arc_source<G> &&
-        //              concepts::has_arc_target<G>) {
+        //                   arc>)&&has_arc_source<G> &&
+        //              has_arc_target<G>) {
         //     return std::views::transform(arcs(), [](const arcs & a) {
-        //         return std::make_pair(_graph.get().source(a),
-        //                               _graph.get().target(a));
+        //         return std::make_pair(_graph.get().arc_source(a),
+        //                               _graph.get().arc_target(a));
         //     });
-        // } else if constexpr(concepts::outward_adjacency_graph<G>) {
+        // } else if constexpr(outward_adjacency_graph<G>) {
         //     return std::views::join(
         //         std::views::transform(vertices(), [this](const vertex & s) {
         //             return std::views::transform(
         //                 out_neighbors(s),
         //                 [s](const vertex & t) { return std::make_pair(s, t); });
         //         }));
-        // } else if constexpr(concepts::inward_adjacency_graph<G>) {
+        // } else if constexpr(inward_adjacency_graph<G>) {
         //     return std::views::join(
         //         std::views::transform(vertices(), [this](const vertex & t) {
         //             return std::views::transform(
@@ -131,23 +131,23 @@ public:
     }
 
     template <typename T>
-    requires concepts::has_vertex_map<G>
+    requires has_vertex_map<G>
     decltype(auto) create_vertex_map() const noexcept {
         return _graph.get().template create_vertex_map<T>();
     }
     template <typename T>
-    requires concepts::has_vertex_map<G>
+    requires has_vertex_map<G>
     decltype(auto) create_vertex_map(T default_value) const noexcept {
         return _graph.get().template create_vertex_map<T>(default_value);
     }
 
     template <typename T>
-    requires concepts::has_arc_map<G>
+    requires has_arc_map<G>
     decltype(auto) create_arc_map() const noexcept {
         return _graph.get().template create_arc_map<T>();
     }
     template <typename T>
-    requires concepts::has_arc_map<G>
+    requires has_arc_map<G>
     decltype(auto) create_arc_map(T default_value) const noexcept {
         return _graph.get().template create_arc_map<T>(default_value);
     }

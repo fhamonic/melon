@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <ranges>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace adaptors {
 
-template <concepts::graph G>
+template <graph G>
 class reverse {
 private:
     using vertex = vertex_t<G>;
@@ -45,61 +45,61 @@ public:
         return melon::arcs(_graph.get());
     }
 
-    [[nodiscard]] constexpr vertex source(
-        arc a) const noexcept requires concepts::has_arc_target<G> {
-        return melon::target(_graph.get(), a);
+    [[nodiscard]] constexpr vertex arc_source(
+        arc a) const noexcept requires has_arc_target<G> {
+        return melon::arc_target(_graph.get(), a);
     }
-    [[nodiscard]] constexpr vertex target(
-        arc a) const noexcept requires concepts::has_arc_source<G> {
-        return melon::source(_graph.get(), a);
+    [[nodiscard]] constexpr vertex arc_target(
+        arc a) const noexcept requires has_arc_source<G> {
+        return melon::arc_source(_graph.get(), a);
     }
 
     [[nodiscard]] constexpr decltype(auto) sources_map()
-        const noexcept requires concepts::has_arc_target<G> {
-        return melon::targets_map(_graph.get());
+        const noexcept requires has_arc_target<G> {
+        return melon::arc_targets_map(_graph.get());
     }
     [[nodiscard]] constexpr decltype(auto) targets_map()
-        const noexcept requires concepts::has_arc_source<G> {
-        return melon::sources_map(_graph.get());
+        const noexcept requires has_arc_source<G> {
+        return melon::arc_sources_map(_graph.get());
     }
 
     [[nodiscard]] constexpr decltype(auto) out_arcs(
-        const vertex u) const noexcept requires concepts::has_in_arcs<G> {
+        const vertex u) const noexcept requires has_in_arcs<G> {
         return melon::in_arcs(_graph.get(), u);
     }
     [[nodiscard]] constexpr decltype(auto) in_arcs(
-        const vertex u) const noexcept requires concepts::has_out_arcs<G> {
+        const vertex u) const noexcept requires has_out_arcs<G> {
         return melon::out_arcs(_graph.get(), u);
     }
 
     [[nodiscard]] constexpr decltype(auto) out_neighbors(
-        const vertex u) const noexcept requires concepts::has_in_neighbors<G> {
+        const vertex u) const noexcept requires inward_adjacency_graph<G> {
         return melon::in_neighbors(_graph.get(), u);
     }
     [[nodiscard]] constexpr decltype(auto) in_neighbors(
-        const vertex u) const noexcept requires concepts::has_out_neighbors<G> {
+        const vertex u) const noexcept requires outward_adjacency_graph<G> {
         return melon::out_neighbors(_graph.get(), u);
     }
 
     template <typename T>
-    requires concepts::has_vertex_map<G>
+    requires has_vertex_map<G>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept {
         return melon::create_vertex_map<T>(_graph.get());
     }
     template <typename T>
-    requires concepts::has_vertex_map<G>
+    requires has_vertex_map<G>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         T default_value) const noexcept {
         return melon::create_vertex_map<T>(_graph.get(), default_value);
     }
 
     template <typename T>
-    requires concepts::has_arc_map<G>
+    requires has_arc_map<G>
     [[nodiscard]] constexpr decltype(auto) create_arc_map() const noexcept {
         return melon::create_arc_map<T>(_graph.get());
     }
     template <typename T>
-    requires concepts::has_arc_map<G>
+    requires has_arc_map<G>
     [[nodiscard]] constexpr decltype(auto) create_arc_map(
         T default_value) const noexcept {
         return melon::create_arc_map<T>(_graph.get(), default_value);

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/mutable_digraph.hpp"
 
 #include "dumb_digraph.hpp"
@@ -10,16 +10,16 @@
 using namespace fhamonic;
 using namespace fhamonic::melon;
 
-static_assert(melon::concepts::graph<mutable_digraph>);
-static_assert(melon::concepts::outward_incidence_graph<mutable_digraph>);
-static_assert(melon::concepts::outward_adjacency_graph<mutable_digraph>);
-static_assert(melon::concepts::has_vertex_map<mutable_digraph>);
-static_assert(melon::concepts::has_vertex_creation<mutable_digraph>);
-static_assert(melon::concepts::has_vertex_removal<mutable_digraph>);
-static_assert(melon::concepts::has_arc_creation<mutable_digraph>);
-static_assert(melon::concepts::has_arc_removal<mutable_digraph>);
-static_assert(melon::concepts::has_change_arc_source<mutable_digraph>);
-static_assert(melon::concepts::has_change_arc_target<mutable_digraph>);
+static_assert(melon::graph<mutable_digraph>);
+static_assert(melon::outward_incidence_graph<mutable_digraph>);
+static_assert(melon::outward_adjacency_graph<mutable_digraph>);
+static_assert(melon::has_vertex_map<mutable_digraph>);
+static_assert(melon::has_vertex_creation<mutable_digraph>);
+static_assert(melon::has_vertex_removal<mutable_digraph>);
+static_assert(melon::has_arc_creation<mutable_digraph>);
+static_assert(melon::has_arc_removal<mutable_digraph>);
+static_assert(melon::has_change_arc_source<mutable_digraph>);
+static_assert(melon::has_change_arc_target<mutable_digraph>);
 
 using Graph = mutable_digraph;
 using arc_entries_list = std::initializer_list<
@@ -70,12 +70,12 @@ GTEST_TEST(mutable_digraph, create_arcs) {
     ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {a, b, c}));
     ASSERT_TRUE(EQ_MULTISETS(arcs(graph), {ab, ac, cb, ca}));
 
-    ASSERT_EQ(source(graph, ab), a);
-    ASSERT_EQ(source(graph, ac), a);
-    ASSERT_EQ(source(graph, cb), c);
-    ASSERT_EQ(target(graph, ab), b);
-    ASSERT_EQ(target(graph, ac), c);
-    ASSERT_EQ(target(graph, cb), b);
+    ASSERT_EQ(arc_source(graph, ab), a);
+    ASSERT_EQ(arc_source(graph, ac), a);
+    ASSERT_EQ(arc_source(graph, cb), c);
+    ASSERT_EQ(arc_target(graph, ab), b);
+    ASSERT_EQ(arc_target(graph, ac), c);
+    ASSERT_EQ(arc_target(graph, cb), b);
 
     ASSERT_TRUE(EQ_MULTISETS(
         arcs_entries(graph),
@@ -99,12 +99,12 @@ GTEST_TEST(mutable_digraph, remove_arcs) {
     remove_arc(graph, ac);
 
     ASSERT_FALSE(is_valid_arc(graph, ac));
-    ASSERT_EQ(source(graph, ab), a);
-    EXPECT_DEATH((void)source(graph, ac), "");
-    ASSERT_EQ(source(graph, cb), c);
-    ASSERT_EQ(target(graph, ab), b);
-    EXPECT_DEATH((void)target(graph, ac), "");
-    ASSERT_EQ(target(graph, cb), b);
+    ASSERT_EQ(arc_source(graph, ab), a);
+    EXPECT_DEATH((void)arc_source(graph, ac), "");
+    ASSERT_EQ(arc_source(graph, cb), c);
+    ASSERT_EQ(arc_target(graph, ab), b);
+    EXPECT_DEATH((void)arc_target(graph, ac), "");
+    ASSERT_EQ(arc_target(graph, cb), b);
 
     ASSERT_TRUE(EQ_MULTISETS(arcs_entries(graph),
                              arc_entries_list{{cb, {c, b}}, {ab, {a, b}}}));
@@ -210,8 +210,8 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
         for(auto && a : arcs(graph)) {
             ASSERT_TRUE(is_valid_arc(graph, a));
             ASSERT_TRUE(dummy_graph.is_valid_arc(a));
-            ASSERT_EQ(target(graph, a), dummy_graph.target(a));
-            ASSERT_EQ(source(graph, a), dummy_graph.source(a));
+            ASSERT_EQ(arc_target(graph, a), dummy_graph.arc_target(a));
+            ASSERT_EQ(arc_source(graph, a), dummy_graph.arc_source(a));
         }
     }
 }

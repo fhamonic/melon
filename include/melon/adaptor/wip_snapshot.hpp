@@ -7,7 +7,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/data_structures/static_map.hpp"
 
 namespace fhamonic {
@@ -48,57 +48,57 @@ public:
         });
     }
 
-    auto source(
-        const arc & a) const noexcept requires concepts::has_arc_target<G> {
-        return _graph.target(a);
+    auto arc_source(
+        const arc & a) const noexcept requires has_arc_target<G> {
+        return _graph.arc_target(a);
     }
-    auto sources_map() const noexcept requires concepts::has_arc_target<G> {
+    auto sources_map() const noexcept requires has_arc_target<G> {
         return _graph.targets_map();
     }
-    auto target(
-        const arc & a) const noexcept requires concepts::has_arc_source<G> {
-        return _graph.source(a);
+    auto arc_target(
+        const arc & a) const noexcept requires has_arc_source<G> {
+        return _graph.arc_source(a);
     }
-    auto targets_map() const noexcept requires concepts::has_arc_source<G> {
+    auto targets_map() const noexcept requires has_arc_source<G> {
         return _graph.sources_map();
     }
 
     auto out_arcs(const vertex & u)
-        const noexcept requires concepts::inward_incidence_graph<G> {
+        const noexcept requires inward_incidence_graph<G> {
         return _graph.in_arcs(u);
     }
     auto in_arcs(const vertex & u)
-        const noexcept requires concepts::outward_incidence_graph<G> {
+        const noexcept requires outward_incidence_graph<G> {
         return _graph.out_arcs(u);
     }
 
     auto out_neighbors(const vertex & u)
-        const noexcept requires concepts::inward_adjacency_graph<G> {
+        const noexcept requires inward_adjacency_graph<G> {
         return _graph.in_neighbors(u);
     }
     auto in_neighbors(const vertex & u)
-        const noexcept requires concepts::outward_adjacency_graph<G> {
+        const noexcept requires outward_adjacency_graph<G> {
         return _graph.out_neighbors(u);
     }
 
     template <typename T>
-    requires concepts::has_vertex_map<G>
+    requires has_vertex_map<G>
     decltype(auto) create_vertex_map() const noexcept {
         return create_vertex_map<T>(_graph);
     }
     template <typename T>
-    requires concepts::has_vertex_map<G>
+    requires has_vertex_map<G>
     decltype(auto) create_vertex_map(T default_value) const noexcept {
         return create_vertex_map<T>(_graph,default_value);
     }
 
     template <typename T>
-    requires concepts::has_arc_map<G>
+    requires has_arc_map<G>
     decltype(auto) create_arc_map() const noexcept {
         return create_arc_map<T>(_graph);
     }
     template <typename T>
-    requires concepts::has_arc_map<G>
+    requires has_arc_map<G>
     decltype(auto) create_arc_map(T default_value) const noexcept {
         return create_arc_map<T>(_graph,default_value);
     }

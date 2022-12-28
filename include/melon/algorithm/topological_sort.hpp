@@ -9,7 +9,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/utils/constexpr_ternary.hpp"
 #include "melon/utils/traversal_iterator.hpp"
 
@@ -22,17 +22,17 @@ struct breadth_first_search_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <concepts::graph G, typename T = breadth_first_search_default_traits>
-requires(concepts::outward_incidence_graph<G> ||
-         concepts::outward_adjacency_graph<G>) &&
-    concepts::has_vertex_map<G> class breadth_first_search {
+template <graph G, typename T = breadth_first_search_default_traits>
+requires(outward_incidence_graph<G> ||
+         outward_adjacency_graph<G>) &&
+    has_vertex_map<G> class breadth_first_search {
 public:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
     using traits = T;
 
     static_assert(
-        !(concepts::outward_adjacency_graph<G> && traits::store_pred_arcs),
+        !(outward_adjacency_graph<G> && traits::store_pred_arcs),
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
     using reached_map = vertex_map_t<G, bool>;
@@ -121,9 +121,9 @@ public:
         assert(!finished());
         const vertex & u = *_queue_current;
         ++_queue_current;
-        if constexpr(concepts::outward_incidence_graph<G>) {
+        if constexpr(outward_incidence_graph<G>) {
             for(auto && a : out_arcs(_graph.get(), u)) {
-                const vertex & w = target(_graph.get(), a);
+                const vertex & w = arc_target(_graph.get(), a);
                 if(!_reached_map[w]) {
                     // _remaining_in_degree_map[w] = in_degree(_graph.get(), w);
                     _reached_map[w] = true;
@@ -136,7 +136,7 @@ public:
                 if constexpr(traits::store_distances)
                     _dist_map[w] = _dist_map[u] + 1;
             }
-        } else {  // i.e., concepts::outward_adjacency_graph<G>
+        } else {  // i.e., outward_adjacency_graph<G>
             for(auto && w : out_neighbors(_graph.get(), u)) {
                 if(!_reached_map[w]) {
                     // _remaining_in_degree_map[w] = in_degree(_graph.get(), w);

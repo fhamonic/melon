@@ -10,7 +10,6 @@ namespace fhamonic {
 namespace melon {
 
 // clang-format off
-namespace concepts {
 template <typename Q>
 concept priority_queue = std::semiregular<Q> &&
     requires(Q q, typename Q::key_type k, typename Q::priority_type v, typename Q::entry e) {
@@ -31,7 +30,6 @@ concept updatable_priority_queue = priority_queue<Q> &&
     // q.demote(k, v);
     // q.update(k, v);
 };
-}  // namespace concepts
 // clang-format on
 
 }  // namespace melon

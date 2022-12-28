@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "melon/concepts/map_of.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -18,8 +18,8 @@ template <int D, typename K, typename P,
               [](const std::pair<K, P> & e1, const std::pair<K, P> & e2) {
                   return e1.second > e2.second;
               }),
-          concepts::output_map_of<K, std::size_t> M =
-              std::unordered_map<K, std::size_t>>
+          output_value_map<K> M = std::unordered_map<K, std::size_t>>
+requires std::integral<mapped_value_t<M, K>>
 class d_ary_heap {
 public:
     using key_type = K;
