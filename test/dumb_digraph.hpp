@@ -92,11 +92,11 @@ public:
         assert(is_valid_arc(a));
         return _arcs_structs[a].arc_pair.second;
     }
-    auto sources_map() const noexcept {
+    auto arc_sources_map() const noexcept {
         return fhamonic::melon::views::map(
             [this](const arc a) -> vertex { return arc_source(a); });
     }
-    auto targets_map() const noexcept {
+    auto arc_targets_map() const noexcept {
         return fhamonic::melon::views::map(
             [this](const arc a) -> vertex { return arc_target(a); });
     }

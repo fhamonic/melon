@@ -6,6 +6,7 @@ include(GoogleTest)
 add_executable(
   melon_test
   main_test.cpp
+  cpo_test.cpp
   static_digraph_test.cpp
   static_forward_digraph_test.cpp
   static_forward_weighted_digraph_test.cpp

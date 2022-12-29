@@ -52,15 +52,15 @@ public:
         const arc & a) const noexcept requires has_arc_target<G> {
         return _graph.arc_target(a);
     }
-    auto sources_map() const noexcept requires has_arc_target<G> {
-        return _graph.targets_map();
+    auto arc_sources_map() const noexcept requires has_arc_target<G> {
+        return _graph.arc_targets_map();
     }
     auto arc_target(
         const arc & a) const noexcept requires has_arc_source<G> {
         return _graph.arc_source(a);
     }
-    auto targets_map() const noexcept requires has_arc_source<G> {
-        return _graph.sources_map();
+    auto arc_targets_map() const noexcept requires has_arc_source<G> {
+        return _graph.arc_sources_map();
     }
 
     auto out_arcs(const vertex & u)
