@@ -34,11 +34,14 @@ concept dijkstra_trait = semiring<typename T::semiring> &&
 template <typename G, typename L>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<mapped_value_t<L, arc_t<G>>>;
+    struct entry_cmp {
+        [[nodiscard]] constexpr bool operator()(
+            const auto & e1, const auto & e2) const noexcept {
+            return semiring::less(e1.second, e2.second);
+        }
+    };
     using heap = d_ary_heap<2, vertex_t<G>, mapped_value_t<L, arc_t<G>>,
-                            decltype([](const auto & e1, const auto & e2) {
-                                return semiring::less(e1.second, e2.second);
-                            }),
-                            vertex_map_t<G, std::size_t>>;
+                            entry_cmp, vertex_map_t<G, std::size_t>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
