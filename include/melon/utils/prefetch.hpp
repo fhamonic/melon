@@ -18,16 +18,15 @@ constexpr void prefetch_range(const R & range) {
     }
 }
 
-template <std::ranges::range K,
-          input_value_map<std::ranges::range_value_t<K>> M>
-constexpr void prefetch_mapped_values(const K & values, const M & map) {
-    if constexpr(std::ranges::sized_range<K> &&
-                 std::integral<std::ranges::range_value_t<K>> && requires {
-                     __builtin_prefetch(nullptr);
-                     map.data();
-                 }) {
-        if(values.size()) {
-            __builtin_prefetch(map.data() + values.front());
+template <std::ranges::range _Keys,
+          value_map<std::ranges::range_value_t<_Keys>> _ValueMap>
+constexpr void prefetch_mapped_values(const _Keys & __keys,
+                                      const _ValueMap & __map) {
+    if constexpr(requires { __builtin_prefetch(nullptr); } &&
+                 contiguous_value_map<_ValueMap,
+                                      std::ranges::range_value_t<_Keys>>) {
+        if(std::ranges::begin(__keys) != std::ranges::end(__keys)) {
+            __builtin_prefetch(__map.data() + *std::ranges::begin(__keys));
         }
     }
 }

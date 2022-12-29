@@ -76,7 +76,7 @@ public:
     [[nodiscard]] constexpr vertex arc_target(const arc & a) const noexcept {
         return a->first;
     }
-    [[nodiscard]] constexpr auto targets_map() const {
+    [[nodiscard]] constexpr auto arc_targets_map() const {
         return views::map([](const arc & a) -> vertex { return a->first; });
     }
     [[nodiscard]] constexpr W weight(const arc & a) const noexcept {

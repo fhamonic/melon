@@ -58,16 +58,16 @@ public:
         assert(is_valid_arc(a));
         return _graph.get().arc_target(a);
     }
-    auto sources_map() const noexcept requires has_arc_target<G> {
-        return _graph.get().targets_map();
+    auto arc_sources_map() const noexcept requires has_arc_target<G> {
+        return _graph.get().arc_targets_map();
     }
     auto arc_target(
         const arc & a) const noexcept requires has_arc_source<G> {
         assert(is_valid_arc(a));
         return _graph.get().arc_source(a);
     }
-    auto targets_map() const noexcept requires has_arc_source<G> {
-        return _graph.get().sources_map();
+    auto arc_targets_map() const noexcept requires has_arc_source<G> {
+        return _graph.get().arc_sources_map();
     }
 
     auto in_arcs(const vertex & v)

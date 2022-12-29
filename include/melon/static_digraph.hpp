@@ -10,6 +10,7 @@
 
 #include "melon/concepts/range_of.hpp"
 #include "melon/data_structures/static_map.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -27,8 +28,7 @@ private:
     static_map<arc, arc> _in_arcs;
 
 public:
-    template <forward_range_of<vertex> S,
-              forward_range_of<vertex> T>
+    template <forward_range_of<vertex> S, forward_range_of<vertex> T>
     [[nodiscard]] static_digraph(const std::size_t & nb_vertices, S && sources,
                                  T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0)
@@ -114,11 +114,11 @@ public:
         return _arc_target[a];
     }
 
-    [[nodiscard]] const auto & sources_map() const noexcept {
-        return _arc_source;
+    [[nodiscard]] auto arc_sources_map() const noexcept {
+        return ref_value_map(_arc_source);
     }
-    [[nodiscard]] const auto & targets_map() const noexcept {
-        return _arc_target;
+    [[nodiscard]] auto arc_targets_map() const noexcept {
+        return ref_value_map(_arc_target);
     }
 
     [[nodiscard]] constexpr auto out_neighbors(const vertex u) const noexcept {

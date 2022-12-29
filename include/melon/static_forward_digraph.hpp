@@ -73,7 +73,7 @@ public:
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
-    const auto & targets_map() const { return _arc_target; }
+    const auto & arc_targets_map() const { return _arc_target; }
     auto out_neighbors(const vertex & u) const noexcept {
         assert(is_valid_vertex(u));
         return std::span(

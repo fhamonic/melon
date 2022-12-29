@@ -79,7 +79,7 @@ public:
         assert(is_valid_arc(a));
         return _arcs[a].source;
     }
-    [[nodiscard]] constexpr auto sources_map() const noexcept {
+    [[nodiscard]] constexpr auto arc_sources_map() const noexcept {
         return views::map(
             [this](const arc a) -> vertex { return _arcs[a].source; });
     }
@@ -87,7 +87,7 @@ public:
         assert(is_valid_arc(a));
         return _arcs[a].target;
     }
-    [[nodiscard]] constexpr auto targets_map() const noexcept {
+    [[nodiscard]] constexpr auto arc_targets_map() const noexcept {
         return views::map(
             [this](const arc a) -> vertex { return _arcs[a].target; });
     }
