@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "melon/graph.hpp"
 #include "melon/container/mutable_digraph.hpp"
+#include "melon/graph.hpp"
 
 #include "dumb_digraph.hpp"
 #include "random_ranges_helper.hpp"
@@ -189,6 +189,8 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
 
         ASSERT_TRUE(EQ_MULTISETS(vertices(graph), dummy_graph.vertices()));
         ASSERT_TRUE(EQ_MULTISETS(arcs(graph), dummy_graph.arcs()));
+        ASSERT_EQ(nb_vertices(graph), dummy_graph.nb_vertices());
+        ASSERT_EQ(nb_arcs(graph), dummy_graph.nb_arcs());
         ASSERT_TRUE(
             EQ_MULTISETS(arcs_entries(graph), dummy_graph.arcs_entries()));
 

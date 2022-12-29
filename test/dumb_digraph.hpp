@@ -42,7 +42,6 @@ public:
         if(a >= _arcs_structs.size()) return false;
         return _arcs_structs[a].exists;
     }
-
     auto vertices() const noexcept {
         return std::views::iota(vertex(0),
                                 static_cast<vertex>(_vertex_filter.size())) |
@@ -59,6 +58,10 @@ public:
                std::views::transform(
                    [](const arc_struct & as) -> arc { return as.id; });
     }
+    auto nb_vertices() const noexcept {
+        return std::ranges::distance(vertices());
+    }
+    auto nb_arcs() const noexcept { return std::ranges::distance(arcs()); }
     auto arcs_entries() const noexcept {
         return valid_arcs_structs() |
                std::views::transform(
