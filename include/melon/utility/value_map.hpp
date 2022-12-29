@@ -84,9 +84,7 @@ public:
     }
 
     constexpr auto data() const
-        requires requires(_ValueMap & __m) {
-                     { __m.data() } -> std::is_pointer;
-                 }
+        requires std::is_pointer_v<decltype(std::declval<_ValueMap>().data())>
     {
         return _M_r->data();
     }
