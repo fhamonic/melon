@@ -1,15 +1,15 @@
 #include <gtest/gtest.h>
 
-#include "melon/adaptor/reverse.hpp"
+#include "melon/views/reverse.hpp"
 #include "melon/algorithm/dijkstra.hpp"
-#include "melon/static_digraph.hpp"
-#include "melon/static_digraph_builder.hpp"
+#include "melon/container/static_digraph.hpp"
+#include "melon/utility/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(reverse_adaptor, static_graph) {
+GTEST_TEST(reverse_views, static_graph) {
     std::vector<
         std::pair<arc_t<static_digraph>, std::pair<vertex_t<static_digraph>,
                                                    vertex_t<static_digraph>>>>
@@ -20,7 +20,7 @@ GTEST_TEST(reverse_adaptor, static_graph) {
         3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
         std::ranges::views::values(std::ranges::views::values(arc_pairs)));
 
-    auto reverse_graph = adaptors::reverse(graph);
+    auto reverse_graph = viewss::reverse(graph);
 
     ASSERT_EQ(nb_vertices(graph), reverse_graph.nb_vertices());
     ASSERT_EQ(nb_arcs(graph), reverse_graph.nb_arcs());
@@ -56,7 +56,7 @@ GTEST_TEST(reverse_adaptor, static_graph) {
     }
 }
 
-GTEST_TEST(reverse_adaptor, dijkstra) {
+GTEST_TEST(reverse_views, dijkstra) {
     static_digraph_builder<static_digraph, int> builder(6);
 
     builder.add_arc(0, 1, 7);
@@ -79,7 +79,7 @@ GTEST_TEST(reverse_adaptor, dijkstra) {
     builder.add_arc(5, 4, 9);
 
     auto [fgraph, length_map] = builder.build();
-    auto graph = adaptors::reverse(fgraph);
+    auto graph = viewss::reverse(fgraph);
 
     dijkstra alg(graph, length_map);
 

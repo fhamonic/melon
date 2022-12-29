@@ -1,10 +1,10 @@
-#ifndef MELON_UTILS_TRAVERSAL_ITERATOR_HPP
-#define MELON_UTILS_TRAVERSAL_ITERATOR_HPP
+#ifndef MELON_UTILITY_TRAVERSAL_ITERATOR_HPP
+#define MELON_UTILITY_TRAVERSAL_ITERATOR_HPP
 
 #include <concepts>
 #include <iterator>
 
-#include "melon/concepts/traversal.hpp"
+#include "melon/utility/traversal.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -47,4 +47,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_UTILS_TRAVERSAL_ITERATOR_HPP
+#endif  // MELON_UTILITY_TRAVERSAL_ITERATOR_HPP

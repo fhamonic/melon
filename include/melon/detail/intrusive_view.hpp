@@ -1,5 +1,5 @@
-#ifndef MELON_UTILS_INTRUSIVE_VIEW_HPP
-#define MELON_UTILS_INTRUSIVE_VIEW_HPP
+#ifndef MELON_DETAIL_INTRUSIVE_VIEW_HPP
+#define MELON_DETAIL_INTRUSIVE_VIEW_HPP
 
 #include <functional>
 #include <iterator>
@@ -77,8 +77,8 @@ public:
         std::optional<Cond> _cond;
 
     public:
-        [[nodiscard]] constexpr iterator(const I & index, const Deref & deref, const Incr & incr,
-                 const Cond & cond)
+        [[nodiscard]] constexpr iterator(const I & index, const Deref & deref,
+                                         const Incr & incr, const Cond & cond)
             : _index(index), _deref(deref), _incr(incr), _cond(cond) {}
 
         [[nodiscard]] constexpr iterator() = default;
@@ -106,19 +106,26 @@ public:
             return *this;
         }
 
-        [[nodiscard]] constexpr friend bool operator==(const iterator & it, sentinel) noexcept {
+        [[nodiscard]] constexpr friend bool operator==(const iterator & it,
+                                                       sentinel) noexcept {
             return !it._cond.value()(it._index);
         }
 
-        [[nodiscard]] constexpr reference operator*() const noexcept { return _deref.value()(_index); }
-        constexpr void operator++(int) noexcept { _index = _incr.value()(_index); }
+        [[nodiscard]] constexpr reference operator*() const noexcept {
+            return _deref.value()(_index);
+        }
+        constexpr void operator++(int) noexcept {
+            _index = _incr.value()(_index);
+        }
         constexpr iterator & operator++() noexcept {
             _index = _incr.value()(_index);
             return *this;
         }
     };
 
-    [[nodiscard]] constexpr iterator begin() const { return iterator(_begin, *_deref, *_incr, *_cond); }
+    [[nodiscard]] constexpr iterator begin() const {
+        return iterator(_begin, *_deref, *_incr, *_cond);
+    }
     [[nodiscard]] constexpr sentinel end() const { return sentinel(); }
 };
 
@@ -131,4 +138,4 @@ template <typename I, typename Incr, typename Deref, typename Cond>
 inline constexpr bool ranges::enable_borrowed_range<
     fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> = true;
 
-#endif  // MELON_UTILS_INTRUSIVE_VIEW_HPP
+#endif  // MELON_DETAIL_INTRUSIVE_VIEW_HPP

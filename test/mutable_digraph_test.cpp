@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/graph.hpp"
-#include "melon/mutable_digraph.hpp"
+#include "melon/container/mutable_digraph.hpp"
 
 #include "dumb_digraph.hpp"
 #include "random_ranges_helper.hpp"

@@ -1,5 +1,5 @@
-#ifndef MELON_ADAPTOR_REVERSE_HPP
-#define MELON_ADAPTOR_REVERSE_HPP
+#ifndef MELON_VIEWS_REVERSE_HPP
+#define MELON_VIEWS_REVERSE_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -8,7 +8,7 @@
 
 namespace fhamonic {
 namespace melon {
-namespace adaptors {
+namespace viewss {
 
 template <graph G>
 class reverse {
@@ -106,8 +106,8 @@ public:
     }
 };
 
-}  // namespace adaptors
+}  // namespace viewss
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_ADAPTOR_REVERSE_HPP
+#endif  // MELON_VIEWS_REVERSE_HPP

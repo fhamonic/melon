@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "melon/concepts/range_of.hpp"
-#include "melon/utils/intrusive_view.hpp"
+#include "melon/detail/range_of.hpp"
+#include "melon/detail/intrusive_view.hpp"
 
 #include "ranges_test_helper.hpp"
 
