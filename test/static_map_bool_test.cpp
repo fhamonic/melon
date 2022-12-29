@@ -2,8 +2,8 @@
 
 #include <random>
 
-#include "melon/data_structures/static_map.hpp"
-#include "melon/static_digraph.hpp"
+#include "melon/container/static_map.hpp"
+#include "melon/container/static_digraph.hpp"
 #include "melon/utility/value_map.hpp"
 
 #include "ranges_test_helper.hpp"

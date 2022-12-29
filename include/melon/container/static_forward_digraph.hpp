@@ -8,8 +8,8 @@
 #include <span>
 #include <vector>
 
-#include "melon/concepts/range_of.hpp"
-#include "melon/data_structures/static_map.hpp"
+#include "melon/container/static_map.hpp"
+#include "melon/detail/range_of.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -23,8 +23,7 @@ private:
     static_map<arc, vertex> _arc_target;
 
 public:
-    template <forward_range_of<vertex> S,
-              forward_range_of<vertex> T>
+    template <forward_range_of<vertex> S, forward_range_of<vertex> T>
     static_forward_digraph(const std::size_t & nb_vertices, S && sources,
                            T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0), _arc_target(std::move(targets)) {

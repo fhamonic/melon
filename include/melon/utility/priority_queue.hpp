@@ -1,10 +1,10 @@
-#ifndef MELON_CONCEPTS_PRIORITY_QUEUE_HPP
-#define MELON_CONCEPTS_PRIORITY_QUEUE_HPP
+#ifndef MELON_UTILITY_PRIORITY_QUEUE_HPP
+#define MELON_UTILITY_PRIORITY_QUEUE_HPP
 
 #include <concepts>
 #include <ranges>
 
-#include "melon/concepts/range_of.hpp"
+#include "melon/detail/range_of.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -35,4 +35,4 @@ concept updatable_priority_queue = priority_queue<Q> &&
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_CONCEPTS_PRIORITY_QUEUE_HPP
+#endif  // MELON_UTILITY_PRIORITY_QUEUE_HPP

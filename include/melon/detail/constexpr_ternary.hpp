@@ -1,5 +1,5 @@
-#ifndef MELON_UTILS_CONSTEXPR_TERNARY_HPP
-#define MELON_UTILS_CONSTEXPR_TERNARY_HPP
+#ifndef MELON_DETAIL_CONSTEXPR_TERNARY_HPP
+#define MELON_DETAIL_CONSTEXPR_TERNARY_HPP
 
 #include <type_traits>
 #include <utility>
@@ -19,4 +19,4 @@ template <bool B, typename T, typename F>
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_UTILS_CONSTEXPR_TERNARY_HPP
+#endif  // MELON_DETAIL_CONSTEXPR_TERNARY_HPP

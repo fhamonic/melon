@@ -97,7 +97,7 @@ concept __can_ref_value_map = requires { ref_value_map{std::declval<_Tp>()}; };
 //   template<typename _Range>
 // concept __can_owning_view = requires { owning_view{std::declval<_Range>()};
 // };
-// struct _All : __adaptor::_RangeAdaptorClosure
+// struct _All : __views::_RangeViewsClosure
 // {
 //   template<typename _Range>
 // static constexpr bool

@@ -13,15 +13,15 @@
 
 #include <range/v3/view/concat.hpp>
 
-#include "melon/utility/value_map.hpp"
-#include "melon/concepts/priority_queue.hpp"
-#include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
-#include "melon/utils/constexpr_ternary.hpp"
-#include "melon/utils/intrusive_view.hpp"
-#include "melon/utils/prefetch.hpp"
-#include "melon/utils/semirings.hpp"
-#include "melon/utils/traversal_iterator.hpp"
+#include "melon/utility/priority_queue.hpp"
+#include "melon/utility/semiring.hpp"
+#include "melon/utility/traversal_iterator.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -49,7 +49,7 @@ struct bidirectional_dijkstra_default_traits {
 template <outward_incidence_graph G, input_value_map<arc_t<G>> L,
           bidirectional_dijkstra_trait T =
               bidirectional_dijkstra_default_traits<G, L>>
-requires inward_incidence_graph<G> && has_vertex_map<G>
+    requires inward_incidence_graph<G> && has_vertex_map<G>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -242,21 +242,25 @@ public:
     }
 
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_path) {
+        requires(traits::store_path)
+    {
         assert(_vertex_status_map[u].first != PRE_HEAP);
         return _forward_pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr arc succ_arc(const vertex & u) const noexcept
-        requires(traits::store_path) {
+        requires(traits::store_path)
+    {
         assert(_vertex_status_map[u].second != PRE_HEAP);
         return _reverse_pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr bool path_found() const noexcept
-        requires(traits::store_path) {
+        requires(traits::store_path)
+    {
         return _midpoint.has_value();
     }
     [[nodiscard]] constexpr auto path() const noexcept
-        requires(traits::store_path) {
+        requires(traits::store_path)
+    {
         assert(path_found());
         // EXPECTED_CPP23 std::ranges::concat
         return ranges::views::concat(
@@ -264,8 +268,8 @@ public:
                 _forward_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _forward_pred_arcs_map[arc_source(
-                        _graph, oa.value())];
+                    return _forward_pred_arcs_map[arc_source(_graph,
+                                                             oa.value())];
                 },
                 [](const std::optional<arc> & oa) -> bool {
                     return oa.has_value();
@@ -274,8 +278,8 @@ public:
                 _reverse_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
                 [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _reverse_pred_arcs_map[arc_target(
-                        _graph, oa.value())];
+                    return _reverse_pred_arcs_map[arc_target(_graph,
+                                                             oa.value())];
                 },
                 [](const std::optional<arc> & oa) -> bool {
                     return oa.has_value();

@@ -9,9 +9,9 @@
 #include <variant>
 #include <vector>
 
+#include "melon/detail/constexpr_ternary.hpp"
 #include "melon/graph.hpp"
-#include "melon/utils/constexpr_ternary.hpp"
-#include "melon/utils/traversal_iterator.hpp"
+#include "melon/utility/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -23,9 +23,9 @@ struct breadth_first_search_default_traits {
 };
 
 template <graph G, typename T = breadth_first_search_default_traits>
-requires(outward_incidence_graph<G> ||
-         outward_adjacency_graph<G>) &&
-    has_vertex_map<G> class breadth_first_search {
+    requires(outward_incidence_graph<G> || outward_adjacency_graph<G>) &&
+            has_vertex_map<G>
+class breadth_first_search {
 public:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
@@ -167,17 +167,20 @@ public:
     }
 
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_pred_vertices) {
+        requires(traits::store_pred_vertices)
+    {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_pred_arcs) {
+        requires(traits::store_pred_arcs)
+    {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
     [[nodiscard]] constexpr int dist(const vertex & u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(reached(u));
         return _dist_map[u];
     }

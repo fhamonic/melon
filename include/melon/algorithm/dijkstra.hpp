@@ -10,15 +10,14 @@
 #include <variant>
 #include <vector>
 
-#include "melon/concepts/priority_queue.hpp"
-#include "melon/concepts/semiring.hpp"
-#include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
+#include "melon/utility/priority_queue.hpp"
+#include "melon/utility/semiring.hpp"
+#include "melon/utility/traversal_iterator.hpp"
 #include "melon/utility/value_map.hpp"
-#include "melon/utils/constexpr_ternary.hpp"
-#include "melon/utils/prefetch.hpp"
-#include "melon/utils/semirings.hpp"
-#include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -47,7 +46,7 @@ struct dijkstra_default_traits {
 
 template <outward_incidence_graph G, input_value_map<arc_t<G>> L,
           dijkstra_trait T = dijkstra_default_traits<G, L>>
-requires has_vertex_map<G>
+    requires has_vertex_map<G>
 class dijkstra {
 private:
     using vertex = vertex_t<G>;
@@ -191,12 +190,14 @@ public:
         return _vertex_status_map[u] == POST_HEAP;
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_paths) {
+        requires(traits::store_paths)
+    {
         assert(reached(u));
         return _pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_paths) {
+        requires(traits::store_paths)
+    {
         assert(reached(u) && _pred_arcs_map[u].has_value());
         if constexpr(has_arc_source<G>)
             return melon::arc_source(_graph, pred_arc(u));
@@ -204,18 +205,22 @@ public:
             return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr value_t current_dist(
-        const vertex & u) const noexcept requires(traits::store_distances) {
+        const vertex & u) const noexcept
+        requires(traits::store_distances)
+    {
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }
     [[nodiscard]] constexpr value_t dist(const vertex & u) const noexcept
-        requires(traits::store_distances) {
+        requires(traits::store_distances)
+    {
         assert(visited(u));
         return _distances_map[u];
     }
 
     [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
-        requires(traits::store_paths) {
+        requires(traits::store_paths)
+    {
         assert(reached(t));
         return intrusive_view(
             t,

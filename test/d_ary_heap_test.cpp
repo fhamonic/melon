@@ -3,7 +3,7 @@
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/view/zip.hpp>
 
-#include "melon/data_structures/d_ary_heap.hpp"
+#include "melon/container/d_ary_heap.hpp"
 
 #include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"

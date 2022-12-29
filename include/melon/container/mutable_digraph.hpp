@@ -8,8 +8,8 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/data_structures/static_map.hpp"
-#include "melon/utils/intrusive_view.hpp"
+#include "melon/container/static_map.hpp"
+#include "melon/detail/intrusive_view.hpp"
 #include "melon/utility/value_map.hpp"
 
 namespace fhamonic {

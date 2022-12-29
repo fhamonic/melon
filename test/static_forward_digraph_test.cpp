@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/graph.hpp"
-#include "melon/static_forward_digraph.hpp"
+#include "melon/container/static_forward_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
 

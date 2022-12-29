@@ -47,7 +47,7 @@ However, we provide classical implementation of graphs for different use cases s
 
 ```cpp
 #include "melon/algorithm/dijkstra.hpp"
-#include "melon/static_digraph.hpp"
+#include "melon/container/static_digraph.hpp"
 ....
 static_digraph graph = ...;
 arc_map_t<static_digraph, double> length_map = ...;

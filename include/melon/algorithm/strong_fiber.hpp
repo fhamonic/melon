@@ -8,14 +8,13 @@
 #include <variant>
 #include <vector>
 
+#include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
+#include "melon/utility/priority_queue.hpp"
+#include "melon/utility/semiring.hpp"
+#include "melon/utility/traversal_iterator.hpp"
 #include "melon/utility/value_map.hpp"
-#include "melon/concepts/priority_queue.hpp"
-#include "melon/concepts/semiring.hpp"
-#include "melon/data_structures/d_ary_heap.hpp"
-#include "melon/utils/prefetch.hpp"
-#include "melon/utils/semirings.hpp"
-#include "melon/utils/traversal_iterator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -45,8 +44,8 @@ template <outward_incidence_graph G, input_value_map<arc_t<G>> L1,
           input_value_map<arc_t<G>> L2,
           strong_fiber_trait T =
               strong_fiber_default_traits<G, mapped_value_t<L1, arc_t<G>>>>
-requires std::is_same_v<mapped_value_t<L1, arc_t<G>>,
-                        mapped_value_t<L2, arc_t<G>>>
+    requires std::is_same_v<mapped_value_t<L1, arc_t<G>>,
+                            mapped_value_t<L2, arc_t<G>>>
 class strong_fiber {
 public:
     using vertex = vertex_t<G>;
@@ -212,7 +211,8 @@ public:
             _vertex_status_map[t] = POST_HEAP;
             const auto & out_arcs_range = out_arcs(_graph.get(), t);
             prefetch_range(out_arcs_range);
-            prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph.get()));
+            prefetch_mapped_values(out_arcs_range,
+                                   arc_targets_map(_graph.get()));
             if(_vertex_strong_map[t]) {
                 prefetch_mapped_values(out_arcs_range, _upper_length_map.get());
                 _heap.pop();
