@@ -42,7 +42,7 @@ concept output_value_map_of =
 
 template <typename M, typename K>
 concept contiguous_value_map =
-    output_value_map<M, K> && std::integral<K> &&
+    input_value_map<M, K> && std::integral<K> &&
     requires(M & __m) {
         {
             __m.data()
