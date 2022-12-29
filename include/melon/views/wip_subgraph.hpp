@@ -8,7 +8,7 @@
 
 namespace fhamonic {
 namespace melon {
-namespace viewss {
+namespace views {
 
 template <graph G>
 class subgraph {
@@ -153,7 +153,7 @@ public:
     }
 };
 
-}  // namespace viewss
+}  // namespace views
 }  // namespace melon
 }  // namespace fhamonic
 
