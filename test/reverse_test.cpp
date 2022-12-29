@@ -20,7 +20,7 @@ GTEST_TEST(reverse_views, static_graph) {
         3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
         std::ranges::views::values(std::ranges::views::values(arc_pairs)));
 
-    auto reverse_graph = viewss::reverse(graph);
+    auto reverse_graph = views::reverse(graph);
 
     ASSERT_EQ(nb_vertices(graph), reverse_graph.nb_vertices());
     ASSERT_EQ(nb_arcs(graph), reverse_graph.nb_arcs());
@@ -79,7 +79,7 @@ GTEST_TEST(reverse_views, dijkstra) {
     builder.add_arc(5, 4, 9);
 
     auto [fgraph, length_map] = builder.build();
-    auto graph = viewss::reverse(fgraph);
+    auto graph = views::reverse(fgraph);
 
     dijkstra alg(graph, length_map);
 

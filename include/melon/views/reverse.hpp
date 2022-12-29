@@ -8,7 +8,7 @@
 
 namespace fhamonic {
 namespace melon {
-namespace viewss {
+namespace views {
 
 template <graph G>
 class reverse {
@@ -106,7 +106,7 @@ public:
     }
 };
 
-}  // namespace viewss
+}  // namespace views
 }  // namespace melon
 }  // namespace fhamonic
 
