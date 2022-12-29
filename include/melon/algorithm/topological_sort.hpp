@@ -16,16 +16,15 @@
 namespace fhamonic {
 namespace melon {
 
-struct breadth_first_search_default_traits {
+struct topological_sort_default_traits {
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
     static constexpr bool store_distances = false;
 };
 
-template <graph G, typename T = breadth_first_search_default_traits>
-    requires(outward_incidence_graph<G> || outward_adjacency_graph<G>) &&
-            has_vertex_map<G>
-class breadth_first_search {
+template <graph G, typename T = topological_sort_default_traits>
+    requires outward_incidence_graph<G> && has_vertex_map<G>
+class topological_sort {
 public:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
@@ -59,7 +58,7 @@ private:
     distances_map _dist_map;
 
 public:
-    [[nodiscard]] constexpr explicit breadth_first_search(const G & g)
+    [[nodiscard]] constexpr explicit topological_sort(const G & g)
         : _graph(g)
         , _queue()
         , _reached_map(create_vertex_map<bool>(g, false))
@@ -71,40 +70,45 @@ public:
               create_vertex_map<arc>(g), std::monostate{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
               create_vertex_map<int>(g), std::monostate{})) {
-        _queue.reserve(g.nb_vertices());
+        _queue.reserve(nb_vertices(g));
         _queue_current = _queue.begin();
     }
 
-    [[nodiscard]] constexpr breadth_first_search(const G & g, const vertex & s)
-        : breadth_first_search(g) {
-        add_source(s);
-    }
+    [[nodiscard]] constexpr topological_sort(const topological_sort & bin) =
+        default;
+    [[nodiscard]] constexpr topological_sort(topological_sort && bin) = default;
 
-    [[nodiscard]] constexpr breadth_first_search(
-        const breadth_first_search & bin) = default;
-    [[nodiscard]] constexpr breadth_first_search(breadth_first_search && bin) =
-        default;
-
-    constexpr breadth_first_search & operator=(const breadth_first_search &) =
-        default;
-    constexpr breadth_first_search & operator=(breadth_first_search &&) =
-        default;
+    constexpr topological_sort & operator=(const topological_sort &) = default;
+    constexpr topological_sort & operator=(topological_sort &&) = default;
 
 public:
-    constexpr breadth_first_search & reset() noexcept {
+    constexpr topological_sort & reset() noexcept {
         _queue.resize(0);
         _queue_current = _queue.begin();
         _reached_map.fill(false);
-        _remaining_in_degree_map.fill(std::numeric_limits<unsigned int>::max());
-        return *this;
-    }
-    constexpr breadth_first_search & add_source(vertex s) noexcept {
-        assert(!_reached_map[s]);
-        _queue.push_back(s);
-        _reached_map[s] = true;
-        _remaining_in_degree_map[s] = 0;
-        if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
-        if constexpr(traits::store_distances) _dist_map[s] = 0;
+        if(has_in_degree<G>) {
+            for(auto && u : vertices(_graph.get())) {
+                _remaining_in_degree_map[u] = in_degree(_graph.get(), u);
+                if(_remaining_in_degree_map[u] == 0) {
+                    _queue.push_back(u);
+                }
+            }
+        } else {
+            _remaining_in_degree_map.fill(0);
+            for(auto && u : vertices(_graph.get())) {
+                for(auto && a : out_arcs(_graph.get(), u)) {
+                    const vertex & w = arc_target(_graph.get(), a);
+                    ++_remaining_in_degree_map[w];
+                }
+            }
+            for(auto && u : vertices(_graph.get())) {
+                if(_remaining_in_degree_map[u] == 0) {
+                    _queue.push_back(u);
+                }
+            }
+        }
+        if constexpr(traits::store_distances) _dist_map.fill(0);
+
         return *this;
     }
 
@@ -121,34 +125,14 @@ public:
         assert(!finished());
         const vertex & u = *_queue_current;
         ++_queue_current;
-        if constexpr(outward_incidence_graph<G>) {
-            for(auto && a : out_arcs(_graph.get(), u)) {
-                const vertex & w = arc_target(_graph.get(), a);
-                if(!_reached_map[w]) {
-                    // _remaining_in_degree_map[w] = in_degree(_graph.get(), w);
-                    _reached_map[w] = true;
-                }
-                if(--_remaining_in_degree_map[w] > 0) continue;
-                _queue.push_back(w);
-                if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = u;
-                if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
-                if constexpr(traits::store_distances)
-                    _dist_map[w] = _dist_map[u] + 1;
-            }
-        } else {  // i.e., outward_adjacency_graph<G>
-            for(auto && w : out_neighbors(_graph.get(), u)) {
-                if(!_reached_map[w]) {
-                    // _remaining_in_degree_map[w] = in_degree(_graph.get(), w);
-                    _reached_map[w] = true;
-                }
-                if(--_remaining_in_degree_map[w] > 0) continue;
-                _queue.push_back(w);
-                if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = u;
-                if constexpr(traits::store_distances)
-                    _dist_map[w] = _dist_map[u] + 1;
-            }
+        for(auto && a : out_arcs(_graph.get(), u)) {
+            const vertex & w = arc_target(_graph.get(), a);
+            if(--_remaining_in_degree_map[w] > 0) continue;
+            _queue.push_back(w);
+            if constexpr(traits::store_pred_vertices) _pred_vertices_map[w] = u;
+            if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
+            if constexpr(traits::store_distances)
+                _dist_map[w] = _dist_map[u] + 1;
         }
     }
 
