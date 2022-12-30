@@ -19,6 +19,7 @@ GTEST_TEST(depth_first_search, no_arcs_graph) {
     ASSERT_EQ(alg.current(), 0u);
     alg.advance();
     ASSERT_TRUE(alg.finished());
+    alg.reset();
 }
 
 GTEST_TEST(depth_first_search, test) {

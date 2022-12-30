@@ -111,8 +111,7 @@ public:
     bidirectional_dijkstra & reset() noexcept {
         _forward_heap.clear();
         _reverse_heap.clear();
-        for(auto && u : vertices(_graph))
-            _vertex_status_map[u] = std::make_pair(PRE_HEAP, PRE_HEAP);
+        _vertex_status_map.fill(std::make_pair(PRE_HEAP, PRE_HEAP));
         _midpoint.reset();
         return *this;
     }

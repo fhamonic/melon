@@ -56,6 +56,7 @@ GTEST_TEST(dijkstra, test) {
     ASSERT_EQ(alg.current(), std::make_pair(3u, 21));
     alg.advance();
     ASSERT_TRUE(alg.finished());
+    alg.reset();
 }
 
 GTEST_TEST(dijkstra, traversal_iterator) {
