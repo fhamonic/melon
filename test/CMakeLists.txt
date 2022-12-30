@@ -21,6 +21,7 @@ add_executable(
   bidirectional_dijkstra_test.cpp
   strong_fiber_test.cpp
   intrusive_view_test.cpp
+  edmonds_karp_test.cpp
   reverse_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
