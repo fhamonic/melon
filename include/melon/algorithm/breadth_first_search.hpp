@@ -92,7 +92,7 @@ public:
         _reached_map.fill(false);
         return *this;
     }
-    constexpr breadth_first_search & add_source(vertex s) noexcept {
+    constexpr breadth_first_search & add_source(const vertex & s) noexcept {
         assert(!_reached_map[s]);
         _queue.push_back(s);
         _reached_map[s] = true;
