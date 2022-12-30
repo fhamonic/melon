@@ -114,8 +114,7 @@ public:
 
     constexpr dijkstra & reset() noexcept {
         _heap.clear();
-        for(const vertex & u : melon::vertices(_graph.get()))
-            _vertex_status_map[u] = PRE_HEAP;
+        _vertex_status_map.fill(PRE_HEAP);
         return *this;
     }
     constexpr dijkstra & add_source(

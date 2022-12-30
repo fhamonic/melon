@@ -171,6 +171,10 @@ public:
         return _data[static_cast<size_type>(i)];
     }
 
+    void fill(const mapped_type & v) noexcept {
+        std::fill(_data.get(), _data.get() + size(), v);
+    }
+
     [[nodiscard]] constexpr  mapped_type * data() noexcept { return _data.get(); }
     [[nodiscard]] constexpr  mapped_type * data() const noexcept { return _data.get(); }
 };

@@ -47,6 +47,7 @@ GTEST_TEST(strong_fiber, test) {
     for(const auto & [u, u_dist] : algo) {
         strong_nodes.push_back(u);
     }
+    algo.reset();
 
     ASSERT_TRUE(EQ_MULTISETS(strong_nodes, {6, 5, 4}));
 }
