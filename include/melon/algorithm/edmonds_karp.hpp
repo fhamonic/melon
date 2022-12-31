@@ -150,22 +150,23 @@ public:
         for(auto && a : out_arcs(_graph.get(), _s)) sum += _carried_flow_map[a];
         return sum;
     }
-    constexpr auto min_cut() noexcept {
-        // return std::views::filter(
-        //     arcs(_graph.get()), [this](const arc_t<G> & a) {
-        //         return _bfs_reached_map[arc_source(_graph.get())] &&
-        //                !_bfs_reached_map[arc_target(_graph.get())];
-        //     });
-        return std::views::join(std::views::transform(
-            std::views::filter(
-                vertices(_graph.get()),
-                [this](const vertex_t<G> & v) { return _bfs_reached_map[v]; }),
-            [this](const vertex_t<G> & v) {
-                return std::views::filter(
-                    out_arcs(_graph.get(), v), [this](const arc_t<G> & a) {
-                        return !_bfs_reached_map[arc_target(_graph.get(), a)];
-                    });
-            }));
+    constexpr auto minimum_cut() noexcept {
+        if constexpr(std::ranges::viewable_range<out_arcs_range_t<G>>) {
+            return std::views::join(std::views::transform(
+                _bfs_queue, [this](const vertex_t<G> & v) {
+                    return std::views::filter(
+                        out_arcs(_graph.get(), v), [this](const arc_t<G> & a) {
+                            return !_bfs_reached_map[arc_target(_graph.get(),
+                                                                a)];
+                        });
+                }));
+        } else {
+            return std::views::filter(
+                arcs(_graph.get()), [this](const arc_t<G> & a) {
+                    return _bfs_reached_map[arc_source(_graph.get())] &&
+                           !_bfs_reached_map[arc_target(_graph.get())];
+                });
+        }
     }
 };
 
