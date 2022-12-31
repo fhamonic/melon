@@ -83,12 +83,11 @@ public:
         _carried_flow_map.fill(0);
         for(auto && a : arcs(_graph.get()))
             _capacity_left_map[a] = _capacity_map.get()[a];
-        _bfs_reached_map.fill(false);
         return *this;
     }
 
 private:
-    bool find_path_bfs() {
+    bool find_unsaturated_path() {
         _bfs_reached_map.fill(false);
         _bfs_queue.resize(0);
         _bfs_queue.push_back(_s);
@@ -150,7 +149,7 @@ private:
 
 public:
     constexpr edmonds_karp & run() noexcept {
-        while(find_path_bfs()) {
+        while(find_unsaturated_path()) {
             push_flow_on_found_path();
         }
         return *this;
