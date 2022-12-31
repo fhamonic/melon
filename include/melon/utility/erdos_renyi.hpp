@@ -14,8 +14,8 @@ static_digraph erdos_renyi(const std::size_t nb_vertices,
                            const double expected_density) {
     using vertex = vertex_t<static_digraph>;
 
-    std::uniform_real_distribution<double> distr{0.0, 1.0};
-    std::mt19937 engine{std::random_device{}()};
+    static std::uniform_real_distribution<double> distr{0.0, 1.0};
+    static std::mt19937 engine{std::random_device{}()};
 
     static_digraph_builder<static_digraph> builder(nb_vertices);
 
