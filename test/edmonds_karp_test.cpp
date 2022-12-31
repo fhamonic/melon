@@ -8,6 +8,43 @@
 
 using namespace fhamonic::melon;
 
+GTEST_TEST(edmonds_karp, no_arcs) {
+    static_digraph_builder<static_digraph, int, char> builder(2);
+
+    auto [graph, capacity, part_of_min_cut] = builder.build();
+
+    edmonds_karp alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 0);
+    ASSERT_TRUE(EMPTY(alg.min_cut()));
+    alg.reset();
+}
+
+GTEST_TEST(edmonds_karp, arc_with_0_capacity) {
+    static_digraph_builder<static_digraph, int> builder(2);
+
+    builder.add_arc(0, 1, 0);
+
+    auto [graph, capacity] = builder.build();
+
+    edmonds_karp alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 0);
+    ASSERT_TRUE(EQ_MULTISETS(alg.min_cut(), {0u}));
+    alg.reset();
+}
+
+GTEST_TEST(edmonds_karp, arc_with_fixed_capacity) {
+    static_digraph_builder<static_digraph, int> builder(2);
+
+    builder.add_arc(0, 1, 107);
+
+    auto [graph, capacity] = builder.build();
+
+    edmonds_karp alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 107);
+    ASSERT_TRUE(EQ_MULTISETS(alg.min_cut(), {0u}));
+    alg.reset();
+}
+
 GTEST_TEST(edmonds_karp, test) {
     static_digraph_builder<static_digraph, int, char> builder(6);
 
