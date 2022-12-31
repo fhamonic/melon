@@ -37,6 +37,17 @@ make single-header
 ```
 then manage to #include it where needed with the range-v3 library.
 
+
+## How to Compile and Run Tests
+
+Having a compiler (GCC 12+ recommended), [CMake](https://cmake.org/cmake/help/latest/release/3.12.html) and [Conan](https://conan.io/), compile with
+
+    make
+
+compile and run tests with
+
+    make test
+
 ## Concepts and design choices
 
 As mentioned above, this project makes extensive use of C++20 concepts to provide requirements for graph algorithms. These concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in [Concepts and design choices](docs/CONCEPTS.md).
