@@ -3,20 +3,10 @@
 
 #include <algorithm>
 #include <cassert>
-#include <concepts>
 #include <ranges>
-#include <type_traits>
-#include <utility>
-#include <variant>
 #include <vector>
 
-#include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/constexpr_ternary.hpp"
-#include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
-#include "melon/utility/priority_queue.hpp"
-#include "melon/utility/semiring.hpp"
-#include "melon/utility/traversal_iterator.hpp"
 #include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
@@ -158,6 +148,23 @@ public:
         value_t sum{0};
         for(auto && a : out_arcs(_graph.get(), _s)) sum += _carried_flow_map[a];
         return sum;
+    }
+    constexpr auto min_cut() noexcept {
+        // return std::views::filter(
+        //     arcs(_graph.get()), [this](const arc_t<G> & a) {
+        //         return _bfs_reached_map[arc_source(_graph.get())] &&
+        //                !_bfs_reached_map[arc_target(_graph.get())];
+        //     });
+        return std::views::join(std::views::transform(
+            std::views::filter(
+                vertices(_graph.get()),
+                [this](const vertex_t<G> & v) { return _bfs_reached_map[v]; }),
+            [this](const vertex_t<G> & v) {
+                return std::views::filter(
+                    out_arcs(_graph.get(), v), [this](const arc_t<G> & a) {
+                        return !_bfs_reached_map[arc_target(_graph.get(), a)];
+                    });
+            }));
     }
 };
 
