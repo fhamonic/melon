@@ -22,8 +22,8 @@ private:
     vertex _nb_vertices;
 
 public:
-    [[nodiscard]] constexpr explicit complete_digraph(const vertex n = 0)
-        : _nb_vertices(n) {}
+    [[nodiscard]] constexpr explicit complete_digraph(const std::size_t n = 0)
+        : _nb_vertices(static_cast<vertex>(n)) {}
 
     [[nodiscard]] constexpr complete_digraph(const complete_digraph &) =
         default;
@@ -32,25 +32,27 @@ public:
     constexpr complete_digraph & operator=(const complete_digraph &) = default;
     constexpr complete_digraph & operator=(complete_digraph &&) = default;
 
-    [[nodiscard]] constexpr vertex nb_vertices() const noexcept {
+    [[nodiscard]] constexpr std::size_t nb_vertices() const noexcept {
         return _nb_vertices;
     }
-    [[nodiscard]] constexpr arc nb_arcs() const noexcept {
+    [[nodiscard]] constexpr std::size_t nb_arcs() const noexcept {
         return static_cast<arc>(_nb_vertices) *
                static_cast<arc>(_nb_vertices - 1);
     }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
-        return std::views::iota(vertex(0), nb_vertices());
+        return std::views::iota(vertex(0), _nb_vertices);
     }
     [[nodiscard]] constexpr auto arcs() const noexcept {
         return std::views::iota(arc(0), nb_arcs());
     }
 
-    [[nodiscard]] constexpr vertex arc_source(arc a) const noexcept {
+    [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
+        assert(a < nb_arcs());
         return static_cast<vertex>(a / (_nb_vertices - 1));
     }
-    [[nodiscard]] constexpr vertex arc_target(arc a) const noexcept {
+    [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
+        assert(a < nb_arcs());
         vertex source = arc_source(a);
         vertex target = a % (_nb_vertices - 1);
         return target + (source <= target);
@@ -62,18 +64,10 @@ public:
                                 static_cast<arc>((u + 1) * (_nb_vertices - 1)));
     }
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
-        // EXPECTED CPP 23
-        // return ranges::views::concat(
-        //     std::views::iota(static_cast<arc>(u),
-        //                      static_cast<arc>(u * (_nb_vertices - 1)),
-        //                      static_cast<arc>(_nb_vertices - 1)),
-        //     std::views::iota(static_cast<arc>(u * _nb_vertices - 1),
-        //     nb_arcs(),
-        //                      static_cast<arc>(_nb_vertices - 1)));
-
+        assert(u < _nb_vertices);
         return ranges::views::concat(
             intrusive_view(
-                static_cast<arc>(u-1), std::identity(),
+                static_cast<arc>(u - 1), std::identity(),
                 [n = _nb_vertices](const arc a) {
                     return a + static_cast<arc>(n - 1);
                 },
@@ -85,7 +79,9 @@ public:
                 [n = _nb_vertices](const arc a) {
                     return a + static_cast<arc>(n - 1);
                 },
-                [m = nb_arcs()](const arc a) -> bool { return a < m; }));
+                [m = static_cast<arc>(nb_arcs())](const arc a) -> bool {
+                    return a < m;
+                }));
     }
 
     template <typename T>
