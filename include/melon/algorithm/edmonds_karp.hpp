@@ -1,5 +1,5 @@
-#ifndef MELON_ALGORITHM_DIJKSTA_HPP
-#define MELON_ALGORITHM_DIJKSTA_HPP
+#ifndef MELON_ALGORITHM_EDMONDS_KARP_HPP
+#define MELON_ALGORITHM_EDMONDS_KARP_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -173,4 +173,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_ALGORITHM_DIJKSTA_HPP
+#endif  // MELON_ALGORITHM_EDMONDS_KARP_HPP
