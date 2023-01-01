@@ -23,6 +23,7 @@ add_executable(
   intrusive_view_test.cpp
   edmonds_karp_test.cpp
   erdos_renyi_test.cpp
+  complete_digraph_test.cpp
   reverse_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
