@@ -68,16 +68,15 @@ public:
         return ranges::views::concat(
             intrusive_view(
                 static_cast<arc>(u - 1), std::identity(),
-                [n = _nb_vertices](const arc a) {
-                    return a + static_cast<arc>(n - 1);
+                [offset = static_cast<arc>(_nb_vertices - 1)](const arc a) {
+                    return a + offset;
                 },
-                [n = _nb_vertices, u](const arc a) -> bool {
-                    return a < static_cast<arc>(u * (n - 1));
-                }),
+                [offset = static_cast<arc>(_nb_vertices - 1), u](const arc a)
+                    -> bool { return a < static_cast<arc>(u) * offset; }),
             intrusive_view(
                 static_cast<arc>((u + 1) * _nb_vertices - 1), std::identity(),
-                [n = _nb_vertices](const arc a) {
-                    return a + static_cast<arc>(n - 1);
+                [offset = static_cast<arc>(_nb_vertices - 1)](const arc a) {
+                    return a + offset;
                 },
                 [m = static_cast<arc>(nb_arcs())](const arc a) -> bool {
                     return a < m;
