@@ -35,7 +35,7 @@ public:
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
     using reached_map = vertex_map_t<G, bool>;
-    using remaining_in_degree_map = vertex_map_t<G, unsigned int>;
+    using remaining_in_degree_map = vertex_map_t<G, long unsigned int>;
     using pred_vertices_map =
         std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
                          std::monostate>::type;
@@ -57,32 +57,7 @@ private:
     pred_arcs_map _pred_arcs_map;
     distances_map _dist_map;
 
-public:
-    [[nodiscard]] constexpr explicit topological_sort(const G & g)
-        : _graph(g)
-        , _queue()
-        , _reached_map(create_vertex_map<bool>(g, false))
-        , _remaining_in_degree_map(create_vertex_map<unsigned int>(
-              g, std::numeric_limits<unsigned int>::max()))
-        , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              create_vertex_map<vertex>(g), std::monostate{}))
-        , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              create_vertex_map<arc>(g), std::monostate{}))
-        , _dist_map(constexpr_ternary<traits::store_distances>(
-              create_vertex_map<int>(g), std::monostate{})) {
-        _queue.reserve(nb_vertices(g));
-        _queue_current = _queue.begin();
-    }
-
-    [[nodiscard]] constexpr topological_sort(const topological_sort & bin) =
-        default;
-    [[nodiscard]] constexpr topological_sort(topological_sort && bin) = default;
-
-    constexpr topological_sort & operator=(const topological_sort &) = default;
-    constexpr topological_sort & operator=(topological_sort &&) = default;
-
-public:
-    constexpr topological_sort & reset() noexcept {
+    constexpr void push_start_vertices() noexcept {
         _queue.resize(0);
         _queue_current = _queue.begin();
         _reached_map.fill(false);
@@ -108,7 +83,37 @@ public:
             }
         }
         if constexpr(traits::store_distances) _dist_map.fill(0);
+    }
 
+public:
+    [[nodiscard]] constexpr explicit topological_sort(const G & g)
+        : _graph(g)
+        , _queue()
+        , _reached_map(create_vertex_map<bool>(g, false))
+        , _remaining_in_degree_map(create_vertex_map<long unsigned int>(
+              g, std::numeric_limits<unsigned int>::max()))
+        , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
+              create_vertex_map<vertex>(g), std::monostate{}))
+        , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
+              create_vertex_map<arc>(g), std::monostate{}))
+        , _dist_map(constexpr_ternary<traits::store_distances>(
+              create_vertex_map<int>(g), std::monostate{})) {
+        _queue.reserve(nb_vertices(g));
+        push_start_vertices();
+    }
+
+    [[nodiscard]] constexpr topological_sort(const topological_sort & bin) =
+        default;
+    [[nodiscard]] constexpr topological_sort(topological_sort && bin) = default;
+
+    constexpr topological_sort & operator=(const topological_sort &) = default;
+    constexpr topological_sort & operator=(topological_sort &&) = default;
+
+public:
+    constexpr topological_sort & reset() noexcept {
+        _queue.resize(0);
+        _queue_current = _queue.begin();
+        _reached_map.fill(false);
         return *this;
     }
 
