@@ -18,7 +18,12 @@ using mapped_reference_t = decltype(std::declval<M>()[std::declval<K>()]);
 
 template <typename M, typename K>
     requires value_map<M, K>
-using mapped_value_t = std::decay_t<mapped_reference_t<M, K>>;
+using mapped_const_reference_t =
+    decltype(std::declval<std::add_const_t<M>>().at(std::declval<K>()));
+
+template <typename M, typename K>
+    requires value_map<M, K>
+using mapped_value_t = std::decay_t<mapped_const_reference_t<M, K>>;
 
 template <typename M, typename K>
 concept input_value_map = value_map<M, K> && !
@@ -29,12 +34,14 @@ concept input_value_map_of =
     value_map<M, K> && std::same_as<mapped_value_t<M, K>, V>;
 
 template <typename M, typename K>
-concept output_value_map = input_value_map<M, K> &&
-                           requires(M map, K key, mapped_value_t<M, K> value) {
-                               {
-                                   map[key] = value
-                                   } -> std::same_as<mapped_reference_t<M, K>>;
-                           };
+concept output_value_map =
+    input_value_map<M, K> &&
+    requires(M map, K key, mapped_value_t<M, K> value) {
+        {
+            map[key] = value
+            } -> std::same_as<
+                std::add_lvalue_reference_t<mapped_reference_t<M, K>>>;
+    };
 
 template <typename M, typename K, typename V>
 concept output_value_map_of =
@@ -64,6 +71,17 @@ public:
         : _M_r(std::addressof(__t)) {}
 
     constexpr _ValueMap & base() const { return *_M_r; }
+
+    template <typename _Key>
+    constexpr auto at(_Key && __k) const
+        requires input_value_map<std::add_const_t<_ValueMap>, _Key> ||
+                 requires(const _ValueMap & __m, _Key & __k) { __m.at(__k); }
+    {
+        if constexpr(input_value_map<std::add_const_t<_ValueMap>, _Key>)
+            return _M_r->operator[](__k);
+        else
+            return _M_r->at(__k);
+    }
 
     template <typename _Key>
     constexpr auto operator[](_Key && __k) const
@@ -144,6 +162,9 @@ private:
 public:
     [[nodiscard]] constexpr map(F && f) : _func(std::forward<F>(f)) {}
     [[nodiscard]] constexpr auto operator[](const auto & k) const noexcept {
+        return _func(k);
+    }
+    [[nodiscard]] constexpr auto at(const auto & k) const noexcept {
         return _func(k);
     }
 };

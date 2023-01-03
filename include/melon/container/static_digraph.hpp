@@ -8,6 +8,7 @@
 #include <span>
 #include <vector>
 
+#include "melon/container/static_filter_map.hpp"
 #include "melon/container/static_map.hpp"
 #include "melon/detail/range_of.hpp"
 #include "melon/utility/value_map.hpp"
@@ -131,22 +132,34 @@ public:
 
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
-        return static_map<vertex, T>(nb_vertices());
+        // if constexpr(std::same_as<T, bool>)
+        //     return static_filter_map<vertex>(nb_vertices());
+        // else
+            return static_map<vertex, T>(nb_vertices());
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map(
         const T & default_value) const noexcept {
-        return static_map<vertex, T>(nb_vertices(), default_value);
+        // if constexpr(std::same_as<T, bool>)
+        //     return static_filter_map<vertex>(nb_vertices(), default_value);
+        // else
+            return static_map<vertex, T>(nb_vertices(), default_value);
     }
 
     template <typename T>
     [[nodiscard]] constexpr auto create_arc_map() const noexcept {
-        return static_map<arc, T>(nb_arcs());
+        // if constexpr(std::same_as<T, bool>)
+        //     return static_filter_map<arc>(nb_arcs());
+        // else
+            return static_map<arc, T>(nb_arcs());
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_arc_map(
         const T & default_value) const noexcept {
-        return static_map<arc, T>(nb_arcs(), default_value);
+        // if constexpr(std::same_as<T, bool>)
+        //     return static_filter_map<arc>(nb_arcs(), default_value);
+        // else
+            return static_map<arc, T>(nb_arcs(), default_value);
     }
 };
 

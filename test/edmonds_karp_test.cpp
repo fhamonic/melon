@@ -76,7 +76,7 @@ GTEST_TEST(edmonds_karp, test) {
 
 GTEST_TEST(edmonds_karp, complete_digraph_view) {
     auto graph = views::complete_digraph<>(5ul);
-    edmonds_karp alg(graph, views::map([](const auto & a){ return 1;}), 0u, 1u);
+    edmonds_karp alg(graph, views::map([](const auto & a){ return 1;}), 0ul, 1ul);
     ASSERT_EQ(alg.run().flow_value(), 4);
     alg.reset();
 }
