@@ -439,11 +439,18 @@ public:
         _size = n;
     }
 
-    reference operator[](size_type i) noexcept {
+
+    [[nodiscard]] const_reference at(const size_type i) const {
+        if(static_cast<size_type>(i) >= size())
+            throw std::out_of_range("Invalid key.");
+        return reference(_data.get() + i / N, i & span_index_mask);
+    }
+
+    [[nodiscard]] reference operator[](const size_type i) noexcept {
         assert(i < size());
         return reference(_data.get() + i / N, i & span_index_mask);
     }
-    const_reference operator[](size_type i) const noexcept {
+    [[nodiscard]] const_reference operator[](const size_type i) const noexcept {
         assert(i < size());
         return reference(_data.get() + i / N, i & span_index_mask);
     }
