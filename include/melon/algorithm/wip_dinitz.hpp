@@ -106,7 +106,7 @@ private:
             }
             ++current;
         }
-        return false;
+        return _bfs_reached_map[_t];
     }
 
     void push_flow_on_found_path() {
@@ -139,8 +139,10 @@ private:
 
 public:
     constexpr dinitz & run() noexcept {
-        while(find_unsaturated_path()) {
-            push_flow_on_found_path();
+        while(level_vertices()) {
+            while(find_unsaturated_path()) {
+                push_flow_on_found_path();
+            }
         }
         return *this;
     }
