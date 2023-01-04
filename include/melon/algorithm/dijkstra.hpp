@@ -12,6 +12,7 @@
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/intrusive_view.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/priority_queue.hpp"
@@ -202,7 +203,7 @@ public:
     {
         assert(reached(u) && _pred_arcs_map[u].has_value());
         if constexpr(has_arc_source<G>)
-            return melon::arc_source(_graph, pred_arc(u));
+            return melon::arc_source(_graph.get(), pred_arc(u));
         else
             return _pred_vertices_map[u];
     }
@@ -225,7 +226,7 @@ public:
     {
         assert(reached(t));
         return intrusive_view(
-            t,
+            static_cast<vertex>(t),
             [this](const vertex & v) -> arc {
                 return _pred_arcs_map[v].value();
             },

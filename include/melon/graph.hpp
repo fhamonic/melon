@@ -92,7 +92,7 @@ struct _NbVertices {
 private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
-        if constexpr(__member_vertices<_Tp>)
+        if constexpr(__member_nb_vertices<_Tp>)
             return noexcept(std::declval<_Tp &>().nb_vertices());
         else if constexpr(__adl_nb_vertices<_Tp>)
             return noexcept(nb_vertices(std::declval<_Tp &>()));
