@@ -6,6 +6,7 @@
 #include <ranges>
 #include <vector>
 
+#include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/value_map.hpp"
 
@@ -28,22 +29,18 @@ private:
     vertex _s;
     vertex _t;
     arc_map_t<G, value_t> _carried_flow_map;
-    arc_map_t<G, value_t> _capacity_left_map;
 
     std::vector<vertex> _bfs_queue;
     vertex_map_t<G, bool> _bfs_reached_map;
     vertex_map_t<G, arc> _bfs_pred_arc;
-    arc_map_t<G, bool> _bfs_forward;
 
 public:
     [[nodiscard]] constexpr edmonds_karp(const G & g, const C & c)
         : _graph(g)
         , _capacity_map(c)
         , _carried_flow_map(create_arc_map<value_t>(g))
-        , _capacity_left_map(create_arc_map<value_t>(g))
         , _bfs_reached_map(create_vertex_map<bool>(g))
-        , _bfs_pred_arc(create_vertex_map<arc>(g))
-        , _bfs_forward(create_arc_map<bool>(g)) {
+        , _bfs_pred_arc(create_vertex_map<arc>(g)) {
         _bfs_queue.reserve(g.nb_vertices());
         reset();
     }
@@ -71,13 +68,16 @@ public:
     }
     constexpr edmonds_karp & reset() noexcept {
         _carried_flow_map.fill(0);
-        for(auto && a : arcs(_graph.get()))
-            _capacity_left_map[a] = _capacity_map.get()[a];
         return *this;
     }
 
 private:
     bool find_unsaturated_path() {
+        const auto & out_arcs_range = out_arcs(_graph.get(), _s);
+        prefetch_range(out_arcs_range);
+        prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph.get()));
+        prefetch_mapped_values(out_arcs_range, _capacity_map.get());
+        prefetch_mapped_values(out_arcs_range, _carried_flow_map);
         _bfs_reached_map.fill(false);
         _bfs_queue.resize(0);
         _bfs_reached_map[_s] = true;
@@ -86,23 +86,21 @@ private:
         while(current != _bfs_queue.end()) {
             const vertex & u = *current;
             for(auto && a : out_arcs(_graph.get(), u)) {
-                if(_capacity_left_map[a] == 0) continue;
                 const vertex v = arc_target(_graph.get(), a);
-                if(_bfs_reached_map[v]) continue;
+                if(_bfs_reached_map[v] ||
+                   _capacity_map.get()[a] == _carried_flow_map[a])
+                    continue;
                 _bfs_pred_arc[v] = a;
-                _bfs_forward[a] = true;
-                if(v == _t) return true;
                 _bfs_reached_map[v] = true;
+                if(v == _t) return true;
                 _bfs_queue.push_back(v);
             }
             for(auto && a : in_arcs(_graph.get(), u)) {
-                if(_carried_flow_map[a] == 0) continue;
                 const vertex v = arc_source(_graph.get(), a);
-                if(_bfs_reached_map[v]) continue;
+                if(_bfs_reached_map[v] || _carried_flow_map[a] == 0) continue;
                 _bfs_pred_arc[v] = a;
-                _bfs_forward[a] = false;
-                if(v == _t) return true;
                 _bfs_reached_map[v] = true;
+                if(v == _t) return true;
                 _bfs_queue.push_back(v);
             }
             ++current;
@@ -115,9 +113,11 @@ private:
         vertex v = _t;
         while(v != _s) {
             const arc a = _bfs_pred_arc[v];
-            if(_bfs_forward[a]) {
-                pushed_flow = std::min(pushed_flow, _capacity_left_map[a]);
-                v = arc_source(_graph.get(), a);
+            const vertex u = arc_source(_graph.get(), a);
+            if(v != u) {
+                pushed_flow = std::min(
+                    pushed_flow, _capacity_map.get()[a] - _carried_flow_map[a]);
+                v = u;
             } else {
                 pushed_flow = std::min(pushed_flow, _carried_flow_map[a]);
                 v = arc_target(_graph.get(), a);
@@ -126,13 +126,12 @@ private:
         v = _t;
         while(v != _s) {
             const arc a = _bfs_pred_arc[v];
-            if(_bfs_forward[a]) {
+            const vertex u = arc_source(_graph.get(), a);
+            if(v != u) {
                 _carried_flow_map[a] += pushed_flow;
-                _capacity_left_map[a] -= pushed_flow;
-                v = arc_source(_graph.get(), a);
+                v = u;
             } else {
                 _carried_flow_map[a] -= pushed_flow;
-                _capacity_left_map[a] += pushed_flow;
                 v = arc_target(_graph.get(), a);
             }
         }
