@@ -50,14 +50,10 @@ class strong_fiber {
 public:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
-    using value_t = L1::value_type;
+    using value_t = mapped_value_t<L1, arc_t<G>>;
     using traits = T;
 
 private:
-    enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
-    using vertex_status_map = vertex_map_t<G, vertex_status>;
-    using vertex_strong_map = vertex_map_t<G, bool>;
-
     struct entry_cmp {
         std::reference_wrapper<const vertex_map_t<G, bool>> _strong_map;
 
@@ -84,8 +80,9 @@ private:
     std::reference_wrapper<const L1> _lower_length_map;
     std::reference_wrapper<const L2> _upper_length_map;
 
-    vertex_status_map _vertex_status_map;
-    vertex_strong_map _vertex_strong_map;
+    enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
+    vertex_map_t<G, vertex_status> _vertex_status_map;
+    vertex_map_t<G, bool> _vertex_strong_map;
     heap _heap;
     std::size_t _nb_strong_candidates;
 
