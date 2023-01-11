@@ -17,7 +17,7 @@ macro(run_conan)
 
   include(${CMAKE_CURRENT_BINARY_DIR}/conan.cmake)
 
-  conan_cmake_configure(REQUIRES range-v3/0.11.0 gtest/cci.20210126 GENERATORS
+  conan_cmake_configure(REQUIRES range-v3/0.11.0 fmt/9.1.0 gtest/cci.20210126 GENERATORS
                         cmake_find_package)
 
   conan_cmake_autodetect(settings)

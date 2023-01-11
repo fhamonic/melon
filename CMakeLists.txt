@@ -24,13 +24,14 @@ run_conan()
 
 # ################### Packages ###################
 find_package(range-v3)
+find_package(fmt)
 
 # ################### Library ####################
 add_library(melon INTERFACE)
 target_include_directories(
     melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(melon INTERFACE range-v3::range-v3)
+target_link_libraries(melon INTERFACE range-v3::range-v3 fmt::fmt)
 
 # #################### TESTS #####################
 if(ENABLE_TESTING)
