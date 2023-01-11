@@ -14,12 +14,13 @@ namespace fhamonic {
 namespace melon {
 
 template <int D, typename K, typename P,
-          std::strict_weak_order<std::pair<K, P>, std::pair<K, P>> C = decltype(
-              [](const std::pair<K, P> & e1, const std::pair<K, P> & e2) {
+          std::strict_weak_order<std::pair<K, P>, std::pair<K, P>> C =
+              decltype([](const std::pair<K, P> & e1,
+                          const std::pair<K, P> & e2) {
                   return e1.second > e2.second;
               }),
           output_value_map<K> M = std::unordered_map<K, std::size_t>>
-requires std::integral<mapped_value_t<M, K>>
+    requires std::integral<mapped_value_t<M, K>>
 class d_ary_heap {
 public:
     using key_type = K;
@@ -230,7 +231,7 @@ public:
     }
     constexpr void promote(const key_type & k,
                            const priority_type & p) noexcept {
-        assert(_cmp(entry(k, p), entry_ref(_indices_map[k])));
+        assert(!_cmp(entry_ref(_indices_map[k]), entry(k, p)));
         heap_push(_indices_map[k], entry(k, p));
     }
     void demote(const key_type & k, const priority_type & p) noexcept {
@@ -240,10 +241,10 @@ public:
 };  // class d_ary_heap
 
 template <typename K, typename P,
-          typename C = decltype(
-              [](const std::pair<K, P> & e1, const std::pair<K, P> & e2) {
-                  return e1.second > e2.second;
-              }),
+          typename C = decltype([](const std::pair<K, P> & e1,
+                                   const std::pair<K, P> & e2) {
+              return e1.second > e2.second;
+          }),
           typename M = std::unordered_map<K, std::size_t>>
 using binary_heap = d_ary_heap<2, K, P, C, M>;
 

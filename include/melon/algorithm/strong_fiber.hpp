@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/constexpr_ternary.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/priority_queue.hpp"
@@ -146,6 +147,13 @@ public:
         return *this;
     }
 
+    bool break_tie(const vertex & u, const vertex & w) const {
+        if constexpr(traits::strictly_strong)
+            return !_vertex_strong_map[u] && _vertex_strong_map[w];
+        else
+            return _vertex_strong_map[u] && !_vertex_strong_map[w];
+    }
+
     void process_strong_vertex_out_arc(const vertex & u, const value_t & dist,
                                        const arc & uw) noexcept {
         const vertex & w = arc_target(_graph.get(), uw);
@@ -154,7 +162,8 @@ public:
             const value_t new_dist =
                 traits::semiring::plus(dist, _upper_length_map.get()[uw]);
             const value_t old_dist = _heap.priority(w);
-            if(traits::semiring::less(new_dist, old_dist)) {
+            if(traits::semiring::less(new_dist, old_dist) ||
+               (new_dist == old_dist && break_tie(u, w))) {
                 if(!_vertex_strong_map[w]) {
                     _vertex_strong_map[w] = true;
                     ++_nb_strong_candidates;
@@ -162,10 +171,10 @@ public:
                 _heap.promote(w, new_dist);
             }
         } else if(w_status == PRE_HEAP) {
+            _vertex_strong_map[w] = true;
             _heap.push(
                 w, traits::semiring::plus(dist, _upper_length_map.get()[uw]));
             _vertex_status_map[w] = IN_HEAP;
-            _vertex_strong_map[w] = true;
             ++_nb_strong_candidates;
         }
     }
@@ -178,7 +187,8 @@ public:
             const value_t new_dist =
                 traits::semiring::plus(dist, _lower_length_map.get()[uw]);
             const value_t old_dist = _heap.priority(w);
-            if(traits::semiring::less(new_dist, old_dist)) {
+            if(traits::semiring::less(new_dist, old_dist) ||
+               (new_dist == old_dist && break_tie(u, w))) {
                 if(_vertex_strong_map[w]) {
                     _vertex_strong_map[w] = false;
                     --_nb_strong_candidates;
@@ -186,10 +196,10 @@ public:
                 _heap.promote(w, new_dist);
             }
         } else if(w_status == PRE_HEAP) {
+            _vertex_strong_map[w] = false;
             _heap.push(
                 w, traits::semiring::plus(dist, _lower_length_map.get()[uw]));
             _vertex_status_map[w] = IN_HEAP;
-            _vertex_strong_map[w] = false;
         }
     }
 
@@ -224,6 +234,10 @@ public:
                     process_weak_vertex_out_arc(t, t_dist, a);
                 }
             }
+
+            // std::cout << t << ':' << t_dist << "  " << _nb_strong_candidates
+            //           << std::endl;
+
         } while(_nb_strong_candidates > 0 &&
                 !_vertex_strong_map[_heap.top().first]);
     }
