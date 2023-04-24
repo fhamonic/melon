@@ -84,7 +84,7 @@ GTEST_TEST(strong_fiber, test2) {
 }
 
 template <graph G>
-auto compute_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
+auto compute_strong_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
                        const arc_t<G> & uv) {
     const auto & u = arc_source(g, uv);
     const auto & v = arc_target(g, uv);
@@ -142,7 +142,7 @@ GTEST_TEST(strong_fiber, fuzzy) {
             }
 
             auto certificate_fiber_map =
-                compute_fiber_map(graph, certificat_length_map, uv);
+                compute_strong_fiber_map(graph, certificat_length_map, uv);
 
             auto strong_fiber_view = std::views::filter(
                 vertices(graph), [&](auto && v) { return strong_map[v]; });
@@ -183,11 +183,142 @@ GTEST_TEST(strong_fiber, fuzzy) {
             //                     return {0, 0, 0};
             //             }))
             //         .set_arc_label_map(views::map([&](auto && a) {
-            //             return "[" + std::to_string(lower_length_map[a]) + ',' +
+            //             return "[" + std::to_string(lower_length_map[a]) +
+            //             ',' +
             //                    std::to_string(upper_length_map[a]) + "]";
             //         }));
             //     printer.print(std::ostream_iterator<char>(std::cout));
             // }
+
+            ASSERT_TRUE(
+                EQ_MULTISETS(strong_fiber_view, certificate_fiber_view));
+        }
+    }
+}
+
+
+template <graph G>
+auto compute_useless_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
+                       const arc_t<G> & uv) {
+    const auto & u = arc_source(g, uv);
+    const auto & v = arc_target(g, uv);
+    auto fiber_map = create_vertex_map<bool>(g, false);
+    auto dist_from_u_map =
+        create_vertex_map<int>(g, std::numeric_limits<int>::max());
+    auto uv_length = length_map[uv];
+
+    for(const auto & [t, t_dist_from_u] : dijkstra(g, length_map, u))
+        dist_from_u_map[t] = t_dist_from_u;
+    for(const auto & [t, t_dist_from_v] : dijkstra(g, length_map, v))
+        fiber_map[t] = (dist_from_u_map[t] < uv_length + t_dist_from_v);
+
+    return fiber_map;
+}
+
+struct useless_fiber_traits {
+    using semiring = shortest_path_semiring<int>;
+    template <typename CMP = std::less<std::pair<vertex_t<static_digraph>, int>>>
+    using heap =
+        d_ary_heap<2, vertex_t<static_digraph>, int, CMP, vertex_map_t<static_digraph, std::size_t>>;
+
+    static constexpr bool strictly_strong = true;
+    static constexpr bool store_distances = false;
+    static constexpr bool store_paths = false;
+};
+
+GTEST_TEST(useless_fiber, fuzzy) {
+    static constexpr std::size_t nb_vertices = 20;
+    static constexpr double density = 0.25;
+    static constexpr int nb_tests = 1000;
+
+    static constexpr int min_length = 0;
+    static constexpr int max_length = 20;
+    std::uniform_int_distribution lower_distr{min_length, max_length};
+    std::mt19937 engine{std::random_device{}()};
+
+    for(int i = 0; i < nb_tests; ++i) {
+        auto graph = erdos_renyi<static_digraph>(nb_vertices, density);
+        auto lower_length_map = create_arc_map<int>(graph);
+        auto upper_length_map = create_arc_map<int>(graph);
+        for(const auto & a : arcs(graph)) {
+            lower_length_map[a] = lower_distr(engine);
+            upper_length_map[a] = std::uniform_int_distribution{
+                lower_length_map[a], max_length}(engine);
+        }
+
+        for(const auto & a : arcs(graph))
+            ASSERT_TRUE(lower_length_map[a] <= upper_length_map[a]);
+
+        for(const auto & uv : arcs(graph)) {
+            auto useless_map = create_vertex_map<bool>(graph, false);
+            auto certificat_length_map = lower_length_map;
+
+            strong_fiber<decltype(graph), decltype(lower_length_map), decltype(upper_length_map), useless_fiber_traits> strong_fiber_algo(graph, lower_length_map,
+                                           upper_length_map);
+
+            strong_fiber_algo.reset().add_useless_arc_source(uv);
+
+            for(const auto a : out_arcs(graph, arc_source(graph, uv))) {
+                if(a == uv) continue;
+                certificat_length_map[uv] = upper_length_map[uv];
+            }
+            for(const auto & [t, t_dist] : strong_fiber_algo) {
+                useless_map[t] = true;
+                for(const auto & a : out_arcs(graph, t)) {
+                    certificat_length_map[a] = upper_length_map[a];
+                }
+            }
+
+            auto certificate_fiber_map =
+                compute_useless_fiber_map(graph, certificat_length_map, uv);
+
+            auto strong_fiber_view = std::views::filter(
+                vertices(graph), [&](auto && v) { return useless_map[v]; });
+            auto certificate_fiber_view = std::views::filter(
+                vertices(graph),
+                [&](auto && v) { return certificate_fiber_map[v]; });
+
+            // std::cout << '(' << uv << ",(" << arc_source(graph, uv) << ','
+            //           << arc_target(graph, uv) << "))" << std::endl;
+
+            if(!EQ_MULTISETS(strong_fiber_view, certificate_fiber_view)) {
+                std::cout << "shit!" << std::endl;
+                graphviz_printer printer(graph);
+                printer
+                    .set_vertex_color_map(views::map(
+                        [&](auto && v)
+                            -> std::tuple<unsigned char, unsigned char,
+                                          unsigned char> {
+                            if(useless_map[v] && certificate_fiber_map[v])
+                                return {255, 0, 0};
+                            else if(certificate_fiber_map[v])
+                                return {255, 0, 255};
+                            else if(useless_map[v])
+                                return {0, 0, 0};
+                            else
+                                return {255, 255, 255};
+                        }))
+                    .set_arc_color_map(views::map(
+                        [&](auto && a)
+                            -> std::tuple<unsigned char, unsigned char,
+                                          unsigned char> {
+                            if(a == uv)
+                                return {255, 0, 0};
+                            else if(certificat_length_map[a] ==
+                                    upper_length_map[a])
+                                return {0, 0, 255};
+                            else
+                                return {0, 0, 0};
+                        }))
+                    .set_arc_label_map(views::map([&](auto && a) {
+                        return "[" + std::to_string(lower_length_map[a]) +
+                        ',' +
+                               std::to_string(upper_length_map[a]) + "]";
+                    }));
+                printer.print(std::ostream_iterator<char>(std::cout));
+            } else {
+                std::cout << "ok!" << std::endl;
+            }
 
             ASSERT_TRUE(
                 EQ_MULTISETS(strong_fiber_view, certificate_fiber_view));
