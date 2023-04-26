@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/algorithm/dijkstra.hpp"
+#include "melon/algorithm/breadth_first_search.hpp"
 #include "melon/algorithm/strong_fiber.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/erdos_renyi.hpp"
@@ -196,21 +197,25 @@ GTEST_TEST(strong_fiber, fuzzy) {
     }
 }
 
-
 template <graph G>
 auto compute_useless_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
                        const arc_t<G> & uv) {
     const auto & u = arc_source(g, uv);
     const auto & v = arc_target(g, uv);
-    auto fiber_map = create_vertex_map<bool>(g, false);
-    auto dist_from_u_map =
-        create_vertex_map<int>(g, std::numeric_limits<int>::max());
-    auto uv_length = length_map[uv];
 
-    for(const auto & [t, t_dist_from_u] : dijkstra(g, length_map, u))
-        dist_from_u_map[t] = t_dist_from_u;
+    auto dist_from_v_map =
+        create_vertex_map<int>(g, std::numeric_limits<int>::max());
     for(const auto & [t, t_dist_from_v] : dijkstra(g, length_map, v))
-        fiber_map[t] = (dist_from_u_map[t] < uv_length + t_dist_from_v);
+        dist_from_v_map[t] = t_dist_from_v;
+
+    auto fiber_map = create_vertex_map<bool>(g, true);
+    for(const auto & [t, t_dist_from_u] : dijkstra(g, length_map, u)) {
+        if(dist_from_v_map[t] == std::numeric_limits<int>::max()) {
+            fiber_map[t] = true;
+            continue;
+        }
+        fiber_map[t] = t_dist_from_u < length_map[uv] + dist_from_v_map[t];
+    }
 
     return fiber_map;
 }
@@ -228,10 +233,10 @@ struct useless_fiber_traits {
 
 GTEST_TEST(useless_fiber, fuzzy) {
     static constexpr std::size_t nb_vertices = 20;
-    static constexpr double density = 0.25;
+    static constexpr double density = 0.35;
     static constexpr int nb_tests = 1000;
 
-    static constexpr int min_length = 0;
+    static constexpr int min_length = 1;
     static constexpr int max_length = 20;
     std::uniform_int_distribution lower_distr{min_length, max_length};
     std::mt19937 engine{std::random_device{}()};
@@ -250,17 +255,22 @@ GTEST_TEST(useless_fiber, fuzzy) {
             ASSERT_TRUE(lower_length_map[a] <= upper_length_map[a]);
 
         for(const auto & uv : arcs(graph)) {
-            auto useless_map = create_vertex_map<bool>(graph, false);
-            auto certificat_length_map = lower_length_map;
+            auto u = arc_source(graph, uv);
+            auto useless_map = create_vertex_map<bool>(graph, true);
+            for(auto v : breadth_first_search(graph, u)) 
+                useless_map[v] = false;
+            useless_map[u] = true;
 
             strong_fiber<decltype(graph), decltype(lower_length_map), decltype(upper_length_map), useless_fiber_traits> strong_fiber_algo(graph, lower_length_map,
                                            upper_length_map);
 
             strong_fiber_algo.reset().add_useless_arc_source(uv);
 
-            for(const auto a : out_arcs(graph, arc_source(graph, uv))) {
+            auto certificat_length_map = lower_length_map;
+            certificat_length_map[uv] = lower_length_map[uv];
+            for(const auto a : out_arcs(graph, u)) {
                 if(a == uv) continue;
-                certificat_length_map[uv] = upper_length_map[uv];
+                certificat_length_map[a] = upper_length_map[a];
             }
             for(const auto & [t, t_dist] : strong_fiber_algo) {
                 useless_map[t] = true;

@@ -20,6 +20,10 @@ test: all
 	@cd $(BUILD_DIR) && \
 	ctest --output-on-failure
 	
+test_preprocessing: all
+	@cd $(BUILD_DIR) && \
+	ctest -R useless_fiber --output-on-failure
+
 clean:
 	@rm -rf $(BUILD_DIR)
 
