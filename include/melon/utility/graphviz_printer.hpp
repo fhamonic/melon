@@ -2,6 +2,7 @@
 #define MELON_UTILITY_GRAPHVIZ_PRINTER_HPP
 
 // #include <format>
+#include <algorithm>
 #include <iterator>
 #include <optional>
 #include <utility>
