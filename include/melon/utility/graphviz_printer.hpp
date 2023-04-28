@@ -60,12 +60,32 @@ public:
         , _page_width(8)
         , _page_height(11) {}
 
+    graphviz_printer<G> & set_vertex_label(const vertex & v,
+                                           const std::string & l) {
+        if(!_vertex_label_map.has_value())
+            _vertex_label_map.emplace(
+                create_vertex_map<std::string>(_graph.get(), ""));
+        _vertex_label_map.value()[v] = l;
+        return *this;
+    }
+
     template <input_value_map<vertex> LM>
         requires std::convertible_to<mapped_value_t<LM, vertex>, std::string>
     graphviz_printer<G> & set_vertex_label_map(const LM & label_map) {
-        _vertex_label_map.emplace(create_vertex_map<std::string>(_graph.get()));
+        if(!_vertex_label_map.has_value())
+            _vertex_label_map.emplace(
+                create_vertex_map<std::string>(_graph.get()));
         for(auto && u : vertices(_graph.get()))
             _vertex_label_map.value()[u] = label_map[u];
+        return *this;
+    }
+
+    graphviz_printer<G> & set_vertex_pos(const vertex & v,
+                                           const point2d & p) {
+        if(!_vertex_pos_map.has_value())
+            _vertex_pos_map.emplace(
+                create_vertex_map<std::string>(_graph.get(), point2d{0.0,0.0}));
+        _vertex_pos_map.value()[v] = p;
         return *this;
     }
 
@@ -78,6 +98,12 @@ public:
         return *this;
     }
 
+    graphviz_printer<G> & set_vertex_size(const vertex & v,
+                                           const double s) {
+        _vertex_size_map[v] = s;
+        return *this;
+    }
+
     template <input_value_map<vertex> SM>
         requires std::convertible_to<mapped_value_t<SM, vertex>, double>
     graphviz_printer<G> & set_vertex_size_map(const SM & size_map) {
@@ -86,11 +112,23 @@ public:
         return *this;
     }
 
+    graphviz_printer<G> & set_vertex_color(const vertex & v,
+                                           const color c) {
+        _vertex_color_map[v] = c;
+        return *this;
+    }
+
     template <input_value_map<vertex> CM>
         requires std::convertible_to<mapped_value_t<CM, vertex>, color>
     graphviz_printer<G> & set_vertex_color_map(const CM & color_map) {
         for(auto && u : vertices(_graph.get()))
             _vertex_color_map[u] = color_map[u];
+        return *this;
+    }
+
+    graphviz_printer<G> & set_arc_label(const arc & a,
+                                           const std::string l) {
+        _arc_label_map[a] = l;
         return *this;
     }
 
@@ -103,10 +141,23 @@ public:
         return *this;
     }
 
+    graphviz_printer<G> & set_arc_size(const arc & a,
+                                           const double s) {
+        _arc_size_map[a] = s;
+        return *this;
+    }
+
     template <input_value_map<arc> SM>
         requires std::convertible_to<mapped_value_t<SM, arc>, double>
     graphviz_printer<G> & set_arc_size_map(const SM & size_map) {
         for(auto && a : arcs(_graph.get())) _arc_size_map[a] = size_map[a];
+        return *this;
+    }
+
+
+    graphviz_printer<G> & set_arc_color(const arc & a,
+                                           const color & c) {
+        _arc_color_map[a] = c;
         return *this;
     }
 
