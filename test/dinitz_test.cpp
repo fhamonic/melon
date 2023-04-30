@@ -28,7 +28,7 @@ GTEST_TEST(dinitz, arc_with_0_capacity) {
 
     dinitz alg(graph, capacity, 0u, 1u);
     ASSERT_EQ(alg.run().flow_value(), 0);
-    // ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
     alg.reset();
 }
 
