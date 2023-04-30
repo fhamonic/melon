@@ -25,7 +25,8 @@ add_executable(
   erdos_renyi_test.cpp
   complete_digraph_test.cpp
   reverse_test.cpp
-  topological_sort_test.cpp)
+  topological_sort_test.cpp
+  dinitz_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)

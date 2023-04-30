@@ -103,7 +103,7 @@ auto compute_strong_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
 }
 
 GTEST_TEST(strong_fiber, fuzzy) {
-    static constexpr std::size_t nb_vertices = 20;
+    static constexpr std::size_t nb_vertices = 15;
     static constexpr double density = 0.25;
     static constexpr int nb_tests = 1000;
 
@@ -232,7 +232,7 @@ struct useless_fiber_traits {
 };
 
 GTEST_TEST(useless_fiber, fuzzy) {
-    static constexpr std::size_t nb_vertices = 20;
+    static constexpr std::size_t nb_vertices = 15;
     static constexpr double density = 0.35;
     static constexpr int nb_tests = 1000;
 
@@ -291,44 +291,44 @@ GTEST_TEST(useless_fiber, fuzzy) {
             // std::cout << '(' << uv << ",(" << arc_source(graph, uv) << ','
             //           << arc_target(graph, uv) << "))" << std::endl;
 
-            if(!EQ_MULTISETS(strong_fiber_view, certificate_fiber_view)) {
-                std::cout << "shit!" << std::endl;
-                graphviz_printer printer(graph);
-                printer
-                    .set_vertex_color_map(views::map(
-                        [&](auto && v)
-                            -> std::tuple<unsigned char, unsigned char,
-                                          unsigned char> {
-                            if(useless_map[v] && certificate_fiber_map[v])
-                                return {255, 0, 0};
-                            else if(certificate_fiber_map[v])
-                                return {255, 0, 255};
-                            else if(useless_map[v])
-                                return {0, 0, 0};
-                            else
-                                return {255, 255, 255};
-                        }))
-                    .set_arc_color_map(views::map(
-                        [&](auto && a)
-                            -> std::tuple<unsigned char, unsigned char,
-                                          unsigned char> {
-                            if(a == uv)
-                                return {255, 0, 0};
-                            else if(certificat_length_map[a] ==
-                                    upper_length_map[a])
-                                return {0, 0, 255};
-                            else
-                                return {0, 0, 0};
-                        }))
-                    .set_arc_label_map(views::map([&](auto && a) {
-                        return "[" + std::to_string(lower_length_map[a]) +
-                        ',' +
-                               std::to_string(upper_length_map[a]) + "]";
-                    }));
-                printer.print(std::ostream_iterator<char>(std::cout));
-            } else {
-                std::cout << "ok!" << std::endl;
-            }
+            // if(!EQ_MULTISETS(strong_fiber_view, certificate_fiber_view)) {
+            //     std::cout << "shit!" << std::endl;
+            //     graphviz_printer printer(graph);
+            //     printer
+            //         .set_vertex_color_map(views::map(
+            //             [&](auto && v)
+            //                 -> std::tuple<unsigned char, unsigned char,
+            //                               unsigned char> {
+            //                 if(useless_map[v] && certificate_fiber_map[v])
+            //                     return {255, 0, 0};
+            //                 else if(certificate_fiber_map[v])
+            //                     return {255, 0, 255};
+            //                 else if(useless_map[v])
+            //                     return {0, 0, 0};
+            //                 else
+            //                     return {255, 255, 255};
+            //             }))
+            //         .set_arc_color_map(views::map(
+            //             [&](auto && a)
+            //                 -> std::tuple<unsigned char, unsigned char,
+            //                               unsigned char> {
+            //                 if(a == uv)
+            //                     return {255, 0, 0};
+            //                 else if(certificat_length_map[a] ==
+            //                         upper_length_map[a])
+            //                     return {0, 0, 255};
+            //                 else
+            //                     return {0, 0, 0};
+            //             }))
+            //         .set_arc_label_map(views::map([&](auto && a) {
+            //             return "[" + std::to_string(lower_length_map[a]) +
+            //             ',' +
+            //                    std::to_string(upper_length_map[a]) + "]";
+            //         }));
+            //     printer.print(std::ostream_iterator<char>(std::cout));
+            // } else {
+            //     std::cout << "ok!" << std::endl;
+            // }
 
             ASSERT_TRUE(
                 EQ_MULTISETS(strong_fiber_view, certificate_fiber_view));

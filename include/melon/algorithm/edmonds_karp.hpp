@@ -79,8 +79,8 @@ private:
         prefetch_mapped_values(out_arcs_range, _capacity_map.get());
         prefetch_mapped_values(out_arcs_range, _carried_flow_map);
         _bfs_reached_map.fill(false);
-        _bfs_queue.resize(0);
         _bfs_reached_map[_s] = true;
+        _bfs_queue.resize(0);
         _bfs_queue.push_back(_s);
         auto current = _bfs_queue.begin();
         while(current != _bfs_queue.end()) {
