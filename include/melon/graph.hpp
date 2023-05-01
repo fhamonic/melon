@@ -205,8 +205,20 @@ using out_arcs_range_t = decltype(melon::out_arcs(
     std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
 
 template <typename _Tp>
+using out_arcs_iterator_t = std::ranges::iterator_t<out_arcs_range_t<_Tp>>;
+
+template <typename _Tp>
+using out_arcs_sentinel_t = std::ranges::sentinel_t<out_arcs_range_t<_Tp>>;
+
+template <typename _Tp>
 using in_arcs_range_t = decltype(melon::in_arcs(
     std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+
+template <typename _Tp>
+using in_arcs_iterator_t = std::ranges::iterator_t<in_arcs_range_t<_Tp>>;
+
+template <typename _Tp>
+using in_arcs_sentinel_t = std::ranges::sentinel_t<in_arcs_range_t<_Tp>>;
 
 namespace __cust_access {
 template <typename _Tp>
