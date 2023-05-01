@@ -32,9 +32,9 @@ private:
     std::vector<vertex> _bfs_queue;
     vertex_map_t<G, std::size_t> _vertex_rank_map;
 
-    vertex_map_t<G, std::pair<out_arcs_iterator_t<G>, out_arcs_sentinel_t<G>>>
+    vertex_map_t<G, std::pair<out_arcs_iterator_t<G>, out_arcs_range_t<G>>>
         _remaining_out_arcs;
-    vertex_map_t<G, std::pair<in_arcs_iterator_t<G>, in_arcs_sentinel_t<G>>>
+    vertex_map_t<G, std::pair<in_arcs_iterator_t<G>, in_arcs_range_t<G>>>
         _remaining_in_arcs;
 
 public:
@@ -45,10 +45,10 @@ public:
         , _vertex_rank_map(create_vertex_map<std::size_t>(g))
         , _remaining_out_arcs(
               create_vertex_map<
-                  std::pair<out_arcs_iterator_t<G>, out_arcs_sentinel_t<G>>>(g))
+                  std::pair<out_arcs_iterator_t<G>, out_arcs_range_t<G>>>(g))
         , _remaining_in_arcs(
               create_vertex_map<
-                  std::pair<in_arcs_iterator_t<G>, in_arcs_sentinel_t<G>>>(g)) {
+                  std::pair<in_arcs_iterator_t<G>, in_arcs_range_t<G>>>(g)) {
         _bfs_queue.reserve(g.nb_vertices());
         reset();
     }
@@ -70,69 +70,75 @@ public:
         _s = s;
         return *this;
     }
+
     constexpr dinitz & set_target(const vertex & t) noexcept {
         _t = t;
         return *this;
     }
+
     constexpr dinitz & reset() noexcept {
         _carried_flow_map.fill(0);
+        for(auto && u : vertices(_graph.get())) {
+            _remaining_out_arcs[u].second = out_arcs(_graph.get(), u);
+            _remaining_in_arcs[u].second = in_arcs(_graph.get(), u);
+        }
         return *this;
     }
 
 private:
     bool bfs_rank_vertices() {
         _vertex_rank_map.fill(std::numeric_limits<std::size_t>::max());
-        _vertex_rank_map[_s] = 0;
+        _vertex_rank_map[_t] = 0;
         _bfs_queue.resize(0);
-        _bfs_queue.push_back(_s);
+        _bfs_queue.push_back(_t);
         auto current = _bfs_queue.begin();
         while(current != _bfs_queue.end()) {
             const vertex & u = *current;
-            for(auto && a : out_arcs(_graph.get(), u)) {
-                if(_capacity_map.get()[a] == _carried_flow_map[a]) continue;
-                const vertex v = arc_target(_graph.get(), a);
+            for(auto && a : in_arcs(_graph.get(), u)) {
+                const vertex v = arc_source(_graph.get(), a);
                 if(_vertex_rank_map[v] !=
-                   std::numeric_limits<std::size_t>::max())
+                       std::numeric_limits<std::size_t>::max() ||
+                   _capacity_map.get()[a] == _carried_flow_map[a])
                     continue;
                 _vertex_rank_map[v] = _vertex_rank_map[u] + 1;
                 _bfs_queue.push_back(v);
             }
-            for(auto && a : in_arcs(_graph.get(), u)) {
-                if(_carried_flow_map[a] == 0) continue;
-                const vertex v = arc_source(_graph.get(), a);
+            for(auto && a : out_arcs(_graph.get(), u)) {
+                const vertex v = arc_target(_graph.get(), a);
                 if(_vertex_rank_map[v] !=
-                   std::numeric_limits<std::size_t>::max())
+                       std::numeric_limits<std::size_t>::max() ||
+                   _carried_flow_map[a] == 0)
                     continue;
                 _vertex_rank_map[v] = _vertex_rank_map[u] + 1;
                 _bfs_queue.push_back(v);
             }
             ++current;
         }
-        return _vertex_rank_map[_t] != std::numeric_limits<std::size_t>::max();
+        return _vertex_rank_map[_s] != std::numeric_limits<std::size_t>::max();
     }
 
     value_t dfs_push_flow(const vertex u, const value_t max_incomming_flow) {
         if(max_incomming_flow == 0 || u == _t) return max_incomming_flow;
-        for(auto & [begin, end] = _remaining_out_arcs[u]; begin != end;
-            ++begin) {
-            const arc a = *begin;
+        for(auto & current = _remaining_out_arcs[u].first;
+            current != _remaining_out_arcs[u].second.end(); ++current) {
+            const arc & a = *current;
             const vertex v = arc_target(_graph.get(), a);
-            if(_vertex_rank_map[v] != _vertex_rank_map[u] + 1) continue;
+            if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
             if(_capacity_map.get()[a] == _carried_flow_map[a]) continue;
-            value_t pushed_flow = dfs_push_flow(
+            const value_t pushed_flow = dfs_push_flow(
                 v, std::min(max_incomming_flow,
                             _capacity_map.get()[a] - _carried_flow_map[a]));
             if(pushed_flow == 0) continue;
             _carried_flow_map[a] += pushed_flow;
             return pushed_flow;
         }
-        for(auto & [begin, end] = _remaining_in_arcs[u]; begin != end;
-            ++begin) {
-            const arc a = *begin;
+        for(auto & current = _remaining_in_arcs[u].first;
+            current != _remaining_in_arcs[u].second.end(); ++current) {
+            const arc & a = *current;
             const vertex v = arc_source(_graph.get(), a);
-            if(_vertex_rank_map[v] != _vertex_rank_map[u] + 1) continue;
+            if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
             if(_carried_flow_map[a] == 0) continue;
-            value_t pushed_flow = dfs_push_flow(
+            const value_t pushed_flow = dfs_push_flow(
                 v, std::min(max_incomming_flow, _carried_flow_map[a]));
             if(pushed_flow == 0) continue;
             _carried_flow_map[a] -= pushed_flow;
@@ -143,29 +149,33 @@ private:
 
 public:
     constexpr dinitz & run() noexcept {
-        while(bfs_rank_vertices()) {
+        while(bfs_rank_vertices()) {            
             for(auto && u : vertices(_graph.get())) {
-                auto r1 = out_arcs(_graph.get(), u);
-                _remaining_out_arcs[u] = { r1.begin(), r1.end()};
-                auto r2 = in_arcs(_graph.get(), u);
-                _remaining_in_arcs[u] = {r2.begin(), r2.end()};
+                _remaining_out_arcs[u].first =
+                    _remaining_out_arcs[u].second.begin();
+                _remaining_in_arcs[u].first =
+                    _remaining_in_arcs[u].second.begin();
             }
-            while(dfs_push_flow(_s, std::numeric_limits<value_t>::max()));
+            while(dfs_push_flow(_s, std::numeric_limits<value_t>::max()) >
+                  value_t{0})
+                ;
         }
         return *this;
     }
+
     constexpr value_t flow_value() noexcept {
         value_t sum{0};
         for(auto && a : out_arcs(_graph.get(), _s)) sum += _carried_flow_map[a];
         return sum;
     }
+
     constexpr auto minimum_cut() noexcept {
         if constexpr(std::ranges::viewable_range<out_arcs_range_t<G>>) {
             return std::views::join(std::views::transform(
                 _bfs_queue, [this](const vertex_t<G> & v) {
                     return std::views::filter(
-                        out_arcs(_graph.get(), v), [this](const arc_t<G> & a) {
-                            return _vertex_rank_map[arc_target(_graph.get(),
+                        in_arcs(_graph.get(), v), [this](const arc_t<G> & a) {
+                            return _vertex_rank_map[arc_source(_graph.get(),
                                                                a)] ==
                                    std::numeric_limits<std::size_t>::max();
                         });
@@ -173,9 +183,9 @@ public:
         } else {
             return std::views::filter(
                 arcs(_graph.get()), [this](const arc_t<G> & a) {
-                    return _vertex_rank_map[arc_source(_graph.get())] !=
+                    return _vertex_rank_map[arc_source(_graph.get())] ==
                                std::numeric_limits<std::size_t>::max() &&
-                           _vertex_rank_map[arc_target(_graph.get())] ==
+                           _vertex_rank_map[arc_target(_graph.get())] !=
                                std::numeric_limits<std::size_t>::max();
                 });
         }
