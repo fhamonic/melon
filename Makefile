@@ -20,9 +20,9 @@ test: all
 	@cd $(BUILD_DIR) && \
 	ctest --output-on-failure
 	
-test_preprocessing: all
+test_dinitz: all
 	@cd $(BUILD_DIR) && \
-	ctest -R useless_fiber --output-on-failure
+	ctest -R dinitz --output-on-failure
 
 clean:
 	@rm -rf $(BUILD_DIR)
