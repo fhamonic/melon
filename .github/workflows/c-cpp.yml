@@ -14,10 +14,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Conan
-      id: conan
-      uses: turtlebrowser/get-conan@main
+      run: pip install conan
     - name: Conan version
-      run: echo "${{ steps.conan.outputs.version }}"
+      run: conan --version
+    - name: Conan default profile
+      run: conan profile detect
+            
     - name: make
       run: make
     - name: make test
