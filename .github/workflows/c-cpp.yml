@@ -13,6 +13,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install Conan
+      id: conan
+      uses: turtlebrowser/get-conan@main
+    - name: Conan version
+      run: echo "${{ steps.conan.outputs.version }}"
     - name: make
       run: make
     - name: make test
