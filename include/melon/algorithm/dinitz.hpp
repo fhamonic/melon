@@ -32,13 +32,10 @@ private:
     std::vector<vertex> _bfs_queue;
     vertex_map_t<G, std::size_t> _vertex_rank_map;
 
-    using out_arcs_subrange =
-        std::ranges::subrange<out_arcs_iterator_t<G>, out_arcs_sentinel_t<G>>;
-    using in_arcs_subrange =
-        std::ranges::subrange<in_arcs_iterator_t<G>, in_arcs_sentinel_t<G>>;
-
-    vertex_map_t<G, out_arcs_subrange> _remaining_out_arcs;
-    vertex_map_t<G, in_arcs_subrange> _remaining_in_arcs;
+    vertex_map_t<G, std::pair<out_arcs_iterator_t<G>, out_arcs_sentinel_t<G>>>
+        _remaining_out_arcs;
+    vertex_map_t<G, std::pair<in_arcs_iterator_t<G>, in_arcs_sentinel_t<G>>>
+        _remaining_in_arcs;
 
 public:
     [[nodiscard]] constexpr dinitz(const G & g, const C & c)
@@ -46,8 +43,12 @@ public:
         , _capacity_map(c)
         , _carried_flow_map(create_arc_map<value_t>(g))
         , _vertex_rank_map(create_vertex_map<std::size_t>(g))
-        , _remaining_out_arcs(create_vertex_map<out_arcs_subrange>(g))
-        , _remaining_in_arcs(create_vertex_map<in_arcs_subrange>(g)) {
+        , _remaining_out_arcs(
+              create_vertex_map<
+                  std::pair<out_arcs_iterator_t<G>, out_arcs_sentinel_t<G>>>(g))
+        , _remaining_in_arcs(
+              create_vertex_map<
+                  std::pair<in_arcs_iterator_t<G>, in_arcs_sentinel_t<G>>>(g)) {
         _bfs_queue.reserve(g.nb_vertices());
         reset();
     }
@@ -112,8 +113,9 @@ private:
 
     value_t dfs_push_flow(const vertex u, const value_t max_incomming_flow) {
         if(max_incomming_flow == 0 || u == _t) return max_incomming_flow;
-        for(auto & r = _remaining_out_arcs[u]; !r.empty(); r.advance(1)) {
-            const arc a = *r.begin();
+        for(auto & [begin, end] = _remaining_out_arcs[u]; begin != end;
+            ++begin) {
+            const arc a = *begin;
             const vertex v = arc_target(_graph.get(), a);
             if(_vertex_rank_map[v] != _vertex_rank_map[u] + 1) continue;
             if(_capacity_map.get()[a] == _carried_flow_map[a]) continue;
@@ -124,8 +126,9 @@ private:
             _carried_flow_map[a] += pushed_flow;
             return pushed_flow;
         }
-        for(auto & r = _remaining_in_arcs[u]; !r.empty(); r.advance(1)) {
-            const arc a = *r.begin();
+        for(auto & [begin, end] = _remaining_in_arcs[u]; begin != end;
+            ++begin) {
+            const arc a = *begin;
             const vertex v = arc_source(_graph.get(), a);
             if(_vertex_rank_map[v] != _vertex_rank_map[u] + 1) continue;
             if(_carried_flow_map[a] == 0) continue;
@@ -135,19 +138,19 @@ private:
             _carried_flow_map[a] -= pushed_flow;
             return pushed_flow;
         }
-        return 0;
+        return value_t{0};
     }
 
 public:
     constexpr dinitz & run() noexcept {
         while(bfs_rank_vertices()) {
             for(auto && u : vertices(_graph.get())) {
-                _remaining_out_arcs[u] =
-                    out_arcs_subrange(out_arcs(_graph.get(), u));
-                _remaining_in_arcs[u] =
-                    in_arcs_subrange(in_arcs(_graph.get(), u));
+                auto r1 = out_arcs(_graph.get(), u);
+                _remaining_out_arcs[u] = { r1.begin(), r1.end()};
+                auto r2 = in_arcs(_graph.get(), u);
+                _remaining_in_arcs[u] = {r2.begin(), r2.end()};
             }
-            dfs_push_flow(_s, std::numeric_limits<value_t>::max());
+            while(dfs_push_flow(_s, std::numeric_limits<value_t>::max()));
         }
         return *this;
     }
