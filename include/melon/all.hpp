@@ -21,6 +21,8 @@
 #include "melon/algorithm/breadth_first_search.hpp"
 #include "melon/algorithm/depth_first_search.hpp"
 #include "melon/algorithm/dijkstra.hpp"
+#include "melon/algorithm/dinitz.hpp"
+#include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/strong_fiber.hpp"
 
 #include "melon/container/d_ary_heap.hpp"
