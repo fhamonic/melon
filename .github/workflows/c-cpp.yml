@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Conan
-      run: pip install conan
+      run: pip install conan==1.59.0
     - name: Conan version
       run: conan --version
     - name: Conan default profile
