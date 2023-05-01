@@ -17,8 +17,6 @@ jobs:
       run: pip install conan==1.59.0
     - name: Conan version
       run: conan --version
-    - name: Conan default profile
-      run: conan profile detect
             
     - name: make
       run: make
