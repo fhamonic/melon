@@ -1,0 +1,12 @@
+{ 
+    BasedOnStyle: Google,
+    UseTab: Never,
+    IndentWidth: 4,
+    TabWidth: 4,
+    BreakConstructorInitializers: BeforeComma,
+    PointerAlignment: Middle,
+    DerivePointerAlignment: false,
+    SpaceBeforeParens: Never,
+    AccessModifierOffset: -4,
+    IncludeBlocks: Preserve,
+}

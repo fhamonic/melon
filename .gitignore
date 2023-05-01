@@ -1,5 +1,6 @@
 .vscode
 /build
+/cmake-tools-build
 /single-header
 *.log
 *.lp
