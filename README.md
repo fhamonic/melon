@@ -40,7 +40,7 @@ then manage to #include it where needed with the range-v3 library.
 
 ## How to Compile and Run Tests
 
-Having a compiler (GCC 12+ recommended), [CMake](https://cmake.org/cmake/help/latest/release/3.12.html) and [Conan](https://conan.io/), compile with
+Having a compiler (GCC 12+ required), [CMake](https://cmake.org/cmake/help/latest/release/3.12.html) and [Conan](https://conan.io/), compile with
 
     make
 

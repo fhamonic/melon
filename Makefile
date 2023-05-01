@@ -2,7 +2,7 @@ MAKEFLAGS += --no-print-directory
 
 CPUS?=$(shell getconf _NPROCESSORS_ONLN || echo 1)
 
-CC = g++
+CC = g++-12
 BUILD_DIR = build
 
 .PHONY: all test clean single-header
