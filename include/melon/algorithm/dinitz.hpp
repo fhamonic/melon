@@ -13,8 +13,8 @@ namespace fhamonic {
 namespace melon {
 
 template <graph G, input_value_map<arc_t<G>> C>
-    requires outward_incidence_graph<G> && inward_incidence_graph<G> &&
-             has_vertex_map<G> && has_arc_map<G>
+requires outward_incidence_graph<G> && inward_incidence_graph<G> &&
+    has_vertex_map<G> && has_arc_map<G>
 class dinitz {
 private:
     using vertex = vertex_t<G>;
@@ -149,7 +149,7 @@ private:
 
 public:
     constexpr dinitz & run() noexcept {
-        while(bfs_rank_vertices()) {            
+        while(bfs_rank_vertices()) {
             for(auto && u : vertices(_graph.get())) {
                 _remaining_out_arcs[u].first =
                     _remaining_out_arcs[u].second.begin();
