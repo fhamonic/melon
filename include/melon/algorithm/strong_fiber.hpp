@@ -98,6 +98,16 @@ public:
                 entry_cmp(_vertex_strong_map))
         , _nb_strong_candidates(0) {}
 
+    strong_fiber & set_lower_length_map(const L1 & l1) noexcept {
+        _lower_length_map = std::ref(l1);
+        return *this;
+    }
+
+    strong_fiber & set_upper_length_map(const L2 & l2) noexcept {
+        _upper_length_map = std::ref(l2);
+        return *this;
+    }
+
     strong_fiber & reset() noexcept {
         _vertex_status_map.fill(PRE_HEAP);
         _vertex_strong_map.fill(false);

@@ -113,6 +113,11 @@ public:
     constexpr dijkstra & operator=(const dijkstra &) = default;
     constexpr dijkstra & operator=(dijkstra &&) = default;
 
+    dijkstra & set_length_map(const L & l) noexcept {
+        _length_map = std::ref(l);
+        return *this;
+    }
+
     constexpr dijkstra & reset() noexcept {
         _heap.clear();
         _vertex_status_map.fill(PRE_HEAP);
