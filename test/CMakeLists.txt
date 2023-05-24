@@ -26,6 +26,7 @@ add_executable(
   complete_digraph_test.cpp
   reverse_test.cpp
   topological_sort_test.cpp
+  subgraph_test.cpp
   dinitz_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
