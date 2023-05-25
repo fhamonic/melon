@@ -22,9 +22,12 @@ template <std::ranges::range _Keys,
           value_map<std::ranges::range_value_t<_Keys>> _ValueMap>
 constexpr void prefetch_mapped_values(const _Keys & __keys,
                                       const _ValueMap & __map) {
-    if constexpr(requires { __builtin_prefetch(nullptr); } &&
-                 contiguous_value_map<_ValueMap,
-                                      std::ranges::range_value_t<_Keys>>) {
+    if constexpr(requires {
+                     __builtin_prefetch(nullptr);
+                     std::ranges::begin(__keys);
+                     std::ranges::end(__keys);
+                 } && contiguous_value_map<_ValueMap,
+                                           std::ranges::range_value_t<_Keys>>) {
         if(std::ranges::begin(__keys) != std::ranges::end(__keys)) {
             __builtin_prefetch(__map.data() + *std::ranges::begin(__keys));
         }

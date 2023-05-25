@@ -33,18 +33,18 @@ GTEST_TEST(subgraph_views, static_graph) {
     ASSERT_FALSE(is_valid_arc(graph,arc_t<static_digraph>(nb_arcs(graph))));
 
     ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,0), subgraph_graph.in_neighbors(0)));
+        EQ_RANGES(out_neighbors(graph,0), subgraph_graph.out_neighbors(0)));
     ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,1), subgraph_graph.in_neighbors(1)));
+        EQ_RANGES(out_neighbors(graph,1), subgraph_graph.out_neighbors(1)));
     ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,2), subgraph_graph.in_neighbors(2)));
+        EQ_RANGES(out_neighbors(graph,2), subgraph_graph.out_neighbors(2)));
 
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,0), subgraph_graph.out_neighbors(0)));
+        EQ_RANGES(in_neighbors(graph,0), subgraph_graph.in_neighbors(0)));
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,1), subgraph_graph.out_neighbors(1)));
+        EQ_RANGES(in_neighbors(graph,1), subgraph_graph.in_neighbors(1)));
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,2), subgraph_graph.out_neighbors(2)));
+        EQ_RANGES(in_neighbors(graph,2), subgraph_graph.in_neighbors(2)));
 
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
 

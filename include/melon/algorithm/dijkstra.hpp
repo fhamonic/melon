@@ -150,7 +150,7 @@ public:
         const auto [t, st_dist] = _heap.top();
         if constexpr(traits::store_distances) _distances_map[t] = st_dist;
         _vertex_status_map[t] = POST_HEAP;
-        const auto & out_arcs_range = melon::out_arcs(_graph.get(), t);
+        auto && out_arcs_range = melon::out_arcs(_graph.get(), t);
         prefetch_range(out_arcs_range);
         prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph.get()));
         prefetch_mapped_values(out_arcs_range, _length_map.get());
