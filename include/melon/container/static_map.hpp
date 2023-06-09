@@ -57,6 +57,7 @@ public:
     static_map & operator=(const static_map & other) {
         resize(other.size());
         std::copy(other.data(), other.data() + other.size(), _data.get());
+        return *this;
     }
     static_map & operator=(static_map &&) = default;
 
