@@ -38,20 +38,21 @@ GTEST_TEST(static_digraph, empty_vectors_constructor) {
     std::vector<vertex_t<static_digraph>> sources;
     std::vector<vertex_t<static_digraph>> targets;
 
-    static_digraph graph(0, std::move(sources), std::move(targets));
-    ASSERT_EQ(nb_vertices(graph), 0);
+    static_digraph graph(1, std::move(sources), std::move(targets));
+    ASSERT_EQ(nb_vertices(graph), 1);
     ASSERT_EQ(nb_arcs(graph), 0);
-    ASSERT_TRUE(EMPTY(vertices(graph)));
+    ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0}));
     ASSERT_TRUE(EMPTY(arcs(graph)));
     ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(is_valid_vertex(graph,0));
+    ASSERT_TRUE(is_valid_vertex(graph,0));
+    ASSERT_FALSE(is_valid_vertex(graph,1));
     ASSERT_FALSE(is_valid_arc(graph,0));
 
-    EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)arc_target(graph,0), "");
-    EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)arc_source(graph,0), "");
+    EXPECT_DEATH((void)out_arcs(graph,1), "");
+    EXPECT_DEATH((void)arc_target(graph,1), "");
+    EXPECT_DEATH((void)out_arcs(graph,1), "");
+    EXPECT_DEATH((void)arc_source(graph,1), "");
 }
 
 GTEST_TEST(static_digraph, vectors_constructor_1) {
