@@ -53,11 +53,8 @@ public:
                             _in_arc_begin.data(), 0);
         for(auto && a : arcs()) {
             vertex t = _arc_target[a];
-            arc end = (t + 1 < static_cast<vertex>(nb_vertices)
-                           ? _in_arc_begin[t + 1]
-                           : static_cast<arc>(nb_arcs()));
-            _in_arcs[end - in_arc_count[t]] = a;
             --in_arc_count[t];
+            _in_arcs[_in_arc_begin[t] + in_arc_count[t]] = a;
         }
     }
 
