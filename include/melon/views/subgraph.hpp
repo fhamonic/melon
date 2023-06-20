@@ -5,12 +5,13 @@
 #include <ranges>
 
 #include "melon/graph.hpp"
+#include "melon/utility/value_map.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace views {
 
-template <graph G>
+template <graph G, input_value_map_of<vertex_t<G>, bool> VF=true_map, input_value_map_of<arc_t<G>, bool> AF=true_map>
 class subgraph {
 public:
     using vertex = vertex_t<G>;
@@ -18,14 +19,14 @@ public:
 
 private:
     std::reference_wrapper<const G> _graph;
-    vertex_map_t<G, bool> _vertex_filter;
-    arc_map_t<G, bool> _arc_filter;
+    VF _vertex_filter;
+    AF _arc_filter;
 
 public:
-    subgraph(const G & g)
+    subgraph(const G & g, VF && vertex_filter=true_map{}, AF && arc_filter=true_map{})
         : _graph(g)
-        , _vertex_filter(melon::create_vertex_map<bool>(g, true))
-        , _arc_filter(melon::create_arc_map<bool>(g, true)) {}
+        , _vertex_filter(std::forward<VF>(vertex_filter))
+        , _arc_filter(std::forward<AF>(arc_filter)) {}
 
     subgraph(const subgraph &) = default;
     subgraph(subgraph &&) = default;
@@ -33,18 +34,18 @@ public:
     subgraph & operator=(const subgraph &) = default;
     subgraph & operator=(subgraph &&) = default;
 
-    void disable_vertex(const vertex & v) const noexcept {
+    void disable_vertex(const vertex & v) noexcept requires output_value_map_of<VF, vertex_t<G>, bool> {
         _vertex_filter[v] = false;
     }
-    void enable_vertex(const vertex & v) const noexcept {
+    void enable_vertex(const vertex & v) noexcept requires output_value_map_of<VF, vertex_t<G>, bool> {
         _vertex_filter[v] = true;
     }
     bool is_valid_vertex(const vertex & v) const noexcept {
         return _vertex_filter[v] && melon::is_valid_vertex(_graph.get(), v);
     }
 
-    void disable_arc(const arc & a) const noexcept { _arc_filter[a] = false; }
-    void enable_arc(const arc & a) const noexcept { _arc_filter[a] = true; }
+    void disable_arc(const arc & a) const noexcept requires output_value_map_of<AF, arc_t<G>, bool> { _arc_filter[a] = false; }
+    void enable_arc(const arc & a) const noexcept requires output_value_map_of<AF, arc_t<G>, bool> { _arc_filter[a] = true; }
     bool is_valid_arc(const arc & a) const noexcept {
         return _arc_filter[a] && melon::is_valid_arc(_graph.get(), a);
     }
