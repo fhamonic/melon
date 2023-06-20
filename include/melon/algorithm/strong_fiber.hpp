@@ -122,58 +122,44 @@ public:
         return *this;
     }
 
-    strong_fiber & add_strong_arc_source(
-        const arc & uv,
-        const value_t & u_dist = traits::semiring::zero) noexcept {
-        vertex u = arc_source(_graph.get(), uv);
+    template <input_value_map_of<arc, bool> S,
+              input_value_map_of<arc, value_t> L,
+              input_value_map_of<arc, value_t> U>
+    strong_fiber & add_source(const vertex & u, const S & is_strong_arc,
+                              const value_t & u_dist,
+                              const L & lower_length_map,
+                              const U & upper_length_map) noexcept {
         discard(u);
         for(const arc a : out_arcs(_graph.get(), u)) {
-            if(a == uv) continue;
-            process_weak_vertex_out_arc(u, u_dist, a);
+            const vertex & w = arc_target(_graph.get(), a);
+            if(is_strong_arc[a]) {
+                process_strong_vertex(
+                    w, traits::semiring::plus(u_dist, upper_length_map[a]));
+            } else {
+                process_useless_vertex(
+                    w, traits::semiring::plus(u_dist, lower_length_map[a]));
+            }
         }
-        process_strong_vertex_out_arc(u, u_dist, uv);
         return *this;
     }
 
-    strong_fiber & add_useless_arc_source(
-        const arc & uv,
+    template <input_value_map_of<arc, bool> S>
+    strong_fiber & add_source(
+        const vertex & u, const S & is_strong_arc,
         const value_t & u_dist = traits::semiring::zero) noexcept {
-        vertex u = arc_source(_graph.get(), uv);
-        discard(u);
-        for(const arc a : out_arcs(_graph.get(), u)) {
-            if(a == uv) continue;
-            process_strong_vertex_out_arc(u, u_dist, a);
-        }
-        process_weak_vertex_out_arc(u, u_dist, uv);
-        return *this;
+        return add_source(u, is_strong_arc, u_dist, _lower_length_map.get(),
+                          _upper_length_map.get());
     }
 
-    strong_fiber & add_strong_source(const vertex & u,
-                                     const value_t & dist) noexcept {
-        discard(u);
-        for(const arc & a : out_arcs(_graph.get(), u)) {
-            process_strong_vertex_out_arc(u, entry(dist, true), a);
-        }
-        return *this;
-    }
-
-    bool break_tie(const vertex & u, const vertex & w) const {
-        if constexpr(traits::strictly_strong)
-            return !_vertex_strong_map[u] && _vertex_strong_map[w];
-        else
-            return _vertex_strong_map[u] && !_vertex_strong_map[w];
-    }
-
-    void process_strong_vertex_out_arc(const vertex & u, const value_t & dist,
-                                       const arc & uw) noexcept {
-        const vertex & w = arc_target(_graph.get(), uw);
+    void process_strong_vertex(const vertex & w,
+                               const value_t new_dist) noexcept {
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
-            const value_t new_dist =
-                traits::semiring::plus(dist, _upper_length_map.get()[uw]);
             const value_t old_dist = _heap.priority(w);
-            if(traits::semiring::less(new_dist, old_dist) ||
-               (new_dist == old_dist && break_tie(u, w))) {
+            if(constexpr_ternary<traits::strictly_strong>(
+                   traits::semiring::less(new_dist, old_dist),
+                   traits::semiring::less(new_dist, old_dist) ||
+                       (new_dist == old_dist && !_vertex_strong_map[w]))) {
                 if(!_vertex_strong_map[w]) {
                     _vertex_strong_map[w] = true;
                     ++_nb_strong_candidates;
@@ -182,23 +168,21 @@ public:
             }
         } else if(w_status == PRE_HEAP) {
             _vertex_strong_map[w] = true;
-            _heap.push(
-                w, traits::semiring::plus(dist, _upper_length_map.get()[uw]));
+            _heap.push(w, new_dist);
             _vertex_status_map[w] = IN_HEAP;
             ++_nb_strong_candidates;
         }
     }
 
-    void process_weak_vertex_out_arc(const vertex & u, const value_t & dist,
-                                     const arc & uw) noexcept {
-        const vertex & w = arc_target(_graph.get(), uw);
+    void process_useless_vertex(const vertex & w,
+                                const value_t new_dist) noexcept {
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
-            const value_t new_dist =
-                traits::semiring::plus(dist, _lower_length_map.get()[uw]);
             const value_t old_dist = _heap.priority(w);
-            if(traits::semiring::less(new_dist, old_dist) ||
-               (new_dist == old_dist && break_tie(u, w))) {
+            if(constexpr_ternary<traits::strictly_strong>(
+                   traits::semiring::less(new_dist, old_dist) ||
+                       (new_dist == old_dist && _vertex_strong_map[w]),
+                   traits::semiring::less(new_dist, old_dist))) {
                 if(_vertex_strong_map[w]) {
                     _vertex_strong_map[w] = false;
                     --_nb_strong_candidates;
@@ -207,8 +191,7 @@ public:
             }
         } else if(w_status == PRE_HEAP) {
             _vertex_strong_map[w] = false;
-            _heap.push(
-                w, traits::semiring::plus(dist, _lower_length_map.get()[uw]));
+            _heap.push(w, new_dist);
             _vertex_status_map[w] = IN_HEAP;
         }
     }
@@ -235,13 +218,19 @@ public:
                 _heap.pop();
                 --_nb_strong_candidates;
                 for(const arc & a : out_arcs_range) {
-                    process_strong_vertex_out_arc(t, t_dist, a);
+                    const vertex & w = arc_target(_graph.get(), a);
+                    process_strong_vertex(
+                        w, traits::semiring::plus(t_dist,
+                                                  _upper_length_map.get()[a]));
                 }
             } else {
                 prefetch_mapped_values(out_arcs_range, _lower_length_map.get());
                 _heap.pop();
                 for(const arc a : out_arcs_range) {
-                    process_weak_vertex_out_arc(t, t_dist, a);
+                    const vertex & w = arc_target(_graph.get(), a);
+                    process_useless_vertex(
+                        w, traits::semiring::plus(t_dist,
+                                                  _lower_length_map.get()[a]));
                 }
             }
 
