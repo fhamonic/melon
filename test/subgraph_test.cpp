@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "melon/utility/value_map.hpp"
 #include "melon/views/subgraph.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
@@ -51,6 +52,37 @@ GTEST_TEST(subgraph_views, static_graph) {
     for(arc_t<static_digraph> a : arcs(graph)) {
         ASSERT_EQ(arc_source(graph,a), arc_pairs[a].second.first);
     }
+}
+
+
+GTEST_TEST(subgraph_views, static_graph_filter) {
+    static_digraph_builder<static_digraph, char> builder(6);
+
+    builder.add_arc(0, 1, 1);
+    builder.add_arc(0, 2, 0);
+    builder.add_arc(1, 0, 0);
+    builder.add_arc(1, 2, 1);
+    builder.add_arc(1, 3, 0);
+    builder.add_arc(2, 0, 0);
+    builder.add_arc(2, 1, 1);
+    builder.add_arc(2, 3, 1);
+    builder.add_arc(3, 1, 0);
+    builder.add_arc(3, 2, 1);
+
+    auto [fgraph, filter_map] = builder.build();
+    auto graph = views::subgraph(fgraph, views::true_map{}, views::map([&filter_map](const arc_t<static_digraph> & v){ return filter_map.at(v)==1; }));
+
+
+
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(0), {1}));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(1), {2}));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(2), {1, 3}));
+    ASSERT_TRUE(
+        EQ_RANGES(graph.out_neighbors(3), {2}));
+
 }
 
 GTEST_TEST(subgraph_views, dijkstra) {
