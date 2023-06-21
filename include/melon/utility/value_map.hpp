@@ -170,19 +170,19 @@ public:
 };
 
 struct true_map {
-    [[nodiscard]] constexpr auto operator[](const auto & k) const noexcept {
+    [[nodiscard]] constexpr bool operator[](const auto & k) const noexcept {
         return true;
     }
-    [[nodiscard]] constexpr auto at(const auto & k) const noexcept {
+    [[nodiscard]] constexpr bool at(const auto & k) const noexcept {
         return true;
     }
 };
 
 struct false_map {
-    [[nodiscard]] constexpr auto operator[](const auto & k) const noexcept {
+    [[nodiscard]] constexpr bool operator[](const auto & k) const noexcept {
         return false;
     }
-    [[nodiscard]] constexpr auto at(const auto & k) const noexcept {
+    [[nodiscard]] constexpr bool at(const auto & k) const noexcept {
         return false;
     }
 };
