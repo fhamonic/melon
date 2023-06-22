@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <iterator>
+#include <type_traits>
 
 #include "melon/utility/traversal.hpp"
 

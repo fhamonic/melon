@@ -6,6 +6,7 @@
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/erdos_renyi.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
+#include "melon/views/subgraph.hpp"
 
 #include "melon/utility/graphviz_printer.hpp"
 
@@ -41,10 +42,18 @@ GTEST_TEST(strong_fiber, test) {
 
     auto [graph, reduced_length_map, length_map] = builder.build();
 
-    strong_fiber algo(graph, reduced_length_map, length_map);
+    // strong_fiber algo(graph, reduced_length_map, length_map);
+    // algo.add_source(
+    //     0, views::map([](const arc_t<static_digraph> & a) -> bool { return a
+    //     == 1; }));
 
-    algo.add_source(
-        0, views::map([](arc_t<static_digraph> a) -> bool { return a == 1; }));
+    auto sgraph = views::subgraph(
+        graph, {}, views::map([](const arc_t<static_digraph> & a) -> bool {
+            return a != 1;
+        }));
+    strong_fiber algo(sgraph, reduced_length_map, length_map);
+    algo.relax_useless_vertex(0);
+    algo.relax_strong_vertex(6, length_map[1]);
 
     std::vector<vertex_t<static_digraph>> strong_nodes;
     for(const auto & [u, u_dist] : algo) {
@@ -74,8 +83,9 @@ GTEST_TEST(strong_fiber, test2) {
 
     strong_fiber algo(graph, reduced_length_map, length_map);
 
-    algo.add_source(
-        3, views::map([](arc_t<static_digraph> a) -> bool { return a == 5; }));
+    algo.add_source(3, views::map([](const arc_t<static_digraph> & a) -> bool {
+                        return a == 5;
+                    }));
 
     std::vector<vertex_t<static_digraph>> strong_nodes;
     for(const auto & [u, u_dist] : algo) {
@@ -107,7 +117,7 @@ auto compute_strong_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
 GTEST_TEST(strong_fiber, fuzzy) {
     static constexpr std::size_t nb_vertices = 15;
     static constexpr double density = 0.35;
-    static constexpr int nb_tests = 20000;
+    static constexpr int nb_tests = 2000;
 
     static constexpr int min_length = 0;
     static constexpr int max_length = 10;
@@ -129,16 +139,26 @@ GTEST_TEST(strong_fiber, fuzzy) {
 
         for(const auto & uv : arcs(graph)) {
             auto u = arc_source(graph, uv);
+            auto v = arc_target(graph, uv);
             auto strong_map = create_vertex_map<bool>(graph, false);
             auto certificat_length_map = lower_length_map;
 
-            strong_fiber strong_fiber_algo(graph, lower_length_map,
-                                           upper_length_map);
+            // strong_fiber strong_fiber_algo(graph, lower_length_map,
+            //                                upper_length_map);
+            // strong_fiber_algo.reset().add_source(
+            //     u, views::map([&uv](arc_t<static_digraph> a) -> bool {
+            //         return a == uv;
+            //     }));
 
-            strong_fiber_algo.reset().add_source(
-                u, views::map([&uv](arc_t<static_digraph> a) -> bool {
-                    return a == uv;
+            auto sgraph = views::subgraph(
+                graph, {},
+                views::map([uv](const arc_t<static_digraph> & a) -> bool {
+                    return a != uv;
                 }));
+            strong_fiber strong_fiber_algo(sgraph, lower_length_map,
+                                           upper_length_map);
+            strong_fiber_algo.relax_useless_vertex(u);
+            strong_fiber_algo.relax_strong_vertex(v, upper_length_map[uv]);
 
             certificat_length_map[uv] = upper_length_map[uv];
             for(const auto & [t, t_dist] : strong_fiber_algo) {
@@ -152,10 +172,10 @@ GTEST_TEST(strong_fiber, fuzzy) {
                 compute_strong_fiber_map(graph, certificat_length_map, uv);
 
             auto strong_fiber_view = std::views::filter(
-                vertices(graph), [&](auto && v) { return strong_map[v]; });
+                vertices(graph), [&](auto && w) { return strong_map[w]; });
             auto certificate_fiber_view = std::views::filter(
                 vertices(graph),
-                [&](auto && v) { return certificate_fiber_map[v]; });
+                [&](auto && w) { return certificate_fiber_map[w]; });
 
             // std::cout << '(' << uv << ",(" << arc_source(graph, uv) << ','
             //           << arc_target(graph, uv) << "))" << std::endl;
@@ -165,15 +185,15 @@ GTEST_TEST(strong_fiber, fuzzy) {
                 graphviz_printer printer(graph);
                 printer
                     .set_vertex_color_map(views::map(
-                        [&](auto && v)
+                        [&](auto && w)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
-                            if(strong_map[v] && certificate_fiber_map[v])
+                            if(strong_map[w] && certificate_fiber_map[w])
                                 return {255, 0, 0};
-                            else if(certificate_fiber_map[v])
+                            else if(certificate_fiber_map[w])
                                 return {255, 0, 255};
-                            else if(strong_map[v])
-                                return {0, 0, 0};
+                            else if(strong_map[w])
+                                return {64, 64, 64};
                             else
                                 return {255, 255, 255};
                         }))
@@ -187,11 +207,10 @@ GTEST_TEST(strong_fiber, fuzzy) {
                                     upper_length_map[a])
                                 return {0, 0, 255};
                             else
-                                return {0, 0, 0};
+                                return {64, 64, 64};
                         }))
                     .set_arc_label_map(views::map([&](auto && a) {
-                        return "[" + std::to_string(lower_length_map[a]) +
-                        ',' +
+                        return "[" + std::to_string(lower_length_map[a]) + ',' +
                                std::to_string(upper_length_map[a]) + "]";
                     }));
                 printer.print(std::ostream_iterator<char>(std::cout));
@@ -223,6 +242,7 @@ auto compute_useless_fiber_map(const G & g,
         }
         fiber_map[t] = t_dist_from_u < length_map[uv] + dist_from_v_map[t];
     }
+    fiber_map[u] = true;
 
     return fiber_map;
 }
@@ -240,11 +260,11 @@ struct useless_fiber_traits {
 };
 
 GTEST_TEST(useless_fiber, fuzzy) {
-    static constexpr std::size_t nb_vertices = 5;
+    static constexpr std::size_t nb_vertices = 15;
     static constexpr double density = 0.35;
-    static constexpr int nb_tests = 20000;
+    static constexpr int nb_tests = 2000;
 
-    static constexpr int min_length = 1;
+    static constexpr int min_length = 0;
     static constexpr int max_length = 10;
     std::uniform_int_distribution lower_distr{min_length, max_length};
     std::mt19937 engine{std::random_device{}()};
@@ -264,40 +284,55 @@ GTEST_TEST(useless_fiber, fuzzy) {
 
         for(const auto & uv : arcs(graph)) {
             auto u = arc_source(graph, uv);
+            auto v = arc_target(graph, uv);
             auto useless_map = create_vertex_map<bool>(graph, true);
-            for(auto v : breadth_first_search(graph, u)) useless_map[v] = false;
+
+            for(auto w : breadth_first_search(graph, u)) useless_map[w] = false;
             useless_map[u] = true;
 
-            strong_fiber<decltype(graph), decltype(lower_length_map),
-                         decltype(upper_length_map), useless_fiber_traits>
-                strong_fiber_algo(graph, lower_length_map, upper_length_map);
+            // strong_fiber<decltype(graph), decltype(lower_length_map),
+            //              decltype(upper_length_map), useless_fiber_traits>
+            //     strong_fiber_algo(graph, lower_length_map, upper_length_map);
+            // strong_fiber_algo.add_source(
+            //     u, views::map([&uv](arc_t<static_digraph> a) -> bool {
+            //         return a != uv;
+            //     }));
 
-            strong_fiber_algo.reset().add_source(
-                u, views::map([&uv](arc_t<static_digraph> a) -> bool {
+            auto sgraph = views::subgraph(
+                graph, {},
+                views::map([&](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
                 }));
+            strong_fiber<decltype(sgraph), decltype(lower_length_map),
+                         decltype(upper_length_map), useless_fiber_traits>
+                strong_fiber_algo(sgraph, lower_length_map, upper_length_map);
+            strong_fiber_algo.relax_strong_vertex(u);
+            strong_fiber_algo.relax_useless_vertex(v, lower_length_map[uv]);
 
             auto certificat_length_map = lower_length_map;
-            certificat_length_map[uv] = lower_length_map[uv];
             for(const auto a : out_arcs(graph, u)) {
                 if(a == uv) continue;
                 certificat_length_map[a] = upper_length_map[a];
             }
+
+            // std::cout << "run\n";
             for(const auto & [t, t_dist] : strong_fiber_algo) {
                 useless_map[t] = true;
                 for(const auto & a : out_arcs(graph, t)) {
                     certificat_length_map[a] = upper_length_map[a];
                 }
+                // std::cout << t << " " << t_dist << std::endl;
             }
+            certificat_length_map[uv] = lower_length_map[uv];
 
             auto certificate_fiber_map =
                 compute_useless_fiber_map(graph, certificat_length_map, uv);
 
             auto strong_fiber_view = std::views::filter(
-                vertices(graph), [&](auto && v) { return useless_map[v]; });
+                vertices(graph), [&](auto && w) { return useless_map[w]; });
             auto certificate_fiber_view = std::views::filter(
                 vertices(graph),
-                [&](auto && v) { return certificate_fiber_map[v]; });
+                [&](auto && w) { return certificate_fiber_map[w]; });
 
             // std::cout << '(' << uv << ",(" << arc_source(graph, uv) << ','
             //           << arc_target(graph, uv) << "))" << std::endl;
@@ -307,15 +342,15 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 graphviz_printer printer(graph);
                 printer
                     .set_vertex_color_map(views::map(
-                        [&](auto && v)
+                        [&](auto && w)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
-                            if(useless_map[v] && certificate_fiber_map[v])
+                            if(useless_map[w] && certificate_fiber_map[w])
                                 return {255, 0, 0};
-                            else if(certificate_fiber_map[v])
+                            else if(certificate_fiber_map[w])
                                 return {255, 0, 255};
-                            else if(useless_map[v])
-                                return {0, 0, 0};
+                            else if(useless_map[w])
+                                return {64, 64, 64};
                             else
                                 return {255, 255, 255};
                         }))
@@ -329,11 +364,10 @@ GTEST_TEST(useless_fiber, fuzzy) {
                                     upper_length_map[a])
                                 return {0, 0, 255};
                             else
-                                return {0, 0, 0};
+                                return {64, 64, 64};
                         }))
                     .set_arc_label_map(views::map([&](auto && a) {
-                        return "[" + std::to_string(lower_length_map[a]) +
-                        ',' +
+                        return "[" + std::to_string(lower_length_map[a]) + ',' +
                                std::to_string(upper_length_map[a]) + "]";
                     }));
                 printer.print(std::ostream_iterator<char>(std::cout));

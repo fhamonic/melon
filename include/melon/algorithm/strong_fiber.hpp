@@ -78,8 +78,8 @@ private:
     using heap = typename traits::heap<entry_cmp>;
 
     std::reference_wrapper<const G> _graph;
-    std::reference_wrapper<const L1> _lower_length_map;
-    std::reference_wrapper<const L2> _upper_length_map;
+    std::reference_wrapper<const L1> _reduced_length_map;
+    std::reference_wrapper<const L2> _default_length_map;
 
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
     vertex_map_t<G, vertex_status> _vertex_status_map;
@@ -90,21 +90,21 @@ private:
 public:
     strong_fiber(const G & g, const L1 & l1, const L2 & l2)
         : _graph(g)
-        , _lower_length_map(l1)
-        , _upper_length_map(l2)
+        , _reduced_length_map(l1)
+        , _default_length_map(l2)
         , _vertex_status_map(create_vertex_map<vertex_status>(g, PRE_HEAP))
         , _vertex_strong_map(create_vertex_map<bool>(g))
         , _heap(create_vertex_map<std::size_t>(g),
                 entry_cmp(_vertex_strong_map))
         , _nb_strong_candidates(0) {}
 
-    strong_fiber & set_lower_length_map(const L1 & l1) noexcept {
-        _lower_length_map = std::ref(l1);
+    strong_fiber & set_reduced_length_map(const L1 & l1) noexcept {
+        _reduced_length_map = std::ref(l1);
         return *this;
     }
 
-    strong_fiber & set_upper_length_map(const L2 & l2) noexcept {
-        _upper_length_map = std::ref(l2);
+    strong_fiber & set_default_length_map(const L2 & l2) noexcept {
+        _default_length_map = std::ref(l2);
         return *this;
     }
 
@@ -127,17 +127,17 @@ public:
               input_value_map_of<arc, value_t> U>
     strong_fiber & add_source(const vertex & u, const S & is_strong_arc,
                               const value_t & u_dist,
-                              const L & lower_length_map,
+                              const L & reduced_length_map,
                               const U & upper_length_map) noexcept {
         discard(u);
         for(const arc a : out_arcs(_graph.get(), u)) {
             const vertex & w = arc_target(_graph.get(), a);
             if(is_strong_arc[a]) {
-                process_strong_vertex(
+                relax_strong_vertex(
                     w, traits::semiring::plus(u_dist, upper_length_map[a]));
             } else {
-                process_useless_vertex(
-                    w, traits::semiring::plus(u_dist, lower_length_map[a]));
+                relax_useless_vertex(
+                    w, traits::semiring::plus(u_dist, reduced_length_map[a]));
             }
         }
         return *this;
@@ -147,12 +147,14 @@ public:
     strong_fiber & add_source(
         const vertex & u, const S & is_strong_arc,
         const value_t & u_dist = traits::semiring::zero) noexcept {
-        return add_source(u, is_strong_arc, u_dist, _lower_length_map.get(),
-                          _upper_length_map.get());
+        return add_source(u, is_strong_arc, u_dist, _reduced_length_map.get(),
+                          _default_length_map.get());
     }
 
-    void process_strong_vertex(const vertex & w,
-                               const value_t new_dist) noexcept {
+    void relax_strong_vertex(
+        const vertex & w,
+        const value_t new_dist = traits::semiring::zero) noexcept {
+            // std::cout << "relax_strong: " << w << " " << new_dist << std::endl;
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t old_dist = _heap.priority(w);
@@ -174,8 +176,10 @@ public:
         }
     }
 
-    void process_useless_vertex(const vertex & w,
-                                const value_t new_dist) noexcept {
+    void relax_useless_vertex(
+        const vertex & w,
+        const value_t new_dist = traits::semiring::zero) noexcept {
+            // std::cout << "relax_useless: " << w << " " << new_dist << std::endl;
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t old_dist = _heap.priority(w);
@@ -208,34 +212,36 @@ public:
     constexpr void advance() noexcept {
         do {
             const auto && [t, t_dist] = _heap.top();
+            // std::cout << "pop: " << t << " " << t_dist << std::endl;
             _vertex_status_map[t] = POST_HEAP;
-            const auto & out_arcs_range = out_arcs(_graph.get(), t);
+            auto && out_arcs_range = out_arcs(_graph.get(), t);
             prefetch_range(out_arcs_range);
             prefetch_mapped_values(out_arcs_range,
                                    arc_targets_map(_graph.get()));
             if(_vertex_strong_map[t]) {
-                prefetch_mapped_values(out_arcs_range, _upper_length_map.get());
+                prefetch_mapped_values(out_arcs_range,
+                                       _default_length_map.get());
                 _heap.pop();
                 --_nb_strong_candidates;
                 for(const arc & a : out_arcs_range) {
                     const vertex & w = arc_target(_graph.get(), a);
-                    process_strong_vertex(
-                        w, traits::semiring::plus(t_dist,
-                                                  _upper_length_map.get()[a]));
+                    relax_strong_vertex(
+                        w, traits::semiring::plus(
+                               t_dist, _default_length_map.get()[a]));
                 }
             } else {
-                prefetch_mapped_values(out_arcs_range, _lower_length_map.get());
+                prefetch_mapped_values(out_arcs_range,
+                                       _reduced_length_map.get());
                 _heap.pop();
                 for(const arc a : out_arcs_range) {
                     const vertex & w = arc_target(_graph.get(), a);
-                    process_useless_vertex(
-                        w, traits::semiring::plus(t_dist,
-                                                  _lower_length_map.get()[a]));
+                    relax_useless_vertex(
+                        w, traits::semiring::plus(
+                               t_dist, _reduced_length_map.get()[a]));
                 }
             }
 
-            // std::cout << t << ':' << t_dist << "  " << _nb_strong_candidates
-            //           << std::endl;
+            // std::cout << "nb_strong_candidates: " << _nb_strong_candidates << std::endl;
 
         } while(_nb_strong_candidates > 0 &&
                 !_vertex_strong_map[_heap.top().first]);

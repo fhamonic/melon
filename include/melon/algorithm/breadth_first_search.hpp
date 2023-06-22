@@ -46,10 +46,15 @@ public:
         std::conditional<traits::store_distances, vertex_map_t<G, int>,
                          std::monostate>::type;
 
+
+    using cursor =
+        std::conditional_t<has_nb_vertices<G>, typename std::vector<vertex>::iterator,
+                         int>;
+
 private:
     std::reference_wrapper<const G> _graph;
     std::vector<vertex> _queue;
-    std::vector<vertex>::iterator _queue_current;
+    cursor _queue_current;
 
     reached_map _reached_map;
     pred_vertices_map _pred_vertices_map;
@@ -67,8 +72,12 @@ public:
               create_vertex_map<arc>(g), std::monostate{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
               create_vertex_map<int>(g), std::monostate{})) {
-        _queue.reserve(g.nb_vertices());
-        _queue_current = _queue.begin();
+        if constexpr(has_nb_vertices<G>) {
+            _queue.reserve(nb_vertices(g));
+            _queue_current = _queue.begin();
+        } else {
+            _queue_current = 0;
+        }
     }
 
     [[nodiscard]] constexpr breadth_first_search(const G & g, const vertex & s)
@@ -88,7 +97,11 @@ public:
 
     constexpr breadth_first_search & reset() noexcept {
         _queue.resize(0);
-        _queue_current = _queue.begin();
+        if constexpr(has_nb_vertices<G>) {
+            _queue_current = _queue.begin();
+        } else {
+            _queue_current = 0;
+        }
         _reached_map.fill(false);
         return *this;
     }
@@ -102,17 +115,25 @@ public:
     }
 
     [[nodiscard]] constexpr bool finished() const noexcept {
-        return _queue_current == _queue.end();
+        if constexpr(has_nb_vertices<G>) {
+            return _queue_current == _queue.end();
+        } else {
+            return _queue_current == _queue.size();
+        }
     }
 
-    [[nodiscard]] constexpr vertex current() const noexcept {
+    [[nodiscard]] constexpr const vertex & current() const noexcept {
         assert(!finished());
-        return *_queue_current;
+        if constexpr(has_nb_vertices<G>) {
+            return *_queue_current;
+        } else {
+            return _queue[_queue_current];
+        }
     }
 
     constexpr void advance() noexcept {
         assert(!finished());
-        const vertex & u = *_queue_current;
+        const vertex & u = current();
         ++_queue_current;
         if constexpr(outward_incidence_graph<G>) {
             for(auto && a : out_arcs(_graph.get(), u)) {
