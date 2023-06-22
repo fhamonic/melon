@@ -17,7 +17,7 @@ concept traversal_algorithm = requires(A alg) {
 
 template <typename A>
     requires traversal_algorithm<A>
-using traversal_entry_t = decltype(std::declval<A &&>().current());
+using traversal_entry_t = std::decay_t<decltype(std::declval<A &&>().current())>;
 
 }  // namespace melon
 }  // namespace fhamonic
