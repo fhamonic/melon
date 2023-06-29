@@ -111,7 +111,7 @@ concept __member_bounding_arcs =
     };
 
 template <typename _Tp>
-concept __adl_bounding_arcs = requires(const _Tp & __t, const vertex_t<_Tp> & __f) {
+concept __adl_bounding_arcs = requires(const _Tp & __t, const face_t<_Tp> & __f) {
                              { bounding_arcs(__t, __f) } -> std::ranges::input_range;
                          };
 
@@ -121,17 +121,17 @@ private:
     static constexpr bool _S_noexcept() {
         if constexpr(__member_bounding_arcs<_Tp>)
             return noexcept(std::declval<_Tp &>().bounding_arcs(
-                std::declval<vertex_t<_Tp> &>()));
+                std::declval<face_t<_Tp> &>()));
         else
             return noexcept(bounding_arcs(std::declval<_Tp &>(),
-                                     std::declval<vertex_t<_Tp> &>()));
+                                     std::declval<face_t<_Tp> &>()));
     }
 
 public:
     template <typename _Tp>
         requires __member_bounding_arcs<_Tp> || __adl_bounding_arcs<_Tp>
     constexpr auto operator()
-        [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __f) const
+        [[nodiscard]] (const _Tp & __t, const face_t<_Tp> & __f) const
         noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_bounding_arcs<_Tp>)
             return __t.bounding_arcs(__f);
@@ -147,7 +147,7 @@ inline constexpr __cust_access::_BoundingArcs bounding_arcs{};
 
 template <typename _Tp>
 using bounding_arcs_range_t = decltype(melon::bounding_arcs(
-    std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+    std::declval<_Tp &>(), std::declval<face_t<_Tp> &>()));
 
 
 
