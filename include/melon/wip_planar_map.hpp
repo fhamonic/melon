@@ -1,5 +1,5 @@
-#ifndef MELON_PLANAR_GRAPH_HPP
-#define MELON_PLANAR_GRAPH_HPP
+#ifndef MELON_PLANAR_MAP_HPP
+#define MELON_PLANAR_MAP_HPP
 
 #include <concepts>
 #include <ranges>
@@ -98,11 +98,6 @@ inline namespace __cust {
 inline constexpr __cust_access::_NbFaces nb_faces{};
 }  // namespace __cust
 
-
-
-
-
-
 namespace __cust_access {
 template <typename _Tp>
 concept __member_bounding_arcs =
@@ -149,23 +144,114 @@ template <typename _Tp>
 using bounding_arcs_range_t = decltype(melon::bounding_arcs(
     std::declval<_Tp &>(), std::declval<face_t<_Tp> &>()));
 
+namespace __cust_access {
+template <typename _Tp>
+concept __member_arc_twin =
+    requires(const _Tp & __t, const arc_t<_Tp> & __a) {
+        { __t.arc_twin(__a) } -> std::convertible_to<vertex_t<_Tp>>;
+    };
+
+template <typename _Tp>
+concept __adl_arc_twin = requires(const _Tp & __t, const arc_t<_Tp> & __a) {
+                               {
+                                   arc_twin(__t, __a)
+                                   } -> std::convertible_to<vertex_t<_Tp>>;
+                           };
+
+struct _ArcTwin {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_arc_twin<_Tp>)
+            return noexcept(
+                std::declval<_Tp &>().arc_twin(std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(arc_twin(std::declval<_Tp &>(),
+                                       std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+        requires __member_arc_twin<_Tp> || __adl_arc_twin<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (const _Tp & __t, const arc_t<_Tp> & __a) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_arc_twin<_Tp>)
+            return __t.arc_twin(__a);
+        else
+            return arc_twin(__t, __a);
+    }
+};
+
+template <typename _Tp>
+concept __member_arc_face =
+    requires(const _Tp & __t, const arc_t<_Tp> & __a) {
+        { __t.arc_face(__a) } -> std::convertible_to<face_t<_Tp>>;
+    };
+
+template <typename _Tp>
+concept __adl_arc_face = requires(const _Tp & __t, const arc_t<_Tp> & __a) {
+                               {
+                                   arc_face(__t, __a)
+                                   } -> std::convertible_to<face_t<_Tp>>;
+                           };
+
+struct _ArcFace {
+private:
+    template <typename _Tp>
+    static constexpr bool _S_noexcept() {
+        if constexpr(__member_arc_face<_Tp>)
+            return noexcept(
+                std::declval<_Tp &>().arc_face(std::declval<arc_t<_Tp> &>()));
+        else
+            return noexcept(arc_face(std::declval<_Tp &>(),
+                                       std::declval<arc_t<_Tp> &>()));
+    }
+
+public:
+    template <typename _Tp>
+        requires __member_arc_face<_Tp> || __adl_arc_face<_Tp>
+    constexpr auto operator()
+        [[nodiscard]] (const _Tp & __t, const arc_t<_Tp> & __a) const
+        noexcept(_S_noexcept<_Tp &>()) {
+        if constexpr(__member_arc_face<_Tp>)
+            return __t.arc_face(__a);
+        else
+            return arc_face(__t, __a);
+    }
+};
+}  // namespace __cust_access
+
+inline namespace __cust {
+inline constexpr __cust_access::_ArcTwin arc_twin{};
+inline constexpr __cust_access::_ArcFace arc_face{};
+}  // namespace __cust
+
+// vertex_coordinates
+// arc_source_coordinates
+// arc_target_coordinates
 
 
 
 
 
+template <typename _Tp>
+concept segment_set = has_arcs<_Tp> && requires(const _Tp & __t, const arc_t<_Tp> & __a) {
+                    melon::arc_source_coordinates(__t, __a);
+                    melon::arc_target_coordinates(__t, __a);
+                };
 
+template <typename _Tp>
+concept planar_subdivision = segment_set<_Tp> && requires(const _Tp & __t, const face_t<_Tp> & __f, const arc_t<_Tp> & __a) {
+                    melon::faces(__t);
+                    melon::bounding_arcs(__t, __f);
+                };
 
-
-
-
-
-
-
-
-
-
-
+template <typename _Tp>
+concept planar_map = planar_subdivision<_Tp> && requires(const _Tp & __t, const face_t<_Tp> & __f, const arc_t<_Tp> & __a) {
+                    melon::arc_face(__t, __a);
+                    melon::arc_twin(__t, __a);
+                };
 
 
 namespace __cust_access {
@@ -261,15 +347,11 @@ using face_map_t =
 
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_face_map =
-    graph<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
+    planar_map<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
                       melon::create_face_map<_ValueType>(__t);
                       melon::create_face_map<_ValueType>(__t, __d);
                   };
 }  // namespace melon
 }  // namespace fhamonic
 
-//  arc_twin : arc -> arc
-//  arc_face : arc -> face
-
-
-#endif  // MELON_PLANAR_GRAPH_HPP
+#endif  // MELON_PLANAR_MAP_HPP
