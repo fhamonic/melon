@@ -4,13 +4,13 @@
 #include <algorithm>
 #include <ranges>
 
-#include "melon/wip_planar_map.hpp"
+#include "melon/planar_map.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace views {
 
-template <planar_map P>
+template <planar_map P> 
 class dual {
 private:
     using vertex = face_t<P>;
