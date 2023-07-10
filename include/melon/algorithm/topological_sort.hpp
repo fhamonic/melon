@@ -53,9 +53,9 @@ private:
 
     reached_map _reached_map;
     remaining_in_degree_map _remaining_in_degree_map;
-    pred_vertices_map _pred_vertices_map;
-    pred_arcs_map _pred_arcs_map;
-    distances_map _dist_map;
+    [[no_unique_address]] pred_vertices_map _pred_vertices_map;
+    [[no_unique_address]] pred_arcs_map _pred_arcs_map;
+    [[no_unique_address]] distances_map _dist_map;
 
     constexpr void push_start_vertices() noexcept {
         _queue.resize(0);

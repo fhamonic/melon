@@ -82,9 +82,9 @@ private:
     heap _reverse_heap;
     vertex_status_map _vertex_status_map;
 
-    pred_arcs_map _forward_pred_arcs_map;
-    pred_arcs_map _reverse_pred_arcs_map;
-    optional_midpoint _midpoint;
+    [[no_unique_address]] pred_arcs_map _forward_pred_arcs_map;
+    [[no_unique_address]] pred_arcs_map _reverse_pred_arcs_map;
+    [[no_unique_address]] optional_midpoint _midpoint;
 
 public:
     [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l)

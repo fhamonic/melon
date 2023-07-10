@@ -83,9 +83,9 @@ private:
 
     heap _heap;
     vertex_status_map _vertex_status_map;
-    pred_vertices_map _pred_vertices_map;
-    pred_arcs_map _pred_arcs_map;
-    distances_map _distances_map;
+    [[no_unique_address]] pred_vertices_map _pred_vertices_map;
+    [[no_unique_address]] pred_arcs_map _pred_arcs_map;
+    [[no_unique_address]] distances_map _distances_map;
 
 public:
     [[nodiscard]] constexpr dijkstra(const G & g, const L & l)
