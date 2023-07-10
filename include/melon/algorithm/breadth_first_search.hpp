@@ -46,10 +46,9 @@ public:
         std::conditional<traits::store_distances, vertex_map_t<G, int>,
                          std::monostate>::type;
 
-
     using cursor =
-        std::conditional_t<has_nb_vertices<G>, typename std::vector<vertex>::iterator,
-                         int>;
+        std::conditional_t<has_nb_vertices<G>,
+                           typename std::vector<vertex>::iterator, int>;
 
 private:
     std::reference_wrapper<const G> _graph;
@@ -57,9 +56,9 @@ private:
     cursor _queue_current;
 
     reached_map _reached_map;
-    pred_vertices_map _pred_vertices_map;
-    pred_arcs_map _pred_arcs_map;
-    distances_map _dist_map;
+    [[no_unique_address]] pred_vertices_map _pred_vertices_map;
+    [[no_unique_address]] pred_arcs_map _pred_arcs_map;
+    [[no_unique_address]] distances_map _dist_map;
 
 public:
     [[nodiscard]] constexpr explicit breadth_first_search(const G & g)
