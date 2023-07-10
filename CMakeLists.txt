@@ -19,6 +19,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_BINARY_DIR}" ${CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(GNUInstallDirs)
 include(CompilerWarnings)
+include(Conan)
+run_conan()
 
 # ################### Packages ###################
 find_package(range-v3)
