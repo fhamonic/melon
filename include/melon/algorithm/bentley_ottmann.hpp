@@ -29,8 +29,9 @@ concept dijkstra_trait = semiring<typename T::semiring> &&
 template <typename G>
 struct bentley_ottman_default_traits {
     using coords_t = vertex_coordinates_t<G>;
-    using sweepline =
+    using coord_t =
         std::decay_t<decltype(std::get<0>(std::declval<coords_t>()))>;
+    using sweepline = double;
 
     struct event_cmp {
         [[nodiscard]] constexpr bool operator()(
@@ -46,12 +47,12 @@ struct bentley_ottman_default_traits {
     struct segment_cmp {
         std::reference_wrapper<sweepline> sweepline_x;
 
-        [[nodiscard]] constexpr double sweepline_intersection_y(
+        [[nodiscard]] constexpr coord_t sweepline_intersection_y(
             const std::pair<coords_t, coords_t> & p) {
             const coords_t & A = std::get<0>(p);
             const coords_t & B = std::get<1>(p);
-            const double dx = std::get<0>(B) - std::get<0>(A);
-            const double dy = std::get<1>(B) - std::get<1>(A);
+            const coord_t dx = std::get<0>(B) - std::get<0>(A);
+            const coord_t dy = std::get<1>(B) - std::get<1>(A);
             return std::get<1>(A) +
                    (sweepline_x.get() - std::get<0>(A)) * dy / dx;
         }
@@ -105,22 +106,22 @@ public:
     [[nodiscard]] constexpr std::optional<coords_t> get_intersection(
         const coords_t & A, const coords_t & B, const coords_t & C,
         const coords_t & D) {
-        const double a1 = std::get<1>(B) - std::get<1>(A);
-        const double a2 = std::get<1>(D) - std::get<1>(C);
-        const double b1 = std::get<0>(A) - std::get<0>(B);
-        const double b2 = std::get<0>(C) - std::get<0>(D);
-        const double c1 = a1 * std::get<0>(A) + b1 * std::get<1>(A);
-        const double c2 = a2 * std::get<0>(C) + b2 * std::get<1>(C);
+        const coord_t a1 = std::get<1>(B) - std::get<1>(A);
+        const coord_t a2 = std::get<1>(D) - std::get<1>(C);
+        const coord_t b1 = std::get<0>(A) - std::get<0>(B);
+        const coord_t b2 = std::get<0>(C) - std::get<0>(D);
+        const coord_t c1 = a1 * std::get<0>(A) + b1 * std::get<1>(A);
+        const coord_t c2 = a2 * std::get<0>(C) + b2 * std::get<1>(C);
 
-        const double determinant = a1 * b2 - a2 * b1;
+        const coord_t determinant = a1 * b2 - a2 * b1;
         if(determinant == 0) return std::nullopt;
 
-        const double x = (b2 * c1 - b1 * c2) / determinant;
+        const coord_t x = (b2 * c1 - b1 * c2) / determinant;
         if(x < std::max(std::get<0>(A), std::get<0>(B)) ||
            x > std::min(std::get<0>(C), std::get<0>(D)))
             return std::nullopt;
 
-        const double y = (a1 * c2 - a2 * c1) / determinant;
+        const coord_t y = (a1 * c2 - a2 * c1) / determinant;
         return coords_t{x, y};
     }
 
