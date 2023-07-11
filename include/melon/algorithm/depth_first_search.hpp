@@ -55,6 +55,7 @@ private:
     std::vector<vertex> _stack;
 
     reached_map _reached_map;
+    
     [[no_unique_address]] pred_vertices_map _pred_vertices_map;
     [[no_unique_address]] pred_arcs_map _pred_arcs_map;
     [[no_unique_address]] distances_map _dist_map;
