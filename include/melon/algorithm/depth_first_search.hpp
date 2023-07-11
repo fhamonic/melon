@@ -38,15 +38,18 @@ private:
         !(outward_adjacency_graph<G> && traits::store_pred_arcs),
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
+    struct no_pred_vertices_map {};
     using pred_vertices_map =
         std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
-                         std::monostate>::type;
+                         no_pred_vertices_map>::type;
+    struct no_pred_arcs_map {};
     using pred_arcs_map =
         std::conditional<traits::store_pred_arcs, vertex_map_t<G, arc>,
-                         std::monostate>::type;
+                         no_pred_arcs_map>::type;
+    struct no_distance_map {};
     using distances_map =
         std::conditional<traits::store_distances, vertex_map_t<G, int>,
-                         std::monostate>::type;
+                         no_distance_map>::type;
 
     std::reference_wrapper<const G> _graph;
     std::vector<vertex> _stack;
@@ -62,11 +65,11 @@ public:
         , _stack()
         , _reached_map(create_vertex_map<bool>(g, false))
         , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
-              create_vertex_map<vertex>(g), std::monostate{}))
+              create_vertex_map<vertex>(g), no_pred_vertices_map{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
-              create_vertex_map<arc>(g), std::monostate{}))
+              create_vertex_map<arc>(g), no_pred_arcs_map{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
-              create_vertex_map<int>(g), std::monostate{})) {
+              create_vertex_map<int>(g), no_distance_map{})) {
         _stack.reserve(g.nb_vertices());
     }
 

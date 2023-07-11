@@ -66,16 +66,17 @@ private:
 
     using heap = traits::heap;
     using vertex_status_map = vertex_map_t<G, vertex_status>;
+    struct no_pred_vertices_map {};
     using pred_vertices_map =
-        std::conditional<traits::store_paths && !has_arc_source<G>,
-                         vertex_map_t<G, vertex>, std::monostate>::type;
+        std::conditional < traits::store_paths && !has_arc_source<G>,
+          vertex_map_t<G, vertex>, no_pred_vertices_map> ::type;
     using optional_arc = std::optional<arc>;
-    using pred_arcs_map =
-        std::conditional<traits::store_paths, vertex_map_t<G, optional_arc>,
-                         std::monostate>::type;
-    using distances_map =
-        std::conditional<traits::store_distances, vertex_map_t<G, value_t>,
-                         std::monostate>::type;
+    struct no_pred_arcs_map {};
+    using pred_arcs_map = std::conditional < traits::store_paths,
+          vertex_map_t<G, optional_arc>, no_pred_arcs_map > ::type;
+    struct no_distance_map {};
+    using distances_map = std::conditional < traits::store_distances,
+          vertex_map_t<G, value_t>, no_distance_map > ::type;
 
 private:
     std::reference_wrapper<const G> _graph;
@@ -93,14 +94,13 @@ public:
         , _length_map(l)
         , _heap(create_vertex_map<std::size_t>(g))
         , _vertex_status_map(create_vertex_map<vertex_status>(g, PRE_HEAP))
-        , _pred_vertices_map(
-              constexpr_ternary < traits::store_paths &&
-              !has_arc_source < G >>
-                  (create_vertex_map<vertex>(g), std::monostate{}))
+        , _pred_vertices_map(constexpr_ternary < traits::store_paths &&
+                             !has_arc_source < G >>
+                                 (create_vertex_map<vertex>(g), no_pred_vertices_map{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_paths>(
-              create_vertex_map<optional_arc>(g), std::monostate{}))
+              create_vertex_map<optional_arc>(g), no_pred_arcs_map{}))
         , _distances_map(constexpr_ternary<traits::store_distances>(
-              create_vertex_map<value_t>(g), std::monostate{})) {}
+              create_vertex_map<value_t>(g), no_distance_map{})) {}
 
     [[nodiscard]] constexpr dijkstra(const G & g, const L & l, const vertex & s)
         : dijkstra(g, l) {
