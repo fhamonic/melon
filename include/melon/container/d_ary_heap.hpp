@@ -29,27 +29,27 @@ public:
 
 private:
     using size_type = std::size_t;
-    using indice_map = M;
+    using indices_map = M;
 
 public:
     std::vector<entry> _heap_array;
-    indice_map _indices_map;
-    C _cmp;
+    indices_map _indices_map;
+    [[no_unique_address]] C _cmp;
 
 public:
     [[nodiscard]] constexpr d_ary_heap()
         : _heap_array(), _indices_map(), _cmp() {}
 
     template <typename IMA>
-    [[nodiscard]] constexpr explicit d_ary_heap(IMA && indice_map_arg)
+    [[nodiscard]] constexpr explicit d_ary_heap(IMA && indices_map_arg)
         : _heap_array()
-        , _indices_map(std::forward<IMA>(indice_map_arg))
+        , _indices_map(std::forward<IMA>(indices_map_arg))
         , _cmp() {}
 
     template <typename IMA, typename CA>
-    [[nodiscard]] constexpr d_ary_heap(IMA && indice_map_arg, CA && cmp_arg)
+    [[nodiscard]] constexpr d_ary_heap(IMA && indices_map_arg, CA && cmp_arg)
         : _heap_array()
-        , _indices_map(std::forward<IMA>(indice_map_arg))
+        , _indices_map(std::forward<IMA>(indices_map_arg))
         , _cmp(std::forward<CA>(cmp_arg)) {}
 
     [[nodiscard]] constexpr d_ary_heap(const d_ary_heap & bin) = default;

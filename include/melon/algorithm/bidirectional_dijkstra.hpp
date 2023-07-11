@@ -67,12 +67,18 @@ private:
         vertex_map_t<G, std::pair<vertex_status, vertex_status>>;
 
     using optional_arc = std::optional<arc>;
-    using pred_arcs_map =
+    struct no_forward_pred_arcs_map {};
+    using forward_pred_arcs_map =
         std::conditional<traits::store_path, vertex_map_t<G, optional_arc>,
-                         std::monostate>::type;
+                         no_forward_pred_arcs_map>::type;
+    struct no_reverse_pred_arcs_map {};
+    using reverse_pred_arcs_map =
+        std::conditional<traits::store_path, vertex_map_t<G, optional_arc>,
+                         no_reverse_pred_arcs_map>::type;
+    struct no_optional_midpoint {};
     using optional_midpoint =
         std::conditional<traits::store_path, std::optional<vertex>,
-                         std::monostate>::type;
+                         no_optional_midpoint>::type;
 
 private:
     const G & _graph;
@@ -82,8 +88,8 @@ private:
     heap _reverse_heap;
     vertex_status_map _vertex_status_map;
 
-    [[no_unique_address]] pred_arcs_map _forward_pred_arcs_map;
-    [[no_unique_address]] pred_arcs_map _reverse_pred_arcs_map;
+    [[no_unique_address]] forward_pred_arcs_map _forward_pred_arcs_map;
+    [[no_unique_address]] reverse_pred_arcs_map _reverse_pred_arcs_map;
     [[no_unique_address]] optional_midpoint _midpoint;
 
 public:
@@ -96,9 +102,10 @@ public:
                              std::pair<vertex_status, vertex_status>>(
               std::make_pair(PRE_HEAP, PRE_HEAP)))
         , _forward_pred_arcs_map(constexpr_ternary<traits::store_path>(
-              create_vertex_map<optional_arc>(g), std::monostate{}))
+              create_vertex_map<optional_arc>(g), no_forward_pred_arcs_map{}))
         , _reverse_pred_arcs_map(constexpr_ternary<traits::store_path>(
-              create_vertex_map<optional_arc>(g), std::monostate{})) {}
+              create_vertex_map<optional_arc>(g), no_reverse_pred_arcs_map{})) {
+    }
 
     [[nodiscard]] constexpr bidirectional_dijkstra(const G & g, const L & l,
                                                    const vertex & s,
