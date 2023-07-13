@@ -142,13 +142,22 @@ public:
 
     constexpr void advance() noexcept {
         assert(!finished());
-        const auto [p, intersecting_arcs] = _even_heap.top();
+        do {
+            const auto [p, intersecting_arcs] = _even_heap.top();
+            _even_heap.pop();
+        } while(!finished() && _even_heap.top().second.size() < 2);
+        
+    }
+
+    constexpr void init() noexcept {
+        if(_even_heap.top().second.size() < 2) advance();
     }
 
     constexpr void run() noexcept {
         while(!finished()) advance();
     }
     [[nodiscard]] constexpr auto begin() noexcept {
+        init();
         return traversal_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() noexcept {
