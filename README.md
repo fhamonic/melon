@@ -28,6 +28,12 @@ target_link_libraries(<some_target> INTERFACE melon)
 ```
 Until C++23, the [Range-v3 library](https://ericniebler.github.io/range-v3/) is mandatory for some ranges functionnalities.
 This project use the [Conan C++ package manager](https://conan.io/) to automatically resolve this dependency.
+Currently, cmake-conan isn't fully compatible with Conan 2.0, it is then recommended to use an anterior version, for example:
+
+```
+pip install conan==1.60.1
+```
+    
 
 
 ### As a single-header
