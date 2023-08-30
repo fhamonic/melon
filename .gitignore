@@ -1,6 +1,5 @@
 .vscode
 /build
-/cmake-tools-build
-/single-header
+CMakeUserPresets.json
 *.log
 *.lp
