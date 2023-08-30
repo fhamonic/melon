@@ -1,6 +1,7 @@
 #ifndef RANGES_TEST_HELPER_HPP
 #define RANGES_TEST_HELPER_HPP
 
+#undef NDEBUG
 #include <gtest/gtest.h>
 
 #include <algorithm>
