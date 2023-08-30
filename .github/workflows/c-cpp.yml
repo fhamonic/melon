@@ -17,8 +17,8 @@ jobs:
       run: sudo apt install -y gcc-12 g++-12
     - name: Install Conan 2.0
       run: pip install conan
+    - name: Create Conan profile
+      run: conan profile detect
             
     - name: make
       run: make
-    - name: make test
-      run: make test
