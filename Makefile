@@ -1,37 +1,16 @@
-MAKEFLAGS += --no-print-directory
-
-CPUS?=$(shell getconf _NPROCESSORS_ONLN || echo 1)
-
-CC = g++-12
 BUILD_DIR = build
 
-.PHONY: all test clean single-header
+.PHONY: all test clean
 
-all: $(BUILD_DIR)
-	@cd $(BUILD_DIR) && \
-	cmake --build . --parallel $(CPUS)
+all: test
 
 $(BUILD_DIR):
-	@mkdir $(BUILD_DIR) && \
-	cd $(BUILD_DIR) && \
-	cmake -DCMAKE_CXX_COMPILER=$(CC) -DENABLE_TESTING=ON -DCMAKE_BUILD_TYPE=Debug ..
+	conan build . -of=${BUILD_DIR} -b=missing
 
-test: all
+test: $(BUILD_DIR)
 	@cd $(BUILD_DIR) && \
 	ctest --output-on-failure
 	
-test_dinitz: all
-	@cd $(BUILD_DIR) && \
-	ctest -R dinitz --output-on-failure
-
 clean:
+	@rm -rf CMakeUserPresets.json
 	@rm -rf $(BUILD_DIR)
-
-single-header: 
-	@mkdir -p single-header && \
-	python3 -m quom --include_directory include include/melon/all.hpp single-header/melon.hpp.tmp && \
-	echo "/*" > single-header/melon.hpp && \
-	cat LICENSE >> single-header/melon.hpp && \
-	echo "*/" >> single-header/melon.hpp && \
-	cat single-header/melon.hpp.tmp >> single-header/melon.hpp && \
-	rm single-header/melon.hpp.tmp

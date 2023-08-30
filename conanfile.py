@@ -17,14 +17,12 @@ class CompressorRecipe(ConanFile):
     build_policy = "missing"
 
     def requirements(self):
-        # Requires
         self.requires("range-v3/0.12.0")
         self.requires("fmt/10.1.1")
-        # Test requires
-        self.test_requires("gtest/1.14.0")
         
     def build_requirements(self):
         self.tool_requires("cmake/3.27.1")
+        self.test_requires("gtest/1.14.0")
 
     def validate(self):
         check_min_cppstd(self, 20)
@@ -32,7 +30,7 @@ class CompressorRecipe(ConanFile):
     def build(self):
         if self.conf.get("tools.build:skip_test", default=False): return
         cmake = CMake(self)
-        cmake.configure(variables={"BUILD_TESTS":"ON"})
+        cmake.configure(variables={"ENABLE_TESTING":"ON"})
         cmake.build()
         cmake.test()
         
