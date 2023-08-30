@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include <gtest/gtest.h>
 
 #include "melon/views/reverse.hpp"

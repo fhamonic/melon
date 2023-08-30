@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.23)
 
 project(
     MELON
@@ -34,6 +34,7 @@ set_project_warnings(melon)
 if(BUILD_TESTS)
     enable_testing()
     message("Building Tests.")
+    include(CTest) 
     target_compile_options(melon INTERFACE -fconcepts-diagnostics-depth=10)
     remove_definitions("-D NDEBUG")
     add_subdirectory(test)

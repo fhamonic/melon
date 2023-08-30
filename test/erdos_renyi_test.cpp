@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include <gtest/gtest.h>
 
 #include "melon/utility/erdos_renyi.hpp"

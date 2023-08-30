@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include <gtest/gtest.h>
 
 #include "melon/algorithm/depth_first_search.hpp"
