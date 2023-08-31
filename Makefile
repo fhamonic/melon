@@ -10,6 +10,9 @@ $(BUILD_DIR):
 test: $(BUILD_DIR)
 	@cd $(BUILD_DIR) && \
 	ctest --output-on-failure
+
+package:
+	conan create . -u
 	
 clean:
 	@rm -rf CMakeUserPresets.json
