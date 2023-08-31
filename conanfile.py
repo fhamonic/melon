@@ -11,6 +11,7 @@ class CompressorRecipe(ConanFile):
     homepage = "https://github.com/fhamonic/melon.git"
     #url = ""
     settings = "os", "compiler", "arch", "build_type"
+    package_type = "header-library"
     exports_sources = "include/*", "cmake/*", "CMakeLists.txt", "test/*"
     no_copy_source = True
     generators = "CMakeToolchain", "CMakeDeps"
