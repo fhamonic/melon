@@ -60,11 +60,8 @@ public:
     using traits = T;
 
 private:
-    enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
-
     using heap = traits::heap;
-    using vertex_status_map =
-        vertex_map_t<G, std::pair<vertex_status, vertex_status>>;
+    enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
     using optional_arc = std::optional<arc>;
     struct no_forward_pred_arcs_map {};
@@ -86,7 +83,7 @@ private:
 
     heap _forward_heap;
     heap _reverse_heap;
-    vertex_status_map _vertex_status_map;
+    vertex_map_t<G, std::pair<vertex_status, vertex_status>> _vertex_status_map;
 
     [[no_unique_address]] forward_pred_arcs_map _forward_pred_arcs_map;
     [[no_unique_address]] reverse_pred_arcs_map _reverse_pred_arcs_map;

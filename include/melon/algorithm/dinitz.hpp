@@ -60,8 +60,8 @@ public:
         set_target(t);
     }
 
-    [[nodiscard]] constexpr dinitz(const dinitz & bin) = default;
-    [[nodiscard]] constexpr dinitz(dinitz && bin) = default;
+    [[nodiscard]] constexpr dinitz(const dinitz &) = default;
+    [[nodiscard]] constexpr dinitz(dinitz &&) = default;
 
     constexpr dinitz & operator=(const dinitz &) = default;
     constexpr dinitz & operator=(dinitz &&) = default;
