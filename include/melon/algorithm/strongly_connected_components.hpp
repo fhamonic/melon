@@ -28,10 +28,28 @@ private:
 
     using component_num = unsigned int;
 
-    std::reference_wrapper<const G> _graph;
-    std::vector<vertex> _stack;
+    static constexpr component_num INVALID_COMPONENT = std::numeric_limits<component_num>::max();
 
-    vertex_map_t<G, bool> _reached_map;
+    std::reference_wrapper<const G> _graph;
+
+    template <typename R>
+    struct co_range {
+        std::range::iterator_t<R> it;
+        R range;
+
+        co_range(R && r) : it(r.begin()), range(r) {}
+
+        bool empty() const { return it == range.end(); }
+    }
+
+    co_range<vertices_range_t<G>>
+        _remaining_vertices;
+    std::vector<std::pair<vertex, co_range<out_neighbors_range_t<G>>>> _stack;
+
+    component_num start_index;
+    component_num index;
+
+    // vertex_map_t<G, bool> _reached_map;
     vertex_map_t<G, component_num> _index_map;
     vertex_map_t<G, component_num> _lowlink_map;
 
@@ -39,10 +57,13 @@ public:
     [[nodiscard]] constexpr explicit strongly_connected_components(
         const G & g) noexcept
         : _graph(g)
+        , _remaining_vertices(vertices(g))
         , _stack()
-        , _reached_map(create_vertex_map<bool>(g, false))
-        , _index_map(create_vertex_map<component_num>(g), 0)
-        , _lowlink_map(create_vertex_map<component_num>(g), 0) {
+        , start_index(0)
+        , index(0)
+        // , _reached_map(create_vertex_map<bool>(g, false))
+        , _index_map(create_vertex_map<component_num>(g, INVALID_COMPONENT))
+        , _lowlink_map(create_vertex_map<component_num>(g, INVALID_COMPONENT)) {
         _stack.reserve(g.nb_vertices());
     }
 
@@ -57,29 +78,41 @@ public:
         strongly_connected_components &&) = default;
 
     constexpr strongly_connected_components & reset() noexcept {
+        _remaining_vertices = co_range<vertices_range_t<G>>(vertices(g));
         _stack.resize(0);
-        _reached_map.fill(false);
+        start_index = index = 0;
+        // _reached_map.fill(false);
         return *this;
     }
 
+    constexpr bool finished() const { return _remaining_vertices.empty(); }
+
+    constexpr void strongconnect(vertex u) {
+        _index_map[s] = _lowlink_map[s] = index;
+        ++index;
+
+    }
+
     constexpr void run() noexcept {
-        component_num index = 0;
         for(auto && s : melon::vertices(_graph.get())) {
             if(reached[s]) continue;
-            _stack.push_back(s);
-            _reached_map[s] = true;
-            _component_num_map[s] = index;
+            component_num start_index = index;
+            _stack.emplace_back(s, out_neighbors(_graph.get(), s));
+            start_index = _index_map[s] = _lowlink_map[s] = index;
             ++index;
 
-            component_num start_index = index;
-            auto u = s;
-            while(_lowlink[u] != _index[u]) {
-                for(auto && w : out_neighbors(_graph.get(), u)) {
-                    if(_reached_map[w]) continue;
-                    _stack.push_back(w);
-                    _reached_map[w] = true;
-                }
-                u = _stack.back();
+            for(;;) {
+                auto [u, neighbors] = _stack.back();
+                if(neighbors.empty()) break;
+                auto w = *neighbors.it;
+
+                _stack.emplace_back(w, out_neighbors(_graph.get(), w));
+            }
+
+            if(auto u = _stack.back().first; _lowlink[u] == _index[u]) {
+                do {
+                    _stack.pop();
+                } while()
             }
 
             while(!_stack.empty()) {
