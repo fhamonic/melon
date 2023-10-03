@@ -62,29 +62,30 @@ private:
     static_assert(std::is_same_v<traversal_entry, typename traits::heap::entry>,
                   "traversal_entry != heap_entry");
 
+    using heap = traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
-    using heap = traits::heap;
-    using vertex_status_map = vertex_map_t<G, vertex_status>;
     struct no_pred_vertices_map {};
     using pred_vertices_map =
-        std::conditional < traits::store_paths && !has_arc_source<G>,
-          vertex_map_t<G, vertex>, no_pred_vertices_map> ::type;
+        std::conditional<traits::store_paths && !has_arc_source<G>,
+                         vertex_map_t<G, vertex>, no_pred_vertices_map>::type;
     using optional_arc = std::optional<arc>;
     struct no_pred_arcs_map {};
-    using pred_arcs_map = std::conditional < traits::store_paths,
-          vertex_map_t<G, optional_arc>, no_pred_arcs_map > ::type;
+    using pred_arcs_map =
+        std::conditional<traits::store_paths, vertex_map_t<G, optional_arc>,
+                         no_pred_arcs_map>::type;
     struct no_distance_map {};
-    using distances_map = std::conditional < traits::store_distances,
-          vertex_map_t<G, value_t>, no_distance_map > ::type;
+    using distances_map =
+        std::conditional<traits::store_distances, vertex_map_t<G, value_t>,
+                         no_distance_map>::type;
 
 private:
     std::reference_wrapper<const G> _graph;
     std::reference_wrapper<const L> _length_map;
 
     heap _heap;
-    vertex_status_map _vertex_status_map;
-    
+    vertex_map_t<G, vertex_status> _vertex_status_map;
+
     [[no_unique_address]] pred_vertices_map _pred_vertices_map;
     [[no_unique_address]] pred_arcs_map _pred_arcs_map;
     [[no_unique_address]] distances_map _distances_map;
@@ -95,9 +96,10 @@ public:
         , _length_map(l)
         , _heap(create_vertex_map<std::size_t>(g))
         , _vertex_status_map(create_vertex_map<vertex_status>(g, PRE_HEAP))
-        , _pred_vertices_map(constexpr_ternary < traits::store_paths &&
-                             !has_arc_source < G >>
-                                 (create_vertex_map<vertex>(g), no_pred_vertices_map{}))
+        , _pred_vertices_map(
+              constexpr_ternary < traits::store_paths &&
+              !has_arc_source < G >>
+                  (create_vertex_map<vertex>(g), no_pred_vertices_map{}))
         , _pred_arcs_map(constexpr_ternary<traits::store_paths>(
               create_vertex_map<optional_arc>(g), no_pred_arcs_map{}))
         , _distances_map(constexpr_ternary<traits::store_distances>(
@@ -108,8 +110,8 @@ public:
         add_source(s);
     }
 
-    [[nodiscard]] constexpr dijkstra(const dijkstra & bin) = default;
-    [[nodiscard]] constexpr dijkstra(dijkstra && bin) = default;
+    [[nodiscard]] constexpr dijkstra(const dijkstra &) = default;
+    [[nodiscard]] constexpr dijkstra(dijkstra &&) = default;
 
     constexpr dijkstra & operator=(const dijkstra &) = default;
     constexpr dijkstra & operator=(dijkstra &&) = default;

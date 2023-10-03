@@ -1,8 +1,6 @@
 BUILD_DIR = build
 
-.PHONY: all test clean
-
-all: test
+.PHONY: test package clean
 
 $(BUILD_DIR):
 	conan build . -of=${BUILD_DIR} -b=missing

@@ -35,8 +35,6 @@ public:
         !(outward_adjacency_graph<G> && traits::store_pred_arcs),
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
-    using reached_map = vertex_map_t<G, bool>;
-
     struct no_pred_vertices_map {};
     using pred_vertices_map =
         std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
@@ -59,8 +57,8 @@ private:
     std::vector<vertex> _queue;
     cursor _queue_current;
 
-    reached_map _reached_map;
-    
+    vertex_map_t<G, bool> _reached_map;
+
     [[no_unique_address]] pred_vertices_map _pred_vertices_map;
     [[no_unique_address]] pred_arcs_map _pred_arcs_map;
     [[no_unique_address]] distances_map _dist_map;
@@ -89,9 +87,9 @@ public:
         add_source(s);
     }
 
-    [[nodiscard]] constexpr breadth_first_search(
-        const breadth_first_search & bin) = default;
-    [[nodiscard]] constexpr breadth_first_search(breadth_first_search && bin) =
+    [[nodiscard]] constexpr breadth_first_search(const breadth_first_search &) =
+        default;
+    [[nodiscard]] constexpr breadth_first_search(breadth_first_search &&) =
         default;
 
     constexpr breadth_first_search & operator=(const breadth_first_search &) =

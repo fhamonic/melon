@@ -32,7 +32,6 @@ private:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
     using traits = T;
-    using reached_map = vertex_map_t<G, bool>;
 
     static_assert(
         !(outward_adjacency_graph<G> && traits::store_pred_arcs),
@@ -54,8 +53,8 @@ private:
     std::reference_wrapper<const G> _graph;
     std::vector<vertex> _stack;
 
-    reached_map _reached_map;
-    
+    vertex_map_t<G, bool> _reached_map;
+
     [[no_unique_address]] pred_vertices_map _pred_vertices_map;
     [[no_unique_address]] pred_arcs_map _pred_arcs_map;
     [[no_unique_address]] distances_map _dist_map;
@@ -80,10 +79,9 @@ public:
         add_source(s);
     }
 
-    [[nodiscard]] constexpr depth_first_search(const depth_first_search & bin) =
+    [[nodiscard]] constexpr depth_first_search(const depth_first_search &) =
         default;
-    [[nodiscard]] constexpr depth_first_search(depth_first_search && bin) =
-        default;
+    [[nodiscard]] constexpr depth_first_search(depth_first_search &&) = default;
 
     constexpr depth_first_search & operator=(const depth_first_search &) =
         default;
