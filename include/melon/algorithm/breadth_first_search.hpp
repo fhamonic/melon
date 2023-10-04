@@ -22,18 +22,17 @@ struct breadth_first_search_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <graph G, typename T = breadth_first_search_default_traits>
-    requires(outward_incidence_graph<G> || outward_adjacency_graph<G>) &&
-            has_vertex_map<G>
+template <outward_adjacency_graph G,
+          typename T = breadth_first_search_default_traits>
+    requires has_vertex_map<G>
 class breadth_first_search {
 public:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
     using traits = T;
 
-    static_assert(
-        !(outward_adjacency_graph<G> && traits::store_pred_arcs),
-        "traversal on outward_adjacency_list cannot access predecessor arcs.");
+    static_assert(!traits::store_pred_arcs || outward_incidence_graph<G>,
+                  "storing predecessor arcs requires outward_incidence_graph.");
 
     struct no_pred_vertices_map {};
     using pred_vertices_map =
@@ -137,19 +136,19 @@ public:
         assert(!finished());
         const vertex & u = current();
         ++_queue_current;
-        if constexpr(outward_incidence_graph<G>) {
+        if constexpr(traits::store_pred_arcs) {
             for(auto && a : out_arcs(_graph.get(), u)) {
                 const vertex & w = arc_target(_graph.get(), a);
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
                 _reached_map[w] = true;
+                _pred_arcs_map[w] = a;
                 if constexpr(traits::store_pred_vertices)
                     _pred_vertices_map[w] = u;
-                if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
                 if constexpr(traits::store_distances)
                     _dist_map[w] = _dist_map[u] + 1;
             }
-        } else {  // i.e., outward_adjacency_graph<G>
+        } else {
             for(auto && w : out_neighbors(_graph.get(), u)) {
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
