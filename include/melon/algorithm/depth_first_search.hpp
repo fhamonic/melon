@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/consumable_range.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/traversal_iterator.hpp"
 
@@ -23,19 +24,16 @@ struct dfs_default_traits {
     static constexpr bool store_distances = false;
 };
 
-// TODO ranges , requires out_neighbors : borrowed_range
-template <outward_incidence_graph G, typename T = dfs_default_traits>
-    requires(outward_incidence_graph<G> || outward_adjacency_graph<G>) &&
-            has_vertex_map<G>
+template <outward_adjacency_graph G, typename T = dfs_default_traits>
+    requires has_vertex_map<G>
 class depth_first_search {
 private:
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
     using traits = T;
 
-    static_assert(
-        !(outward_adjacency_graph<G> && traits::store_pred_arcs),
-        "traversal on outward_adjacency_list cannot access predecessor arcs.");
+    static_assert(!traits::store_pred_arcs || outward_incidence_graph<G>,
+                  "storing predecessor arcs requires outward_incidence_graph.");
 
     struct no_pred_vertices_map {};
     using pred_vertices_map =
@@ -51,7 +49,12 @@ private:
                          no_distance_map>::type;
 
     std::reference_wrapper<const G> _graph;
-    std::vector<vertex> _stack;
+
+    using stack_range =
+        std::conditional<traits::store_pred_arcs, out_arcs_range_t<G>,
+                         out_neighbors_range_t<G>>::type;
+
+    std::vector<std::pair<vertex, consumable_range<stack_range>>> _stack;
 
     vertex_map_t<G, bool> _reached_map;
 
@@ -94,7 +97,10 @@ public:
     }
     constexpr depth_first_search & add_source(const vertex & s) noexcept {
         assert(!_reached_map[s]);
-        _stack.push_back(s);
+        if constexpr(traits::store_pred_arcs)
+            _stack.emplace_back(s, out_arcs(_graph.get(), s));
+        else
+            _stack.emplace_back(s, out_neighbors(_graph.get(), s));
         _reached_map[s] = true;
         if constexpr(traits::store_pred_vertices) _pred_vertices_map[s] = s;
         if constexpr(traits::store_distances) _dist_map[s] = 0;
@@ -107,36 +113,45 @@ public:
 
     [[nodiscard]] constexpr vertex current() const noexcept {
         assert(!finished());
-        return _stack.back();
+        return _stack.back().first;
     }
 
     constexpr void advance() noexcept {
         assert(!finished());
-        const vertex u = _stack.back();
-        _stack.pop_back();
-        if constexpr(outward_incidence_graph<G>) {
-            for(auto && a : out_arcs(_graph.get(), u)) {
-                const vertex & w = arc_target(_graph.get(), a);
-                if(_reached_map[w]) continue;
-                _stack.push_back(w);
-                _reached_map[w] = true;
-                if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = u;
-                if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
-                if constexpr(traits::store_distances)
-                    _dist_map[w] = _dist_map[u] + 1;
+        do {
+            if constexpr(traits::store_pred_arcs) {
+                for(auto & remaining_arcs = _stack.back().second;
+                    !remaining_arcs.empty(); remaining_arcs.advance()) {
+                    auto a = remaining_arcs.current();
+                    auto w = arc_target(_graph.get(), a);
+                    if(_reached_map[w]) continue;
+                    _reached_map[w] = true;
+                    _pred_arcs_map[w] = a;
+                    if constexpr(traits::store_pred_vertices)
+                        _pred_vertices_map[w] = _stack.back().first;
+                    if constexpr(traits::store_distances)
+                        _dist_map[w] = _dist_map[_stack.back().first] + 1;
+                    _stack.emplace_back(w, out_arcs(_graph.get(), w));
+                    return;
+                }
+
+            } else {
+                for(auto & remaining_neighbors = _stack.back().second;
+                    !remaining_neighbors.empty();
+                    remaining_neighbors.advance()) {
+                    auto w = remaining_neighbors.current();
+                    if(_reached_map[w]) continue;
+                    _reached_map[w] = true;
+                    if constexpr(traits::store_pred_vertices)
+                        _pred_vertices_map[w] = _stack.back().first;
+                    if constexpr(traits::store_distances)
+                        _dist_map[w] = _dist_map[_stack.back().first] + 1;
+                    _stack.emplace_back(w, out_neighbors(_graph.get(), w));
+                    return;
+                }
             }
-        } else {  // i.e., outward_adjacency_graph<G>
-            for(auto && w : out_neighbors(_graph.get(), u)) {
-                if(_reached_map[w]) continue;
-                _stack.push_back(w);
-                _reached_map[w] = true;
-                if constexpr(traits::store_pred_vertices)
-                    _pred_vertices_map[w] = u;
-                if constexpr(traits::store_distances)
-                    _dist_map[w] = _dist_map[u] + 1;
-            }
-        }
+            _stack.pop_back();
+        } while(!_stack.empty());
     }
 
     constexpr void run() noexcept {

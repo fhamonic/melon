@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/consumable_range.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/traversal_iterator.hpp"
 
@@ -29,43 +30,33 @@ private:
     static constexpr component_num INVALID_COMPONENT =
         std::numeric_limits<component_num>::max();
 
-    template <typename R>
-    struct co_range {
-        std::ranges::iterator_t<R> it;
-        R range;
-
-        co_range(R && r) : it(r.begin()), range(r) {}
-
-        bool empty() const { return it == range.end(); }
-        void advance() { ++it; }
-        auto current() { return *it; }
-    };
-
     std::reference_wrapper<const G> _graph;
 
-    // co_range<vertices_range_t<G>>
-    //     _remaining_vertices;
-    std::vector<std::pair<vertex, co_range<out_neighbors_range_t<G>>>> _stack;
+    consumable_range<vertices_range_t<G>> _remaining_vertices;
+    std::vector<std::pair<vertex, consumable_range<out_neighbors_range_t<G>>>>
+        _dfs_stack;
 
-    // std::vector<vertex> _tarjan_stack;
-    // component_num start_index;
-    // component_num index;
+    std::vector<vertex> _tarjan_stack;
+    component_num start_index;
+    component_num index;
 
     vertex_map_t<G, bool> _reached_map;
-    // vertex_map_t<G, component_num> _index_map;
-    // vertex_map_t<G, component_num> _lowlink_map;
+    vertex_map_t<G, component_num> _index_map;
+    vertex_map_t<G, component_num> _lowlink_map;
 
 public:
     [[nodiscard]] constexpr explicit strongly_connected_components(
         const G & g) noexcept
-        : _graph(g), _stack(), _reached_map(create_vertex_map<bool>(g, false)) {
-        _stack.reserve(g.nb_vertices());
-    }
-
-    [[nodiscard]] constexpr strongly_connected_components(
-        const G & g, const vertex & s) noexcept
-        : strongly_connected_components(g) {
-        add_source(s);
+        : _graph(g)
+        , _remaining_vertices(vertices(_graph.get()))
+        , _dfs_stack()
+        , _tarjan_stack()
+        , start_index(0)
+        , index(0)
+        , _reached_map(create_vertex_map<bool>(g, false))
+        , _index_map(create_vertex_map<component_num>(g, INVALID_COMPONENT))
+        , _lowlink_map(create_vertex_map<component_num>(g, INVALID_COMPONENT)) {
+        _dfs_stack.reserve(g.nb_vertices());
     }
 
     [[nodiscard]] constexpr strongly_connected_components(
@@ -78,45 +69,71 @@ public:
     constexpr strongly_connected_components & operator=(
         strongly_connected_components &&) = default;
 
-    constexpr strongly_connected_components & reset() noexcept {
-        _stack.resize(0);
-        _reached_map.fill(false);
-        return *this;
-    }
-    constexpr strongly_connected_components & add_source(
-        const vertex & s) noexcept {
-        assert(!_reached_map[s]);
-        _stack.emplace_back(s, out_neighbors(_graph.get(), s));
-        _reached_map[s] = true;
-        return *this;
-    }
+    // constexpr strongly_connected_components & reset() noexcept {
+    //     _dfs_stack.resize(0);
+    //     _reached_map.fill(false);
+    //     return *this;
+    // }
 
     [[nodiscard]] constexpr bool finished() const noexcept {
-        return _stack.empty();
+        return _remaining_vertices.empty();
     }
 
     [[nodiscard]] constexpr vertex current() const noexcept {
         assert(!finished());
-        return _stack.back().first;
+        return _dfs_stack.back().first;
     }
 
-    constexpr void advance() noexcept {
-        assert(!finished());
-        do {
-            auto & remaining_neighbors = _stack.back().second;
-            for(; !remaining_neighbors.empty(); remaining_neighbors.advance()) {
-                auto w = remaining_neighbors.current();
-                if(_reached_map[w]) continue;
-                _stack.emplace_back(w, out_neighbors(_graph.get(), w));
-                _reached_map[w] = true;
-                return;
-            };
-            _stack.pop_back();
-        } while(!_stack.empty());
-    }
+    constexpr void advance() noexcept { assert(!finished()); }
 
     constexpr void run() noexcept {
-        while(!finished()) advance();
+        index = 0;
+        for(;;) {
+            while(_reached_map[_remaining_vertices.current()]) {
+                _remaining_vertices.advance();
+                if(_remaining_vertices.empty()) return;
+            }
+            vertex s = _remaining_vertices.current();
+            _reached_map[s] = true;
+            _index_map[s] = _lowlink_map[s] = start_index = index;
+            ++index;
+            _tarjan_stack.push_back(s);
+            _dfs_stack.emplace_back(s, out_neighbors(_graph.get(), s));
+
+            for(;;) {
+                vertex v = _dfs_stack.back().first;
+                for(auto & neighbors = _dfs_stack.back().second;
+                    !neighbors.empty(); neighbors.advance()) {
+                    vertex w = neighbors.current();
+                    if(_reached_map[w]) {
+                        if(_index_map[w] >= start_index) {
+                            _lowlink_map[v] =
+                                std::min(_lowlink_map[v], _lowlink_map[w]);
+                        }
+                        continue;
+                    };
+                    _reached_map[w] = true;
+                    _index_map[w] = _lowlink_map[w] = index;
+                    ++index;
+                    _tarjan_stack.push_back(w);
+                    _dfs_stack.emplace_back(w, out_neighbors(_graph.get(), w));
+                };
+                if(_index_map[v] == _lowlink_map[v]) {
+                    std::cout << '\n';
+                    for(;;) {
+                        vertex w = _tarjan_stack.back();
+                        std::cout << '\t' << w;
+                        _tarjan_stack.pop_back();
+                        if(w == v) break;
+                    }
+                }
+                _dfs_stack.pop_back();
+                if(_dfs_stack.empty()) break;
+                vertex parent = _dfs_stack.back().first;
+                _lowlink_map[parent] =
+                    std::min(_lowlink_map[parent], _lowlink_map[v]);
+            }
+        }
     }
     [[nodiscard]] constexpr auto begin() noexcept {
         return traversal_iterator(*this);
