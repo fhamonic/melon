@@ -15,6 +15,8 @@
 #include "melon/graph.hpp"
 #include "melon/utility/traversal_iterator.hpp"
 
+#include "melon/detail/intrusive_view.hpp"
+
 namespace fhamonic {
 namespace melon {
 
@@ -81,12 +83,23 @@ public:
 
     [[nodiscard]] constexpr vertex current() const noexcept {
         assert(!finished());
-        return _dfs_stack.back().first;
+        assert(_dfs_stack.back().first != _tarjan_stack.back());
+        return intrusive_view(
+            static_cast<vertex>(_tarjan_stack.back()),
+            [](const vertex & v) -> vertex { return v; },
+            [this](const vertex & v) -> vertex {
+                _tarjan_stack.pop_back();
+                return _tarjan_stack.back();
+            },
+            [this](const vertex & v) -> bool {
+                return _dfs_stack.back().first != v;
+            });
     }
 
     constexpr void advance() noexcept { assert(!finished()); }
 
     constexpr void run() noexcept {
+        assert(!_remaining_vertices.empty());
         index = 0;
         for(;;) {
             while(_reached_map[_remaining_vertices.current()]) {
@@ -101,31 +114,32 @@ public:
             _dfs_stack.emplace_back(s, out_neighbors(_graph.get(), s));
 
             for(;;) {
-                vertex v = _dfs_stack.back().first;
-                for(auto & neighbors = _dfs_stack.back().second;
-                    !neighbors.empty(); neighbors.advance()) {
-                    vertex w = neighbors.current();
+                while(!_dfs_stack.back().second.empty()) {
+                    vertex w = _dfs_stack.back().second.current();
+                    _dfs_stack.back().second.advance();
                     if(_reached_map[w]) {
                         if(_index_map[w] >= start_index) {
+                            vertex v = _dfs_stack.back().first;
                             _lowlink_map[v] =
                                 std::min(_lowlink_map[v], _lowlink_map[w]);
                         }
                         continue;
-                    };
+                    }
                     _reached_map[w] = true;
                     _index_map[w] = _lowlink_map[w] = index;
                     ++index;
                     _tarjan_stack.push_back(w);
                     _dfs_stack.emplace_back(w, out_neighbors(_graph.get(), w));
                 };
+                vertex v = _dfs_stack.back().first;
                 if(_index_map[v] == _lowlink_map[v]) {
-                    std::cout << '\n';
                     for(;;) {
                         vertex w = _tarjan_stack.back();
                         std::cout << '\t' << w;
                         _tarjan_stack.pop_back();
                         if(w == v) break;
                     }
+                    std::cout << '\n';
                 }
                 _dfs_stack.pop_back();
                 if(_dfs_stack.empty()) break;

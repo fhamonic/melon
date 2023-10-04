@@ -36,5 +36,5 @@ GTEST_TEST(strongly_connected_components, test) {
 
     strongly_connected_components alg(graph);
 
-    // alg.run();
+    alg.run();
 }
