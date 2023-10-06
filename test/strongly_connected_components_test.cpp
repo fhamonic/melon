@@ -1,6 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <range/v3/view/zip.hpp>
+
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -9,7 +11,7 @@
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(strongly_connected_components, test) {
+GTEST_TEST(strongly_connected_components, graph1_test) {
     static_digraph_builder<static_digraph> builder(8);
 
     builder.add_arc(0, 1)
@@ -36,5 +38,192 @@ GTEST_TEST(strongly_connected_components, test) {
 
     strongly_connected_components alg(graph);
 
-    alg.run();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {5u, 4u, 3u, 2u, 1u, 0u}));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {6u}));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {7u}));
+    alg.advance();
+    ASSERT_TRUE(alg.finished());
+}
+
+GTEST_TEST(strongly_connected_components, graph1_traversal_iterator) {
+    using vertex = vertex_t<static_digraph>;
+    static_digraph_builder<static_digraph> builder(8);
+
+    builder.add_arc(0, 1)
+        .add_arc(0, 2)
+        .add_arc(0, 5)
+        .add_arc(1, 0)
+        .add_arc(1, 2)
+        .add_arc(1, 3)
+        .add_arc(2, 0)
+        .add_arc(2, 1)
+        .add_arc(2, 3)
+        .add_arc(2, 5)
+        .add_arc(3, 1)
+        .add_arc(3, 2)
+        .add_arc(3, 4)
+        .add_arc(4, 3)
+        .add_arc(4, 5)
+        .add_arc(5, 0)
+        .add_arc(5, 2)
+        .add_arc(5, 4)
+        .add_arc(7, 5);
+
+    auto [graph] = builder.build();
+
+    std::vector<std::vector<vertex>> components(
+        {{5u, 4u, 3u, 2u, 1u, 0u}, {6u}, {7u}});
+
+    std::vector<std::vector<vertex>> alg_components;
+
+    for(auto component : strongly_connected_components(graph)) {
+        auto & alg_component = alg_components.emplace_back();
+        for(vertex v : component) {
+            alg_component.push_back(v);
+        }
+    }
+
+    for(auto && [component, alg_component] :
+        ranges::zip_view(components, alg_components)) {
+        ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
+    }
+}
+
+GTEST_TEST(strongly_connected_components, graph1_components_count) {
+    static_digraph_builder<static_digraph> builder(8);
+
+    builder.add_arc(0, 1)
+        .add_arc(0, 2)
+        .add_arc(0, 5)
+        .add_arc(1, 0)
+        .add_arc(1, 2)
+        .add_arc(1, 3)
+        .add_arc(2, 0)
+        .add_arc(2, 1)
+        .add_arc(2, 3)
+        .add_arc(2, 5)
+        .add_arc(3, 1)
+        .add_arc(3, 2)
+        .add_arc(3, 4)
+        .add_arc(4, 3)
+        .add_arc(4, 5)
+        .add_arc(5, 0)
+        .add_arc(5, 2)
+        .add_arc(5, 4)
+        .add_arc(7, 5);
+
+    auto [graph] = builder.build();
+
+    int component_count = 0;
+    for(auto component : strongly_connected_components(graph)) {
+        ++component_count;
+    }
+
+    ASSERT_EQ(component_count, 3);
+}
+
+GTEST_TEST(strongly_connected_components, graph2_test) {
+    static_digraph_builder<static_digraph> builder(8);
+
+    builder.add_arc(0, 1)
+        .add_arc(1, 2)
+        .add_arc(2, 0)
+        .add_arc(3, 1)
+        .add_arc(3, 2)
+        .add_arc(3, 5)
+        .add_arc(4, 2)
+        .add_arc(4, 6)
+        .add_arc(5, 3)
+        .add_arc(5, 4)
+        .add_arc(6, 4)
+        .add_arc(7, 5)
+        .add_arc(7, 6);
+
+    auto [graph] = builder.build();
+
+    strongly_connected_components alg(graph);
+
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {2u, 1u, 0u}));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {6u, 4u}));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {5u, 3u}));
+    alg.advance();
+    ASSERT_FALSE(alg.finished());
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {7u}));
+    alg.advance();
+    ASSERT_TRUE(alg.finished());
+}
+
+GTEST_TEST(strongly_connected_components, graph2_traversal_iterator) {
+    using vertex = vertex_t<static_digraph>;
+    static_digraph_builder<static_digraph> builder(8);
+
+    builder.add_arc(0, 1)
+        .add_arc(1, 2)
+        .add_arc(2, 0)
+        .add_arc(3, 1)
+        .add_arc(3, 2)
+        .add_arc(3, 5)
+        .add_arc(4, 2)
+        .add_arc(4, 6)
+        .add_arc(5, 3)
+        .add_arc(5, 4)
+        .add_arc(6, 4)
+        .add_arc(7, 5)
+        .add_arc(7, 6);
+
+    auto [graph] = builder.build();
+
+    std::vector<std::vector<vertex>> components(
+        {{2u, 1u, 0u}, {6u, 4u}, {5u, 3u}, {7u}});
+
+    std::vector<std::vector<vertex>> alg_components;
+
+    for(auto component : strongly_connected_components(graph)) {
+        auto & alg_component = alg_components.emplace_back();
+        for(vertex v : component) {
+            alg_component.push_back(v);
+        }
+    }
+
+    for(auto && [component, alg_component] :
+        ranges::zip_view(components, alg_components)) {
+        ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
+    }
+}
+
+GTEST_TEST(strongly_connected_components, graph2_components_count) {
+    static_digraph_builder<static_digraph> builder(8);
+
+    builder.add_arc(0, 1)
+        .add_arc(1, 2)
+        .add_arc(2, 0)
+        .add_arc(3, 1)
+        .add_arc(3, 2)
+        .add_arc(3, 5)
+        .add_arc(4, 2)
+        .add_arc(4, 6)
+        .add_arc(5, 3)
+        .add_arc(5, 4)
+        .add_arc(6, 4)
+        .add_arc(7, 5)
+        .add_arc(7, 6);
+
+    auto [graph] = builder.build();
+
+    int component_count = 0;
+    for(auto component : strongly_connected_components(graph)) {
+        ++component_count;
+    }
+
+    ASSERT_EQ(component_count, 4);
 }

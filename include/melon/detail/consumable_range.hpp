@@ -28,12 +28,26 @@ private:
 
 public:
     consumable_range() = default;
+    consumable_range(const consumable_range &) = default;
+    consumable_range(consumable_range &&) = default;
 
     consumable_range(R r)
         : range(constexpr_ternary<store_range>(r, no_stored_range{}))
         , it(r.begin())
         , sentinel(
               constexpr_ternary<store_range>(no_stored_sentinel{}, r.end())) {}
+
+    constexpr consumable_range & operator=(const consumable_range &) = default;
+    constexpr consumable_range & operator=(consumable_range &&) = default;
+
+    constexpr consumable_range & operator=(R & r) {
+        if constexpr(store_range) {
+            range = r;
+        } else {
+            sentinel = r.end();
+        }
+        it = r.begin();
+    }
 
     bool empty() const {
         if constexpr(store_range)
