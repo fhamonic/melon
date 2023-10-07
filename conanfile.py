@@ -18,12 +18,12 @@ class CompressorRecipe(ConanFile):
     build_policy = "missing"
 
     def requirements(self):
-        self.requires("range-v3/0.12.0")
-        self.requires("fmt/10.1.1")
+        self.requires("range-v3/[>=0.11.0]")
+        self.requires("fmt/[>=10.0.0]")
         
     def build_requirements(self):
-        self.tool_requires("cmake/3.27.1")
-        self.test_requires("gtest/1.14.0")
+        self.tool_requires("cmake/[>=3.19.0]")
+        self.test_requires("gtest/[>=1.10.0 <cci]")
 
     def validate(self):
         check_min_cppstd(self, 20)

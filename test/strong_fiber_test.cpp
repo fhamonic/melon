@@ -211,8 +211,11 @@ GTEST_TEST(strong_fiber, fuzzy) {
                                 return {64, 64, 64};
                         }))
                     .set_arc_label_map(views::map([&](auto && a) {
-                        return "[" + std::to_string(lower_length_map[a]) + ',' +
-                               std::to_string(upper_length_map[a]) + "]";
+                        return (std::ostringstream{}
+                                << "[" << std::to_string(lower_length_map[a])
+                                << ',' << std::to_string(upper_length_map[a])
+                                << "]")
+                            .str();
                     }));
                 printer.print(std::ostream_iterator<char>(std::cout));
             }
@@ -368,8 +371,11 @@ GTEST_TEST(useless_fiber, fuzzy) {
                                 return {64, 64, 64};
                         }))
                     .set_arc_label_map(views::map([&](auto && a) {
-                        return "[" + std::to_string(lower_length_map[a]) + ',' +
-                               std::to_string(upper_length_map[a]) + "]";
+                        return (std::ostringstream{}
+                                << "[" << std::to_string(lower_length_map[a])
+                                << ',' << std::to_string(upper_length_map[a])
+                                << "]")
+                            .str();
                     }));
                 printer.print(std::ostream_iterator<char>(std::cout));
             } else {
