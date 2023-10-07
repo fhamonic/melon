@@ -136,8 +136,8 @@ public:
         requires std::convertible_to<mapped_value_t<LM, arc>, std::string>
     graphviz_printer<G> & set_arc_label_map(const LM & label_map) {
         _arc_label_map.emplace(create_arc_map<std::string>(_graph.get()));
-        for(auto && u : arcs(_graph.get()))
-            _arc_label_map.value()[u] = label_map[u];
+        for(auto && a : arcs(_graph.get()))
+            _arc_label_map.value()[a] = label_map[a];
         return *this;
     }
 
