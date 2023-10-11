@@ -13,8 +13,8 @@ namespace fhamonic {
 namespace melon {
 
 template <graph G, input_value_map<arc_t<G>> C>
-requires outward_incidence_graph<G> && inward_incidence_graph<G> &&
-    has_vertex_map<G> && has_arc_map<G>
+    requires outward_incidence_graph<G> && inward_incidence_graph<G> &&
+             has_vertex_map<G> && has_arc_map<G>
 class dinitz {
 private:
     using vertex = vertex_t<G>;
@@ -49,7 +49,9 @@ public:
         , _remaining_in_arcs(
               create_vertex_map<
                   std::pair<in_arcs_iterator_t<G>, in_arcs_range_t<G>>>(g)) {
-        _bfs_queue.reserve(g.nb_vertices());
+        if constexpr(has_nb_vertices<G>) {
+            _bfs_queue.reserve(nb_vertices(g));
+        }
         reset();
     }
 

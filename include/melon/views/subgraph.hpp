@@ -36,6 +36,12 @@ public:
     subgraph & operator=(const subgraph &) = default;
     subgraph & operator=(subgraph &&) = default;
 
+    auto nb_vertices() const noexcept
+        requires has_nb_vertices<G> && std::same_as<VF, true_map>
+    {
+        return melon::nb_vertices(_graph.get());
+    }
+
     void disable_vertex(const vertex & v) noexcept
         requires output_value_map_of<VF, vertex_t<G>, bool>
     {
@@ -168,24 +174,24 @@ public:
     }
 
     template <typename T>
-        requires has_vertex_map<G> decltype(auto)
-    create_vertex_map() const noexcept {
+        requires has_vertex_map<G>
+    decltype(auto) create_vertex_map() const noexcept {
         return melon::create_vertex_map<T>(_graph.get());
     }
     template <typename T>
-        requires has_vertex_map<G> decltype(auto)
-    create_vertex_map(T default_value) const noexcept {
+        requires has_vertex_map<G>
+    decltype(auto) create_vertex_map(T default_value) const noexcept {
         return melon::create_vertex_map<T>(_graph.get(), default_value);
     }
 
     template <typename T>
-        requires has_arc_map<G> decltype(auto)
-    create_arc_map() const noexcept {
+        requires has_arc_map<G>
+    decltype(auto) create_arc_map() const noexcept {
         return melon::create_arc_map<T>(_graph.get());
     }
     template <typename T>
-        requires has_arc_map<G> decltype(auto)
-    create_arc_map(T default_value) const noexcept {
+        requires has_arc_map<G>
+    decltype(auto) create_arc_map(T default_value) const noexcept {
         return melon::create_arc_map<T>(_graph.get(), default_value);
     }
 };
