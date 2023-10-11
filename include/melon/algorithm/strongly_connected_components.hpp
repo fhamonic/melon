@@ -60,7 +60,9 @@ public:
         , _reached_map(create_vertex_map<bool>(g, false))
         , _index_map(create_vertex_map<component_num>(g, INVALID_COMPONENT))
         , _lowlink_map(create_vertex_map<component_num>(g, INVALID_COMPONENT)) {
-        _dfs_stack.reserve(g.nb_vertices());
+        if constexpr(has_nb_vertices<G>) {
+            _dfs_stack.reserve(nb_vertices(g));
+        }
         advance();
     }
 

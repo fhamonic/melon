@@ -73,7 +73,9 @@ public:
               create_vertex_map<arc>(g), no_pred_arcs_map{}))
         , _dist_map(constexpr_ternary<traits::store_distances>(
               create_vertex_map<int>(g), no_distance_map{})) {
-        _stack.reserve(g.nb_vertices());
+        if constexpr(has_nb_vertices<G>) {
+            _stack.reserve(nb_vertices(g));
+        }
     }
 
     [[nodiscard]] constexpr depth_first_search(const G & g,
