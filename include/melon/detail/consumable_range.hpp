@@ -49,9 +49,9 @@ public:
         it = r.begin();
     }
 
-    bool empty() const {
+    bool empty() {
         if constexpr(store_range)
-            return it == range.end();
+            return it == range.cend();
         else
             return it == sentinel;
     }
