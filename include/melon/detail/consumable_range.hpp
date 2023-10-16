@@ -51,7 +51,7 @@ public:
 
     bool empty() {
         if constexpr(store_range)
-            return it == range.cend();
+            return it == range.end();
         else
             return it == sentinel;
     }
