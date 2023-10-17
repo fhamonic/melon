@@ -314,7 +314,6 @@ GTEST_TEST(strongly_connected_components, subgraph_true_map2_test) {
 
 GTEST_TEST(strongly_connected_components, subgraph_test) {
     using vertex = vertex_t<static_digraph>;
-    using arc = arc_t<static_digraph>;
     static_digraph_builder<static_digraph, char> builder(8);
 
     builder.add_arc(0, 1, true)
@@ -334,10 +333,7 @@ GTEST_TEST(strongly_connected_components, subgraph_test) {
     auto [graph, filter_map] = builder.build();
 
     auto sgraph =
-        views::subgraph(graph, views::true_map{},
-                        views::map([&filter_map](const arc & a) -> bool {
-                            return filter_map[a];
-                        }));
+        views::subgraph(graph, views::true_map{}, std::move(filter_map));
 
     std::vector<std::vector<vertex>> components(
         {{2u, 1u, 0u}, {6u}, {4u}, {5u, 3u}, {7u}});
