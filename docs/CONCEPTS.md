@@ -15,7 +15,7 @@ concept graph = requires(const _Tp & __t) {
                     melon::arcs_entries(__t);
                 };
 ```
-Then, in our library, an instance `g` of a graph structure of type `_Tp` :
+Then, in our library, an instance `g` of a graph structure of type `_Tp` must provide :
 - `melon::vertices(g)` that returns a range of the graph vertices, which are of type `vertex_t<_Tp>` 
 - `melon::arcs(g)` that returns a range of the graph arcs identifiers, which are of type `arc_t<G>`
 - `melon::arcs_entries(__t)` that returns a range where each element is a pair `(a,(s,t))` where `a` is the arc identifier and `s` and `t` are the source and target vertices.
@@ -35,7 +35,7 @@ concept has_out_arcs =
     std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<_Tp>>,
                         arc_t<_Tp>>;
 ```
-Iterating over the outgoing arcs is not sufficient, for most algorithms we have to be able to retrieve the target vertex of an arc `a` with ``.  
+Iterating over the outgoing arcs is not sufficient, for most algorithms we have to be able to retrieve the target vertex of an arc `a` with `melon::arc_target(g, a)`. 
 ```cpp
 template <typename _Tp>
 concept has_arc_target =
@@ -43,7 +43,6 @@ concept has_arc_target =
                       melon::arc_target(__t, __a);
                   };
 ```
-Here, the graph `g` must provide `melon::arc_target(g, a)` that returns the target vertex of the arc `a`.
 Since they are very often required together, for example, in traversal algorithms, the `has_out_arcs` and `has_arc_target` concepts are regrouped under the `outward_incidence_graph` one.
 At the opposite, the `has_in_arcs` and `has_arc_source` concepts are regrouped under the `inward_incidence_graph` one.
 ```cpp
@@ -51,7 +50,7 @@ template <typename _Tp>
 concept outward_incidence_graph =
     graph<_Tp> && has_out_arcs<_Tp> && has_arc_target<_Tp>;
 ```
-While the concepts `has_out_arcs` and `has_arc_target` are closely related, their independence is justified by the fact that some graph and algorithms implementations may require only one of them. For exemple, a graph satifying `outward_incidence_graph` may also satisfy `has_out_arcs` but not `has_in_arcs`.
+While the concepts `has_out_arcs` and `has_arc_target` are closely related, their independence is justified by the fact that some graph and algorithms implementations may require only one of them. For exemple, a graph satifying `outward_incidence_graph` may also satisfy `has_arc_source` but not `has_in_arcs`.
  
 ## Adjacency graph
 
