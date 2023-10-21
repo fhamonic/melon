@@ -85,7 +85,7 @@ public:
         return *this;
     }
 
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() noexcept {
         return _remaining_vertices.empty();
     }
 

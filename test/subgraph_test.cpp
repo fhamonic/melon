@@ -1,11 +1,11 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
-#include "melon/utility/value_map.hpp"
-#include "melon/views/subgraph.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
+#include "melon/utility/value_map.hpp"
+#include "melon/views/subgraph.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -27,34 +27,33 @@ GTEST_TEST(subgraph_views, static_graph) {
     ASSERT_TRUE(EQ_RANGES(vertices(graph), subgraph_graph.vertices()));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), subgraph_graph.arcs()));
 
-    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
+    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph, u));
     ASSERT_FALSE(
-        is_valid_vertex(graph,vertex_t<static_digraph>(nb_vertices(graph))));
+        is_valid_vertex(graph, vertex_t<static_digraph>(nb_vertices(graph))));
 
-    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph,a));
-    ASSERT_FALSE(is_valid_arc(graph,arc_t<static_digraph>(nb_arcs(graph))));
-
-    ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,0), subgraph_graph.out_neighbors(0)));
-    ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,1), subgraph_graph.out_neighbors(1)));
-    ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,2), subgraph_graph.out_neighbors(2)));
+    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph, a));
+    ASSERT_FALSE(is_valid_arc(graph, arc_t<static_digraph>(nb_arcs(graph))));
 
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,0), subgraph_graph.in_neighbors(0)));
+        EQ_RANGES(out_neighbors(graph, 0), subgraph_graph.out_neighbors(0)));
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,1), subgraph_graph.in_neighbors(1)));
+        EQ_RANGES(out_neighbors(graph, 1), subgraph_graph.out_neighbors(1)));
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,2), subgraph_graph.in_neighbors(2)));
+        EQ_RANGES(out_neighbors(graph, 2), subgraph_graph.out_neighbors(2)));
+
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph, 0), subgraph_graph.in_neighbors(0)));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph, 1), subgraph_graph.in_neighbors(1)));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph, 2), subgraph_graph.in_neighbors(2)));
 
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
 
     for(arc_t<static_digraph> a : arcs(graph)) {
-        ASSERT_EQ(arc_source(graph,a), arc_pairs[a].second.first);
+        ASSERT_EQ(arc_source(graph, a), arc_pairs[a].second.first);
     }
 }
-
 
 GTEST_TEST(subgraph_views, static_graph_filter) {
     static_digraph_builder<static_digraph, char> builder(6);
@@ -71,19 +70,12 @@ GTEST_TEST(subgraph_views, static_graph_filter) {
     builder.add_arc(3, 2, 1);
 
     auto [fgraph, filter_map] = builder.build();
-    auto graph = views::subgraph(fgraph, views::true_map{}, views::map([&filter_map](const arc_t<static_digraph> & v){ return filter_map.at(v)==1; }));
+    auto graph = views::subgraph(fgraph, views::true_map{}, std::move(filter_map));
 
-
-
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(0), {1}));
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(1), {2}));
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(2), {1, 3}));
-    ASSERT_TRUE(
-        EQ_RANGES(graph.out_neighbors(3), {2}));
-
+    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0), {1}));
+    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(1), {2}));
+    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(2), {1, 3}));
+    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(3), {2}));
 }
 
 GTEST_TEST(subgraph_views, dijkstra) {
