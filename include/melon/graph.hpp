@@ -801,11 +801,8 @@ template <typename _Tp>
 concept graph = requires(const _Tp & __t) {
                     melon::vertices(__t);
                     melon::arcs(__t);
+                    melon::arcs_entries(__t);
                 };
-
-template <typename _Tp>
-concept copyable_graph =
-    graph<_Tp> && requires(const _Tp & __t) { melon::arcs_entries(__t); };
 
 template <typename _Tp>
 concept has_nb_vertices =

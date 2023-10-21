@@ -15,7 +15,8 @@
 namespace fhamonic {
 namespace melon {
 
-template <copyable_graph G>
+template <graph
+ G>
 class graphviz_printer {
 public:
     using vertex = vertex_t<G>;
