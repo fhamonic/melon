@@ -78,7 +78,7 @@ arc_map_t<G,T> arc_map = create_arc_map<T>(g);
 When creating such maps, the data attached is considered [default initialized](https://en.cppreference.com/w/cpp/language/default_initialization), i.e. in the case of primitive types, the value is indeterminate.
 We can pass an aditional argument to initialize the values of the map.
 ```
-vertex_map_t<G,int> vertex_map = create_vertex_map<T>(g, 0);
+vertex_map_t<G,int> vertex_map = create_vertex_map<int>(g, 0);
 ```
 
 This design choice has many advantages:
