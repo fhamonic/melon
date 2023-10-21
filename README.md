@@ -69,4 +69,15 @@ for(auto && [u, dist] : dijkstra(graph, length_map, s)) {
     ...;
 }
 ```
-    
+
+```cpp
+#include "melon/algorithm/strongly_connected_components.hpp"
+#include "melon/container/static_digraph.hpp"
+....
+static_digraph graph = ...;
+for(auto component : strongly_connected_components(graph)) {
+    for(auto && v : component) {
+        alg_component.push_back(v);
+    }
+}
+```
