@@ -75,7 +75,6 @@ public:
     auto vertices() const noexcept {
         if constexpr(std::same_as<VF, true_map>) {
             return melon::vertices(_graph.get());
-
         } else {
             return std::views::filter(
                 melon::vertices(_graph.get()),

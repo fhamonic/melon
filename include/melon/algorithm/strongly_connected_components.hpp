@@ -19,6 +19,8 @@
 #include "melon/graph.hpp"
 #include "melon/utility/traversal_iterator.hpp"
 
+#include "melon/views/graph_view.hpp"
+
 namespace fhamonic {
 namespace melon {
 
@@ -34,7 +36,7 @@ private:
     static constexpr component_num INVALID_COMPONENT =
         std::numeric_limits<component_num>::max();
 
-    std::reference_wrapper<const G> _graph;
+    G _graph;
 
     consumable_range<vertices_range_t<G>> _remaining_vertices;
     std::vector<std::pair<vertex, consumable_range<out_neighbors_range_t<G>>>>
@@ -49,10 +51,11 @@ private:
     vertex_map_t<G, component_num> _lowlink_map;
 
 public:
+    template <typename _Tp>
     [[nodiscard]] constexpr explicit strongly_connected_components(
-        const G & g) noexcept
-        : _graph(g)
-        , _remaining_vertices(vertices(_graph.get()))
+        _Tp g) noexcept
+        : _graph(views::graph_all(g))
+        , _remaining_vertices(vertices(_graph))
         , _dfs_stack()
         , _tarjan_stack()
         , start_index(0)
@@ -78,7 +81,7 @@ public:
 
     constexpr strongly_connected_components & reset() noexcept {
         index = 0;
-        _remaining_vertices = vertices(_graph.get());
+        _remaining_vertices = vertices(_graph);
         _dfs_stack.resize(0);
         _tarjan_stack.resize(0);
         _reached_map.fill(false);
@@ -134,7 +137,7 @@ public:
             _index_map[s] = _lowlink_map[s] = start_index = index;
             ++index;
             _tarjan_stack.push_back(s);
-            _dfs_stack.emplace_back(s, out_neighbors(_graph.get(), s));
+            _dfs_stack.emplace_back(s, out_neighbors(_graph, s));
         }
 
         for(;;) {
@@ -153,7 +156,7 @@ public:
                 _index_map[w] = _lowlink_map[w] = index;
                 ++index;
                 _tarjan_stack.push_back(w);
-                _dfs_stack.emplace_back(w, out_neighbors(_graph.get(), w));
+                _dfs_stack.emplace_back(w, out_neighbors(_graph, w));
             }
             vertex v = _dfs_stack.back().first;
             if(_index_map[v] == _lowlink_map[v]) return;
@@ -183,6 +186,10 @@ public:
         return _lowlink_map[u] == _lowlink_map[v];
     }
 };
+
+template <typename _Graph>
+strongly_connected_components(_Graph)
+    -> strongly_connected_components<views::graph_all_t<_Graph>>;
 
 }  // namespace melon
 }  // namespace fhamonic
