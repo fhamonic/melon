@@ -10,7 +10,8 @@ using namespace fhamonic;
 using namespace fhamonic::melon;
 
 static_assert(melon::graph<static_digraph>);
-static_assert(melon::copyable_graph<static_digraph>);
+static_assert(melon::graph
+<static_digraph>);
 static_assert(melon::outward_incidence_graph<static_digraph>);
 static_assert(melon::outward_adjacency_graph<static_digraph>);
 static_assert(melon::inward_incidence_graph<static_digraph>);
