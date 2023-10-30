@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -19,7 +19,8 @@ template <int D, typename K, typename P,
                           const std::pair<K, P> & e2) {
                   return e1.second > e2.second;
               }),
-          output_value_map<K> M = std::unordered_map<K, std::size_t>>
+          output_mapping<K> M =
+              mapping_owning_view<std::unordered_map<K, std::size_t>>>
     requires std::integral<mapped_value_t<M, K>>
 class d_ary_heap {
 public:
@@ -193,10 +194,7 @@ private:
     }
     [[nodiscard]] constexpr size_type index_of(
         const key_type & k) const noexcept {
-        if constexpr(requires() { std::as_const(_indices_map)[k]; })
-            return _indices_map[k];
-        else
-            return _indices_map.at(k);
+        return _indices_map[k];
     }
     constexpr void push(entry && p) noexcept {
         const size_type n = _heap_array.size();

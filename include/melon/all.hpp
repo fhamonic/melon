@@ -28,7 +28,7 @@
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/container/static_map.hpp"
 
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 #include "melon/utility/semirings.hpp"
 
 #endif  // FHAMONIC_MELON_HPP

@@ -3,13 +3,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <numeric>
 #include <ranges>
 #include <span>
-#include <vector>
 
 #include "melon/container/static_map.hpp"
-#include "melon/detail/range_of.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -23,7 +22,9 @@ private:
     static_map<arc, vertex> _arc_target;
 
 public:
-    template <forward_range_of<vertex> S, forward_range_of<vertex> T>
+    template <std::ranges::forward_range S, std::ranges::forward_range T>
+        requires std::convertible_to<std::ranges::range_value_t<S>, vertex> &&
+                     std::convertible_to<std::ranges::range_value_t<T>, vertex>
     static_forward_digraph(const std::size_t & nb_vertices, S && sources,
                            T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0), _arc_target(std::move(targets)) {

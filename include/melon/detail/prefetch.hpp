@@ -5,7 +5,7 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -19,14 +19,14 @@ constexpr void prefetch_range(const R & range) {
 }
 
 template <std::ranges::range _Keys,
-          value_map<std::ranges::range_value_t<_Keys>> _ValueMap>
+          mapping<std::ranges::range_value_t<_Keys>> _ValueMap>
 constexpr void prefetch_mapped_values(const _Keys & __keys,
                                       const _ValueMap & __map) {
     if constexpr(requires {
                      __builtin_prefetch(nullptr);
                      std::ranges::begin(__keys);
                      std::ranges::end(__keys);
-                 } && contiguous_value_map<_ValueMap,
+                 } && contiguous_mapping<_ValueMap,
                                            std::ranges::range_value_t<_Keys>>) {
         if(std::ranges::begin(__keys) != std::ranges::end(__keys)) {
             __builtin_prefetch(__map.data() + *std::ranges::begin(__keys));

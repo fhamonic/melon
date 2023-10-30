@@ -10,8 +10,7 @@
 
 #include "melon/container/static_filter_map.hpp"
 #include "melon/container/static_map.hpp"
-#include "melon/detail/range_of.hpp"
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -29,7 +28,9 @@ private:
     static_map<arc, arc> _in_arcs;
 
 public:
-    template <forward_range_of<vertex> S, forward_range_of<vertex> T>
+    template <std::ranges::forward_range S, std::ranges::forward_range T>
+        requires std::convertible_to<std::ranges::range_value_t<S>, vertex> &&
+                     std::convertible_to<std::ranges::range_value_t<T>, vertex>
     [[nodiscard]] static_digraph(const std::size_t & nb_vertices, S && sources,
                                  T && targets) noexcept
         : _out_arc_begin(nb_vertices, 0)
@@ -113,10 +114,10 @@ public:
     }
 
     [[nodiscard]] auto arc_sources_map() const noexcept {
-        return ref_value_map(_arc_source);
+        return mapping_ref_view(_arc_source);
     }
     [[nodiscard]] auto arc_targets_map() const noexcept {
-        return ref_value_map(_arc_target);
+        return mapping_ref_view(_arc_target);
     }
 
     [[nodiscard]] constexpr auto out_neighbors(const vertex u) const noexcept {
@@ -132,7 +133,7 @@ public:
         // if constexpr(std::same_as<T, bool>)
         //     return static_filter_map<vertex>(nb_vertices());
         // else
-            return static_map<vertex, T>(nb_vertices());
+        return static_map<vertex, T>(nb_vertices());
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map(
@@ -140,7 +141,7 @@ public:
         // if constexpr(std::same_as<T, bool>)
         //     return static_filter_map<vertex>(nb_vertices(), default_value);
         // else
-            return static_map<vertex, T>(nb_vertices(), default_value);
+        return static_map<vertex, T>(nb_vertices(), default_value);
     }
 
     template <typename T>
@@ -148,7 +149,7 @@ public:
         // if constexpr(std::same_as<T, bool>)
         //     return static_filter_map<arc>(nb_arcs());
         // else
-            return static_map<arc, T>(nb_arcs());
+        return static_map<arc, T>(nb_arcs());
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_arc_map(
@@ -156,7 +157,7 @@ public:
         // if constexpr(std::same_as<T, bool>)
         //     return static_filter_map<arc>(nb_arcs(), default_value);
         // else
-            return static_map<arc, T>(nb_arcs(), default_value);
+        return static_map<arc, T>(nb_arcs(), default_value);
     }
 };
 

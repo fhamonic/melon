@@ -420,10 +420,10 @@ concept __member_create_face_map =
     requires(const _Tp & __t, const _ValueType & __d) {
         {
             __t.template create_face_map<_ValueType>()
-            } -> output_value_map_of<face_t<_Tp>, _ValueType>;
+            } -> output_mapping_of<face_t<_Tp>, _ValueType>;
         {
             __t.template create_face_map<_ValueType>(__d)
-            } -> output_value_map_of<face_t<_Tp>, _ValueType>;
+            } -> output_mapping_of<face_t<_Tp>, _ValueType>;
     };
 
 template <typename _Tp, typename _ValueType>
@@ -431,10 +431,10 @@ concept __adl_create_face_map =
     requires(const _Tp & __t, const _ValueType & __d) {
         {
             create_face_map<_ValueType>(__t)
-            } -> output_value_map_of<face_t<_Tp>, _ValueType>;
+            } -> output_mapping_of<face_t<_Tp>, _ValueType>;
         {
             create_face_map<_ValueType>(__t, __d)
-            } -> output_value_map_of<face_t<_Tp>, _ValueType>;
+            } -> output_mapping_of<face_t<_Tp>, _ValueType>;
     };
 
 struct _CreateFaceMap {

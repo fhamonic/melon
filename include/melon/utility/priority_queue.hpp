@@ -4,8 +4,6 @@
 #include <concepts>
 #include <ranges>
 
-#include "melon/detail/range_of.hpp"
-
 namespace fhamonic {
 namespace melon {
 

@@ -9,8 +9,6 @@
 namespace fhamonic {
 namespace melon {
 
-namespace views {
-
 struct graph_view_base {};
 
 template <typename _Tp>
@@ -32,7 +30,7 @@ private:
 public:
     template <typename _Tp>
         requires(!__detail::__specialization_of<_Tp, graph_ref_view>)
-    [[nodiscard]] constexpr explicit graph_ref_view(const _Tp & g)
+    [[nodiscard]] constexpr explicit graph_ref_view(_Tp && g)
         : _graph(std::addressof(static_cast<G &>(std::forward<_Tp>(g)))) {}
 
     [[nodiscard]] constexpr graph_ref_view(const graph_ref_view &) = default;
@@ -162,7 +160,6 @@ public:
         default;
     constexpr graph_owning_view & operator=(graph_owning_view &&) = default;
 
-    // constexpr const G & base() const { return _graph; }
     constexpr G && base() && noexcept { return std::move(_graph); }
 
     [[nodiscard]] constexpr decltype(auto) nb_vertices() const
@@ -256,6 +253,7 @@ public:
     }
 };
 
+namespace views {
 namespace __cust_access {
 namespace __detail {
 template <typename _Graph>
@@ -279,20 +277,16 @@ struct _GraphAll {
             return noexcept(graph_owning_view{std::declval<_Graph>()});
     }
 
-    template <graph G>
-        requires graph<G> || __detail::__can_graph_ref_view<G> ||
-                 __detail::__can_graph_owning_view<G>
-    constexpr auto operator() [[nodiscard]] (G && __r) const
-        noexcept(_S_noexcept<G>()) {
-        if constexpr(graph_view<std::decay_t<G>>)
-            return std::forward<G>(__r);
-        else if constexpr(__detail::__can_graph_ref_view<G>)
-            return graph_ref_view{std::forward<G>(__r)};
+    template <graph _Graph>
+    constexpr auto operator() [[nodiscard]] (_Graph && __g) const
+        noexcept(_S_noexcept<_Graph>()) {
+        if constexpr(graph_view<std::decay_t<_Graph>>)
+            return std::forward<_Graph>(__g);
+        else if constexpr(__detail::__can_graph_ref_view<_Graph>)
+            return graph_ref_view{std::forward<_Graph>(__g)};
         else
-            return graph_owning_view{std::forward<G>(__r)};
+            return graph_owning_view{std::forward<_Graph>(__g)};
     }
-
-    static constexpr bool _S_has_simple_call_op = true;
 };
 }  // namespace __cust_access
 

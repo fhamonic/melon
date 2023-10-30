@@ -4,7 +4,7 @@
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 #include "melon/views/subgraph.hpp"
 
 #include "ranges_test_helper.hpp"
