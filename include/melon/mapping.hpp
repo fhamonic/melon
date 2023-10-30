@@ -219,21 +219,7 @@ using mapping_all_t = decltype(mapping_all(std::declval<_Map>()));
 namespace views {
 
 template <typename F>
-class map : public mapping_view_base {
-private:
-    F _func;
-
-public:
-    [[nodiscard]] constexpr map(F && f) : _func(std::forward<F>(f)) {}
-
-    [[nodiscard]] constexpr map() = default;
-    [[nodiscard]] constexpr map(const map &) = default;
-    [[nodiscard]] constexpr map(map &&) = default;
-
-    [[nodiscard]] constexpr auto operator[](const auto & k) const noexcept {
-        return _func(k);
-    }
-};
+using map = mapping_owning_view<F>;
 
 struct true_map : public mapping_view_base {
     [[nodiscard]] constexpr bool operator[](const auto & k) const noexcept {
