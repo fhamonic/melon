@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {

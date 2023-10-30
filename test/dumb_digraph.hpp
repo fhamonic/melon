@@ -6,7 +6,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 // This is a dumb digraph, it implements all the lookups and modification
 // operations we need on a digraph, but do it very inefficiently in order to

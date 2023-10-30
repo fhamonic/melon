@@ -53,13 +53,13 @@ GTEST_TEST(edmonds_karp, test) {
     builder.add_arc(0, 1, 16, false);
     builder.add_arc(0, 2, 13, false);
     builder.add_arc(1, 2, 10, false);
-    builder.add_arc(1, 3, 12, true); //
+    builder.add_arc(1, 3, 12, true);  //
     builder.add_arc(2, 1, 4, false);
     builder.add_arc(2, 4, 14, false);
     builder.add_arc(3, 2, 9, false);
     builder.add_arc(3, 5, 20, false);
-    builder.add_arc(4, 3, 7, true); //
-    builder.add_arc(4, 5, 4, true); //
+    builder.add_arc(4, 3, 7, true);  //
+    builder.add_arc(4, 5, 4, true);  //
 
     auto [graph, capacity, part_of_minimum_cut] = builder.build();
 
@@ -72,12 +72,13 @@ GTEST_TEST(edmonds_karp, test) {
     alg.reset();
 }
 
+#include "melon/mapping.hpp"
 #include "melon/views/complete_digraph.hpp"
-#include "melon/utility/value_map.hpp"
 
 GTEST_TEST(edmonds_karp, complete_digraph_view) {
     auto graph = views::complete_digraph<>(5ul);
-    edmonds_karp alg(graph, views::map([](const auto & a){ return 1;}), 0ul, 1ul);
+    edmonds_karp alg(
+        graph, [](const auto & a) { return 1; }, 0ul, 1ul);
     ASSERT_EQ(alg.run().flow_value(), 4);
     alg.reset();
 }

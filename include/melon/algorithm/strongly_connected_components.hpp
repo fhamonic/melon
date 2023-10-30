@@ -24,47 +24,50 @@
 namespace fhamonic {
 namespace melon {
 
-template <outward_adjacency_graph G>
-    requires has_vertex_map<G>
+template <outward_adjacency_graph _Graph>
+    requires has_vertex_map<_Graph>
 class strongly_connected_components {
 private:
-    using vertex = vertex_t<G>;
-    using arc = arc_t<G>;
+    using vertex = vertex_t<_Graph>;
+    using arc = arc_t<_Graph>;
 
     using component_num = unsigned int;
 
     static constexpr component_num INVALID_COMPONENT =
         std::numeric_limits<component_num>::max();
 
-    G _graph;
+    _Graph _graph;
 
-    consumable_range<vertices_range_t<G>> _remaining_vertices;
-    std::vector<std::pair<vertex, consumable_range<out_neighbors_range_t<G>>>>
+    consumable_range<vertices_range_t<_Graph>> _remaining_vertices;
+    std::vector<
+        std::pair<vertex, consumable_range<out_neighbors_range_t<_Graph>>>>
         _dfs_stack;
 
     std::vector<vertex> _tarjan_stack;
     component_num start_index;
     component_num index;
 
-    vertex_map_t<G, bool> _reached_map;
-    vertex_map_t<G, component_num> _index_map;
-    vertex_map_t<G, component_num> _lowlink_map;
+    vertex_map_t<_Graph, bool> _reached_map;
+    vertex_map_t<_Graph, component_num> _index_map;
+    vertex_map_t<_Graph, component_num> _lowlink_map;
 
 public:
     template <typename _Tp>
     [[nodiscard]] constexpr explicit strongly_connected_components(
-        _Tp g) noexcept
-        : _graph(views::graph_all(g))
+        _Tp && g) noexcept
+        : _graph(views::graph_all(std::forward<_Tp>(g)))
         , _remaining_vertices(vertices(_graph))
         , _dfs_stack()
         , _tarjan_stack()
         , start_index(0)
         , index(0)
-        , _reached_map(create_vertex_map<bool>(g, false))
-        , _index_map(create_vertex_map<component_num>(g, INVALID_COMPONENT))
-        , _lowlink_map(create_vertex_map<component_num>(g, INVALID_COMPONENT)) {
-        if constexpr(has_nb_vertices<G>) {
-            _dfs_stack.reserve(nb_vertices(g));
+        , _reached_map(create_vertex_map<bool>(_graph, false))
+        , _index_map(
+              create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
+        , _lowlink_map(
+              create_vertex_map<component_num>(_graph, INVALID_COMPONENT)) {
+        if constexpr(has_nb_vertices<_Graph>) {
+            _dfs_stack.reserve(nb_vertices(_graph));
         }
         advance();
     }
@@ -188,7 +191,7 @@ public:
 };
 
 template <typename _Graph>
-strongly_connected_components(_Graph)
+strongly_connected_components(_Graph &&)
     -> strongly_connected_components<views::graph_all_t<_Graph>>;
 
 }  // namespace melon

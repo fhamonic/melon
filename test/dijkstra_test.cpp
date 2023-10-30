@@ -141,8 +141,7 @@ GTEST_TEST(dijkstra, path_to) {
 
     auto [graph, length_map, id] = builder.build();
 
-    dijkstra<decltype(graph), decltype(length_map), dijkstra_traits> alg(
-        graph, length_map);
+    auto alg = dijkstra(dijkstra_traits{}, graph, length_map);
     alg.add_source(0u).run();
 
     auto path = alg.path_to(3u);

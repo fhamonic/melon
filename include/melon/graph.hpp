@@ -5,44 +5,23 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/utility/value_map.hpp"
+#include "melon/detail/specialization_of.hpp"
+
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-namespace __detail {
-template <typename _Tp, template <typename...> typename _Primary>
-struct __is_specialization_of : std::false_type {};
-
-template <template <typename...> typename _Primary, typename... _Args>
-struct __is_specialization_of<_Primary<_Args...>, _Primary> : std::true_type {};
-
-template <typename _Tp, template <typename...> typename _Primary>
-concept __specialization_of = __is_specialization_of<_Tp, _Primary>::value;
-
-template <typename _Tp>
-inline constexpr int _range_rank() {
-    if constexpr(__detail::__specialization_of<_Tp, std::ranges::iota_view>)
-        return 3;
-    else if constexpr(std::ranges::contiguous_range<_Tp>)
-        return 2;
-    else if constexpr(std::ranges::viewable_range<_Tp>)
-        return 1;
-    else
-        return 0;
-};
-}  // namespace __detail
-
 namespace __cust_access {
 template <typename _Tp>
 concept __member_vertices = requires(const _Tp & __t) {
-                                { __t.vertices() } -> std::ranges::input_range;
-                            };
+    { __t.vertices() } -> std::ranges::input_range;
+};
 
 template <typename _Tp>
 concept __adl_vertices = requires(const _Tp & __t) {
-                             { vertices(__t) } -> std::ranges::input_range;
-                         };
+    { vertices(__t) } -> std::ranges::input_range;
+};
 
 struct _Vertices {
 private:
@@ -80,13 +59,13 @@ using vertex_t = std::ranges::range_value_t<vertices_range_t<_Tp>>;
 namespace __cust_access {
 template <typename _Tp>
 concept __member_nb_vertices = requires(const _Tp & __t) {
-                                   { __t.nb_vertices() } -> std::integral;
-                               };
+    { __t.nb_vertices() } -> std::integral;
+};
 
 template <typename _Tp>
 concept __adl_nb_vertices = requires(const _Tp & __t) {
-                                { nb_vertices(__t) } -> std::integral;
-                            };
+    { nb_vertices(__t) } -> std::integral;
+};
 
 struct _NbVertices {
 private:
@@ -130,8 +109,8 @@ concept __member_out_arcs =
 
 template <typename _Tp>
 concept __adl_out_arcs = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                             { out_arcs(__t, __v) } -> std::ranges::input_range;
-                         };
+    { out_arcs(__t, __v) } -> std::ranges::input_range;
+};
 
 struct _OutArcs {
 private:
@@ -166,8 +145,8 @@ concept __member_in_arcs =
 
 template <typename _Tp>
 concept __adl_in_arcs = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                            { in_arcs(__t, __v) } -> std::ranges::input_range;
-                        };
+    { in_arcs(__t, __v) } -> std::ranges::input_range;
+};
 
 struct _InArcs {
 private:
@@ -223,18 +202,18 @@ using in_arcs_sentinel_t = std::ranges::sentinel_t<in_arcs_range_t<_Tp>>;
 namespace __cust_access {
 template <typename _Tp>
 concept __member_arcs = requires(const _Tp & __t) {
-                            { __t.arcs() } -> std::ranges::input_range;
-                        };
+    { __t.arcs() } -> std::ranges::input_range;
+};
 
 template <typename _Tp>
 concept __adl_arcs = requires(const _Tp & __t) {
-                         { arcs(__t) } -> std::ranges::input_range;
-                     };
+    { arcs(__t) } -> std::ranges::input_range;
+};
 
 template <typename _Tp, typename _Incidence>
     requires requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                 { _Incidence{}(__t, __v) } -> std::ranges::viewable_range;
-             }
+        { _Incidence{}(__t, __v) } -> std::ranges::viewable_range;
+    }
 inline constexpr auto __join_incidence
     [[nodiscard]] (const _Tp & __t, _Incidence && __incidence) {
     return std::views::join(std::views::transform(
@@ -354,8 +333,8 @@ concept __member_in_degree =
 
 template <typename _Tp>
 concept __adl_in_degree = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                              { in_degree(__t, __v) } -> std::integral;
-                          };
+    { in_degree(__t, __v) } -> std::integral;
+};
 
 template <typename _Tp>
 concept __has_sized_in_arcs =
@@ -403,13 +382,13 @@ inline constexpr __cust_access::_InDegree in_degree{};
 namespace __cust_access {
 template <typename _Tp>
 concept __member_nb_arcs = requires(const _Tp & __t) {
-                               { __t.nb_arcs() } -> std::integral;
-                           };
+    { __t.nb_arcs() } -> std::integral;
+};
 
 template <typename _Tp>
 concept __adl_nb_arcs = requires(const _Tp & __t) {
-                            { nb_arcs(__t) } -> std::integral;
-                        };
+    { nb_arcs(__t) } -> std::integral;
+};
 
 struct _NbArcs {
 private:
@@ -452,10 +431,8 @@ concept __member_arc_source =
 
 template <typename _Tp>
 concept __adl_arc_source = requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                               {
-                                   arc_source(__t, __a)
-                                   } -> std::convertible_to<vertex_t<_Tp>>;
-                           };
+    { arc_source(__t, __a) } -> std::convertible_to<vertex_t<_Tp>>;
+};
 
 struct _ArcSource {
 private:
@@ -490,10 +467,8 @@ concept __member_arc_target =
 
 template <typename _Tp>
 concept __adl_arc_target = requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                               {
-                                   arc_target(__t, __a)
-                                   } -> std::convertible_to<vertex_t<_Tp>>;
-                           };
+    { arc_target(__t, __a) } -> std::convertible_to<vertex_t<_Tp>>;
+};
 
 struct _ArcTarget {
 private:
@@ -529,24 +504,20 @@ inline constexpr __cust_access::_ArcTarget arc_target{};
 namespace __cust_access {
 template <typename _Tp>
 concept __member_arcs_entries = requires(const _Tp & __t) {
-                                    {
-                                        __t.arcs_entries()
-                                        } -> std::ranges::input_range;
-                                };
+    { __t.arcs_entries() } -> std::ranges::input_range;
+};
 
 template <typename _Tp>
 concept __adl_arcs_entries = requires(const _Tp & __t) {
-                                 {
-                                     arcs_entries(__t)
-                                     } -> std::ranges::input_range;
-                             };
+    { arcs_entries(__t) } -> std::ranges::input_range;
+};
 
 template <typename _Tp>
     requires requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                 { _Arcs{}(__t) } -> std::ranges::viewable_range;
-                 _ArcSource{}(__t, __a);
-                 _ArcTarget{}(__t, __a);
-             }
+        { _Arcs{}(__t) } -> std::ranges::viewable_range;
+        _ArcSource{}(__t, __a);
+        _ArcTarget{}(__t, __a);
+    }
 inline constexpr auto __list_arcs_entries [[nodiscard]] (const _Tp & __t) {
     return std::views::transform(melon::arcs(__t), [&](const arc_t<_Tp> & a) {
         return std::make_pair(
@@ -561,9 +532,9 @@ concept __can_list_arcs_entries =
 template <typename _Tp>
     requires requires(const _Tp & __t, const vertex_t<_Tp> & __v,
                       arc_t<_Tp> & __a) {
-                 { _OutArcs{}(__t, __v) } -> std::ranges::viewable_range;
-                 _ArcTarget{}(__t, __a);
-             }
+        { _OutArcs{}(__t, __v) } -> std::ranges::viewable_range;
+        _ArcTarget{}(__t, __a);
+    }
 inline constexpr auto __join_out_arcs_entries [[nodiscard]] (const _Tp & __t) {
     return std::views::join(std::views::transform(
         melon::vertices(__t), [&__t](const vertex_t<_Tp> & s) {
@@ -582,9 +553,9 @@ concept __can_join_out_arcs_entries =
 template <typename _Tp>
     requires requires(const _Tp & __t, const vertex_t<_Tp> & __v,
                       arc_t<_Tp> & __a) {
-                 { _InArcs{}(__t, __v) } -> std::ranges::viewable_range;
-                 _ArcSource{}(__t, __a);
-             }
+        { _InArcs{}(__t, __v) } -> std::ranges::viewable_range;
+        _ArcSource{}(__t, __a);
+    }
 inline constexpr auto __join_in_arcs_entries [[nodiscard]] (const _Tp & __t) {
     return std::views::join(std::views::transform(
         melon::vertices(__t), [&__t](const vertex_t<_Tp> & t) {
@@ -668,9 +639,9 @@ namespace __cust_access {
 template <typename _Tp, typename _Incidence, typename _EndPoint>
     requires requires(const _Tp & __t, const vertex_t<_Tp> & __v,
                       arc_t<_Tp> & __a) {
-                 { _Incidence{}(__t, __v) } -> std::ranges::viewable_range;
-                 _EndPoint{}(__t, __a);
-             }
+        { _Incidence{}(__t, __v) } -> std::ranges::viewable_range;
+        _EndPoint{}(__t, __a);
+    }
 inline constexpr auto __list_incidence_endpoints
     [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v,
                    _Incidence && __incidence, _EndPoint && __end_point) {
@@ -691,7 +662,7 @@ concept __member_out_neighbors =
         { __t.out_neighbors(__v) } -> std::ranges::input_range;
         {
             *std::ranges::begin(__t.out_neighbors(__v))
-            } -> std::convertible_to<vertex_t<_Tp>>;
+        } -> std::convertible_to<vertex_t<_Tp>>;
     };
 
 template <typename _Tp>
@@ -700,7 +671,7 @@ concept __adl_out_neighbors =
         { out_neighbors(__t, __v) } -> std::ranges::input_range;
         {
             *std::ranges::begin(out_neighbors(__t, __v))
-            } -> std::convertible_to<vertex_t<_Tp>>;
+        } -> std::convertible_to<vertex_t<_Tp>>;
     };
 
 struct _OutNeighbors {
@@ -740,7 +711,7 @@ concept __member_in_neighbors =
         { __t.in_neighbors(__v) } -> std::ranges::input_range;
         {
             *std::ranges::begin(__t.in_neighbors(__v))
-            } -> std::convertible_to<vertex_t<_Tp>>;
+        } -> std::convertible_to<vertex_t<_Tp>>;
     };
 
 template <typename _Tp>
@@ -749,7 +720,7 @@ concept __adl_in_neighbors =
         { in_neighbors(__t, __v) } -> std::ranges::input_range;
         {
             *std::ranges::begin(in_neighbors(__t, __v))
-            } -> std::convertible_to<vertex_t<_Tp>>;
+        } -> std::convertible_to<vertex_t<_Tp>>;
     };
 
 struct _InNeighbors {
@@ -799,10 +770,10 @@ using in_neighbors_range_t = decltype(melon::in_neighbors(
 
 template <typename _Tp>
 concept graph = requires(const _Tp & __t) {
-                    melon::vertices(__t);
-                    melon::arcs(__t);
-                    melon::arcs_entries(__t);
-                };
+    melon::vertices(__t);
+    melon::arcs(__t);
+    melon::arcs_entries(__t);
+};
 
 template <typename _Tp>
 concept has_nb_vertices =
@@ -815,14 +786,14 @@ concept has_nb_arcs =
 template <typename _Tp>
 concept has_arc_target =
     graph<_Tp> && requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                      melon::arc_target(__t, __a);
-                  };
+        melon::arc_target(__t, __a);
+    };
 
 template <typename _Tp>
 concept has_arc_source =
     graph<_Tp> && requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                      melon::arc_source(__t, __a);
-                  };
+        melon::arc_source(__t, __a);
+    };
 
 template <typename _Tp>
 concept has_out_arcs =
@@ -845,14 +816,14 @@ concept has_in_arcs =
 template <typename _Tp>
 concept has_out_degree =
     graph<_Tp> && requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                      melon::out_degree(__t, __v);
-                  };
+        melon::out_degree(__t, __v);
+    };
 
 template <typename _Tp>
 concept has_in_degree =
     graph<_Tp> && requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                      melon::in_degree(__t, __v);
-                  };
+        melon::in_degree(__t, __v);
+    };
 
 template <typename _Tp>
 concept outward_incidence_graph =
@@ -865,28 +836,25 @@ concept inward_incidence_graph =
 template <typename _Tp>
 concept outward_adjacency_graph =
     graph<_Tp> && requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                      melon::out_neighbors(__t, __v);
-                  };
+        melon::out_neighbors(__t, __v);
+    };
 
 template <typename _Tp>
 concept inward_adjacency_graph =
     graph<_Tp> && requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                      melon::in_neighbors(__t, __v);
-                  };
+        melon::in_neighbors(__t, __v);
+    };
 
 namespace __cust_access {
 template <typename _Tp>
-concept __member_create_vertex =
-    requires(_Tp & __t) {
-        { __t.create_vertex() } -> std::convertible_to<vertex_t<_Tp>>;
-    };
+concept __member_create_vertex = requires(_Tp & __t) {
+    { __t.create_vertex() } -> std::convertible_to<vertex_t<_Tp>>;
+};
 
 template <typename _Tp>
 concept __adl_create_vertex = requires(_Tp & __t) {
-                                  {
-                                      create_vertex(__t)
-                                      } -> std::convertible_to<vertex_t<_Tp>>;
-                              };
+    { create_vertex(__t) } -> std::convertible_to<vertex_t<_Tp>>;
+};
 
 struct _CreateVertex {
 private:
@@ -982,17 +950,13 @@ public:
 
 template <typename _Tp>
 concept __member_create_arc = requires(_Tp & __t, const vertex_t<_Tp> & __v) {
-                                  {
-                                      __t.create_arc(__v, __v)
-                                      } -> std::convertible_to<arc_t<_Tp>>;
-                              };
+    { __t.create_arc(__v, __v) } -> std::convertible_to<arc_t<_Tp>>;
+};
 
 template <typename _Tp>
 concept __adl_create_arc = requires(_Tp & __t, const vertex_t<_Tp> & __v) {
-                               {
-                                   create_arc(__t, __v, __v)
-                                   } -> std::convertible_to<arc_t<_Tp>>;
-                           };
+    { create_arc(__t, __v, __v) } -> std::convertible_to<arc_t<_Tp>>;
+};
 
 struct _CreateArc {
 private:
@@ -1063,10 +1027,8 @@ concept __member_is_valid_arc =
 
 template <typename _Tp>
 concept __adl_is_valid_arc = requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                                 {
-                                     is_valid_arc(__t, __a)
-                                     } -> std::convertible_to<arc_t<_Tp>>;
-                             };
+    { is_valid_arc(__t, __a) } -> std::convertible_to<arc_t<_Tp>>;
+};
 
 struct _IsValidArc {
 private:
@@ -1182,57 +1144,50 @@ inline constexpr __cust_access::_ChangeArcSource change_arc_source{};
 }  // namespace __cust
 
 template <typename G>
-concept has_vertex_creation =
-    graph<G> && requires(G g) {
-                    { melon::create_vertex(g) } -> std::same_as<vertex_t<G>>;
-                };
+concept has_vertex_creation = graph<G> && requires(G g) {
+    { melon::create_vertex(g) } -> std::same_as<vertex_t<G>>;
+};
 template <typename G>
 concept has_vertex_removal = graph<G> && requires(G g, vertex_t<G> v) {
-                                             melon::remove_vertex(g, v);
-                                             {
-                                                 melon::is_valid_vertex(g, v)
-                                                 } -> std::convertible_to<bool>;
-                                         };
+    melon::remove_vertex(g, v);
+    { melon::is_valid_vertex(g, v) } -> std::convertible_to<bool>;
+};
 
 template <typename G>
 concept has_arc_creation = graph<G> && requires(G g, vertex_t<G> v) {
-                                           {
-                                               melon::create_arc(g, v, v)
-                                               } -> std::same_as<arc_t<G>>;
-                                       };
+    { melon::create_arc(g, v, v) } -> std::same_as<arc_t<G>>;
+};
 template <typename G>
 concept has_arc_removal = graph<G> && requires(G g, arc_t<G> a) {
-                                          remove_arc(g, a);
-                                          {
-                                              melon::is_valid_arc(g, a)
-                                              } -> std::convertible_to<bool>;
-                                      };
+    remove_arc(g, a);
+    { melon::is_valid_arc(g, a) } -> std::convertible_to<bool>;
+};
 
 template <typename G>
 concept has_change_arc_source =
     graph<G> && requires(G g, arc_t<G> a, vertex_t<G> s) {
-                    melon::change_arc_source(g, a, s);
-                };
+        melon::change_arc_source(g, a, s);
+    };
 template <typename G>
 concept has_change_arc_target =
     graph<G> && requires(G g, arc_t<G> a, vertex_t<G> t) {
-                    melon::change_arc_target(g, a, t);
-                };
+        melon::change_arc_target(g, a, t);
+    };
 
 namespace __cust_access {
 template <typename _Tp>
 concept __member_arc_sources_map = requires(const _Tp & __t) {
-                                       { __t.arc_sources_map() };
-                                       // -> input_value_map<arc_t<_Tp>,
-                                       // vertex_t<_Tp>>;
-                                   };
+    { __t.arc_sources_map() };
+    // -> input_mapping<arc_t<_Tp>,
+    // vertex_t<_Tp>>;
+};
 
 template <typename _Tp>
 concept __adl_arc_sources_map = requires(const _Tp & __t) {
-                                    { arc_sources_map(__t) };
-                                    // -> input_value_map<arc_t<_Tp>,
-                                    // vertex_t<_Tp>>;
-                                };
+    { arc_sources_map(__t) };
+    // -> input_mapping<arc_t<_Tp>,
+    // vertex_t<_Tp>>;
+};
 
 struct _ArcSourcesMap {
 private:
@@ -1265,20 +1220,14 @@ public:
 };
 
 template <typename _Tp>
-concept __member_arc_targets_map =
-    requires(const _Tp & __t) {
-        {
-            __t.arc_targets_map()
-            } -> input_value_map_of<arc_t<_Tp>, vertex_t<_Tp>>;
-    };
+concept __member_arc_targets_map = requires(const _Tp & __t) {
+    { __t.arc_targets_map() } -> input_mapping_of<arc_t<_Tp>, vertex_t<_Tp>>;
+};
 
 template <typename _Tp>
-concept __adl_arc_targets_map =
-    requires(const _Tp & __t) {
-        {
-            arc_targets_map(__t)
-            } -> input_value_map_of<arc_t<_Tp>, vertex_t<_Tp>>;
-    };
+concept __adl_arc_targets_map = requires(const _Tp & __t) {
+    { arc_targets_map(__t) } -> input_mapping_of<arc_t<_Tp>, vertex_t<_Tp>>;
+};
 
 struct _ArcTargetsMap {
 private:
@@ -1322,10 +1271,10 @@ concept __member_create_vertex_map =
     requires(const _Tp & __t, const _ValueType & __d) {
         {
             __t.template create_vertex_map<_ValueType>()
-            } -> output_value_map_of<vertex_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<vertex_t<_Tp>, _ValueType>;
         {
             __t.template create_vertex_map<_ValueType>(__d)
-            } -> output_value_map_of<vertex_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<vertex_t<_Tp>, _ValueType>;
     };
 
 template <typename _Tp, typename _ValueType>
@@ -1333,10 +1282,10 @@ concept __adl_create_vertex_map =
     requires(const _Tp & __t, const _ValueType & __d) {
         {
             create_vertex_map<_ValueType>(__t)
-            } -> output_value_map_of<vertex_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<vertex_t<_Tp>, _ValueType>;
         {
             create_vertex_map<_ValueType>(__t, __d)
-            } -> output_value_map_of<vertex_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<vertex_t<_Tp>, _ValueType>;
     };
 
 struct _CreateVertexMap {
@@ -1381,10 +1330,10 @@ concept __member_create_arc_map =
     requires(const _Tp & __t, const _ValueType & __d) {
         {
             __t.template create_arc_map<_ValueType>()
-            } -> output_value_map_of<arc_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<arc_t<_Tp>, _ValueType>;
         {
             __t.template create_arc_map<_ValueType>(__d)
-            } -> output_value_map_of<arc_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<arc_t<_Tp>, _ValueType>;
     };
 
 template <typename _Tp, typename _ValueType>
@@ -1392,10 +1341,10 @@ concept __adl_create_arc_map =
     requires(const _Tp & __t, const _ValueType & __d) {
         {
             create_arc_map<_ValueType>(__t)
-            } -> output_value_map_of<arc_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<arc_t<_Tp>, _ValueType>;
         {
             create_arc_map<_ValueType>(__t, __d)
-            } -> output_value_map_of<arc_t<_Tp>, _ValueType>;
+        } -> output_mapping_of<arc_t<_Tp>, _ValueType>;
     };
 
 struct _CreateArcMap {
@@ -1438,9 +1387,8 @@ public:
 inline namespace __cust {
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t) {
-                 __cust_access::_CreateVertexMap{}
-                     .template operator()<_ValueType>(__t);
-             }
+        __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(__t);
+    }
 inline constexpr auto create_vertex_map(const _Tp & __t) noexcept(
     noexcept(__cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
         std::declval<_Tp &>()))) {
@@ -1449,9 +1397,9 @@ inline constexpr auto create_vertex_map(const _Tp & __t) noexcept(
 }
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t, const _ValueType & __d) {
-                 __cust_access::_CreateVertexMap{}
-                     .template operator()<_ValueType>(__t, __d);
-             }
+        __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(__t,
+                                                                          __d);
+    }
 inline constexpr auto
 create_vertex_map(const _Tp & __t, const _ValueType & __d) noexcept(
     noexcept(__cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
@@ -1461,9 +1409,8 @@ create_vertex_map(const _Tp & __t, const _ValueType & __d) noexcept(
 }
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t) {
-                 __cust_access::_CreateArcMap{}.template operator()<_ValueType>(
-                     __t);
-             }
+        __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
+    }
 inline constexpr auto create_arc_map(const _Tp & __t) noexcept(
     noexcept(__cust_access::_CreateArcMap{}.template operator()<_ValueType>(
         std::declval<_Tp &>()))) {
@@ -1471,9 +1418,9 @@ inline constexpr auto create_arc_map(const _Tp & __t) noexcept(
 }
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t, const _ValueType & __d) {
-                 __cust_access::_CreateArcMap{}.template operator()<_ValueType>(
-                     __t, __d);
-             }
+        __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t,
+                                                                       __d);
+    }
 inline constexpr auto
 create_arc_map(const _Tp & __t, const _ValueType & __d) noexcept(
     noexcept(__cust_access::_CreateArcMap{}.template operator()<_ValueType>(
@@ -1493,16 +1440,16 @@ using arc_map_t =
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_vertex_map =
     graph<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
-                      melon::create_vertex_map<_ValueType>(__t);
-                      melon::create_vertex_map<_ValueType>(__t, __d);
-                  };
+        melon::create_vertex_map<_ValueType>(__t);
+        melon::create_vertex_map<_ValueType>(__t, __d);
+    };
 
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_arc_map =
     graph<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
-                      melon::create_arc_map<_ValueType>(__t);
-                      melon::create_arc_map<_ValueType>(__t, __d);
-                  };
+        melon::create_arc_map<_ValueType>(__t);
+        melon::create_arc_map<_ValueType>(__t, __d);
+    };
 
 }  // namespace melon
 }  // namespace fhamonic

@@ -10,7 +10,7 @@
 
 #include "melon/container/static_map.hpp"
 #include "melon/detail/intrusive_view.hpp"
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {

@@ -3,7 +3,6 @@
 
 #include <vector>
 
-#include "melon/detail/range_of.hpp"
 #include "melon/detail/intrusive_view.hpp"
 
 #include "ranges_test_helper.hpp"

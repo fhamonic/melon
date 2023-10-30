@@ -72,12 +72,13 @@ GTEST_TEST(dinitz, test) {
     alg.reset();
 }
 
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 #include "melon/views/complete_digraph.hpp"
 
 GTEST_TEST(dinitz, complete_digraph_view) {
     auto graph = views::complete_digraph<>(5ul);
-    dinitz alg(graph, views::map([](const auto & a) { return 1; }), 0ul, 1ul);
+    dinitz alg(
+        graph, [](const auto & a) { return 1; }, 0ul, 1ul);
     ASSERT_EQ(alg.run().flow_value(), 4);
     alg.reset();
 }

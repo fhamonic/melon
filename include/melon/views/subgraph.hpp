@@ -5,32 +5,35 @@
 #include <ranges>
 
 #include "melon/graph.hpp"
-#include "melon/utility/value_map.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace views {
 
-template <graph G, input_value_map<vertex_t<G>> VF = true_map,
-          input_value_map<arc_t<G>> AF = true_map>
-    requires std::convertible_to<mapped_value_t<VF, vertex_t<G>>, bool> &&
-             std::convertible_to<mapped_value_t<AF, arc_t<G>>, bool>
+template <graph _Graph, input_mapping<vertex_t<_Graph>> _VertexFilter,
+          input_mapping<arc_t<_Graph>> _ArcFilter>
+    requires std::convertible_to<
+                 mapped_value_t<_VertexFilter, vertex_t<_Graph>>, bool> &&
+             std::convertible_to<mapped_value_t<_ArcFilter, arc_t<_Graph>>,
+                                 bool>
 class subgraph {
 public:
-    using vertex = vertex_t<G>;
-    using arc = arc_t<G>;
+    using vertex = vertex_t<_Graph>;
+    using arc = arc_t<_Graph>;
 
 private:
-    std::reference_wrapper<const G> _graph;
-    VF _vertex_filter;
-    AF _arc_filter;
+    _Graph _graph;
+    _VertexFilter _vertex_filter;
+    _ArcFilter _arc_filter;
 
 public:
-    subgraph(const G & g, VF && vertex_filter = true_map{},
-             AF && arc_filter = true_map{})
-        : _graph(g)
-        , _vertex_filter(std::forward<VF>(vertex_filter))
-        , _arc_filter(std::forward<AF>(arc_filter)) {}
+    template <typename _G, typename _VF = true_map, typename _AF = true_map>
+    subgraph(_G && g, _VF && vertex_filter = true_map{},
+             _AF && arc_filter = true_map{})
+        : _graph(views::graph_all(std::forward<_G>(g)))
+        , _vertex_filter(views::mapping_all(std::forward<_VF>(vertex_filter)))
+        , _arc_filter(views::mapping_all(std::forward<_AF>(arc_filter))) {}
 
     subgraph(const subgraph &) = default;
     subgraph(subgraph &&) = default;
@@ -39,130 +42,141 @@ public:
     subgraph & operator=(subgraph &&) = default;
 
     auto nb_vertices() const noexcept
-        requires has_nb_vertices<G> && std::same_as<VF, true_map>
+        requires has_nb_vertices<_Graph> &&
+                 std::same_as<_VertexFilter, true_map>
     {
-        return melon::nb_vertices(_graph.get());
+        return melon::nb_vertices(_graph);
     }
 
     void disable_vertex(const vertex & v) noexcept
-        requires output_value_map_of<VF, vertex_t<G>, bool>
+        requires output_mapping_of<_VertexFilter, vertex_t<_Graph>, bool>
     {
         _vertex_filter[v] = false;
     }
     void enable_vertex(const vertex & v) noexcept
-        requires output_value_map_of<VF, vertex_t<G>, bool>
+        requires output_mapping_of<_VertexFilter, vertex_t<_Graph>, bool>
     {
         _vertex_filter[v] = true;
     }
     bool is_valid_vertex(const vertex & v) const noexcept {
-        return _vertex_filter[v] && melon::is_valid_vertex(_graph.get(), v);
+        if constexpr(has_vertex_removal<_Graph>)
+            return _vertex_filter[v] && melon::is_valid_vertex(_graph, v);
+        else
+            return _vertex_filter[v];
     }
 
     void disable_arc(const arc & a) const noexcept
-        requires output_value_map_of<AF, arc_t<G>, bool>
+        requires output_mapping_of<_ArcFilter, arc_t<_Graph>, bool>
     {
         _arc_filter[a] = false;
     }
     void enable_arc(const arc & a) const noexcept
-        requires output_value_map_of<AF, arc_t<G>, bool>
+        requires output_mapping_of<_ArcFilter, arc_t<_Graph>, bool>
     {
         _arc_filter[a] = true;
     }
     bool is_valid_arc(const arc & a) const noexcept {
-        return _arc_filter[a] && melon::is_valid_arc(_graph.get(), a);
+        if constexpr(has_arc_removal<_Graph>)
+            return _arc_filter[a] && melon::is_valid_arc(_graph, a);
+        else
+            return _arc_filter[a];
     }
 
     auto vertices() const noexcept {
-        if constexpr(std::same_as<VF, true_map>) {
-            return melon::vertices(_graph.get());
+        if constexpr(std::same_as<_VertexFilter, true_map>) {
+            return melon::vertices(_graph);
         } else {
             return std::views::filter(
-                melon::vertices(_graph.get()),
+                melon::vertices(_graph),
                 [this](const vertex & v) { return _vertex_filter[v]; });
         }
     }
     auto arcs() const noexcept
-        requires std::same_as<VF, true_map>  // if false, use the indicidence
-                                             // join hierarchy of melon::arcs(g)
+        requires std::same_as<_VertexFilter,
+                              true_map>  // if false, use the indicidence
+                                         // join hierarchy of melon::arcs(g)
     {
-        if constexpr(std::same_as<AF, true_map>) {
-            return melon::arcs(_graph.get());
+        if constexpr(std::same_as<_ArcFilter, true_map>) {
+            return melon::arcs(_graph);
         } else {
             return std::views::filter(
-                melon::arcs(_graph.get()),
+                melon::arcs(_graph),
                 [this](const arc & a) { return _arc_filter[a]; });
         }
     }
 
     auto arc_source(const arc & a) const noexcept
-        requires has_arc_source<G>
+        requires has_arc_source<_Graph>
     {
         assert(is_valid_arc(a));
-        return melon::arc_source(_graph.get(), a);
+        return melon::arc_source(_graph, a);
     }
     auto arc_sources_map() const noexcept
-        requires has_arc_source<G>
+        requires has_arc_source<_Graph>
     {
-        return melon::arc_sources_map(_graph.get());
+        return melon::arc_sources_map(_graph);
     }
     auto arc_target(const arc & a) const noexcept
-        requires has_arc_target<G>
+        requires has_arc_target<_Graph>
     {
         assert(is_valid_arc(a));
-        return melon::arc_target(_graph.get(), a);
+        return melon::arc_target(_graph, a);
     }
     auto arc_targets_map() const noexcept
-        requires has_arc_target<G>
+        requires has_arc_target<_Graph>
     {
-        return melon::arc_targets_map(_graph.get());
+        return melon::arc_targets_map(_graph);
     }
 
     auto in_arcs(const vertex & v) const noexcept
-        requires inward_incidence_graph<G>
+        requires inward_incidence_graph<_Graph>
     {
         assert(is_valid_vertex(v));
-        if constexpr(std::same_as<VF, true_map> && std::same_as<AF, true_map>) {
-            return melon::in_arcs(_graph.get(), v);
-        } else if constexpr(std::same_as<VF, true_map>) {
+        if constexpr(std::same_as<_VertexFilter, true_map> &&
+                     std::same_as<_ArcFilter, true_map>) {
+            return melon::in_arcs(_graph, v);
+        } else if constexpr(std::same_as<_VertexFilter, true_map>) {
             return std::views::filter(
-                melon::in_arcs(_graph.get(), v),
+                melon::in_arcs(_graph, v),
                 [this](const arc & a) { return _arc_filter[a]; });
         } else {
             return std::views::filter(
-                melon::in_arcs(_graph.get(), v), [this](const arc & a) {
-                    return _vertex_filter[melon::arc_source(_graph.get(), a)] &&
+                melon::in_arcs(_graph, v), [this](const arc & a) {
+                    return _vertex_filter[melon::arc_source(_graph, a)] &&
                            _arc_filter[a];
                 });
         }
     }
     auto out_arcs(const vertex & v) const noexcept
-        requires outward_incidence_graph<G>
+        requires outward_incidence_graph<_Graph>
     {
         assert(is_valid_vertex(v));
-        if constexpr(std::same_as<VF, true_map> && std::same_as<AF, true_map>) {
-            return melon::out_arcs(_graph.get(), v);
-        } else if constexpr(std::same_as<VF, true_map>) {
+        if constexpr(std::same_as<_VertexFilter, true_map> &&
+                     std::same_as<_ArcFilter, true_map>) {
+            return melon::out_arcs(_graph, v);
+        } else if constexpr(std::same_as<_VertexFilter, true_map>) {
             return std::views::filter(
-                melon::out_arcs(_graph.get(), v),
+                melon::out_arcs(_graph, v),
                 [this](const arc & a) { return _arc_filter[a]; });
         } else {
             return std::views::filter(
-                melon::out_arcs(_graph.get(), v), [this](const arc & a) {
-                    return _vertex_filter[melon::arc_target(_graph.get(), a)] &&
+                melon::out_arcs(_graph, v), [this](const arc & a) {
+                    return _vertex_filter[melon::arc_target(_graph, a)] &&
                            _arc_filter[a];
                 });
         }
     }
 
     auto in_neighbors(const vertex & v) const noexcept
-        requires inward_adjacency_graph<G>
+        requires inward_adjacency_graph<_Graph>
     {
         assert(is_valid_vertex(v));
-        if constexpr(std::same_as<VF, true_map> && std::same_as<AF, true_map>) {
-            return melon::in_neighbors(_graph.get(), v);
-        } else if constexpr(std::same_as<AF, true_map>) {
+        if constexpr(std::same_as<_VertexFilter, true_map> &&
+                     std::same_as<_ArcFilter, true_map>) {
+            return melon::in_neighbors(_graph, v);
+        } else if constexpr(std::same_as<_ArcFilter, true_map>) {
             return std::views::filter(
-                melon::in_neighbors(_graph.get(), v),
+                melon::in_neighbors(_graph, v),
                 [this](const vertex & u) { return _vertex_filter[u]; });
         } else {
             return std::views::filter(
@@ -173,14 +187,15 @@ public:
         }
     }
     auto out_neighbors(const vertex & v) const noexcept
-        requires outward_adjacency_graph<G>
+        requires outward_adjacency_graph<_Graph>
     {
         assert(is_valid_vertex(v));
-        if constexpr(std::same_as<VF, true_map> && std::same_as<AF, true_map>) {
-            return melon::out_neighbors(_graph.get(), v);
-        } else if constexpr(std::same_as<AF, true_map>) {
+        if constexpr(std::same_as<_VertexFilter, true_map> &&
+                     std::same_as<_ArcFilter, true_map>) {
+            return melon::out_neighbors(_graph, v);
+        } else if constexpr(std::same_as<_ArcFilter, true_map>) {
             return std::views::filter(
-                melon::out_neighbors(_graph.get(), v),
+                melon::out_neighbors(_graph, v),
                 [&](const vertex & u) { return _vertex_filter[u]; });
         } else {
             return std::views::filter(
@@ -192,27 +207,32 @@ public:
     }
 
     template <typename T>
-        requires has_vertex_map<G>
+        requires has_vertex_map<_Graph>
     decltype(auto) create_vertex_map() const noexcept {
-        return melon::create_vertex_map<T>(_graph.get());
+        return melon::create_vertex_map<T>(_graph);
     }
     template <typename T>
-        requires has_vertex_map<G>
+        requires has_vertex_map<_Graph>
     decltype(auto) create_vertex_map(T default_value) const noexcept {
-        return melon::create_vertex_map<T>(_graph.get(), default_value);
+        return melon::create_vertex_map<T>(_graph, default_value);
     }
 
     template <typename T>
-        requires has_arc_map<G>
+        requires has_arc_map<_Graph>
     decltype(auto) create_arc_map() const noexcept {
-        return melon::create_arc_map<T>(_graph.get());
+        return melon::create_arc_map<T>(_graph);
     }
     template <typename T>
-        requires has_arc_map<G>
+        requires has_arc_map<_Graph>
     decltype(auto) create_arc_map(T default_value) const noexcept {
-        return melon::create_arc_map<T>(_graph.get(), default_value);
+        return melon::create_arc_map<T>(_graph, default_value);
     }
 };
+
+template <typename _G, typename _VF = true_map, typename _AF = true_map>
+subgraph(_G &&, _VF && = {}, _AF && = {})
+    -> subgraph<views::graph_all_t<_G>, views::mapping_all_t<_VF>,
+                views::mapping_all_t<_AF>>;
 
 }  // namespace views
 }  // namespace melon

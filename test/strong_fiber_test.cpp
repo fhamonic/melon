@@ -49,9 +49,8 @@ GTEST_TEST(strong_fiber, test) {
     //     == 1; }));
 
     auto sgraph = views::subgraph(
-        graph, {}, views::map([](const arc_t<static_digraph> & a) -> bool {
-            return a != 1;
-        }));
+        graph, {},
+        [](const arc_t<static_digraph> & a) -> bool { return a != 1; });
     strong_fiber algo(sgraph, reduced_length_map, length_map);
     algo.relax_useless_vertex(0);
     algo.relax_strong_vertex(6, length_map[1]);
@@ -152,10 +151,9 @@ GTEST_TEST(strong_fiber, fuzzy) {
             //     }));
 
             auto sgraph = views::subgraph(
-                graph, {},
-                views::map([uv](const arc_t<static_digraph> & a) -> bool {
+                graph, {}, [uv](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
-                }));
+                });
             strong_fiber strong_fiber_algo(sgraph, lower_length_map,
                                            upper_length_map);
             strong_fiber_algo.relax_useless_vertex(u);
@@ -303,13 +301,12 @@ GTEST_TEST(useless_fiber, fuzzy) {
             //     }));
 
             auto sgraph = views::subgraph(
-                graph, {},
-                views::map([&](const arc_t<static_digraph> & a) -> bool {
+                graph, {}, [&](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
-                }));
-            strong_fiber<decltype(sgraph), decltype(lower_length_map),
-                         decltype(upper_length_map), useless_fiber_traits>
-                strong_fiber_algo(sgraph, lower_length_map, upper_length_map);
+                });
+            auto strong_fiber_algo =
+                strong_fiber(useless_fiber_traits{}, sgraph, lower_length_map,
+                             upper_length_map);
             strong_fiber_algo.relax_strong_vertex(u);
             strong_fiber_algo.relax_useless_vertex(v, lower_length_map[uv]);
 
