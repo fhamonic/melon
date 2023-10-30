@@ -22,35 +22,35 @@ struct topological_sort_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <graph G, typename T = topological_sort_default_traits>
-    requires outward_incidence_graph<G> && has_vertex_map<G>
+template <graph _Graph, typename _Traits = topological_sort_default_traits>
+    requires outward_incidence_graph<_Graph> && has_vertex_map<_Graph>
 class topological_sort {
 public:
-    using vertex = vertex_t<G>;
-    using arc = arc_t<G>;
-    using traits = T;
+    using vertex = vertex_t<_Graph>;
+    using arc = arc_t<_Graph>;
 
     static_assert(
-        !(outward_adjacency_graph<G> && traits::store_pred_arcs),
+        !(outward_adjacency_graph<_Graph> && _Traits::store_pred_arcs),
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
-    using reached_map = vertex_map_t<G, bool>;
-    using remaining_in_degree_map = vertex_map_t<G, long unsigned int>;
+    using reached_map = vertex_map_t<_Graph, bool>;
+    using remaining_in_degree_map = vertex_map_t<_Graph, long unsigned int>;
     struct no_pred_vertices_map {};
-    using pred_vertices_map =
-        std::conditional<traits::store_pred_vertices, vertex_map_t<G, vertex>,
-                         no_pred_vertices_map>::type;
+    using pred_vertices_map = std::conditional<_Traits::store_pred_vertices,
+                                               vertex_map_t<_Graph, vertex>,
+                                               no_pred_vertices_map>::type;
     struct no_pred_arcs_map {};
     using pred_arcs_map =
-        std::conditional<traits::store_pred_arcs, vertex_map_t<G, arc>,
+        std::conditional<_Traits::store_pred_arcs, vertex_map_t<_Graph, arc>,
                          no_pred_arcs_map>::type;
     struct no_distance_map {};
     using distances_map =
-        std::conditional<traits::store_distances, vertex_map_t<G, int>,
+        std::conditional<_Traits::store_distances, vertex_map_t<_Graph, int>,
                          no_distance_map>::type;
 
 private:
-    std::reference_wrapper<const G> _graph;
+    _Graph _graph;
+
     std::vector<vertex> _queue;
     std::vector<vertex>::iterator _queue_current;
 
@@ -65,42 +65,43 @@ private:
         _queue.resize(0);
         _queue_current = _queue.begin();
         _reached_map.fill(false);
-        if(has_in_degree<G>) {
-            for(auto && u : vertices(_graph.get())) {
-                _remaining_in_degree_map[u] = in_degree(_graph.get(), u);
+        if(has_in_degree<_Graph>) {
+            for(auto && u : vertices(_graph)) {
+                _remaining_in_degree_map[u] = in_degree(_graph, u);
                 if(_remaining_in_degree_map[u] == 0) {
                     _queue.push_back(u);
                 }
             }
         } else {
             _remaining_in_degree_map.fill(0);
-            for(auto && u : vertices(_graph.get())) {
-                for(auto && a : out_arcs(_graph.get(), u)) {
-                    const vertex & w = arc_target(_graph.get(), a);
+            for(auto && u : vertices(_graph)) {
+                for(auto && a : out_arcs(_graph, u)) {
+                    const vertex & w = arc_target(_graph, a);
                     ++_remaining_in_degree_map[w];
                 }
             }
-            for(auto && u : vertices(_graph.get())) {
+            for(auto && u : vertices(_graph)) {
                 if(_remaining_in_degree_map[u] == 0) {
                     _queue.push_back(u);
                 }
             }
         }
-        if constexpr(traits::store_distances) _dist_map.fill(0);
+        if constexpr(_Traits::store_distances) _dist_map.fill(0);
     }
 
 public:
-    [[nodiscard]] constexpr explicit topological_sort(const G & g)
-        : _graph(g)
+    template <typename _G>
+    [[nodiscard]] constexpr explicit topological_sort(_G && g)
+        : _graph(views::graph_all(std::forward<_G>(g)))
         , _queue()
         , _reached_map(create_vertex_map<bool>(g, false))
         , _remaining_in_degree_map(create_vertex_map<long unsigned int>(
               g, std::numeric_limits<unsigned int>::max()))
-        , _pred_vertices_map(constexpr_ternary<traits::store_pred_vertices>(
+        , _pred_vertices_map(constexpr_ternary<_Traits::store_pred_vertices>(
               create_vertex_map<vertex>(g), no_pred_vertices_map{}))
-        , _pred_arcs_map(constexpr_ternary<traits::store_pred_arcs>(
+        , _pred_arcs_map(constexpr_ternary<_Traits::store_pred_arcs>(
               create_vertex_map<arc>(g), no_pred_arcs_map{}))
-        , _dist_map(constexpr_ternary<traits::store_distances>(
+        , _dist_map(constexpr_ternary<_Traits::store_distances>(
               create_vertex_map<int>(g), no_distance_map{})) {
         _queue.reserve(nb_vertices(g));
         push_start_vertices();
@@ -134,13 +135,14 @@ public:
         assert(!finished());
         const vertex & u = *_queue_current;
         ++_queue_current;
-        for(auto && a : out_arcs(_graph.get(), u)) {
-            const vertex & w = arc_target(_graph.get(), a);
+        for(auto && a : out_arcs(_graph, u)) {
+            const vertex & w = arc_target(_graph, a);
             if(--_remaining_in_degree_map[w] > 0) continue;
             _queue.push_back(w);
-            if constexpr(traits::store_pred_vertices) _pred_vertices_map[w] = u;
-            if constexpr(traits::store_pred_arcs) _pred_arcs_map[w] = a;
-            if constexpr(traits::store_distances)
+            if constexpr(_Traits::store_pred_vertices)
+                _pred_vertices_map[w] = u;
+            if constexpr(_Traits::store_pred_arcs) _pred_arcs_map[w] = a;
+            if constexpr(_Traits::store_distances)
                 _dist_map[w] = _dist_map[u] + 1;
         }
     }
@@ -160,24 +162,33 @@ public:
     }
 
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(traits::store_pred_vertices)
+        requires(_Traits::store_pred_vertices)
     {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(traits::store_pred_arcs)
+        requires(_Traits::store_pred_arcs)
     {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
     [[nodiscard]] constexpr int dist(const vertex & u) const noexcept
-        requires(traits::store_distances)
+        requires(_Traits::store_distances)
     {
         assert(reached(u));
         return _dist_map[u];
     }
 };
+
+template <typename _Graph,
+          typename _Traits = topological_sort_default_traits>
+topological_sort(_Graph &&)
+    -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
+
+template <typename _Graph, typename _Traits>
+topological_sort(_Traits, _Graph &&)
+    -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
 }  // namespace fhamonic
