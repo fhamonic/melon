@@ -136,7 +136,7 @@ template <typename _Graph>
 graph_ref_view(_Graph &) -> graph_ref_view<_Graph>;
 
 template <graph G>
-    requires std::movable<G>
+    requires std::move_constructible<G>
 class graph_owning_view : public graph_view_base {
 private:
     using vertex = vertex_t<G>;

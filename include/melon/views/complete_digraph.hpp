@@ -8,13 +8,14 @@
 
 #include "melon/container/static_map.hpp"
 #include "melon/detail/intrusive_view.hpp"
+#include "melon/mapping.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace views {
 
 template <std::integral V = unsigned int, std::integral A = unsigned int>
-class complete_digraph {
+class complete_digraph : public graph_view_base {
 private:
     using vertex = V;
     using arc = A;
