@@ -68,6 +68,7 @@ public:
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT)) {
         if constexpr(has_nb_vertices<_Graph>) {
             _dfs_stack.reserve(nb_vertices(_graph));
+            _tarjan_stack.reserve(nb_vertices(_graph));
         }
         advance();
     }
@@ -85,7 +86,7 @@ public:
     constexpr strongly_connected_components & reset() noexcept {
         index = 0;
         _remaining_vertices = vertices(_graph);
-        _dfs_stack.resize(0);
+        _dfs_stack.clear();
         _tarjan_stack.resize(0);
         _reached_map.fill(false);
         return *this;

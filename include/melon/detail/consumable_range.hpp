@@ -10,6 +10,7 @@ namespace fhamonic {
 namespace melon {
 
 template <typename R>
+    requires std::ranges::view<R>
 class consumable_range {
 private:
     static constexpr bool store_range = !std::ranges::borrowed_range<R>;

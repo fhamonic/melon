@@ -18,6 +18,7 @@ static_assert(melon::inward_incidence_graph<G>);
 static_assert(melon::inward_adjacency_graph<G>);
 static_assert(melon::has_vertex_map<G>);
 static_assert(melon::has_arc_map<G>);
+static_assert(melon::graph_view<G>);
 
 GTEST_TEST(complete_digraph, empty_constructor) {
     G graph;
@@ -58,5 +59,5 @@ GTEST_TEST(complete_digraph, k4) {
     ASSERT_TRUE(EQ_MULTISETS(in_neighbors(graph, 0), {1, 2, 3}));
     ASSERT_TRUE(EQ_MULTISETS(in_neighbors(graph, 1), {0, 2, 3}));
     ASSERT_TRUE(EQ_MULTISETS(in_neighbors(graph, 2), {0, 1, 3}));
-    ASSERT_TRUE(EQ_MULTISETS(in_neighbors(graph, 3), {0, 1, 2}));   
+    ASSERT_TRUE(EQ_MULTISETS(in_neighbors(graph, 3), {0, 1, 2}));
 }
