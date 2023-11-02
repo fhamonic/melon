@@ -54,6 +54,7 @@ GTEST_TEST(CPO, test) {
     for(auto && p : melon::arcs_entries(vec)) {
         std::cout << '(' << *p.first << ",(" << p.second.first << ','
                   << p.second.second << "))" << std::endl;
+        ASSERT_EQ(*p.first, p.second.second);
     }
 
     auto map = melon::create_vertex_map<double>(vec);
