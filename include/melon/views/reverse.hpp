@@ -5,13 +5,14 @@
 #include <ranges>
 
 #include "melon/graph.hpp"
+#include "melon/views/graph_view.hpp"
 
 namespace fhamonic {
 namespace melon {
 namespace views {
 
 template <graph _Graph>
-class reverse {
+class reverse : public graph_view_base {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;

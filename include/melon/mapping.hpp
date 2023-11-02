@@ -68,8 +68,9 @@ template <typename _Tp>
 inline constexpr bool enable_mapping_view =
     std::derived_from<_Tp, mapping_view_base>;
 
-template <typename _Map>
-concept mapping_view = std::movable<_Map> && enable_mapping_view<_Map>;
+template <typename _Map, typename _Key>
+concept mapping_view =
+    mapping<_Map, _Key> && std::movable<_Map> && enable_mapping_view<_Map>;
 
 template <typename _Map>
 class mapping_ref_view : public mapping_view_base {
@@ -187,7 +188,8 @@ concept __can_mapping_owning_view =
 struct _MapAll {
     template <typename _Map>
     static constexpr bool _S_noexcept() {
-        if constexpr(mapping_view<std::decay_t<_Map>>)
+        if constexpr(std::movable<_Map> &&
+                     enable_mapping_view<std::decay_t<_Map>>)
             return std::is_nothrow_constructible_v<std::decay_t<_Map>, _Map>;
         else if constexpr(__detail::__can_mapping_ref_view<_Map>)
             return true;
@@ -198,7 +200,8 @@ struct _MapAll {
     template <typename _Map>
     constexpr auto operator() [[nodiscard]] (_Map && __m) const
         noexcept(_S_noexcept<_Map>()) {
-        if constexpr(mapping_view<std::decay_t<_Map>>)
+        if constexpr(std::movable<_Map> &&
+                     enable_mapping_view<std::decay_t<_Map>>)
             return std::forward<_Map>(__m);
         else if constexpr(__detail::__can_mapping_ref_view<_Map>)
             return mapping_ref_view{std::forward<_Map>(__m)};

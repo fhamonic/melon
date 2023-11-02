@@ -1,10 +1,10 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
-#include "melon/views/reverse.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
+#include "melon/views/reverse.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -29,32 +29,53 @@ GTEST_TEST(reverse_views, static_graph) {
     ASSERT_TRUE(EQ_RANGES(vertices(graph), reverse_graph.vertices()));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), reverse_graph.arcs()));
 
-    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
+    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph, u));
     ASSERT_FALSE(
-        is_valid_vertex(graph,vertex_t<static_digraph>(nb_vertices(graph))));
+        is_valid_vertex(graph, vertex_t<static_digraph>(nb_vertices(graph))));
 
-    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph,a));
-    ASSERT_FALSE(is_valid_arc(graph,arc_t<static_digraph>(nb_arcs(graph))));
-
-    ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,0), reverse_graph.in_neighbors(0)));
-    ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,1), reverse_graph.in_neighbors(1)));
-    ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,2), reverse_graph.in_neighbors(2)));
+    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph, a));
+    ASSERT_FALSE(is_valid_arc(graph, arc_t<static_digraph>(nb_arcs(graph))));
 
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,0), reverse_graph.out_neighbors(0)));
+        EQ_RANGES(out_neighbors(graph, 0), reverse_graph.in_neighbors(0)));
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,1), reverse_graph.out_neighbors(1)));
+        EQ_RANGES(out_neighbors(graph, 1), reverse_graph.in_neighbors(1)));
     ASSERT_TRUE(
-        EQ_RANGES(in_neighbors(graph,2), reverse_graph.out_neighbors(2)));
+        EQ_RANGES(out_neighbors(graph, 2), reverse_graph.in_neighbors(2)));
+
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph, 0), reverse_graph.out_neighbors(0)));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph, 1), reverse_graph.out_neighbors(1)));
+    ASSERT_TRUE(
+        EQ_RANGES(in_neighbors(graph, 2), reverse_graph.out_neighbors(2)));
 
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
 
     for(arc_t<static_digraph> a : arcs(graph)) {
-        ASSERT_EQ(arc_source(graph,a), arc_pairs[a].second.first);
+        ASSERT_EQ(arc_source(graph, a), arc_pairs[a].second.first);
     }
+}
+
+template <typename _G>
+using trivial_subgraph_t = decltype(views::reverse(std::declval<_G>()));
+
+GTEST_TEST(reverse_views, graph_view) {
+    using G = static_digraph;
+
+    static_assert(std::same_as<trivial_subgraph_t<G &>,
+                               views::reverse<graph_ref_view<G>>>);
+    static_assert(std::same_as<trivial_subgraph_t<const G &>,
+                               views::reverse<graph_ref_view<const G>>>);
+    static_assert(std::same_as<trivial_subgraph_t<G>,
+                               views::reverse<graph_owning_view<G>>>);
+    static_assert(std::same_as<trivial_subgraph_t<G &&>,
+                               views::reverse<graph_owning_view<G>>>);
+
+    static_assert(graph_view<trivial_subgraph_t<G &>>);
+    static_assert(graph_view<trivial_subgraph_t<const G &>>);
+    static_assert(graph_view<trivial_subgraph_t<G>>);
+    static_assert(graph_view<trivial_subgraph_t<G &&>>);
 }
 
 GTEST_TEST(reverse_views, dijkstra) {

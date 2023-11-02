@@ -3,8 +3,9 @@
 
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
-#include "melon/utility/static_digraph_builder.hpp"
 #include "melon/mapping.hpp"
+#include "melon/utility/static_digraph_builder.hpp"
+#include "melon/views/graph_view.hpp"
 #include "melon/views/subgraph.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -55,6 +56,36 @@ GTEST_TEST(subgraph_views, static_graph) {
     }
 }
 
+template <typename _G>
+using trivial_subgraph_t =
+    decltype(views::subgraph(std::declval<_G>(), {}, {}));
+
+GTEST_TEST(subgraph_views, graph_view) {
+    using G = static_digraph;
+
+    static_assert(
+        std::same_as<trivial_subgraph_t<G &>,
+                     views::subgraph<graph_ref_view<G>, views::true_map,
+                                     views::true_map>>);
+    static_assert(
+        std::same_as<trivial_subgraph_t<const G &>,
+                     views::subgraph<graph_ref_view<const G>, views::true_map,
+                                     views::true_map>>);
+    static_assert(
+        std::same_as<trivial_subgraph_t<G>,
+                     views::subgraph<graph_owning_view<G>, views::true_map,
+                                     views::true_map>>);
+    static_assert(
+        std::same_as<trivial_subgraph_t<G &&>,
+                     views::subgraph<graph_owning_view<G>, views::true_map,
+                                     views::true_map>>);
+
+    static_assert(graph_view<trivial_subgraph_t<G &>>);
+    static_assert(graph_view<trivial_subgraph_t<const G &>>);
+    static_assert(graph_view<trivial_subgraph_t<G>>);
+    static_assert(graph_view<trivial_subgraph_t<G &&>>);
+}
+
 GTEST_TEST(subgraph_views, static_graph_filter) {
     static_digraph_builder<static_digraph, char> builder(6);
 
@@ -70,7 +101,8 @@ GTEST_TEST(subgraph_views, static_graph_filter) {
     builder.add_arc(3, 2, 1);
 
     auto [fgraph, filter_map] = builder.build();
-    auto graph = views::subgraph(fgraph, views::true_map{}, std::move(filter_map));
+    auto graph =
+        views::subgraph(fgraph, views::true_map{}, std::move(filter_map));
 
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0), {1}));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(1), {2}));
@@ -103,7 +135,7 @@ GTEST_TEST(subgraph_views, dijkstra) {
     auto [fgraph, length_map] = builder.build();
     auto graph = views::subgraph(fgraph);
 
-    dijkstra alg(graph, length_map);
+    auto alg = dijkstra(graph, length_map);
 
     alg.add_source(0);
     ASSERT_FALSE(alg.finished());

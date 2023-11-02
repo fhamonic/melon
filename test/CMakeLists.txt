@@ -28,7 +28,8 @@ add_executable(
   topological_sort_test.cpp
   subgraph_test.cpp
   dinitz_test.cpp
-  strongly_connected_components_test.cpp)
+  strongly_connected_components_test.cpp
+  graph_view_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)

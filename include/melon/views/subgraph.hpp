@@ -4,8 +4,10 @@
 #include <algorithm>
 #include <ranges>
 
+#include "melon/detail/specialization_of.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/views/graph_view.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -17,7 +19,7 @@ template <graph _Graph, input_mapping<vertex_t<_Graph>> _VertexFilter,
                  mapped_value_t<_VertexFilter, vertex_t<_Graph>>, bool> &&
              std::convertible_to<mapped_value_t<_ArcFilter, arc_t<_Graph>>,
                                  bool>
-class subgraph {
+class subgraph : public graph_view_base {
 public:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -29,19 +31,20 @@ private:
 
 public:
     template <typename _G, typename _VF = true_map, typename _AF = true_map>
-    subgraph(_G && g, _VF && vertex_filter = true_map{},
+        requires(!__detail::__specialization_of<_G, subgraph>)
+    [[nodiscard]] constexpr explicit subgraph(_G && g, _VF && vertex_filter = true_map{},
              _AF && arc_filter = true_map{})
         : _graph(views::graph_all(std::forward<_G>(g)))
         , _vertex_filter(views::mapping_all(std::forward<_VF>(vertex_filter)))
         , _arc_filter(views::mapping_all(std::forward<_AF>(arc_filter))) {}
 
-    subgraph(const subgraph &) = default;
-    subgraph(subgraph &&) = default;
+    [[nodiscard]] constexpr subgraph(const subgraph &) = default;
+    [[nodiscard]] constexpr subgraph(subgraph &&) = default;
 
-    subgraph & operator=(const subgraph &) = default;
-    subgraph & operator=(subgraph &&) = default;
+    constexpr subgraph & operator=(const subgraph &) = default;
+    constexpr subgraph & operator=(subgraph &&) = default;
 
-    auto nb_vertices() const noexcept
+    [[nodiscard]] constexpr decltype(auto) nb_vertices() const noexcept
         requires has_nb_vertices<_Graph> &&
                  std::same_as<_VertexFilter, true_map>
     {
