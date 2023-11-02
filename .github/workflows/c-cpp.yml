@@ -22,4 +22,4 @@ jobs:
     - name: Modify the default conan profile
       run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings.compiler=gcc settings.compiler.version=12 settings.compiler.cppstd=20 buildenv.CC=/usr/bin/gcc-12 buildenv.CXX=/usr/bin/g++-12
     - name: Build and run unit tests
-      run: make
+      run: make BUILD_TYPE=default
