@@ -1,12 +1,14 @@
 BUILD_DIR = build
+# BUILD_TYPE = default
+BUILD_TYPE = debug
 
 .PHONY: test package clean
 
 $(BUILD_DIR):
-	conan build . -of=${BUILD_DIR} -b=missing -pr=debug
+	conan build . -of=${BUILD_DIR} -b=missing -pr=${BUILD_TYPE}
 
 debug:
-	conan build . -of=${BUILD_DIR} -b=missing -pr=debug
+	conan build . -of=${BUILD_DIR} -b=missing -pr=${BUILD_TYPE}
 
 
 test: $(BUILD_DIR)
