@@ -27,8 +27,6 @@ using namespace fhamonic;
 
 GTEST_TEST(CPO, test) {
     static_assert(melon::graph<G>);
-    static_assert(melon::graph
-<G>);
     static_assert(melon::has_nb_vertices<G>);
     static_assert(!melon::has_nb_arcs<G>);
     static_assert(melon::has_out_arcs<G>);

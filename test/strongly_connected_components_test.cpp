@@ -301,10 +301,10 @@ GTEST_TEST(strongly_connected_components, subgraph_true_map2_test) {
         {{2u, 1u, 0u}, {6u, 4u}, {5u, 3u}, {7u}});
     std::vector<std::vector<vertex>> alg_components;
 
-    for(auto component :
+    for(auto && component :
         strongly_connected_components(views::subgraph(graph, {}, filter_map))) {
         auto & alg_component = alg_components.emplace_back();
-        for(vertex v : component) {
+        for(auto && v : component) {
             alg_component.push_back(v);
         }
     }
