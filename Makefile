@@ -3,7 +3,7 @@ BUILD_DIR = build
 .PHONY: test package clean
 
 $(BUILD_DIR):
-	conan build . -of=${BUILD_DIR} -b=missing -pr=default
+	conan build . -of=${BUILD_DIR} -b=missing -pr=debug
 
 debug:
 	conan build . -of=${BUILD_DIR} -b=missing -pr=debug

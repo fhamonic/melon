@@ -101,7 +101,7 @@ public:
         return ranges::views::concat(
             intrusive_view(
                 std::monostate{},
-                [this](std::monostate) -> vertex {
+                [this](std::monostate) -> const vertex & {
                     return _tarjan_stack.back();
                 },
                 [this](std::monostate) mutable -> std::monostate {
@@ -150,7 +150,7 @@ public:
                 _dfs_stack.back().second.advance();
                 if(_reached_map[w]) {
                     if(_index_map[w] >= start_index) {
-                        vertex v = _dfs_stack.back().first;
+                        const vertex & v = _dfs_stack.back().first;
                         _lowlink_map[v] =
                             std::min(_lowlink_map[v], _lowlink_map[w]);
                     }
@@ -165,7 +165,7 @@ public:
             vertex v = _dfs_stack.back().first;
             if(_index_map[v] == _lowlink_map[v]) return;
             _dfs_stack.pop_back();
-            vertex parent = _dfs_stack.back().first;
+            const vertex & parent = _dfs_stack.back().first;
             _lowlink_map[parent] =
                 std::min(_lowlink_map[parent], _lowlink_map[v]);
         }

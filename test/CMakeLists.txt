@@ -33,3 +33,6 @@ add_executable(
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)
+
+target_compile_options(melon_test PRIVATE -fsanitize=address)
+target_link_options(melon_test PRIVATE -fno-omit-frame-pointer -fsanitize=address -lpthread -static-libasan)
