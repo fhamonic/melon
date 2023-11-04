@@ -14,7 +14,7 @@
 #include <range/v3/view/concat.hpp>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/detail/intrusive_view.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
@@ -58,30 +58,25 @@ private:
     using arc = arc_t<_Graph>;
     using value_t = mapped_value_t<_LengthMap, vertex>;
 
-private:
     using heap = _Traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
     using optional_arc = std::optional<arc>;
     struct no_forward_pred_arcs_map {};
     using forward_pred_arcs_map =
-        std::conditional<_Traits::store_path,
-                         vertex_map_t<_Graph, optional_arc>,
-                         no_forward_pred_arcs_map>::type;
+       vertex_map_if<_Traits::store_path, _Graph,
+                                        optional_arc, no_forward_pred_arcs_map>;
     struct no_reverse_pred_arcs_map {};
-    using reverse_pred_arcs_map =
-        std::conditional<_Traits::store_path,
-                         vertex_map_t<_Graph, optional_arc>,
-                         no_reverse_pred_arcs_map>::type;
+    using reverse_pred_arcs_map = vertex_map_if<_Traits::store_path, _Graph,
+                                        optional_arc, no_reverse_pred_arcs_map>;
     struct no_optional_midpoint {};
     using optional_midpoint =
-        std::conditional<_Traits::store_path, std::optional<vertex>,
-                         no_optional_midpoint>::type;
+        std::conditional_t<_Traits::store_path, std::optional<vertex>,
+                         no_optional_midpoint>;
 
 private:
     _Graph _graph;
     _LengthMap _length_map;
-
     heap _forward_heap;
     heap _reverse_heap;
     vertex_map_t<_Graph, std::pair<vertex_status, vertex_status>>
@@ -101,12 +96,8 @@ public:
         , _vertex_status_map(_graph.template create_vertex_map<
                              std::pair<vertex_status, vertex_status>>(
               std::make_pair(PRE_HEAP, PRE_HEAP)))
-        , _forward_pred_arcs_map(constexpr_ternary<_Traits::store_path>(
-              create_vertex_map<optional_arc>(_graph),
-              no_forward_pred_arcs_map{}))
-        , _reverse_pred_arcs_map(constexpr_ternary<_Traits::store_path>(
-              create_vertex_map<optional_arc>(_graph),
-              no_reverse_pred_arcs_map{})) {}
+        , _forward_pred_arcs_map(_graph)
+        , _reverse_pred_arcs_map(_graph) {}
 
     template <typename _G, typename _M>
     [[nodiscard]] constexpr bidirectional_dijkstra(_G && g, _M && l,

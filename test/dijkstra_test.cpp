@@ -36,6 +36,7 @@ GTEST_TEST(dijkstra, test) {
     dijkstra alg(graph, length_map);
 
     static_assert(std::copyable<decltype(alg)>);
+    std::cout << "dijkstra size: " << sizeof(decltype(alg)) << std::endl;
 
     alg.add_source(0);
     ASSERT_FALSE(alg.finished());

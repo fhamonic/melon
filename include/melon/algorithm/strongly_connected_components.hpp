@@ -13,7 +13,6 @@
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/single.hpp>
 
-#include "melon/detail/constexpr_ternary.hpp"
 #include "melon/detail/consumable_range.hpp"
 #include "melon/detail/intrusive_view.hpp"
 #include "melon/graph.hpp"
@@ -36,17 +35,15 @@ private:
     static constexpr component_num INVALID_COMPONENT =
         std::numeric_limits<component_num>::max();
 
+private:
     _Graph _graph;
-
     consumable_range<vertices_range_t<_Graph>> _remaining_vertices;
     std::vector<
         std::pair<vertex, consumable_range<out_neighbors_range_t<_Graph>>>>
         _dfs_stack;
-
     std::vector<vertex> _tarjan_stack;
     component_num start_index;
     component_num index;
-
     vertex_map_t<_Graph, bool> _reached_map;
     vertex_map_t<_Graph, component_num> _index_map;
     vertex_map_t<_Graph, component_num> _lowlink_map;

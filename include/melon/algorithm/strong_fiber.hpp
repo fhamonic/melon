@@ -48,12 +48,11 @@ template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> L1,
     requires std::is_same_v<mapped_value_t<L1, arc_t<_Graph>>,
                             mapped_value_t<L2, arc_t<_Graph>>>
 class strong_fiber {
-public:
+private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
     using value_t = mapped_value_t<L1, arc_t<_Graph>>;
 
-private:
     struct entry_cmp {
         std::reference_wrapper<const vertex_map_t<_Graph, bool>> _strong_map;
 
@@ -76,10 +75,10 @@ private:
     };
     using heap = typename _Traits::heap<entry_cmp>;
 
+private:
     _Graph _graph;
     L1 _reduced_length_map;
     L2 _default_length_map;
-
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
     vertex_map_t<_Graph, vertex_status> _vertex_status_map;
     vertex_map_t<_Graph, bool> _vertex_strong_map;

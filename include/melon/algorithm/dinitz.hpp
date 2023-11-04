@@ -25,14 +25,11 @@ private:
 private:
     _Graph _graph;
     _CapacityMap _capacity_map;
-
     vertex _s;
     vertex _t;
     arc_map_t<_Graph, value_t> _carried_flow_map;
-
     std::vector<vertex> _bfs_queue;
     vertex_map_t<_Graph, std::size_t> _vertex_rank_map;
-
     vertex_map_t<_Graph, std::pair<out_arcs_iterator_t<_Graph>,
                                    out_arcs_range_t<_Graph>>>
         _remaining_out_arcs;

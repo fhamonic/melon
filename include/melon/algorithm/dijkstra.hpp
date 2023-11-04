@@ -11,15 +11,14 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/constexpr_ternary.hpp"
 #include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
 #include "melon/utility/traversal_iterator.hpp"
-
 #include "melon/views/graph_view.hpp"
 
 namespace fhamonic {
@@ -69,31 +68,21 @@ private:
     using heap = _Traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
-    struct no_pred_vertices_map {};
-    using pred_vertices_map =
-        std::conditional<_Traits::store_paths && !has_arc_source<_Graph>,
-                         vertex_map_t<_Graph, vertex>,
-                         no_pred_vertices_map>::type;
-    using optional_arc = std::optional<arc>;
-    struct no_pred_arcs_map {};
-    using pred_arcs_map = std::conditional<_Traits::store_paths,
-                                           vertex_map_t<_Graph, optional_arc>,
-                                           no_pred_arcs_map>::type;
-    struct no_distance_map {};
-    using distances_map =
-        std::conditional<_Traits::store_distances,
-                         vertex_map_t<_Graph, value_t>, no_distance_map>::type;
-
 private:
     _Graph _graph;
     _LengthMap _length_map;
-
     heap _heap;
     vertex_map_t<_Graph, vertex_status> _vertex_status_map;
 
-    [[no_unique_address]] pred_vertices_map _pred_vertices_map;
-    [[no_unique_address]] pred_arcs_map _pred_arcs_map;
-    [[no_unique_address]] distances_map _distances_map;
+    [[no_unique_address]] vertex_map_if<
+        _Traits::store_paths && !has_arc_source<_Graph>, _Graph, vertex>
+        _pred_vertices_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_paths, _Graph,
+                                        std::optional<arc>>
+        _pred_arcs_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph,
+                                        double>
+        _distances_map;
 
 public:
     template <typename _G, typename _M>
@@ -102,13 +91,9 @@ public:
         , _length_map(views::mapping_all(std::forward<_M>(l)))
         , _heap(create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
-        , _pred_vertices_map(constexpr_ternary<_Traits::store_paths &&
-                                               !has_arc_source<_Graph>>(
-              create_vertex_map<vertex>(_graph), no_pred_vertices_map{}))
-        , _pred_arcs_map(constexpr_ternary<_Traits::store_paths>(
-              create_vertex_map<optional_arc>(_graph), no_pred_arcs_map{}))
-        , _distances_map(constexpr_ternary<_Traits::store_distances>(
-              create_vertex_map<value_t>(_graph), no_distance_map{})) {}
+        , _pred_vertices_map(_graph)
+        , _pred_arcs_map(_graph)
+        , _distances_map(_graph) {}
 
     template <typename _G, typename _M>
     [[nodiscard]] constexpr dijkstra(_G && g, _M && l, const vertex & s)
