@@ -4,7 +4,6 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/detail/constexpr_ternary.hpp"
 
 // namespace fhamonic {
 // namespace melon {

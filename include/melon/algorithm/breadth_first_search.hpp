@@ -9,7 +9,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/traversal_iterator.hpp"
 
@@ -33,33 +33,23 @@ private:
     static_assert(!_Traits::store_pred_arcs || outward_incidence_graph<_Graph>,
                   "storing predecessor arcs requires outward_incidence_graph.");
 
-    struct no_pred_vertices_map {};
-    using pred_vertices_map = std::conditional<_Traits::store_pred_vertices,
-                                               vertex_map_t<_Graph, vertex>,
-                                               no_pred_vertices_map>::type;
-    struct no_pred_arcs_map {};
-    using pred_arcs_map =
-        std::conditional<_Traits::store_pred_arcs, vertex_map_t<_Graph, arc>,
-                         no_pred_arcs_map>::type;
-    struct no_distance_map {};
-    using distances_map =
-        std::conditional<_Traits::store_distances, vertex_map_t<_Graph, int>,
-                         no_distance_map>::type;
-
     using cursor =
         std::conditional_t<has_nb_vertices<_Graph>,
                            typename std::vector<vertex>::iterator, int>;
 
+private:
     _Graph _graph;
-
     std::vector<vertex> _queue;
     cursor _queue_current;
-
     vertex_map_t<_Graph, bool> _reached_map;
 
-    [[no_unique_address]] pred_vertices_map _pred_vertices_map;
-    [[no_unique_address]] pred_arcs_map _pred_arcs_map;
-    [[no_unique_address]] distances_map _dist_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
+                                        vertex>
+        _pred_vertices_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_pred_arcs, _Graph, arc>
+        _pred_arcs_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph, int>
+        _dist_map;
 
 public:
     template <typename _G>
@@ -67,12 +57,9 @@ public:
         : _graph(views::graph_all(std::forward<_G>(g)))
         , _queue()
         , _reached_map(create_vertex_map<bool>(_graph, false))
-        , _pred_vertices_map(constexpr_ternary<_Traits::store_pred_vertices>(
-              create_vertex_map<vertex>(_graph), no_pred_vertices_map{}))
-        , _pred_arcs_map(constexpr_ternary<_Traits::store_pred_arcs>(
-              create_vertex_map<arc>(_graph), no_pred_arcs_map{}))
-        , _dist_map(constexpr_ternary<_Traits::store_distances>(
-              create_vertex_map<int>(_graph), no_distance_map{})) {
+        , _pred_vertices_map(_graph)
+        , _pred_arcs_map(_graph)
+        , _dist_map(_graph) {
         if constexpr(has_nb_vertices<_Graph>) {
             _queue.reserve(nb_vertices(_graph));
             _queue_current = _queue.begin();

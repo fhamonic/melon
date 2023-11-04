@@ -9,7 +9,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/detail/constexpr_ternary.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/traversal_iterator.hpp"
 
@@ -35,31 +35,21 @@ public:
 
     using reached_map = vertex_map_t<_Graph, bool>;
     using remaining_in_degree_map = vertex_map_t<_Graph, long unsigned int>;
-    struct no_pred_vertices_map {};
-    using pred_vertices_map = std::conditional<_Traits::store_pred_vertices,
-                                               vertex_map_t<_Graph, vertex>,
-                                               no_pred_vertices_map>::type;
-    struct no_pred_arcs_map {};
-    using pred_arcs_map =
-        std::conditional<_Traits::store_pred_arcs, vertex_map_t<_Graph, arc>,
-                         no_pred_arcs_map>::type;
-    struct no_distance_map {};
-    using distances_map =
-        std::conditional<_Traits::store_distances, vertex_map_t<_Graph, int>,
-                         no_distance_map>::type;
 
 private:
     _Graph _graph;
-
     std::vector<vertex> _queue;
     std::vector<vertex>::iterator _queue_current;
-
     reached_map _reached_map;
     remaining_in_degree_map _remaining_in_degree_map;
 
-    [[no_unique_address]] pred_vertices_map _pred_vertices_map;
-    [[no_unique_address]] pred_arcs_map _pred_arcs_map;
-    [[no_unique_address]] distances_map _dist_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
+                                        vertex>
+        _pred_vertices_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_pred_arcs, _Graph, arc>
+        _pred_arcs_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph, int>
+        _dist_map;
 
     constexpr void push_start_vertices() noexcept {
         _queue.resize(0);
@@ -97,12 +87,9 @@ public:
         , _reached_map(create_vertex_map<bool>(g, false))
         , _remaining_in_degree_map(create_vertex_map<long unsigned int>(
               g, std::numeric_limits<unsigned int>::max()))
-        , _pred_vertices_map(constexpr_ternary<_Traits::store_pred_vertices>(
-              create_vertex_map<vertex>(g), no_pred_vertices_map{}))
-        , _pred_arcs_map(constexpr_ternary<_Traits::store_pred_arcs>(
-              create_vertex_map<arc>(g), no_pred_arcs_map{}))
-        , _dist_map(constexpr_ternary<_Traits::store_distances>(
-              create_vertex_map<int>(g), no_distance_map{})) {
+        , _pred_vertices_map(_graph)
+        , _pred_arcs_map(_graph)
+        , _dist_map(_graph) {
         _queue.reserve(nb_vertices(g));
         push_start_vertices();
     }
@@ -181,8 +168,7 @@ public:
     }
 };
 
-template <typename _Graph,
-          typename _Traits = topological_sort_default_traits>
+template <typename _Graph, typename _Traits = topological_sort_default_traits>
 topological_sort(_Graph &&)
     -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
 

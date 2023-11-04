@@ -153,14 +153,19 @@ public:
         requires std::default_initializable<G>
     = default;
     [[nodiscard]] constexpr graph_owning_view(const graph_owning_view &) =
-        default;
+        delete;
     [[nodiscard]] constexpr graph_owning_view(graph_owning_view &&) = default;
 
-    constexpr graph_owning_view & operator=(const graph_owning_view &) =
-        default;
+    constexpr graph_owning_view & operator=(const graph_owning_view &) = delete;
     constexpr graph_owning_view & operator=(graph_owning_view &&) = default;
 
-    constexpr G && base() && noexcept { return std::move(_graph); }
+    [[nodiscard]] constexpr G & base() & noexcept { return _graph; }
+
+    [[nodiscard]] constexpr const G & base() const & noexcept { return _graph; }
+
+    [[nodiscard]] constexpr G && base() && noexcept {
+        return std::move(_graph);
+    }
 
     [[nodiscard]] constexpr decltype(auto) nb_vertices() const
         requires requires(G g) { melon::nb_vertices(g); }
