@@ -1,9 +1,0 @@
-{
-    "version": 4,
-    "vendor": {
-        "conan": {}
-    },
-    "include": [
-        "/home/plaiseek/Projects/melon/build/CMakePresets.json"
-    ]
-}

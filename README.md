@@ -75,9 +75,36 @@ for(auto && [u, dist] : dijkstra(graph, length_map, s)) {
 #include "melon/container/static_digraph.hpp"
 ....
 static_digraph graph = ...;
-for(auto component : strongly_connected_components(graph)) {
+for(auto && component : strongly_connected_components(graph)) {
     for(auto && v : component) {
-        alg_component.push_back(v);
+        ...;
+    }
+}
+```
+
+```cpp
+#include "melon/container/static_digraph.hpp"
+#include "melon/views/subgraph.hpp"
+....
+static_digraph graph = ...;
+vertex_map_t<static_digraph, bool> vertex_filter = ...;
+arc_map_t<static_digraph, bool> arc_filter = ...;
+auto sgraph = views::subgraph(graph, vertex_filter, arc_filter);
+```
+
+```cpp
+#include "melon/algorithm/dijkstra.hpp"
+#include "melon/algorithm/strongly_connected_components.hpp"
+#include "melon/container/static_digraph.hpp"
+....
+static_digraph graph = ...;
+arc_map_t<static_digraph, double> length_map = ...;
+for(auto && component : strongly_connected_components(views::subgraph(
+        graph, {}, [&](const arc_t<static_digraph> & a) {
+            return length_map[a] == 0;
+        }))) {
+    for(auto && v : component) {
+        ...;
     }
 }
 ```

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/constexpr_ternary.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -160,10 +159,10 @@ public:
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t old_dist = _heap.priority(w);
-            if(constexpr_ternary<_Traits::strictly_strong>(
-                   _Traits::semiring::less(new_dist, old_dist),
+            if(_Traits::strictly_strong ? 
+                   _Traits::semiring::less(new_dist, old_dist) :
                    _Traits::semiring::less(new_dist, old_dist) ||
-                       (new_dist == old_dist && !_vertex_strong_map[w]))) {
+                       (new_dist == old_dist && !_vertex_strong_map[w])) {
                 if(!_vertex_strong_map[w]) {
                     _vertex_strong_map[w] = true;
                     ++_nb_strong_candidates;
@@ -185,10 +184,10 @@ public:
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const value_t old_dist = _heap.priority(w);
-            if(constexpr_ternary<_Traits::strictly_strong>(
+            if(_Traits::strictly_strong ? 
                    _Traits::semiring::less(new_dist, old_dist) ||
-                       (new_dist == old_dist && _vertex_strong_map[w]),
-                   _Traits::semiring::less(new_dist, old_dist))) {
+                       (new_dist == old_dist && _vertex_strong_map[w]) :
+                   _Traits::semiring::less(new_dist, old_dist)) {
                 if(_vertex_strong_map[w]) {
                     _vertex_strong_map[w] = false;
                     --_nb_strong_candidates;
