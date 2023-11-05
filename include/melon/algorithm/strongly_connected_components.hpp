@@ -44,7 +44,7 @@ private:
     std::vector<vertex> _tarjan_stack;
     component_num start_index;
     component_num index;
-    vertex_map_t<_Graph, bool> _reached_map;
+    vertex_map_t<_Graph, bool> _in_tarjan_stack_map;
     vertex_map_t<_Graph, component_num> _index_map;
     vertex_map_t<_Graph, component_num> _lowlink_map;
 
@@ -58,7 +58,7 @@ public:
         , _tarjan_stack()
         , start_index(0)
         , index(0)
-        , _reached_map(create_vertex_map<bool>(_graph, false))
+        , _in_tarjan_stack_map(create_vertex_map<bool>(_graph, false))
         , _index_map(
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
         , _lowlink_map(
@@ -85,7 +85,7 @@ public:
         _remaining_vertices = vertices(_graph);
         _dfs_stack.clear();
         _tarjan_stack.resize(0);
-        _reached_map.fill(false);
+        _in_tarjan_stack_map.fill(false);
         return *this;
     }
 
@@ -102,7 +102,7 @@ public:
                     return _tarjan_stack.back();
                 },
                 [this](std::monostate) mutable -> std::monostate {
-                    _tarjan_stack.pop_back();
+                    pop_tarjan();
                     return std::monostate{};
                 },
                 [this](std::monostate) -> bool {
@@ -111,15 +111,28 @@ public:
             ranges::single_view(_dfs_stack.back().first));
     }
 
+    constexpr bool reached(const vertex & v) const {
+        return _index_map[v] != INVALID_COMPONENT;
+    }
+
+    constexpr void push_tarjan(const vertex & v) {
+        _tarjan_stack.push_back(v);
+        _in_tarjan_stack_map[v] = true;
+    }
+    constexpr void pop_tarjan() {
+        _in_tarjan_stack_map[_tarjan_stack.back()] = false;
+        _tarjan_stack.pop_back();
+    }
+
     constexpr void advance() noexcept {
         assert(!_remaining_vertices.empty());
 
         if(!_dfs_stack.empty()) {
             vertex v = _dfs_stack.back().first;
             while(_tarjan_stack.back() != v) {
-                _tarjan_stack.pop_back();
+                pop_tarjan();
             }
-            _tarjan_stack.pop_back();
+            pop_tarjan();
             _dfs_stack.pop_back();
             if(!_dfs_stack.empty()) {
                 vertex parent = _dfs_stack.back().first;
@@ -129,15 +142,14 @@ public:
         }
 
         if(_dfs_stack.empty()) {
-            while(_reached_map[_remaining_vertices.current()]) {
+            while(reached(_remaining_vertices.current())) {
                 _remaining_vertices.advance();
                 if(_remaining_vertices.empty()) return;
             }
             vertex s = _remaining_vertices.current();
-            _reached_map[s] = true;
             _index_map[s] = _lowlink_map[s] = start_index = index;
             ++index;
-            _tarjan_stack.push_back(s);
+            push_tarjan(s);
             _dfs_stack.emplace_back(s, out_neighbors(_graph, s));
         }
 
@@ -145,18 +157,17 @@ public:
             while(!_dfs_stack.back().second.empty()) {
                 vertex w = _dfs_stack.back().second.current();
                 _dfs_stack.back().second.advance();
-                if(_reached_map[w]) {
-                    if(_index_map[w] >= start_index) {
+                if(reached(w)) {
+                    if(_in_tarjan_stack_map[w]) {
                         const vertex & v = _dfs_stack.back().first;
                         _lowlink_map[v] =
-                            std::min(_lowlink_map[v], _lowlink_map[w]);
+                            std::min(_lowlink_map[v], _index_map[w]);
                     }
                     continue;
                 }
-                _reached_map[w] = true;
                 _index_map[w] = _lowlink_map[w] = index;
                 ++index;
-                _tarjan_stack.push_back(w);
+                push_tarjan(w);
                 _dfs_stack.emplace_back(w, out_neighbors(_graph, w));
             }
             vertex v = _dfs_stack.back().first;
@@ -176,10 +187,6 @@ public:
     }
     [[nodiscard]] constexpr auto end() const noexcept {
         return traversal_end_sentinel();
-    }
-
-    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
-        return _reached_map[u];
     }
 
     [[nodiscard]] constexpr bool same_component(
