@@ -14,7 +14,7 @@ Work in progress.
 
 The beauty of Conan 2.0 allows this library to be linked either as a Conan package Git/CMake submodule. In both cases you need a recent compiler (at least GCC 12).
 
-### As a Conan package (prefered)
+### As a Conan package (preferred)
 
 Clone this repository and run:
 ```
