@@ -6,6 +6,7 @@
 #include <ranges>
 #include <vector>
 
+#include "melon/detail/consumable_range.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
@@ -30,11 +31,9 @@ private:
     arc_map_t<_Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
     vertex_map_t<_Graph, std::size_t> _vertex_rank_map;
-    vertex_map_t<_Graph, std::pair<out_arcs_iterator_t<_Graph>,
-                                   out_arcs_range_t<_Graph>>>
+    vertex_map_t<_Graph, consumable_range<out_arcs_range_t<_Graph>>>
         _remaining_out_arcs;
-    vertex_map_t<_Graph,
-                 std::pair<in_arcs_iterator_t<_Graph>, in_arcs_range_t<_Graph>>>
+    vertex_map_t<_Graph, consumable_range<in_arcs_range_t<_Graph>>>
         _remaining_in_arcs;
 
 public:
@@ -45,11 +44,11 @@ public:
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
         , _remaining_out_arcs(
-              create_vertex_map<std::pair<out_arcs_iterator_t<_Graph>,
-                                          out_arcs_range_t<_Graph>>>(_graph))
+              create_vertex_map<consumable_range<out_arcs_range_t<_Graph>>>(
+                  _graph))
         , _remaining_in_arcs(
-              create_vertex_map<std::pair<in_arcs_iterator_t<_Graph>,
-                                          in_arcs_range_t<_Graph>>>(_graph)) {
+              create_vertex_map<consumable_range<in_arcs_range_t<_Graph>>>(
+                  _graph)) {
         if constexpr(has_nb_vertices<_Graph>) {
             _bfs_queue.reserve(nb_vertices(_graph));
         }
@@ -83,8 +82,8 @@ public:
     constexpr dinitz & reset() noexcept {
         _carried_flow_map.fill(0);
         for(auto && u : vertices(_graph)) {
-            _remaining_out_arcs[u].second = out_arcs(_graph, u);
-            _remaining_in_arcs[u].second = in_arcs(_graph, u);
+            _remaining_out_arcs[u] = out_arcs(_graph, u);
+            _remaining_in_arcs[u] = in_arcs(_graph, u);
         }
         return *this;
     }
@@ -123,9 +122,9 @@ private:
 
     value_t dfs_push_flow(const vertex u, const value_t max_incomming_flow) {
         if(max_incomming_flow == 0 || u == _t) return max_incomming_flow;
-        for(auto & current = _remaining_out_arcs[u].first;
-            current != _remaining_out_arcs[u].second.end(); ++current) {
-            const arc & a = *current;
+        for(; !_remaining_out_arcs[u].empty();
+            _remaining_out_arcs[u].advance()) {
+            const arc & a = _remaining_out_arcs[u].current();
             const vertex v = arc_target(_graph, a);
             if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
             if(_capacity_map[a] == _carried_flow_map[a]) continue;
@@ -136,9 +135,8 @@ private:
             _carried_flow_map[a] += pushed_flow;
             return pushed_flow;
         }
-        for(auto & current = _remaining_in_arcs[u].first;
-            current != _remaining_in_arcs[u].second.end(); ++current) {
-            const arc & a = *current;
+        for(; !_remaining_in_arcs[u].empty(); _remaining_in_arcs[u].advance()) {
+            const arc & a = _remaining_in_arcs[u].current();
             const vertex v = arc_source(_graph, a);
             if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
             if(_carried_flow_map[a] == 0) continue;
@@ -155,10 +153,8 @@ public:
     constexpr dinitz & run() noexcept {
         while(bfs_rank_vertices()) {
             for(auto && u : vertices(_graph)) {
-                _remaining_out_arcs[u].first =
-                    _remaining_out_arcs[u].second.begin();
-                _remaining_in_arcs[u].first =
-                    _remaining_in_arcs[u].second.begin();
+                _remaining_out_arcs[u] = out_arcs(_graph, u);
+                _remaining_in_arcs[u] = in_arcs(_graph, u);
             }
             while(dfs_push_flow(_s, std::numeric_limits<value_t>::max()) >
                   value_t{0})

@@ -4,11 +4,13 @@
 #include <ranges>
 #include <type_traits>
 
+#include <range/v3/view/concat.hpp>
+
 namespace fhamonic {
 namespace melon {
 
 template <typename R>
-    requires std::ranges::view<R>
+    requires std::ranges::view<R> || ranges::view_<R>
 class consumable_range {
 private:
     R range;
@@ -36,7 +38,7 @@ public:
 };
 
 template <typename R>
-    requires std::ranges::view<R> && std::ranges::borrowed_range<R>
+    requires (std::ranges::view<R> || ranges::view_<R>) && (std::ranges::borrowed_range<R> || ranges::borrowed_range<R>)
 class consumable_range<R> : public std::ranges::view_base {
 private:
     std::ranges::iterator_t<R> it;

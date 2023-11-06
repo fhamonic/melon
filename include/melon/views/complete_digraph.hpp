@@ -87,12 +87,12 @@ public:
 
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
-        return static_map<vertex, T>(nb_vertices());
+        return static_map<vertex, T>(_nb_vertices);
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map(
         const T & default_value) const noexcept {
-        return static_map<vertex, T>(nb_vertices(), default_value);
+        return static_map<vertex, T>(_nb_vertices, default_value);
     }
 
     template <typename T>

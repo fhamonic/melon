@@ -25,6 +25,14 @@ class CompressorRecipe(ConanFile):
         self.tool_requires("cmake/[>=3.19.0]")
         self.test_requires("gtest/[>=1.10.0 <cci]")
 
+    def generate(self):
+        print("conanfile.py: IDE include dirs:")
+        for lib, dep in self.dependencies.items():
+            if not lib.headers:
+                continue
+            for inc in dep.cpp_info.includedirs:
+                print("\t" + inc)
+
     def validate(self):
         check_min_cppstd(self, 20)
 
