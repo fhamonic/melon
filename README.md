@@ -12,9 +12,21 @@ Work in progress.
 
 ## How to link
 
-The beauty of Conan 2.0 allows this library to be linked either as a Git/CMake submodule or as a Conan package. In both cases you need a recent compiler (at least GCC 12).
+The beauty of Conan 2.0 allows this library to be linked either as a Conan package Git/CMake submodule. In both cases you need a recent compiler (at least GCC 12).
 
-### As git and cmake submodules (recommended)
+### As a Conan package (prefered)
+
+Clone this repository and run:
+```
+make package
+```
+
+Then add the dependency to melon in your `conanfile.txt` or `conanfile.py`:
+```
+melon/0.5
+```
+
+### As git and cmake submodules
 
 Either clone or add this git as submodule in a folder named, for example, "dependencies"
 ```
@@ -34,14 +46,7 @@ add_subdirectory(dependencies/melon)
 target_link_libraries(<some_target> INTERFACE melon)
 ```
 
-Then ensure that your CMake can find [Range-v3](https://ericniebler.github.io/range-v3/) and [fmt](https://fmt.dev/latest/index.html) with the corresponding ```find_package``` calls.
-
-### As a Conan package
-
-Clone this repository and run
-```
-conan create . -b=missing
-```
+Then ensure that your CMake can find [Range-v3](https://ericniebler.github.io/range-v3/) and [fmt](https://fmt.dev/latest/index.html) with the corresponding `find_package` calls.
 
 ## How to Compile and Run Tests
 
