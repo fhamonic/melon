@@ -49,7 +49,7 @@ Having a compiler (GCC 12+ required), [CMake](https://cmake.org/cmake/help/lates
 
     make
 
-## Concepts and design choices
+## Documentation
 
 The extensive use of C++20 concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in the wiki page [Concepts](https://github.com/fhamonic/melon/wiki/Concepts).
 Thus, this library aims to allow users to bring their own graph structures, best suited to their needs.
@@ -59,8 +59,7 @@ Algorithms and code examples are available on the wiki page [Algorithms](https:/
 
 ## Some code examples
 
-Iterate on the vertices in the order they are:
-
+Iterate on reachable vertices in the order of their distances from a source vertex:
 ```cpp
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
@@ -75,7 +74,6 @@ for(auto && [u, dist] : dijkstra(graph, length_map, s)) {
 ```
 
 Iterate over the vertices of each strongly connected component:
-
 ```cpp
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/container/static_digraph.hpp"
