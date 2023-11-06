@@ -51,11 +51,15 @@ Having a compiler (GCC 12+ required), [CMake](https://cmake.org/cmake/help/lates
 
 ## Concepts and design choices
 
-As mentioned above, this project makes extensive use of C++20 concepts to provide requirements for graph algorithms. These concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in [Concepts and design choices](docs/CONCEPTS.md).
+The extensive use of C++20 concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in the wiki page [Concepts](https://github.com/fhamonic/melon/wiki/Concepts).
 Thus, this library aims to allow users to bring their own graph structures, best suited to their needs.
-However, we provide classical implementation of graphs for different use cases such as 'static_digraph' that describes a non-mutable graph optimized for algorithms performance, and 'mutable_digraph' that describes a graph supporting all the common modification of a graph structure (creation and removal of vertices and arcs, modification of an arc endpoints) at the expense of some performances.
+However, we provide classical implementations of graphs such as 'static_digraph' and 'mutable_digraph'.
+The graph structures provided are described in the wiki page [Containers#Graph-structures](https://github.com/fhamonic/melon/wiki/Containers#Graph-structures).
+Algorithms and code examples are available on the wiki page [Algorithms](https://github.com/fhamonic/melon/wiki/Algorithms).
 
-## Code examples
+## Some code examples
+
+Iterate on the vertices in the order they are:
 
 ```cpp
 #include "melon/algorithm/dijkstra.hpp"
@@ -70,39 +74,14 @@ for(auto && [u, dist] : dijkstra(graph, length_map, s)) {
 }
 ```
 
+Iterate over the vertices of each strongly connected component:
+
 ```cpp
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/container/static_digraph.hpp"
 ....
 static_digraph graph = ...;
 for(auto && component : strongly_connected_components(graph)) {
-    for(auto && v : component) {
-        ...;
-    }
-}
-```
-
-```cpp
-#include "melon/container/static_digraph.hpp"
-#include "melon/views/subgraph.hpp"
-....
-static_digraph graph = ...;
-vertex_map_t<static_digraph, bool> vertex_filter = ...;
-arc_map_t<static_digraph, bool> arc_filter = ...;
-auto sgraph = views::subgraph(graph, vertex_filter, arc_filter);
-```
-
-```cpp
-#include "melon/algorithm/dijkstra.hpp"
-#include "melon/algorithm/strongly_connected_components.hpp"
-#include "melon/container/static_digraph.hpp"
-....
-static_digraph graph = ...;
-arc_map_t<static_digraph, double> length_map = ...;
-for(auto && component : strongly_connected_components(views::subgraph(
-        graph, {}, [&](const arc_t<static_digraph> & a) {
-            return length_map[a] == 0;
-        }))) {
     for(auto && v : component) {
         ...;
     }

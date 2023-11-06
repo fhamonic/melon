@@ -66,7 +66,7 @@ testing::AssertionResult EQ_RANGES(R1 && r1, R2 && r2) {
     std::size_t pos = 0;
     auto it1 = r1.begin();
     auto it2 = r2.begin();
-    while(it1 != r1.end()) {
+    while(it1 != r1.end() && it2 != r2.end()) {
         if(*it1 != *it2) {
             return ::testing::AssertionFailure()
                    << "ranges values differ at pos " << pos << ": " << *it1
