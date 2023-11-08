@@ -2,6 +2,7 @@
 
 MELON stands for Modern and Efficient Library for Optimization in Networks.
 The goal of this project is to provide a graph library using modern C ++ functionalities in order to be more user-friendly than the [Boost.Graph library](https://www.boost.org/doc/libs/release/libs/graph/) while being as performant as the [LEMON Graph library](https://lemon.cs.elte.hu/trac/lemon) which is unfortunately not maintained and does not compile with C++ 20.
+Implemented data structures and algorithms are often benchmarked in the repository https://github.com/fhamonic/melon_benchmark and shown to outperform both Boost.Graph and LEMON!
 
 Work in progress.
 
