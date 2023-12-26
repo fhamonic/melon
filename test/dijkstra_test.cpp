@@ -61,7 +61,7 @@ GTEST_TEST(dijkstra, test) {
     alg.reset();
 }
 
-GTEST_TEST(dijkstra, traversal_iterator) {
+GTEST_TEST(dijkstra, algorithm_iterator) {
     static_digraph_builder<static_digraph, int> builder(6);
 
     builder.add_arc(0, 1, 7)

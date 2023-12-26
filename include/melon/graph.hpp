@@ -769,19 +769,22 @@ using in_neighbors_range_t = decltype(melon::in_neighbors(
     std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
 
 template <typename _Tp>
-concept graph = requires(const _Tp & __t) {
-    melon::vertices(__t);
-    melon::arcs(__t);
-    melon::arcs_entries(__t);
-};
+concept has_vertices = requires(const _Tp & __t) { melon::vertices(__t); };
 
 template <typename _Tp>
 concept has_nb_vertices =
-    graph<_Tp> && requires(const _Tp & __t) { melon::nb_vertices(__t); };
+    has_vertices<_Tp> && requires(const _Tp & __t) { melon::nb_vertices(__t); };
+
+template <typename _Tp>
+concept has_arcs = requires(const _Tp & __t) { melon::arcs(__t); };
 
 template <typename _Tp>
 concept has_nb_arcs =
-    graph<_Tp> && requires(const _Tp & __t) { melon::nb_arcs(__t); };
+    has_arcs<_Tp> && requires(const _Tp & __t) { melon::nb_arcs(__t); };
+
+template <typename _Tp>
+concept graph = has_vertices<_Tp> && has_arcs<_Tp> &&
+                requires(const _Tp & __t) { melon::arcs_entries(__t); };
 
 template <typename _Tp>
 concept has_arc_target =
@@ -1439,14 +1442,14 @@ using arc_map_t =
 
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_vertex_map =
-    graph<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
+    has_vertices<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
         melon::create_vertex_map<_ValueType>(__t);
         melon::create_vertex_map<_ValueType>(__t, __d);
     };
 
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_arc_map =
-    graph<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
+    has_arcs<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
         melon::create_arc_map<_ValueType>(__t);
         melon::create_arc_map<_ValueType>(__t, __d);
     };

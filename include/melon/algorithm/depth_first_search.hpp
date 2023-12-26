@@ -13,7 +13,7 @@
 #include "melon/detail/consumable_range.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
-#include "melon/utility/traversal_iterator.hpp"
+#include "melon/utility/algorithmic_generator.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -148,10 +148,10 @@ public:
         while(!finished()) advance();
     }
     [[nodiscard]] constexpr auto begin() noexcept {
-        return traversal_iterator(*this);
+        return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() const noexcept {
-        return traversal_end_sentinel();
+        return algorithm_end_sentinel();
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {

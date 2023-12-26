@@ -60,7 +60,7 @@ GTEST_TEST(strongly_connected_components, graph1_test) {
     ASSERT_TRUE(alg.finished());
 }
 
-GTEST_TEST(strongly_connected_components, graph1_traversal_iterator) {
+GTEST_TEST(strongly_connected_components, graph1_algorithm_iterator) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph> builder(8);
 
@@ -173,7 +173,7 @@ GTEST_TEST(strongly_connected_components, graph2_test) {
     ASSERT_TRUE(alg.finished());
 }
 
-GTEST_TEST(strongly_connected_components, graph2_traversal_iterator) {
+GTEST_TEST(strongly_connected_components, graph2_algorithm_iterator) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph> builder(8);
 

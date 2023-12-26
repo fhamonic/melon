@@ -67,7 +67,7 @@ GTEST_TEST(topological_sort, test) {
     ASSERT_TRUE(alg.finished());
 }
 
-GTEST_TEST(topological_sort, traversal_iterator) {
+GTEST_TEST(topological_sort, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(6);
 
     builder.add_arc(5, 2)

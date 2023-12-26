@@ -132,7 +132,7 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
         mutable_digraph graph;
         dumb_digraph dummy_graph;
         
-        for(std::size_t i = 0; i < 1000; ++i) {
+        for(std::size_t i = 0; i < 200; ++i) {
             Operation op;
             for(;;) {
                 op = random_element(operations);

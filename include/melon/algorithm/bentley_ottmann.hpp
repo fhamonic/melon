@@ -158,10 +158,10 @@ public:
     }
     [[nodiscard]] constexpr auto begin() noexcept {
         init();
-        return traversal_iterator(*this);
+        return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() noexcept {
-        return traversal_end_sentinel();
+        return algorithm_end_sentinel();
     }
 };
 
