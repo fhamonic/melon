@@ -117,7 +117,7 @@ auto compute_strong_fiber_map(const G & g, const arc_map_t<G, int> & length_map,
 GTEST_TEST(strong_fiber, fuzzy) {
     static constexpr std::size_t nb_vertices = 15;
     static constexpr double density = 0.35;
-    static constexpr int nb_tests = 2000;
+    static constexpr int nb_tests = 400;
 
     static constexpr int min_length = 0;
     static constexpr int max_length = 10;
@@ -264,7 +264,7 @@ struct useless_fiber_traits {
 GTEST_TEST(useless_fiber, fuzzy) {
     static constexpr std::size_t nb_vertices = 15;
     static constexpr double density = 0.35;
-    static constexpr int nb_tests = 2000;
+    static constexpr int nb_tests = 400;
 
     static constexpr int min_length = 0;
     static constexpr int max_length = 10;

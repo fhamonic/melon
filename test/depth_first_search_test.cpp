@@ -70,7 +70,7 @@ GTEST_TEST(depth_first_search, test) {
     ASSERT_TRUE(alg.finished());
 }
 
-GTEST_TEST(depth_first_search, traversal_iterator) {
+GTEST_TEST(depth_first_search, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(8);
 
     builder.add_arc(0, 1)

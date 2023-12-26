@@ -1,5 +1,5 @@
-#ifndef MELON_VIEWS_REVERSE_HPP
-#define MELON_VIEWS_REVERSE_HPP
+#ifndef MELON_VIEWS_DUAL_HPP
+#define MELON_VIEWS_DUAL_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -137,4 +137,4 @@ public:
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_VIEWS_REVERSE_HPP
+#endif  // MELON_VIEWS_DUAL_HPP

@@ -171,16 +171,16 @@ public:
     }
 };
 
-template <typename _Graph, typename _LengthMap>
-edmonds_karp(_Graph &&, _LengthMap &&)
+template <typename _Graph, typename _CapacityMap>
+edmonds_karp(_Graph &&, _CapacityMap &&)
     -> edmonds_karp<views::graph_all_t<_Graph>,
-                    views::mapping_all_t<_LengthMap>>;
+                    views::mapping_all_t<_CapacityMap>>;
 
-template <typename _Graph, typename _LengthMap>
-edmonds_karp(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
+template <typename _Graph, typename _CapacityMap>
+edmonds_karp(_Graph &&, _CapacityMap &&, const vertex_t<_Graph> &,
              const vertex_t<_Graph> &)
     -> edmonds_karp<views::graph_all_t<_Graph>,
-                    views::mapping_all_t<_LengthMap>>;
+                    views::mapping_all_t<_CapacityMap>>;
 
 }  // namespace melon
 }  // namespace fhamonic

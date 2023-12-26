@@ -18,7 +18,7 @@
 #include "melon/mapping.hpp"
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
-#include "melon/utility/traversal_iterator.hpp"
+#include "melon/utility/algorithmic_generator.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace fhamonic {
@@ -178,10 +178,10 @@ public:
         while(!finished()) advance();
     }
     [[nodiscard]] constexpr auto begin() noexcept {
-        return traversal_iterator(*this);
+        return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() noexcept {
-        return traversal_end_sentinel();
+        return algorithm_end_sentinel();
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
