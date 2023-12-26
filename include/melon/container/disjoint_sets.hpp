@@ -61,27 +61,25 @@ public:
         _size_map.push_back(1);
     }
 
-private:
-    [[nodiscard]] constexpr component_type recursive_find(
-        const component_type & c) noexcept {
-        if(_parent_map[c] == c) return c;
-        return _parent_map[c] =
-                   recursive_find(_parent_map[c]);  // path compression
-        // return recursive_find(_parent_map[c]); // naive
-    }
-
 public:
     [[nodiscard]] constexpr component_type find(const key_type & k) noexcept {
-        return recursive_find(_component_map[k]);
+        component_type c = _component_map[k];
+        while(_parent_map[c] != c) {
+             std::tie(c, _parent_map[c]) = std::tie(_parent_map[c], _parent_map[_parent_map[c]]);
+        }
+        return c;
     }
 
-    constexpr component_type merge(component_type c1,
-                                   component_type c2) noexcept {
+    constexpr component_type merge(const component_type & c1,
+                                   const component_type & c2) noexcept {
         if(c1 == c2) return c1;
-        if(_size_map[c1] < _size_map[c2]) std::swap(c1, c2);
-
-        _size_map[c1] += _size_map[c2];
-        return _parent_map[c2] = c1;
+        if(_size_map[c1] < _size_map[c2]) {
+            _size_map[c2] += _size_map[c1];
+            return _parent_map[c1] = c2;
+        } else {
+            _size_map[c1] += _size_map[c2];
+            return _parent_map[c2] = c1;
+        }
     }
     constexpr component_type merge_keys(const key_type & k1,
                                         const key_type & k2) noexcept {
