@@ -76,9 +76,10 @@ GTEST_TEST(dinitz, test) {
 #include "melon/views/complete_digraph.hpp"
 
 GTEST_TEST(dinitz, complete_digraph_view) {
-    dinitz alg(
-        views::complete_digraph(5ul), [](const auto & a) { return 1; }, 0ul,
-        1ul);
-    ASSERT_EQ(alg.run().flow_value(), 4);
-    alg.reset();
+    ASSERT_EQ(dinitz(
+                  views::complete_digraph(5ul),
+                  [](const auto & a) { return 1; }, 0ul, 1ul)
+                  .run()
+                  .flow_value(),
+              4);
 }
