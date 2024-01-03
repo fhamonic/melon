@@ -1398,6 +1398,7 @@ inline constexpr auto create_vertex_map(const _Tp & __t) noexcept(
     return __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
         __t);
 }
+
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t, const _ValueType & __d) {
         __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(__t,
@@ -1410,6 +1411,7 @@ create_vertex_map(const _Tp & __t, const _ValueType & __d) noexcept(
     return __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
         __t, __d);
 }
+
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t) {
         __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
@@ -1419,6 +1421,7 @@ inline constexpr auto create_arc_map(const _Tp & __t) noexcept(
         std::declval<_Tp &>()))) {
     return __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
 }
+
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t, const _ValueType & __d) {
         __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t,

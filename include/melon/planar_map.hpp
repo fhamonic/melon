@@ -485,6 +485,7 @@ inline constexpr auto create_face_map(const _Tp & __t) noexcept(
         std::declval<_Tp &>()))) {
     return __cust_access::_CreateFaceMap{}.template operator()<_ValueType>(__t);
 }
+
 template <typename _ValueType, typename _Tp>
     requires requires(const _Tp & __t, const _ValueType & __d) {
                  __cust_access::_CreateFaceMap{}
