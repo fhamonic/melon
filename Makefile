@@ -1,19 +1,14 @@
 BUILD_DIR = build
-# BUILD_TYPE = default
-BUILD_TYPE = debug
+CONAN_PROFILE = default
+# CONAN_PROFILE = debug
 
 .PHONY: test package clean
 
 $(BUILD_DIR):
-	conan build . -of=${BUILD_DIR} -b=missing -pr=${BUILD_TYPE}
+	conan build . -of=${BUILD_DIR} -b=missing -pr=${CONAN_PROFILE}
 
 debug:
-	conan build . -of=${BUILD_DIR} -b=missing -pr=${BUILD_TYPE}
-
-
-test: $(BUILD_DIR)
-	@cd $(BUILD_DIR) && \
-	ctest --output-on-failure
+	conan build . -of=${BUILD_DIR} -b=missing -pr=${CONAN_PROFILE}
 
 package:
 	conan create . -u
