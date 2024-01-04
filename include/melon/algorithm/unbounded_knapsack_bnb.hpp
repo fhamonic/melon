@@ -26,7 +26,7 @@ template <std::ranges::range _ItemRange,
                  _ValueMap, std::ranges::range_value_t<_ItemRange>>> &&
              std::is_arithmetic_v<mapped_value_t<
                  _CostMap, std::ranges::range_value_t<_ItemRange>>>
-class knapsack_bnb {
+class unbounded_knapsack_bnb {
 private:
     using Item = std::ranges::range_value_t<_ItemRange>;
     using Value = mapped_value_t<_ValueMap, Item>;
@@ -39,7 +39,9 @@ private:
     Cost _budget;
     std::vector<std::ranges::iterator_t<const _ItemRange>> _permuted_items;
     std::vector<std::pair<Value, Cost>> _value_cost_pairs;
-    std::vector<typename decltype(_value_cost_pairs)::const_iterator> _best_sol;
+    std::vector<std::pair<typename decltype(_value_cost_pairs)::const_iterator,
+                          std::size_t>>
+        _best_sol;
 
 private:
     double value_cost_ratio(const std::pair<Value, Cost> & p) const noexcept {
@@ -51,88 +53,78 @@ private:
         }
     }
 
-    Value computeUpperBound(auto it, const auto end, Value bound_value,
-                            Cost bound_budget_left) const noexcept {
-        for(; it < end; ++it) {
-            if(bound_budget_left < it->second)
-                return static_cast<Value>(bound_value +
-                                          bound_budget_left * it->first /
-                                              static_cast<double>(it->second));
-            bound_budget_left -= it->second;
-            bound_value += it->first;
-        }
-
-        return bound_value;
-    }
-
-    void iterative_bnb() noexcept {
+    auto iterative_bnb() noexcept {
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
-        if(it == end) return;
-        std::vector<decltype(it)> current_sol;
+        std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
         Value best_sol_value = 0;
         Cost budget_left = _budget;
         goto begin;
     backtrack:
         while(!current_sol.empty()) {
-            it = current_sol.back();
+            it = current_sol.back().first;
+            if(--current_sol.back().second == 0) current_sol.pop_back();
             current_sol_value -= it->first;
             budget_left += it->second;
-            current_sol.pop_back();
             for(++it; it < end; ++it) {
                 if(budget_left < it->second) continue;
-                if(computeUpperBound(it, end, current_sol_value, budget_left) <=
+                if(current_sol_value + budget_left * value_cost_ratio(*it) <=
                    best_sol_value)
                     goto backtrack;
             begin:
-                current_sol_value += it->first;
-                budget_left -= it->second;
-                current_sol.push_back(it);
+                const std::size_t nb_take =
+                    static_cast<std::size_t>(budget_left / it->second);
+                current_sol_value += static_cast<Value>(nb_take) * it->first;
+                budget_left -= static_cast<Cost>(nb_take) * it->second;
+                current_sol.emplace_back(it, nb_take);
             }
             if(current_sol_value <= best_sol_value) continue;
             best_sol_value = current_sol_value;
             _best_sol = current_sol;
         }
+        return _best_sol;
     }
-    bool iterative_bnb_timeout(std::stop_token stoken) noexcept {
+
+    auto iterative_bnb_timeout(std::stop_token stoken) noexcept {
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
-        if(it == end) return true;
-        std::vector<decltype(it)> current_sol;
+        std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
         Value best_sol_value = 0;
         Cost budget_left = _budget;
         goto begin;
     backtrack:
         while(!current_sol.empty() && !stoken.stop_requested()) {
-            it = current_sol.back();
+            it = current_sol.back().first;
+            if(--current_sol.back().second == 0) current_sol.pop_back();
             current_sol_value -= it->first;
             budget_left += it->second;
-            current_sol.pop_back();
             for(++it; it < end; ++it) {
                 if(budget_left < it->second) continue;
-                if(computeUpperBound(it, end, current_sol_value, budget_left) <=
+                if(current_sol_value + budget_left * value_cost_ratio(*it) <=
                    best_sol_value)
                     goto backtrack;
             begin:
-                current_sol_value += it->first;
-                budget_left -= it->second;
-                current_sol.push_back(it);
+                const std::size_t nb_take =
+                    static_cast<std::size_t>(budget_left / it->second);
+                current_sol_value += static_cast<Value>(nb_take) * it->first;
+                budget_left -= static_cast<Cost>(nb_take) * it->second;
+                current_sol.emplace_back(it, nb_take);
             }
             if(current_sol_value <= best_sol_value) continue;
             best_sol_value = current_sol_value;
             _best_sol = current_sol;
         }
-        return current_sol.empty();
+        return _best_sol;
     }
 
 public:
     template <typename _IR, typename _VM, typename _CM, typename _B>
-    knapsack_bnb(_IR && items_range, _VM && value_map, _CM && cost_map,
-                 const _B budget) noexcept
+    unbounded_knapsack_bnb(_IR && items_range, _VM && value_map,
+                           _CM && cost_map, const _B budget) noexcept
         : _items_range(std::ranges::views::all(std::forward<_IR>(items_range)))
         , _value_map(views::mapping_all(std::forward<_VM>(value_map)))
         , _cost_map(views::mapping_all(std::forward<_CM>(cost_map)))
@@ -140,8 +132,26 @@ public:
         reset();
     }
 
+private:
+    bool is_dominated(auto && item_it) const noexcept {
+        const Value item_value = _value_map[*item_it];
+        const Cost item_cost = _cost_map[*item_it];
+        for(auto it = _items_range.begin(); it != _items_range.end(); ++it) {
+            auto && i = *it;
+            if(it == item_it) continue;
+            const Value i_value = _value_map[i];
+            const Cost i_cost = _cost_map[i];
+            if(i_cost == item_cost && i_value == item_value)
+                return (it < item_it);
+            if(i_cost > item_cost) continue;
+            int nb_times = static_cast<int>(item_cost / i_cost);
+            if(nb_times * i_value > item_value) return true;
+        }
+        return false;
+    }
+
 public:
-    knapsack_bnb & reset() noexcept {
+    unbounded_knapsack_bnb & reset() noexcept {
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
         if constexpr(std::ranges::sized_range<_ItemRange>) {
@@ -155,6 +165,7 @@ public:
             if(value == static_cast<Value>(0)) continue;
             const Cost cost = _cost_map[i];
             if(cost > _budget) continue;
+            if(is_dominated(it)) continue;
             _permuted_items.emplace_back(it);
             _value_cost_pairs.emplace_back(value, cost);
         }
@@ -165,12 +176,12 @@ public:
         return *this;
     }
 
-    knapsack_bnb & set_budget(Cost b) noexcept {
+    unbounded_knapsack_bnb & set_budget(Cost b) noexcept {
         _budget = b;
         return *this;
     }
 
-    knapsack_bnb & run() noexcept {
+    unbounded_knapsack_bnb & run() noexcept {
         iterative_bnb();
         return *this;
     }
@@ -192,30 +203,34 @@ public:
     }
 
     auto solution_items() const noexcept {
-        return std::ranges::views::transform(_best_sol, [this](auto && it) {
-            return *_permuted_items[static_cast<std::size_t>(
-                std::distance(_value_cost_pairs.cbegin(), it))];
+        return std::ranges::views::transform(_best_sol, [this](auto && p) {
+            return std::make_pair(
+                *_permuted_items[static_cast<std::size_t>(
+                    std::distance(_value_cost_pairs.cbegin(), p.first))],
+                p.second);
         });
     }
 
     auto solution_value() const noexcept {
         Value sum = 0;
-        for(auto && it : _best_sol) sum += it->first;
+        for(auto && [it, count] : _best_sol)
+            sum += it->first * static_cast<Value>(count);
         return sum;
     }
 
     auto solution_cost() const noexcept {
         Cost sum = 0;
-        for(auto && it : _best_sol) sum += it->second;
+        for(auto && [it, count] : _best_sol)
+            sum += it->second * static_cast<Cost>(count);
         return sum;
     }
 };
 
 template <typename _ItemRange, typename _ValueMap, typename _CostMap>
-knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
-    -> knapsack_bnb<std::ranges::views::all_t<_ItemRange>,
-                    views::mapping_all_t<_ValueMap>,
-                    views::mapping_all_t<_CostMap>>;
+unbounded_knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
+    -> unbounded_knapsack_bnb<std::ranges::views::all_t<_ItemRange>,
+                              views::mapping_all_t<_ValueMap>,
+                              views::mapping_all_t<_CostMap>>;
 
 }  // namespace melon
 }  // namespace fhamonic
