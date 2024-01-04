@@ -33,7 +33,8 @@ add_executable(
   undirect_test.cpp
   kruskal_test.cpp
   disjoint_sets_test.cpp
-  knapsack_bnb_test.cpp)
+  knapsack_bnb_test.cpp
+  unbounded_knapsack_bnb_test.cpp)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)
