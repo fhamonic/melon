@@ -73,12 +73,13 @@ private:
                 if(current_sol_value + budget_left * value_cost_ratio(*it) <=
                    best_sol_value)
                     goto backtrack;
-            begin:
+            begin: {
                 const std::size_t nb_take =
                     static_cast<std::size_t>(budget_left / it->second);
                 current_sol_value += static_cast<Value>(nb_take) * it->first;
                 budget_left -= static_cast<Cost>(nb_take) * it->second;
                 current_sol.emplace_back(it, nb_take);
+            }
             }
             if(current_sol_value <= best_sol_value) continue;
             best_sol_value = current_sol_value;
@@ -107,12 +108,13 @@ private:
                 if(current_sol_value + budget_left * value_cost_ratio(*it) <=
                    best_sol_value)
                     goto backtrack;
-            begin:
+            begin: {
                 const std::size_t nb_take =
                     static_cast<std::size_t>(budget_left / it->second);
                 current_sol_value += static_cast<Value>(nb_take) * it->first;
                 budget_left -= static_cast<Cost>(nb_take) * it->second;
                 current_sol.emplace_back(it, nb_take);
+            }
             }
             if(current_sol_value <= best_sol_value) continue;
             best_sol_value = current_sol_value;

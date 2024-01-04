@@ -16,11 +16,9 @@ GTEST_TEST(unbounded_knapsack_bnb, test) {
     auto alg = unbounded_knapsack_bnb(items, values, costs, budget);
     alg.run();
 
-    ASSERT_TRUE(true);
-
-    // ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {std::pair{0u, 1}, std::pair{2u, 3}}));
-    // ASSERT_EQ(alg.solution_value(), 13);
-    // ASSERT_EQ(alg.solution_cost(), 15);
+    ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {std::pair{0u, 1}, std::pair{2u, 3}}));
+    ASSERT_EQ(alg.solution_value(), 13);
+    ASSERT_EQ(alg.solution_cost(), 15);
 }
 
 GTEST_TEST(unbounded_knapsack_bnb, test2) {
@@ -34,9 +32,7 @@ GTEST_TEST(unbounded_knapsack_bnb, test2) {
         budget);
     alg.run();
 
-    ASSERT_TRUE(true);
-
-    // ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {std::pair{0u, 1}, std::pair{2u, 3}}));
-    // ASSERT_EQ(alg.solution_value(), 13);
-    // ASSERT_EQ(alg.solution_cost(), 15);
+    ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {std::pair{0u, 1}, std::pair{2u, 3}}));
+    ASSERT_EQ(alg.solution_value(), 13);
+    ASSERT_EQ(alg.solution_cost(), 15);
 }
