@@ -8,22 +8,21 @@ class CompressorRecipe(ConanFile):
     version="0.5"
     license = "BSL-1.0"
     description="A modern and efficient graph library using C++20 ranges and concepts."
-    homepage = "https://github.com/fhamonic/melon.git"
-    #url = ""
-    settings = "os", "compiler", "arch", "build_type"
+    homepage = "https://github.com/fhamonic/melon"
+    url = "https://github.com/fhamonic/melon.git"
+    settings = "os", "arch", "compiler", "build_type"
     package_type = "header-library"
     exports_sources = "include/*", "cmake/*", "CMakeLists.txt", "test/*"
     no_copy_source = True
     generators = "CMakeToolchain", "CMakeDeps"
-    build_policy = "missing"
 
     def requirements(self):
         self.requires("range-v3/[>=0.11.0]")
         self.requires("fmt/[>=10.0.0]")
+        self.test_requires("gtest/[>=1.10.0 <cci]")
         
     def build_requirements(self):
         self.tool_requires("cmake/[>=3.19.0]")
-        self.test_requires("gtest/[>=1.10.0 <cci]")
 
     def generate(self):
         print("conanfile.py: IDE include dirs:")
