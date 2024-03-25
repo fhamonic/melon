@@ -11,7 +11,7 @@ debug:
 	conan build . -of=${BUILD_DIR} -b=missing -pr=${CONAN_PROFILE}
 
 package:
-	conan create . -u
+	conan create . -u -b=missing
 	
 clean:
 	@rm -rf CMakeUserPresets.json
