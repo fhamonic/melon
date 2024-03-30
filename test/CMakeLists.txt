@@ -42,11 +42,12 @@ gtest_discover_tests(melon_test)
 execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
                 OUTPUT_VARIABLE LIBASAN_PATH
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
-  target_compile_options(melon_test PRIVATE -fsanitize=address)
-  target_link_options(melon_test PRIVATE -fno-omit-frame-pointer -fsanitize=address -lpthread)
-  target_link_libraries(melon_test "${LIBASAN_PATH}")
-endif()
+                message("cxx : ${CMAKE_CXX_COMPILER}")
+                message("libasan : ${LIBASAN_PATH}")
+# if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
+#   target_compile_options(melon_test PRIVATE -fsanitize=address)
+#   target_link_options(melon_test PRIVATE -fno-omit-frame-pointer -fsanitize=address -lpthread)
+#   target_link_libraries(melon_test "${LIBASAN_PATH}")
+# endif()
 
 

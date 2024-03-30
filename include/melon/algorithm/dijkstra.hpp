@@ -16,9 +16,9 @@
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
-#include "melon/utility/algorithmic_generator.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace fhamonic {
@@ -33,19 +33,17 @@ concept dijkstra_trait = semiring<typename _Traits::semiring> &&
 };
 // clang-format on
 
-template <typename _Graph, typename _LengthMap>
+template <typename _Graph, typename _ValueType>
 struct dijkstra_default_traits {
-    using semiring =
-        shortest_path_semiring<mapped_value_t<_LengthMap, arc_t<_Graph>>>;
+    using semiring = shortest_path_semiring<_ValueType>;
     struct entry_cmp {
         [[nodiscard]] constexpr bool operator()(
             const auto & e1, const auto & e2) const noexcept {
             return semiring::less(e1.second, e2.second);
         }
     };
-    using heap = d_ary_heap<2, vertex_t<_Graph>,
-                            mapped_value_t<_LengthMap, arc_t<_Graph>>,
-                            entry_cmp, vertex_map_t<_Graph, std::size_t>>;
+    using heap = d_ary_heap<2, vertex_t<_Graph>, _ValueType, entry_cmp,
+                            vertex_map_t<_Graph, std::size_t>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -236,13 +234,15 @@ public:
 };
 
 template <typename _Graph, typename _LengthMap,
-          typename _Traits = dijkstra_default_traits<_Graph, _LengthMap>>
+          typename _Traits = dijkstra_default_traits<
+              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
 dijkstra(_Graph &&, _LengthMap &&)
     -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
                 _Traits>;
 
 template <typename _Graph, typename _LengthMap,
-          typename _Traits = dijkstra_default_traits<_Graph, _LengthMap>>
+          typename _Traits = dijkstra_default_traits<
+              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
 dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
     -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
                 _Traits>;

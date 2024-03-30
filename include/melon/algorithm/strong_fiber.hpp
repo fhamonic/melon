@@ -28,11 +28,11 @@ concept strong_fiber_trait = semiring<typename _Traits::semiring> &&
 };
 // clang-format on
 
-template <outward_incidence_graph _Graph, typename _Traits>
+template <outward_incidence_graph _Graph, typename _ValueType>
 struct strong_fiber_default_traits {
-    using semiring = shortest_path_semiring<_Traits>;
-    template <typename CMP = std::less<std::pair<vertex_t<_Graph>, _Traits>>>
-    using heap = d_ary_heap<2, vertex_t<_Graph>, _Traits, CMP,
+    using semiring = shortest_path_semiring<_ValueType>;
+    template <typename CMP = std::less<std::pair<vertex_t<_Graph>, _ValueType>>>
+    using heap = d_ary_heap<2, vertex_t<_Graph>, _ValueType, CMP,
                             vertex_map_t<_Graph, std::size_t>>;
 
     static constexpr bool strictly_strong = false;
