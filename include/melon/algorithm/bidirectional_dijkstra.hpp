@@ -14,8 +14,8 @@
 #include <range/v3/view/concat.hpp>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/map_if.hpp"
 #include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -33,12 +33,10 @@ concept bidirectional_dijkstra_trait = semiring<typename _Traits::semiring> &&
 };
 // clang-format on
 
-template <typename _Graph, typename _LengthMap>
+template <typename _Graph, typename _ValueType>
 struct bidirectional_dijkstra_default_traits {
-    using semiring =
-        shortest_path_semiring<mapped_value_t<_LengthMap, arc_t<_Graph>>>;
-    using heap = d_ary_heap<2, vertex_t<_Graph>,
-                            mapped_value_t<_LengthMap, arc_t<_Graph>>,
+    using semiring = shortest_path_semiring<_ValueType>;
+    using heap = d_ary_heap<2, vertex_t<_Graph>, _ValueType,
                             decltype([](const auto & e1, const auto & e2) {
                                 return semiring::less(e1.second, e2.second);
                             }),
@@ -49,8 +47,7 @@ struct bidirectional_dijkstra_default_traits {
 
 template <outward_incidence_graph _Graph,
           input_mapping<arc_t<_Graph>> _LengthMap,
-          bidirectional_dijkstra_trait _Traits =
-              bidirectional_dijkstra_default_traits<_Graph, _LengthMap>>
+          bidirectional_dijkstra_trait _Traits>
     requires inward_incidence_graph<_Graph> && has_vertex_map<_Graph>
 class bidirectional_dijkstra {
 private:
@@ -64,15 +61,16 @@ private:
     using optional_arc = std::optional<arc>;
     struct no_forward_pred_arcs_map {};
     using forward_pred_arcs_map =
-       vertex_map_if<_Traits::store_path, _Graph,
-                                        optional_arc, no_forward_pred_arcs_map>;
+        vertex_map_if<_Traits::store_path, _Graph, optional_arc,
+                      no_forward_pred_arcs_map>;
     struct no_reverse_pred_arcs_map {};
-    using reverse_pred_arcs_map = vertex_map_if<_Traits::store_path, _Graph,
-                                        optional_arc, no_reverse_pred_arcs_map>;
+    using reverse_pred_arcs_map =
+        vertex_map_if<_Traits::store_path, _Graph, optional_arc,
+                      no_reverse_pred_arcs_map>;
     struct no_optional_midpoint {};
     using optional_midpoint =
         std::conditional_t<_Traits::store_path, std::optional<vertex>,
-                         no_optional_midpoint>;
+                           no_optional_midpoint>;
 
 private:
     _Graph _graph;
@@ -287,15 +285,15 @@ public:
 };
 
 template <typename _Graph, typename _LengthMap,
-          typename _Traits =
-              bidirectional_dijkstra_default_traits<_Graph, _LengthMap>>
+          typename _Traits = bidirectional_dijkstra_default_traits<
+              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
 bidirectional_dijkstra(_Graph &&, _LengthMap &&)
     -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
                               views::mapping_all_t<_LengthMap>, _Traits>;
 
 template <typename _Graph, typename _LengthMap,
-          typename _Traits =
-              bidirectional_dijkstra_default_traits<_Graph, _LengthMap>>
+          typename _Traits = bidirectional_dijkstra_default_traits<
+              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
 bidirectional_dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
                        const vertex_t<_Graph> &)
     -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
