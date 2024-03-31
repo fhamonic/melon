@@ -19,7 +19,7 @@ add_executable(
   d_ary_heap_test.cpp
   dijkstra_test.cpp
   bidirectional_dijkstra_test.cpp
-  strong_fiber_test.cpp
+  concurrent_dijkstras_test.cpp
   intrusive_view_test.cpp
   edmonds_karp_test.cpp
   erdos_renyi_test.cpp
@@ -39,11 +39,13 @@ target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)
 
-execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
-                OUTPUT_VARIABLE LIBASAN_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
-                message("cxx : ${CMAKE_CXX_COMPILER}")
-                message("libasan : ${LIBASAN_PATH}")
+# execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
+#                 OUTPUT_VARIABLE LIBASAN_PATH
+#                 OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+# message("cxx : ${CMAKE_CXX_COMPILER}")
+# message("libasan : ${LIBASAN_PATH}")
+
 # if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
 #   target_compile_options(melon_test PRIVATE -fsanitize=address)
 #   target_link_options(melon_test PRIVATE -fno-omit-frame-pointer -fsanitize=address -lpthread)
