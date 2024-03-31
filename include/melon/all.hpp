@@ -23,7 +23,7 @@
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/algorithm/dinitz.hpp"
 #include "melon/algorithm/edmonds_karp.hpp"
-#include "melon/algorithm/strong_fiber.hpp"
+#include "melon/algorithm/concurrent_dijkstras.hpp"
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/container/static_map.hpp"
