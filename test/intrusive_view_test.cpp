@@ -13,7 +13,7 @@ GTEST_TEST(intrusive_range, test) {
     std::vector<int> values = {1, 2, 6, 3, 7};
 
     auto r = intrusive_view(
-        0ul, [&values](const std::size_t i) -> int & { return values[i]; },
+        std::size_t{0u}, [&values](const std::size_t i) -> int & { return values[i]; },
         [](const std::size_t i) -> std::size_t { return i + 1; },
         [n = values.size()](const std::size_t i) -> std::size_t {
             return i < n;
