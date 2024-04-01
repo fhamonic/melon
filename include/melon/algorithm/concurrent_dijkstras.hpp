@@ -92,15 +92,14 @@ public:
 
     template <typename _BLM>
     concurrent_dijkstras & set_blue_length_map(
-        const _BLM & blue_length_map) noexcept {
+        _BLM && blue_length_map) noexcept {
         _blue_length_map =
             views::mapping_all(std::forward<_BLM>(blue_length_map));
         return *this;
     }
 
     template <typename _RLM>
-    concurrent_dijkstras & set_red_length_map(
-        const _RLM & red_length_map) noexcept {
+    concurrent_dijkstras & set_red_length_map(_RLM && red_length_map) noexcept {
         _red_length_map =
             views::mapping_all(std::forward<_RLM>(red_length_map));
         return *this;
@@ -210,8 +209,7 @@ public:
                                             t_dist.first, _red_length_map[a]));
                 }
             }
-        } while(_nb_blue_candidates > 0 &&
-                !_heap.top().second.second);
+        } while(_nb_blue_candidates > 0 && !_heap.top().second.second);
     }
 
     constexpr void init() noexcept {
