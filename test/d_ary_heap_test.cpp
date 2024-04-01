@@ -13,27 +13,27 @@ using namespace fhamonic::melon;
 
 GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-    d_ary_heap<2, std::size_t, int> heap;
-    for(std::size_t i = 0; i < datas.size(); ++i) {
+    d_ary_heap<2, unsigned int, int> heap;
+    for(unsigned int i = 0; i < datas.size(); ++i) {
         heap.push(i, datas[i]);
     }
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(5ul, 11));
+    ASSERT_EQ(heap.top(), std::make_pair(5u, 11));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(1ul, 7));
+    ASSERT_EQ(heap.top(), std::make_pair(1u, 7));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(4ul, 6));
+    ASSERT_EQ(heap.top(), std::make_pair(4u, 6));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(3ul, 5));
+    ASSERT_EQ(heap.top(), std::make_pair(3u, 5));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(2ul, 3));
+    ASSERT_EQ(heap.top(), std::make_pair(2u, 3));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(0ul, 0));
+    ASSERT_EQ(heap.top(), std::make_pair(0u, 0));
     heap.pop();
     ASSERT_TRUE(heap.empty());
 }
@@ -113,32 +113,32 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
 
 GTEST_TEST(d_ary_heap, 2_heap_promote_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-    d_ary_heap<2, std::size_t, int> heap;
-    for(std::size_t i = 0; i < datas.size(); ++i) {
+    d_ary_heap<2, unsigned int, int> heap;
+    for(unsigned int i = 0; i < datas.size(); ++i) {
         heap.push(i, datas[i]);
     }
-    heap.promote(3ul, 8);
+    heap.promote(3u, 8);
 
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(5ul, 11));
+    ASSERT_EQ(heap.top(), std::make_pair(5u, 11));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(3ul, 8));
+    ASSERT_EQ(heap.top(), std::make_pair(3u, 8));
     heap.pop();
 
-    heap.promote(0ul, 9);
+    heap.promote(0u, 9);
 
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(0ul, 9));
+    ASSERT_EQ(heap.top(), std::make_pair(0u, 9));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(1ul, 7));
+    ASSERT_EQ(heap.top(), std::make_pair(1u, 7));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(4ul, 6));
+    ASSERT_EQ(heap.top(), std::make_pair(4u, 6));
     heap.pop();
     ASSERT_FALSE(heap.empty());
-    ASSERT_EQ(heap.top(), std::make_pair(2ul, 3));
+    ASSERT_EQ(heap.top(), std::make_pair(2u, 3));
     heap.pop();
     ASSERT_TRUE(heap.empty());
 }

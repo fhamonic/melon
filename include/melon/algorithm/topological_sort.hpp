@@ -34,7 +34,7 @@ public:
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
     using reached_map = vertex_map_t<_Graph, bool>;
-    using remaining_in_degree_map = vertex_map_t<_Graph, long unsigned int>;
+    using remaining_in_degree_map = vertex_map_t<_Graph, std::size_t>;
 
 private:
     _Graph _graph;
