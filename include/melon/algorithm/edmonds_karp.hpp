@@ -41,8 +41,8 @@ public:
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _bfs_reached_map(create_vertex_map<bool>(_graph))
         , _bfs_pred_arc(create_vertex_map<arc>(_graph)) {
-        if constexpr(has_nb_vertices<_Graph>) {
-            _bfs_queue.reserve(nb_vertices(_graph));
+        if constexpr(has_num_vertices<_Graph>) {
+            _bfs_queue.reserve(num_vertices(_graph));
         }
         reset();
     }

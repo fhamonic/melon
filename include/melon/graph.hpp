@@ -58,23 +58,23 @@ using vertex_t = std::ranges::range_value_t<vertices_range_t<_Tp>>;
 
 namespace __cust_access {
 template <typename _Tp>
-concept __member_nb_vertices = requires(const _Tp & __t) {
-    { __t.nb_vertices() } -> std::integral;
+concept __member_num_vertices = requires(const _Tp & __t) {
+    { __t.num_vertices() } -> std::integral;
 };
 
 template <typename _Tp>
-concept __adl_nb_vertices = requires(const _Tp & __t) {
-    { nb_vertices(__t) } -> std::integral;
+concept __adl_num_vertices = requires(const _Tp & __t) {
+    { num_vertices(__t) } -> std::integral;
 };
 
-struct _NbVertices {
+struct _NumVertices {
 private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
-        if constexpr(__member_nb_vertices<_Tp>)
-            return noexcept(std::declval<_Tp &>().nb_vertices());
-        else if constexpr(__adl_nb_vertices<_Tp>)
-            return noexcept(nb_vertices(std::declval<_Tp &>()));
+        if constexpr(__member_num_vertices<_Tp>)
+            return noexcept(std::declval<_Tp &>().num_vertices());
+        else if constexpr(__adl_num_vertices<_Tp>)
+            return noexcept(num_vertices(std::declval<_Tp &>()));
         else
             return noexcept(
                 std::ranges::size(melon::vertices(std::declval<_Tp &>())));
@@ -82,14 +82,14 @@ private:
 
 public:
     template <typename _Tp>
-        requires __member_nb_vertices<_Tp> || __adl_nb_vertices<_Tp> ||
+        requires __member_num_vertices<_Tp> || __adl_num_vertices<_Tp> ||
                  std::ranges::sized_range<vertices_range_t<_Tp>>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
         noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_nb_vertices<_Tp>)
-            return __t.nb_vertices();
-        else if constexpr(__adl_nb_vertices<_Tp>)
-            return nb_vertices(__t);
+        if constexpr(__member_num_vertices<_Tp>)
+            return __t.num_vertices();
+        else if constexpr(__adl_num_vertices<_Tp>)
+            return num_vertices(__t);
         else
             return std::ranges::size(melon::vertices(__t));
     }
@@ -97,7 +97,7 @@ public:
 }  // namespace __cust_access
 
 inline namespace __cust {
-inline constexpr __cust_access::_NbVertices nb_vertices{};
+inline constexpr __cust_access::_NumVertices num_vertices{};
 }  // namespace __cust
 
 namespace __cust_access {
@@ -381,37 +381,37 @@ inline constexpr __cust_access::_InDegree in_degree{};
 
 namespace __cust_access {
 template <typename _Tp>
-concept __member_nb_arcs = requires(const _Tp & __t) {
-    { __t.nb_arcs() } -> std::integral;
+concept __member_num_arcs = requires(const _Tp & __t) {
+    { __t.num_arcs() } -> std::integral;
 };
 
 template <typename _Tp>
-concept __adl_nb_arcs = requires(const _Tp & __t) {
-    { nb_arcs(__t) } -> std::integral;
+concept __adl_num_arcs = requires(const _Tp & __t) {
+    { num_arcs(__t) } -> std::integral;
 };
 
-struct _NbArcs {
+struct _NumArcs {
 private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
-        if constexpr(__member_nb_arcs<_Tp>)
-            return noexcept(std::declval<_Tp &>().nb_arcs());
-        else if constexpr(__adl_nb_arcs<_Tp>)
-            return noexcept(nb_arcs(std::declval<_Tp &>()));
+        if constexpr(__member_num_arcs<_Tp>)
+            return noexcept(std::declval<_Tp &>().num_arcs());
+        else if constexpr(__adl_num_arcs<_Tp>)
+            return noexcept(num_arcs(std::declval<_Tp &>()));
         else
             return noexcept(std::ranges::size(_Arcs{}(std::declval<_Tp &>())));
     }
 
 public:
     template <typename _Tp>
-        requires __member_nb_arcs<_Tp> || __adl_nb_arcs<_Tp> ||
+        requires __member_num_arcs<_Tp> || __adl_num_arcs<_Tp> ||
                  std::ranges::sized_range<arcs_range_t<_Tp>>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
         noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_nb_arcs<_Tp>)
-            return __t.nb_arcs();
-        else if constexpr(__adl_nb_arcs<_Tp>)
-            return nb_arcs(__t);
+        if constexpr(__member_num_arcs<_Tp>)
+            return __t.num_arcs();
+        else if constexpr(__adl_num_arcs<_Tp>)
+            return num_arcs(__t);
         else
             return std::ranges::size(_Arcs{}(__t));
     }
@@ -419,7 +419,7 @@ public:
 }  // namespace __cust_access
 
 inline namespace __cust {
-inline constexpr __cust_access::_NbArcs nb_arcs{};
+inline constexpr __cust_access::_NumArcs num_arcs{};
 }  // namespace __cust
 
 namespace __cust_access {
@@ -772,15 +772,15 @@ template <typename _Tp>
 concept has_vertices = requires(const _Tp & __t) { melon::vertices(__t); };
 
 template <typename _Tp>
-concept has_nb_vertices =
-    has_vertices<_Tp> && requires(const _Tp & __t) { melon::nb_vertices(__t); };
+concept has_num_vertices =
+    has_vertices<_Tp> && requires(const _Tp & __t) { melon::num_vertices(__t); };
 
 template <typename _Tp>
 concept has_arcs = requires(const _Tp & __t) { melon::arcs(__t); };
 
 template <typename _Tp>
-concept has_nb_arcs =
-    has_arcs<_Tp> && requires(const _Tp & __t) { melon::nb_arcs(__t); };
+concept has_num_arcs =
+    has_arcs<_Tp> && requires(const _Tp & __t) { melon::num_arcs(__t); };
 
 template <typename _Tp>
 concept graph = has_vertices<_Tp> && has_arcs<_Tp> &&

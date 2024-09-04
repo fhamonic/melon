@@ -44,16 +44,16 @@ private:
     vertex _first_vertex;
     vertex _first_free_vertex;
     arc _first_free_arc;
-    std::size_t _nb_vertices;
-    std::size_t _nb_arcs;
+    std::size_t _num_vertices;
+    std::size_t _num_arcs;
 
 public:
     [[nodiscard]] constexpr mutable_digraph() noexcept
         : _first_vertex(INVALID_VERTEX)
         , _first_free_vertex(INVALID_VERTEX)
         , _first_free_arc(INVALID_ARC)
-        , _nb_vertices(0)
-        , _nb_arcs(0){};
+        , _num_vertices(0)
+        , _num_arcs(0){};
     [[nodiscard]] constexpr mutable_digraph(const mutable_digraph & graph) =
         default;
     [[nodiscard]] constexpr mutable_digraph(mutable_digraph && graph) = default;
@@ -70,10 +70,10 @@ public:
         if(a >= _arcs.size()) return false;
         return _arcs_filter[a];
     }
-    [[nodiscard]] constexpr auto nb_vertices() const noexcept {
-        return _nb_vertices;
+    [[nodiscard]] constexpr auto num_vertices() const noexcept {
+        return _num_vertices;
     }
-    [[nodiscard]] constexpr auto nb_arcs() const noexcept { return _nb_arcs; }
+    [[nodiscard]] constexpr auto num_arcs() const noexcept { return _num_arcs; }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
         return intrusive_view(
@@ -155,7 +155,7 @@ public:
             _vertices[_first_vertex].prev_vertex = new_vertex;
         }
         _first_vertex = new_vertex;
-        ++_nb_vertices;
+        ++_num_vertices;
         return new_vertex;
     }
 
@@ -183,7 +183,7 @@ public:
         if(froms.first_out_arc != INVALID_ARC)
             _arcs[froms.first_out_arc].prev_out_arc = new_arc;
         froms.first_out_arc = new_arc;
-        ++_nb_arcs;
+        ++_num_arcs;
         return new_arc;
     }
 
@@ -216,7 +216,7 @@ private:
             last_in_arc = a;
             remove_from_source_out_arcs(a);
             _arcs_filter[a] = false;
-            --_nb_arcs;
+            --_num_arcs;
         }
         arc last_out_arc = INVALID_ARC;
         for(const arc & a : out_arcs(v)) {
@@ -225,7 +225,7 @@ private:
             // once removed from the targets in arcs .next_in_arc is free
             _arcs[a].next_in_arc = _arcs[a].next_out_arc;
             _arcs_filter[a] = false;
-            --_nb_arcs;
+            --_num_arcs;
         }
         // out_arcs were linked by .next_out_arc
         // [first_out_arc, last_out_arc] are now linked by .next_in_arc
@@ -255,7 +255,7 @@ public:
         vs.next_vertex = _first_free_vertex;
         _first_free_vertex = v;
         _vertices_filter[v] = false;
-        --_nb_vertices;
+        --_num_vertices;
     }
     constexpr void remove_arc(const arc a) noexcept {
         assert(is_valid_arc(a));
@@ -264,7 +264,7 @@ public:
         _arcs[a].next_in_arc = _first_free_arc;
         _first_free_arc = a;
         _arcs_filter[a] = false;
-        --_nb_arcs;
+        --_num_arcs;
     }
     constexpr void change_arc_target(const arc a, const vertex t) noexcept {
         assert(is_valid_arc(a));

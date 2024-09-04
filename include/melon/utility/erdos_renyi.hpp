@@ -11,17 +11,17 @@ namespace fhamonic {
 namespace melon {
 
 template <typename G>
-G erdos_renyi(const std::size_t nb_vertices,
+G erdos_renyi(const std::size_t num_vertices,
                            const double expected_density) {
     using vertex = vertex_t<G>;
 
     static std::uniform_real_distribution<double> distr{0.0, 1.0};
     static std::mt19937 engine{std::random_device{}()};
 
-    static_digraph_builder<G> builder(nb_vertices);
+    static_digraph_builder<G> builder(num_vertices);
 
-    for(std::size_t i = 0; i < nb_vertices; ++i) {
-        for(std::size_t j = 0; j < nb_vertices; ++j) {
+    for(std::size_t i = 0; i < num_vertices; ++i) {
+        for(std::size_t j = 0; j < num_vertices; ++j) {
             if(i == j) continue;
             if(distr(engine) < expected_density)
                 builder.add_arc(vertex(i), vertex(j));

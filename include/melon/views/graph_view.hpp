@@ -41,15 +41,15 @@ public:
 
     constexpr G & base() const { return *_graph; }
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const
-        requires requires(G g) { melon::nb_vertices(g); }
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const
+        requires requires(G g) { melon::num_vertices(g); }
     {
-        return melon::nb_vertices(*_graph);
+        return melon::num_vertices(*_graph);
     }
-    [[nodiscard]] constexpr decltype(auto) nb_arcs() const noexcept
-        requires requires(G g) { melon::nb_arcs(g); }
+    [[nodiscard]] constexpr decltype(auto) num_arcs() const noexcept
+        requires requires(G g) { melon::num_arcs(g); }
     {
-        return melon::nb_arcs(*_graph);
+        return melon::num_arcs(*_graph);
     }
 
     [[nodiscard]] constexpr decltype(auto) vertices() const noexcept {
@@ -167,15 +167,15 @@ public:
         return std::move(_graph);
     }
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const
-        requires requires(G g) { melon::nb_vertices(g); }
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const
+        requires requires(G g) { melon::num_vertices(g); }
     {
-        return melon::nb_vertices(_graph);
+        return melon::num_vertices(_graph);
     }
-    [[nodiscard]] constexpr decltype(auto) nb_arcs() const noexcept
-        requires requires(G g) { melon::nb_arcs(g); }
+    [[nodiscard]] constexpr decltype(auto) num_arcs() const noexcept
+        requires requires(G g) { melon::num_arcs(g); }
     {
-        return melon::nb_arcs(_graph);
+        return melon::num_arcs(_graph);
     }
 
     [[nodiscard]] constexpr decltype(auto) vertices() const noexcept {

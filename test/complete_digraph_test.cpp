@@ -38,8 +38,8 @@ GTEST_TEST(complete_digraph, empty_constructor) {
 GTEST_TEST(complete_digraph, k4) {
     G graph(4);
 
-    ASSERT_EQ(nb_vertices(graph), 4);
-    ASSERT_EQ(nb_arcs(graph), 12);
+    ASSERT_EQ(num_vertices(graph), 4);
+    ASSERT_EQ(num_arcs(graph), 12);
 
     ASSERT_TRUE(EQ_MULTISETS(out_arcs(graph, 0), {0, 1, 2}));
     ASSERT_TRUE(EQ_MULTISETS(out_arcs(graph, 1), {3, 4, 5}));

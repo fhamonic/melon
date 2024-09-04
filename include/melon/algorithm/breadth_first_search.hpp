@@ -34,7 +34,7 @@ private:
                   "storing predecessor arcs requires outward_incidence_graph.");
 
     using cursor =
-        std::conditional_t<has_nb_vertices<_Graph>,
+        std::conditional_t<has_num_vertices<_Graph>,
                            typename std::vector<vertex>::iterator, int>;
 
 private:
@@ -60,8 +60,8 @@ public:
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _dist_map(_graph) {
-        if constexpr(has_nb_vertices<_Graph>) {
-            _queue.reserve(nb_vertices(_graph));
+        if constexpr(has_num_vertices<_Graph>) {
+            _queue.reserve(num_vertices(_graph));
             _queue_current = _queue.begin();
         } else {
             _queue_current = 0;
@@ -86,7 +86,7 @@ public:
 
     constexpr breadth_first_search & reset() noexcept {
         _queue.resize(0);
-        if constexpr(has_nb_vertices<_Graph>) {
+        if constexpr(has_num_vertices<_Graph>) {
             _queue_current = _queue.begin();
         } else {
             _queue_current = 0;
@@ -104,7 +104,7 @@ public:
     }
 
     [[nodiscard]] constexpr bool finished() const noexcept {
-        if constexpr(has_nb_vertices<_Graph>) {
+        if constexpr(has_num_vertices<_Graph>) {
             return _queue_current == _queue.end();
         } else {
             return _queue_current == _queue.size();
@@ -113,7 +113,7 @@ public:
 
     [[nodiscard]] constexpr const vertex & current() const noexcept {
         assert(!finished());
-        if constexpr(has_nb_vertices<_Graph>) {
+        if constexpr(has_num_vertices<_Graph>) {
             return *_queue_current;
         } else {
             return _queue[_queue_current];

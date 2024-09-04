@@ -35,42 +35,42 @@ public:
     static_digraph & operator=(const static_digraph &) = default;
     static_digraph & operator=(static_digraph &&) = default;
 
-    [[nodiscard]] constexpr auto nb_vertices() const noexcept {
+    [[nodiscard]] constexpr auto num_vertices() const noexcept {
         return _out_arc_begin.size();
     }
-    [[nodiscard]] constexpr auto nb_arcs() const noexcept {
+    [[nodiscard]] constexpr auto num_arcs() const noexcept {
         return _arc_target.size();
     }
 
     [[nodiscard]] constexpr bool is_valid_vertex(
         const vertex u) const noexcept {
-        return u < nb_vertices();
+        return u < num_vertices();
     }
     [[nodiscard]] constexpr bool is_valid_arc(const arc u) const noexcept {
-        return u < nb_arcs();
+        return u < num_arcs();
     }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
         return std::views::iota(static_cast<vertex>(0),
-                                static_cast<vertex>(nb_vertices()));
+                                static_cast<vertex>(num_vertices()));
     }
     [[nodiscard]] constexpr auto arcs() const noexcept {
         return std::views::iota(static_cast<arc>(0),
-                                static_cast<arc>(nb_arcs()));
+                                static_cast<arc>(num_arcs()));
     }
 
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::iota(
             _out_arc_begin[u],
-            (u + 1 < nb_vertices() ? _out_arc_begin[u + 1] : nb_arcs()));
+            (u + 1 < num_vertices() ? _out_arc_begin[u + 1] : num_arcs()));
     }
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::span(
             _in_arcs.data() + _in_arc_begin[u],
-            (u + 1 < nb_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
-                                   : _in_arcs.data() + nb_arcs()));
+            (u + 1 < num_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
+                                   : _in_arcs.data() + num_arcs()));
     }
 
     [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
@@ -93,54 +93,54 @@ public:
         assert(is_valid_vertex(u));
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
-            (u + 1 < nb_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
-                                   : _arc_target.data() + nb_arcs()));
+            (u + 1 < num_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
+                                   : _arc_target.data() + num_arcs()));
     }
 
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
-        return static_map<vertex, T>(nb_vertices());
+        return static_map<vertex, T>(num_vertices());
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map(
         const T & default_value) const noexcept {
-        return static_map<vertex, T>(nb_vertices(), default_value);
+        return static_map<vertex, T>(num_vertices(), default_value);
     }
 
     template <typename T>
     [[nodiscard]] constexpr auto create_arc_map() const noexcept {
-        return static_map<arc, T>(nb_arcs());
+        return static_map<arc, T>(num_arcs());
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_arc_map(
         const T & default_value) const noexcept {
-        return static_map<arc, T>(nb_arcs(), default_value);
+        return static_map<arc, T>(num_arcs(), default_value);
     }
 
 public:
     template <std::ranges::forward_range S, std::ranges::forward_range T>
         requires std::convertible_to<std::ranges::range_value_t<S>, vertex> &&
                      std::convertible_to<std::ranges::range_value_t<T>, vertex>
-    [[nodiscard]] static_digraph(const std::size_t & nb_vertices, S && sources,
+    [[nodiscard]] static_digraph(const std::size_t & num_vertices, S && sources,
                                  T && targets) noexcept
-        : _out_arc_begin(nb_vertices, 0)
+        : _out_arc_begin(num_vertices, 0)
         , _arc_target(std::forward<T>(targets))
         , _arc_source(std::forward<S>(sources))
-        , _in_arc_begin(nb_vertices, 0)
+        , _in_arc_begin(num_vertices, 0)
         , _in_arcs(_arc_target.size()) {
         assert(std::ranges::all_of(
-            sources, [n = nb_vertices](auto && v) { return v < n; }));
+            sources, [n = num_vertices](auto && v) { return v < n; }));
         assert(std::ranges::all_of(
-            targets, [n = nb_vertices](auto && v) { return v < n; }));
+            targets, [n = num_vertices](auto && v) { return v < n; }));
         assert(std::ranges::is_sorted(sources));
-        static_map<vertex, arc> in_arc_count(nb_vertices, 0);
+        static_map<vertex, arc> in_arc_count(num_vertices, 0);
         for(auto && s : sources) ++_out_arc_begin[s];
         for(auto && t : targets) ++in_arc_count[t];
         std::exclusive_scan(_out_arc_begin.data(),
-                            _out_arc_begin.data() + nb_vertices,
+                            _out_arc_begin.data() + num_vertices,
                             _out_arc_begin.data(), 0);
         std::exclusive_scan(in_arc_count.data(),
-                            in_arc_count.data() + nb_vertices,
+                            in_arc_count.data() + num_vertices,
                             _in_arc_begin.data(), 0);
         for(auto && a : arcs()) {
             vertex t = _arc_target[a];

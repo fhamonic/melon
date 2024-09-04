@@ -44,11 +44,11 @@ public:
     constexpr subgraph & operator=(const subgraph &) = default;
     constexpr subgraph & operator=(subgraph &&) = default;
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const noexcept
-        requires has_nb_vertices<_Graph> &&
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const noexcept
+        requires has_num_vertices<_Graph> &&
                  std::same_as<_VertexFilter, true_map>
     {
-        return melon::nb_vertices(_graph);
+        return melon::num_vertices(_graph);
     }
 
     void disable_vertex(const vertex & v) noexcept

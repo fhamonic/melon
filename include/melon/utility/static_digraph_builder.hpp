@@ -21,15 +21,15 @@ private:
     using arc = arc_t<G>;
     using property_maps = std::tuple<std::vector<ArcProperty>...>;
 
-    std::size_t _nb_vertices;
+    std::size_t _num_vertices;
     std::vector<vertex> _arc_sources;
     std::vector<vertex> _arc_targets;
     property_maps _arc_property_maps;
 
 public:
-    static_digraph_builder() noexcept : _nb_vertices(0) {}
-    static_digraph_builder(std::size_t nb_vertices_) noexcept
-        : _nb_vertices(nb_vertices_) {}
+    static_digraph_builder() noexcept : _num_vertices(0) {}
+    static_digraph_builder(std::size_t num_vertices_) noexcept
+        : _num_vertices(num_vertices_) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
@@ -41,7 +41,7 @@ private:
 public:
     static_digraph_builder & add_arc(vertex u, vertex v,
                                      ArcProperty... properties) noexcept {
-        assert(_nb_vertices > std::max(u, v));
+        assert(_num_vertices > std::max(u, v));
         _arc_sources.push_back(u);
         _arc_targets.push_back(v);
         add_properties(
@@ -66,7 +66,7 @@ public:
         return std::apply(
             [this](auto &&... property_map) {
                 return std::make_tuple(
-                    G(_nb_vertices, _arc_sources, _arc_targets),
+                    G(_num_vertices, _arc_sources, _arc_targets),
                     property_map...);
             },
             _arc_property_maps);

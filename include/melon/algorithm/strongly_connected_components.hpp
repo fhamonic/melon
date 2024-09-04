@@ -63,9 +63,9 @@ public:
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
         , _lowlink_map(
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT)) {
-        if constexpr(has_nb_vertices<_Graph>) {
-            _dfs_stack.reserve(nb_vertices(_graph));
-            _tarjan_stack.reserve(nb_vertices(_graph));
+        if constexpr(has_num_vertices<_Graph>) {
+            _dfs_stack.reserve(num_vertices(_graph));
+            _tarjan_stack.reserve(num_vertices(_graph));
         }
         advance();
     }

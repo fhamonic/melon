@@ -90,7 +90,7 @@ public:
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _dist_map(_graph) {
-        _queue.reserve(nb_vertices(g));
+        _queue.reserve(num_vertices(g));
         push_start_vertices();
     }
 
