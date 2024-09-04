@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.13)
 project(MelonUnitTests CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+ 
+# ################### Modules ####################
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+
+include(CompilerWarnings)
 
 # ################### Packages ###################
 find_package(range-v3)
@@ -16,6 +21,8 @@ target_include_directories(
     melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(melon INTERFACE range-v3::range-v3 fmt::fmt)
+
+set_project_warnings(melon)
 
 # ################# TEST target ##################
 add_executable(

@@ -131,6 +131,7 @@ GTEST_TEST(strongly_connected_components, graph1_components_count) {
 
     int component_count = 0;
     for(auto component : strongly_connected_components(graph)) {
+        (void)component;
         ++component_count;
     }
 
@@ -232,6 +233,7 @@ GTEST_TEST(strongly_connected_components, graph2_components_count) {
 
     int component_count = 0;
     for(auto component : strongly_connected_components(graph)) {
+        (void)component;
         ++component_count;
     }
 

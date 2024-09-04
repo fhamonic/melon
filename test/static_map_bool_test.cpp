@@ -45,7 +45,7 @@ GTEST_TEST(static_map_bool, size_init_constructor) {
     ASSERT_NE(map2.begin(), map.end());
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
-    auto test = [](const bool a) { return a; };
+    // auto test = [](const bool a) { return a; };
     // ASSERT_TRUE(std::ranges::all_of(std::views::values(map2), test));
     // ASSERT_TRUE(
     //     std::ranges::all_of(std::views::values(std::as_const(map2)), test));
@@ -55,7 +55,7 @@ GTEST_TEST(static_map_bool, size_init_constructor) {
     ASSERT_NE(map3.begin(), map.end());
     ASSERT_NE(std::as_const(map3).begin(), std::as_const(map).end());
 
-    auto test2 = [](const bool a) { return !a; };
+    // auto test2 = [](const bool a) { return !a; };
     // ASSERT_TRUE(std::ranges::all_of(std::views::values(map3), test2));
     // ASSERT_TRUE(
     //     std::ranges::all_of(std::views::values(std::as_const(map3)), test2));

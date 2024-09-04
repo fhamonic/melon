@@ -11,7 +11,7 @@ constexpr auto vertices(const G & g) { return std::views::iota(0ul, g.size()); }
 constexpr auto out_arcs(const G & g, std::size_t v) {
     return std::views::iota(g[v].cbegin(), g[v].cend());
 }
-constexpr auto arc_target(const G & g, const auto & a) { return *a; }
+constexpr auto arc_target(const G &, const auto & a) { return *a; }
 template <typename V>
 constexpr auto create_vertex_map(const G & g) {
     return std::vector<V>(g.size());

@@ -171,7 +171,7 @@ public:
             _permuted_items.emplace_back(it);
             _value_cost_pairs.emplace_back(value, cost);
         }
-        auto zip_view = ranges::view::zip(_permuted_items, _value_cost_pairs);
+        auto zip_view = ranges::views::zip(_permuted_items, _value_cost_pairs);
         ranges::sort(zip_view, [this](auto p1, auto p2) {
             return value_cost_ratio(p1.second) > value_cost_ratio(p2.second);
         });
