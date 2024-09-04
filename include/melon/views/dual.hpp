@@ -28,16 +28,16 @@ public:
     constexpr dual & operator=(const dual &) = default;
     constexpr dual & operator=(dual &&) = default;
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const requires
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const requires
         requires(P g) {
-        melon::nb_vertices(g);
+        melon::num_vertices(g);
     }
-    { return melon::nb_vertices(_planar_map.get()); }
-    [[nodiscard]] constexpr decltype(auto) nb_arcs() const noexcept requires
+    { return melon::num_vertices(_planar_map.get()); }
+    [[nodiscard]] constexpr decltype(auto) num_arcs() const noexcept requires
         requires(P g) {
-        melon::nb_arcs(g);
+        melon::num_arcs(g);
     }
-    { return melon::nb_arcs(_planar_map.get()); }
+    { return melon::num_arcs(_planar_map.get()); }
 
     [[nodiscard]] constexpr decltype(auto) vertices() const noexcept {
         return melon::faces(_planar_map.get());

@@ -49,8 +49,8 @@ public:
         , _remaining_in_arcs(
               create_vertex_map<consumable_range<in_arcs_range_t<_Graph>>>(
                   _graph)) {
-        if constexpr(has_nb_vertices<_Graph>) {
-            _bfs_queue.reserve(nb_vertices(_graph));
+        if constexpr(has_num_vertices<_Graph>) {
+            _bfs_queue.reserve(num_vertices(_graph));
         }
         reset();
     }

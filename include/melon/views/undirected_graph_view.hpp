@@ -47,10 +47,10 @@ public:
 
     constexpr G & base() const { return *_undirected_graph; }
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const
-        requires requires(G g) { melon::nb_vertices(g); }
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const
+        requires requires(G g) { melon::num_vertices(g); }
     {
-        return melon::nb_vertices(*_undirected_graph);
+        return melon::num_vertices(*_undirected_graph);
     }
     [[nodiscard]] constexpr decltype(auto) nb_edges() const noexcept
         requires requires(G g) { melon::nb_edges(g); }
@@ -143,10 +143,10 @@ public:
         return std::move(_undirected_graph);
     }
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const
-        requires requires(G g) { melon::nb_vertices(g); }
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const
+        requires requires(G g) { melon::num_vertices(g); }
     {
-        return melon::nb_vertices(_undirected_graph);
+        return melon::num_vertices(_undirected_graph);
     }
     [[nodiscard]] constexpr decltype(auto) nb_edges() const noexcept
         requires requires(G g) { melon::nb_edges(g); }

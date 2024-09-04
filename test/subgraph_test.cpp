@@ -30,10 +30,10 @@ GTEST_TEST(subgraph_views, static_graph) {
 
     for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph, u));
     ASSERT_FALSE(
-        is_valid_vertex(graph, vertex_t<static_digraph>(nb_vertices(graph))));
+        is_valid_vertex(graph, vertex_t<static_digraph>(num_vertices(graph))));
 
     for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph, a));
-    ASSERT_FALSE(is_valid_arc(graph, arc_t<static_digraph>(nb_arcs(graph))));
+    ASSERT_FALSE(is_valid_arc(graph, arc_t<static_digraph>(num_arcs(graph))));
 
     ASSERT_TRUE(
         EQ_RANGES(out_neighbors(graph, 0), subgraph_graph.out_neighbors(0)));

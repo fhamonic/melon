@@ -33,15 +33,15 @@ public:
     constexpr undirect & operator=(const undirect &) = default;
     constexpr undirect & operator=(undirect &&) = default;
 
-    [[nodiscard]] constexpr decltype(auto) nb_vertices() const
-        requires requires(_Graph g) { melon::nb_vertices(g); }
+    [[nodiscard]] constexpr decltype(auto) num_vertices() const
+        requires requires(_Graph g) { melon::num_vertices(g); }
     {
-        return melon::nb_vertices(_graph);
+        return melon::num_vertices(_graph);
     }
     [[nodiscard]] constexpr decltype(auto) nb_edges() const noexcept
-        requires requires(_Graph g) { melon::nb_arcs(g); }
+        requires requires(_Graph g) { melon::num_arcs(g); }
     {
-        return melon::nb_arcs(_graph);
+        return melon::num_arcs(_graph);
     }
 
     [[nodiscard]] constexpr decltype(auto) vertices() const noexcept {

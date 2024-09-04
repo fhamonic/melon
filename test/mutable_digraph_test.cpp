@@ -136,14 +136,14 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
             Operation op;
             for(;;) {
                 op = random_element(operations);
-                auto nb_vertices =
+                auto num_vertices =
                     std::ranges::distance(dummy_graph.vertices());
-                auto nb_arcs = std::ranges::distance(dummy_graph.arcs());
-                if(op == REMOVE_VERTEX && nb_vertices == 0) continue;
-                if(op == CREATE_ARC && nb_vertices < 2) continue;
-                if(op == REMOVE_ARC && nb_arcs == 0) continue;
+                auto num_arcs = std::ranges::distance(dummy_graph.arcs());
+                if(op == REMOVE_VERTEX && num_vertices == 0) continue;
+                if(op == CREATE_ARC && num_vertices < 2) continue;
+                if(op == REMOVE_ARC && num_arcs == 0) continue;
                 if((op == CHANGE_SOURCE || op == CHANGE_TARGET) &&
-                   (nb_arcs == 0 || nb_vertices < 2))
+                   (num_arcs == 0 || num_vertices < 2))
                     continue;
                 break;
             }
@@ -192,8 +192,8 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
 
             ASSERT_TRUE(EQ_MULTISETS(vertices(graph), dummy_graph.vertices()));
             ASSERT_TRUE(EQ_MULTISETS(arcs(graph), dummy_graph.arcs()));
-            ASSERT_EQ(nb_vertices(graph), dummy_graph.nb_vertices());
-            ASSERT_EQ(nb_arcs(graph), dummy_graph.nb_arcs());
+            ASSERT_EQ(num_vertices(graph), dummy_graph.num_vertices());
+            ASSERT_EQ(num_arcs(graph), dummy_graph.num_arcs());
             ASSERT_TRUE(
                 EQ_MULTISETS(arcs_entries(graph), dummy_graph.arcs_entries()));
 

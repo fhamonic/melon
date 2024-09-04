@@ -68,7 +68,7 @@ concept __adl_nb_edges = requires(const _Tp & __t) {
     { nb_edges(__t) } -> std::integral;
 };
 
-struct _NbEdges {
+struct _NumEdges {
 private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
@@ -98,7 +98,7 @@ public:
 }  // namespace __cust_access
 
 inline namespace __cust {
-inline constexpr __cust_access::_NbEdges nb_edges{};
+inline constexpr __cust_access::_NumEdges nb_edges{};
 }  // namespace __cust
 
 namespace __cust_access {

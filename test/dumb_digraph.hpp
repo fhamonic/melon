@@ -58,10 +58,10 @@ public:
                std::views::transform(
                    [](const arc_struct & as) -> arc { return as.id; });
     }
-    auto nb_vertices() const noexcept {
+    auto num_vertices() const noexcept {
         return std::ranges::distance(vertices());
     }
-    auto nb_arcs() const noexcept { return std::ranges::distance(arcs()); }
+    auto num_arcs() const noexcept { return std::ranges::distance(arcs()); }
     auto arcs_entries() const noexcept {
         return valid_arcs_structs() |
                std::views::transform(

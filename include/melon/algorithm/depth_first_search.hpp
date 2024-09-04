@@ -61,8 +61,8 @@ public:
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _dist_map(_graph) {
-        if constexpr(has_nb_vertices<_Graph>) {
-            _stack.reserve(nb_vertices(_graph));
+        if constexpr(has_num_vertices<_Graph>) {
+            _stack.reserve(num_vertices(_graph));
         }
     }
 
