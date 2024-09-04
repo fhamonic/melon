@@ -1,6 +1,6 @@
 #ifndef MELON_STATIC_FILTER_MAP_HPP
 #define MELON_STATIC_FILTER_MAP_HPP
-
+/*
 #include <algorithm>
 #include <bit>
 #include <cassert>
@@ -534,5 +534,5 @@ public:
 
 }  // namespace melon
 }  // namespace fhamonic
-
+*/
 #endif  // MELON_STATIC_FILTER_MAP_HPP

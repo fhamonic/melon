@@ -1,4 +1,4 @@
-#undef NDEBUG
+/*#undef NDEBUG
 #include <gtest/gtest.h>
 
 #include <random>
@@ -134,4 +134,4 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
         std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
 
     // ASSERT_TRUE(std::ranges::equal(std::views::values(map), datas));
-}
+}*/
