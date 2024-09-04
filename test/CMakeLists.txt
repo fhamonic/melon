@@ -1,6 +1,21 @@
+cmake_minimum_required(VERSION 3.13)
+project(MelonUnitTests CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+
 # ################### Packages ###################
+find_package(range-v3)
+find_package(fmt)
 find_package(GTest)
+
 include(GoogleTest)
+
+# ################### Library ####################
+add_library(melon INTERFACE)
+target_include_directories(
+    melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
+                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(melon INTERFACE range-v3::range-v3 fmt::fmt)
 
 # ################# TEST target ##################
 add_executable(
@@ -38,6 +53,8 @@ add_executable(
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)
+
+target_compile_options(melon_test INTERFACE -fconcepts-diagnostics-depth=10)
 
 # execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
 #                 OUTPUT_VARIABLE LIBASAN_PATH
