@@ -1,18 +1,23 @@
+import os
 from conan import ConanFile
-from conan.tools.cmake import CMake
 from conan.tools.files import copy
+from conan.tools.cmake import cmake_layout, CMake
 from conan.tools.build import check_min_cppstd
 
-class CompressorRecipe(ConanFile):
-    name="melon"
-    version="0.5"
+
+class MelonConan(ConanFile):
+    name = "melon"
+    version = "0.6.0"
+
     license = "BSL-1.0"
-    description="A modern and efficient graph library using C++20 ranges and concepts."
+    description = (
+        "A modern and efficient graph library using C++20 ranges and concepts."
+    )
     homepage = "https://github.com/fhamonic/melon"
     url = "https://github.com/fhamonic/melon.git"
+
     settings = "os", "arch", "compiler", "build_type"
-    package_type = "header-library"
-    exports_sources = "include/*", "cmake/*", "CMakeLists.txt", "test/*"
+    exports_sources = "include/*", "LICENSE", "test/*"
     no_copy_source = True
     generators = "CMakeToolchain", "CMakeDeps"
 
@@ -20,31 +25,34 @@ class CompressorRecipe(ConanFile):
         self.requires("range-v3/[>=0.11.0]")
         self.requires("fmt/[>=10.0.0]")
         self.test_requires("gtest/[>=1.10.0 <cci]")
-        
-    def build_requirements(self):
-        self.tool_requires("cmake/[>=3.19.0]")
-
-    def generate(self):
-        print("conanfile.py: IDE include dirs:")
-        for lib, dep in self.dependencies.items():
-            if not lib.headers:
-                continue
-            for inc in dep.cpp_info.includedirs:
-                print("\t" + inc)
 
     def validate(self):
         check_min_cppstd(self, 20)
 
+    def layout(self):
+        cmake_layout(self)
+
     def build(self):
-        if self.conf.get("tools.build:skip_test", default=False): return
-        cmake = CMake(self)
-        cmake.configure(variables={"ENABLE_TESTING":"ON"})
-        cmake.build()
-        cmake.test(cli_args=["CTEST_OUTPUT_ON_FAILURE=1"])
-        
+        if not self.conf.get("tools.build:skip_test", default=False):
+            cmake = CMake(self)
+            cmake.configure(build_script_folder="test")
+            cmake.build()
+            self.run(os.path.join(self.cpp.build.bindir, "melon_test"))
+
     def package(self):
-        copy(self, "*.hpp", self.source_folder, self.package_folder)
-        
+        copy(
+            self,
+            "LICENSE",
+            self.source_folder,
+            os.path.join(self.package_folder, "licenses"),
+        )
+        copy(
+            self,
+            "*.hpp",
+            os.path.join(self.source_folder, "include"),
+            os.path.join(self.package_folder, "include"),
+        )
+
     def package_info(self):
         self.cpp_info.bindirs = []
         self.cpp_info.libdirs = []
