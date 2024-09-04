@@ -28,8 +28,8 @@ private:
 
 public:
     static_digraph_builder() noexcept : _nb_vertices(0) {}
-    static_digraph_builder(std::size_t nb_vertices) noexcept
-        : _nb_vertices(nb_vertices) {}
+    static_digraph_builder(std::size_t nb_vertices_) noexcept
+        : _nb_vertices(nb_vertices_) {}
 
 private:
     template <class Maps, class Properties, std::size_t... Is>
@@ -53,7 +53,7 @@ public:
     auto build() {
         auto arcs_zipped_view = std::apply(
             [this](auto &&... property_map) {
-                return ranges::view::zip(_arc_sources, _arc_targets,
+                return ranges::views::zip(_arc_sources, _arc_targets,
                                          property_map...);
             },
             _arc_property_maps);

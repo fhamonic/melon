@@ -1,4 +1,5 @@
-CONAN_PROFILE = default
+CONAN_PROFILE = clang
+# CONAN_PROFILE = default
 # CONAN_PROFILE = debug
 
 .PHONY: build package clean

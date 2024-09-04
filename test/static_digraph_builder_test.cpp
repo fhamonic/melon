@@ -47,7 +47,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
         pairs{{3, 4}, {1, 7}, {5, 2}, {2, 4}, {5, 3},
               {6, 5}, {1, 2}, {1, 6}, {2, 3}};
 
-    auto weight = [n](vertex_t<static_digraph> u, vertex_t<static_digraph> v) {
+    auto weight = [](vertex_t<static_digraph> u, vertex_t<static_digraph> v) {
         return static_cast<int>(u * n + v);
     };
 

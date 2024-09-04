@@ -51,7 +51,7 @@ struct minimum_spanning_tree_semiring {
     using value_type = T;
     static constexpr T zero = static_cast<T>(0);
     static constexpr T infty = std::numeric_limits<T>::max();
-    static constexpr auto plus = [](const T & a, const T & b) { return b; };
+    static constexpr auto plus = [](const T &, const T & b) { return b; };
     static constexpr std::less<T> less{};
 };
 

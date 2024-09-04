@@ -42,7 +42,7 @@ concept output_mapping =
         {
             map[key] = value
         } -> std::same_as<
-            std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
+              std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
     };
 
 template <typename _Map, typename _Key, typename _Value>
@@ -222,16 +222,18 @@ using mapping_all_t = decltype(mapping_all(std::declval<_Map>()));
 namespace views {
 
 template <typename F>
-using map = mapping_owning_view<F>;
+constexpr auto map(F && f) {
+    return mapping_owning_view { std::forward<F>(f) };
+}
 
 struct true_map : public mapping_view_base {
-    [[nodiscard]] constexpr bool operator[](const auto & k) const noexcept {
+    [[nodiscard]] constexpr bool operator[](const auto &) const noexcept {
         return true;
     }
 };
 
 struct false_map : public mapping_view_base {
-    [[nodiscard]] constexpr bool operator[](const auto & k) const noexcept {
+    [[nodiscard]] constexpr bool operator[](const auto &) const noexcept {
         return false;
     }
 };

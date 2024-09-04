@@ -255,7 +255,7 @@ public:
                           !__can_join_incidence<_Tp, _OutArcs>)
             return __join_incidence(__t, _InArcs{});
         else {
-            if(__detail::_range_rank<out_arcs_range_t<_Tp>>() >
+            if constexpr(__detail::_range_rank<out_arcs_range_t<_Tp>>() >
                __detail::_range_rank<in_arcs_range_t<_Tp>>())
                 return __join_incidence(__t, _OutArcs{});
             else

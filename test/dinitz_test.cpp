@@ -78,7 +78,7 @@ GTEST_TEST(dinitz, test) {
 GTEST_TEST(dinitz, complete_digraph_view) {
     ASSERT_EQ(dinitz(
                   views::complete_digraph(5ul),
-                  [](const auto & a) { return 1; }, 0ul, 1ul)
+                  [](const auto &) { return 1; }, 0ul, 1ul)
                   .run()
                   .flow_value(),
               4);

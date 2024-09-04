@@ -13,12 +13,19 @@
 namespace fhamonic {
 namespace melon {
 
+namespace detail {
+template <typename K, typename P>
+struct d_ary_heap_default_entry_cmp {
+    bool operator()(const std::pair<K, P> & e1,
+                    const std::pair<K, P> & e2) const {
+        return e1.second > e2.second;
+    }
+};
+}  // namespace detail
+
 template <int D, typename K, typename P,
           std::strict_weak_order<std::pair<K, P>, std::pair<K, P>> C =
-              decltype([](const std::pair<K, P> & e1,
-                          const std::pair<K, P> & e2) {
-                  return e1.second > e2.second;
-              }),
+              detail::d_ary_heap_default_entry_cmp<K, P>,
           output_mapping<K> M =
               mapping_owning_view<std::unordered_map<K, std::size_t>>>
     requires std::integral<mapped_value_t<M, K>>

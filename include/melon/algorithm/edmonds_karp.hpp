@@ -164,8 +164,8 @@ public:
         } else {
             return std::views::filter(
                 arcs(_graph), [this](const arc_t<_Graph> & a) {
-                    return _bfs_reached_map[arc_source(_graph)] &&
-                           !_bfs_reached_map[arc_target(_graph)];
+                    return _bfs_reached_map[arc_source(_graph, a)] &&
+                           !_bfs_reached_map[arc_target(_graph, a)];
                 });
         }
     }
