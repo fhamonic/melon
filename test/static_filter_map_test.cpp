@@ -3,8 +3,8 @@
 
 #include <random>
 
-#include "melon/container/static_map.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/container/static_map.hpp"
 #include "melon/mapping.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -13,7 +13,8 @@ using namespace fhamonic::melon;
 
 static_assert(std::copyable<static_map<std::size_t, bool>>);
 static_assert(std::ranges::random_access_range<static_map<std::size_t, bool>>);
-static_assert(output_mapping_of<static_map<std::size_t, bool>, std::size_t, bool>);
+static_assert(
+    output_mapping_of<static_map<std::size_t, bool>, std::size_t, bool>);
 
 GTEST_TEST(static_map_bool, empty_constructor) {
     static_map<std::size_t, bool> map;
@@ -134,4 +135,30 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
         std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
 
     // ASSERT_TRUE(std::ranges::equal(std::views::values(map), datas));
+}
+
+GTEST_TEST(static_map_bool, filter) {
+    const std::size_t nb_bools = 153;
+    static_filter_map<std::size_t> map(nb_bools, false);
+    std::vector<std::size_t> indices;
+
+    auto gen = std::bind(std::uniform_int_distribution<>(0, 1),
+                         std::default_random_engine());
+
+    for(std::size_t i = 0; i < nb_bools; ++i) {
+        bool b = gen();
+        if(!b) continue;
+        indices.emplace_back(i);
+        map[i] = b;
+    }
+
+    static_assert(std::random_access_iterator<std::vector<bool>::iterator>);
+    static_assert(
+        std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
+
+    ASSERT_TRUE(EQ_MULTISETS(
+        map.filter(std::views::iota(std::size_t{0}, nb_bools)), indices));
+
+    ASSERT_TRUE(EQ_MULTISETS(
+        map.filter(std::views::iota(int{0}, int{nb_bools})), indices));
 }
