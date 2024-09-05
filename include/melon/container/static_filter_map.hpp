@@ -1,14 +1,12 @@
 #ifndef MELON_STATIC_FILTER_MAP_HPP
 #define MELON_STATIC_FILTER_MAP_HPP
-/*
+
 #include <algorithm>
 #include <bit>
 #include <cassert>
 #include <memory>
 #include <ranges>
 #include <vector>
-
-#include "melon/detail/intrusive_view.hpp"
 
 namespace fhamonic {
 namespace melon {
@@ -88,12 +86,10 @@ public:
     };
     using const_reference = bool;
 
+    template <typename I>
     class iterator_base {
     public:
-        using iterator_category = std::random_access_iterator_tag;
         using difference_type = static_filter_map<K>::difference_type;
-        using value_type = bool;
-        using pointer = void;
 
     protected:
         span_type * _p;
@@ -111,70 +107,7 @@ public:
         iterator_base & operator=(iterator_base &&) = default;
 
     protected:
-        constexpr void _bumb_up() noexcept {
-            if(_local_index++ == N - 1) {
-                ++_p;
-                _local_index = 0;
-            }
-        }
-        constexpr void _bump_down() noexcept {
-            if(_local_index++ == 0) {
-                --_p;
-                _local_index = N - 1;
-            }
-        }
-        constexpr void _incr(difference_type i) noexcept {
-            difference_type n = static_cast<difference_type>(_local_index) + i;
-            _p += n / difference_type(N);
-            n = n % difference_type(N);
-            if(n < 0) {
-                n += difference_type(N);
-                --_p;
-            }
-            _local_index = static_cast<size_type>(n);
-        }
-
-    public:
-        friend constexpr bool operator==(const iterator_base & x,
-                                         const iterator_base & y) noexcept {
-            return x._p == y._p && x._local_index == y._local_index;
-        }
-        friend constexpr std::strong_ordering operator<=>(
-            const iterator_base & x, const iterator_base & y) noexcept {
-            if(const auto cmp = x._p <=> y._p; cmp != 0) return cmp;
-            return x._local_index <=> y._local_index;
-        }
-        constexpr difference_type operator-(
-            const iterator_base & other) const noexcept {
-            return (difference_type(N) * (_p - other._p) +
-                    static_cast<difference_type>(_local_index) -
-                    static_cast<difference_type>(other._local_index));
-        }
-    };
-
-    class iterator {
-    public:
-        using iterator_category = std::random_access_iterator_tag;
-        using difference_type = static_filter_map<K>::difference_type;
-        using value_type = bool;
-        using pointer = void;
-
-    protected:
-        span_type * _p;
-        size_type _local_index;
-
-    public:
-        iterator(span_type * p, size_type index) : _p(p), _local_index(index) {}
-
-        iterator() = default;
-        iterator(const iterator &) = default;
-        iterator(iterator &&) = default;
-
-        iterator & operator=(const iterator &) = default;
-        iterator & operator=(iterator &&) = default;
-
-    protected:
-        constexpr void _bumb_up() noexcept {
+        constexpr void _bump_up() noexcept {
             if(_local_index++ == N - 1) {
                 ++_p;
                 _local_index = 0;
@@ -215,176 +148,84 @@ public:
         }
 
     public:
-        using iterator_base::iterator_base;
-        using reference = static_filter_map<K>::reference;
-
-        constexpr iterator & operator++() noexcept {
-            _bumb_up();
-            return *static_cast<iterator *>(this);
+        constexpr I & operator++() noexcept {
+            _bump_up();
+            return *static_cast<I *>(this);
         }
-        constexpr iterator operator++(int) noexcept {
+        constexpr I operator++(int) noexcept {
             iterator tmp = *static_cast<iterator *>(this);
-            _bumb_up();
+            _bump_up();
             return tmp;
         }
-        constexpr iterator & operator--() noexcept {
+        constexpr I & operator--() noexcept {
             _bump_down();
             return *static_cast<iterator *>(this);
         }
-        constexpr iterator operator--(int) noexcept {
+        constexpr I operator--(int) noexcept {
             iterator tmp = *static_cast<iterator *>(this);
             _bump_down();
             return tmp;
         }
-        constexpr iterator & operator+=(difference_type i) noexcept {
+        constexpr I & operator+=(difference_type i) noexcept {
             _incr(i);
             return *static_cast<iterator *>(this);
         }
 
-        constexpr iterator & operator-=(difference_type i) noexcept {
+        constexpr I & operator-=(difference_type i) noexcept {
             _incr(-i);
             return *static_cast<iterator *>(this);
         }
 
-        friend constexpr iterator operator+(const iterator & x,
-                                            difference_type n) {
+        friend constexpr I operator+(const I & x, difference_type n) {
             iterator tmp = x;
             tmp += n;
             return tmp;
         }
-        friend constexpr iterator operator+(difference_type n,
-                                            const iterator & x) {
+        friend constexpr I operator+(difference_type n, const I & x) {
             return x + n;
         }
-        friend constexpr iterator operator-(const iterator & x,
-                                            difference_type n) {
+        friend constexpr I operator-(const I & x, difference_type n) {
             iterator tmp = x;
             tmp -= n;
             return tmp;
         }
+    };
+
+    class iterator : public iterator_base<iterator> {
+    public:
+        using iterator_category = std::random_access_iterator_tag;
+        using difference_type = iterator_base<iterator>::difference_type;
+        using value_type = bool;
+        using pointer = void;
+        using reference = static_filter_map<K>::reference;
+
+    public:
+        using iterator_base<iterator>::iterator_base;
 
         constexpr reference operator*() const noexcept {
-            return reference(_p, _local_index);
+            return reference(iterator_base<iterator>::_p,
+                             iterator_base<iterator>::_local_index);
         }
         constexpr reference operator[](difference_type i) const {
             return *(*this + i);
         }
     };
 
-    class const_iterator {
+    class const_iterator : public iterator_base<const_iterator> {
     public:
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = static_filter_map<K>::difference_type;
+        using difference_type = iterator_base<const_iterator>::difference_type;
         using value_type = bool;
         using pointer = void;
-
-    protected:
-        span_type * _p;
-        size_type _local_index;
-
-    public:
-        const_iterator(span_type * p, size_type index)
-            : _p(p), _local_index(index) {}
-
-        const_iterator() = default;
-        const_iterator(const const_iterator &) = default;
-        const_iterator(const_iterator &&) = default;
-
-        const_iterator & operator=(const const_iterator &) = default;
-        const_iterator & operator=(const_iterator &&) = default;
-
-    protected:
-        constexpr void _bumb_up() noexcept {
-            if(_local_index++ == N - 1) {
-                ++_p;
-                _local_index = 0;
-            }
-        }
-        constexpr void _bump_down() noexcept {
-            if(_local_index++ == 0) {
-                --_p;
-                _local_index = N - 1;
-            }
-        }
-        constexpr void _incr(difference_type i) noexcept {
-            difference_type n = static_cast<difference_type>(_local_index) + i;
-            _p += n / difference_type(N);
-            n = n % difference_type(N);
-            if(n < 0) {
-                n += difference_type(N);
-                --_p;
-            }
-            _local_index = static_cast<size_type>(n);
-        }
-
-    public:
-        friend constexpr bool operator==(const iterator_base & x,
-                                         const iterator_base & y) noexcept {
-            return x._p == y._p && x._local_index == y._local_index;
-        }
-        friend constexpr std::strong_ordering operator<=>(
-            const iterator_base & x, const iterator_base & y) noexcept {
-            if(const auto cmp = x._p <=> y._p; cmp != 0) return cmp;
-            return x._local_index <=> y._local_index;
-        }
-        constexpr difference_type operator-(
-            const iterator_base & other) const noexcept {
-            return (difference_type(N) * (_p - other._p) +
-                    static_cast<difference_type>(_local_index) -
-                    static_cast<difference_type>(other._local_index));
-        }
-
-    public:
-        using iterator_base::iterator_base;
         using reference = const_reference;
 
-        constexpr const_iterator & operator++() noexcept {
-            _bumb_up();
-            return *static_cast<const_iterator *>(this);
-        }
-        constexpr const_iterator operator++(int) noexcept {
-            const_iterator tmp = *static_cast<const_iterator *>(this);
-            _bumb_up();
-            return tmp;
-        }
-        constexpr const_iterator & operator--() noexcept {
-            _bump_down();
-            return *static_cast<const_iterator *>(this);
-        }
-        constexpr const_iterator operator--(int) noexcept {
-            const_iterator tmp = *static_cast<const_iterator *>(this);
-            _bump_down();
-            return tmp;
-        }
-        constexpr const_iterator & operator+=(difference_type i) noexcept {
-            _incr(i);
-            return *static_cast<const_iterator *>(this);
-        }
-
-        constexpr const_iterator & operator-=(difference_type i) noexcept {
-            _incr(-i);
-            return *static_cast<const_iterator *>(this);
-        }
-
-        friend constexpr const_iterator operator+(const const_iterator & x,
-                                                  difference_type n) {
-            const_iterator tmp = x;
-            tmp += n;
-            return tmp;
-        }
-        friend constexpr const_iterator operator+(difference_type n,
-                                                  const const_iterator & x) {
-            return x + n;
-        }
-        friend constexpr const_iterator operator-(const const_iterator & x,
-                                                  difference_type n) {
-            const_iterator tmp = x;
-            tmp -= n;
-            return tmp;
-        }
+    public:
+        using iterator_base<const_iterator>::iterator_base;
 
         constexpr const_reference operator*() const noexcept {
-            return (*_p >> _local_index) & 1;
+            return (*iterator_base<iterator>::_p >>
+                    iterator_base<iterator>::_local_index) &
+                   1;
         }
         constexpr const_reference operator[](difference_type i) const {
             return *(*this + i);
@@ -396,10 +237,10 @@ private:
     size_type _size;
 
 public:
-    static_filter_map() : _data(nullptr), _size(0){};
+    static_filter_map() : _data(nullptr), _size(0) {};
     static_filter_map(size_type size)
         : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size)))
-        , _size(size){};
+        , _size(size) {};
 
     static_filter_map(size_type size, bool init_value)
         : static_filter_map(size) {
@@ -439,7 +280,6 @@ public:
         _size = n;
     }
 
-
     [[nodiscard]] const_reference at(const size_type i) const {
         if(static_cast<size_type>(i) >= size())
             throw std::out_of_range("Invalid key.");
@@ -459,6 +299,18 @@ public:
         std::fill(_data.get(), _data.get() + nb_spans(_size),
                   b ? ~span_type(0) : span_type(0));
     }
+
+    // template <std::viewable_range R>
+    // auto filter(R && r) noexcept const {
+    //     if constexpr(std::same_as<R, std::ranges::iota_view<K, K>>) {
+    //         K begin_index = std::max(static_cast<K>(0), *std::ranges::begin(r));
+    //         K end_index = std::min(static_cast<K>(_size), *std::ranges::end(r));
+
+
+    //     } /*else {
+    //         return std::ranges::filter(r, [](const auto & k) { return operator[](k);});
+    //     }*/
+    // }
 
     // auto true_keys() const {
     //     // span_type * p = _data.get();
@@ -534,5 +386,5 @@ public:
 
 }  // namespace melon
 }  // namespace fhamonic
-*/
+
 #endif  // MELON_STATIC_FILTER_MAP_HPP
