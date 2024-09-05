@@ -34,7 +34,7 @@ add_executable(
   dumb_digraph_test.cpp
   mutable_digraph_test.cpp
   static_map_test.cpp
-  static_map_bool_test.cpp
+  static_filter_map_test.cpp
   static_digraph_builder_test.cpp
   breadth_first_search_test.cpp
   depth_first_search_test.cpp

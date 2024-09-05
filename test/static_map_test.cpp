@@ -118,11 +118,6 @@ GTEST_TEST(static_map, for_each_read) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
     const static_map<std::size_t, int> map(datas.begin(), datas.end());
     std::size_t cpt = 0;
-    // for(auto && [k, v] : map) {
-    //     ASSERT_EQ(k, cpt);
-    //     ASSERT_EQ(v, datas[cpt]);
-    //     ++cpt;
-    // }
     for(auto && v : map) {
         ASSERT_EQ(v, datas[cpt]);
         ++cpt;
@@ -132,13 +127,6 @@ GTEST_TEST(static_map, for_each_write) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
     static_map<std::size_t, int> map(datas.begin(), datas.end());
     std::size_t cpt = 0;
-    // for(auto && [k, v] : map) {
-    //     ASSERT_EQ(k, cpt);
-    //     ASSERT_EQ(v, datas[cpt]);
-    //     v = 3 * static_cast<int>(cpt) + 1;
-    //     ASSERT_EQ(map[cpt], 3 * static_cast<int>(cpt) + 1);
-    //     ++cpt;
-    // }
     for(auto & v : map) {
         ASSERT_EQ(v, datas[cpt]);
         v = 3 * static_cast<int>(cpt) + 1;
