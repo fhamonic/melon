@@ -116,7 +116,7 @@ public:
             }
         }
         constexpr void _bump_down() noexcept {
-            if(_local_index++ == 0) {
+            if(_local_index-- == 0) {
                 --_p;
                 _local_index = N - 1;
             }
@@ -317,10 +317,10 @@ public:
                 ++cursor;
                 span_type shifted = (*cursor._p) >> cursor._local_index;
                 if(shifted == span_type{0}) {
-                    do {
-                        ++cursor._p;
-                    } while(cursor < end_it && *cursor._p == span_type{0});
                     cursor._local_index = 0;
+                    do {
+                        if(++cursor._p > end_it._p) return cursor;
+                    } while(*cursor._p == span_type{0});
                     shifted = *cursor._p;
                 }
                 cursor._local_index +=

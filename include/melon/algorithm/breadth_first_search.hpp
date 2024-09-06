@@ -44,8 +44,7 @@ private:
     vertex_map_t<_Graph, bool> _reached_map;
 
     [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
-                                        vertex>
-        _pred_vertices_map;
+                                        vertex> _pred_vertices_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_pred_arcs, _Graph, arc>
         _pred_arcs_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph, int>
