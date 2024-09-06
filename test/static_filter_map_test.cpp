@@ -138,7 +138,7 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
 }
 
 GTEST_TEST(static_map_bool, filter) {
-    const std::size_t nb_bools = 153;
+    const std::size_t nb_bools = 8971;
     static_filter_map<std::size_t> map(nb_bools, false);
     std::vector<std::size_t> indices;
 
@@ -161,4 +161,54 @@ GTEST_TEST(static_map_bool, filter) {
 
     ASSERT_TRUE(EQ_MULTISETS(
         map.filter(std::views::iota(int{0}, int{nb_bools})), indices));
+}
+
+GTEST_TEST(static_map_bool, filter_bench) {
+    const double density = 0.9;
+    const std::size_t nb_bools = 153546;
+    static_filter_map<std::size_t> map(nb_bools, false);
+    std::vector<std::size_t> indices;
+
+    auto gen = std::bind(std::uniform_real_distribution<>(0, 1),
+                         std::default_random_engine());
+
+    for(std::size_t i = 0; i < nb_bools; ++i) {
+        if(gen() > density) continue;
+        indices.emplace_back(i);
+        map[i] = true;
+    }
+
+    static_assert(std::random_access_iterator<std::vector<bool>::iterator>);
+    static_assert(
+        std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
+
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::size_t cpt = 0;
+        for(auto && i :
+            map.filter(std::views::iota(std::size_t{0}, nb_bools))) {
+            ++cpt;
+        }
+        ASSERT_EQ(cpt, indices.size());
+
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = duration_cast<std::chrono::microseconds>(stop - start);
+        std::cout << "map filter : " << duration.count() << " us" << std::endl;
+    }
+
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        std::size_t cpt = 0;
+        for(std::size_t i = 0; i < nb_bools; ++i) {
+            if(!map[i]) continue;
+            ++cpt;
+        }
+        ASSERT_EQ(cpt, indices.size());
+
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = duration_cast<std::chrono::microseconds>(stop - start);
+        std::cout << "manual filter : " << duration.count() << " us" << std::endl;
+    }
 }

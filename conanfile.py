@@ -22,8 +22,8 @@ class MelonConan(ConanFile):
     generators = "CMakeToolchain", "CMakeDeps"
 
     def requirements(self):
-        self.requires("range-v3/[>=0.11.0]")
-        self.requires("fmt/[>=10.0.0]")
+        self.requires("range-v3/[>=0.11.0]", transitive_headers=True)
+        self.requires("fmt/[>=10.0.0]", transitive_headers=True)
         self.test_requires("gtest/[>=1.10.0 <cci]")
 
     def validate(self):

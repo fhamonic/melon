@@ -32,8 +32,9 @@ private:
 public:
     template <typename _G, typename _VF = true_map, typename _AF = true_map>
         requires(!__detail::__specialization_of<_G, subgraph>)
-    [[nodiscard]] constexpr explicit subgraph(_G && g, _VF && vertex_filter = true_map{},
-             _AF && arc_filter = true_map{})
+    [[nodiscard]] constexpr explicit subgraph(_G && g,
+                                              _VF && vertex_filter = true_map{},
+                                              _AF && arc_filter = true_map{})
         : _graph(views::graph_all(std::forward<_G>(g)))
         , _vertex_filter(views::mapping_all(std::forward<_VF>(vertex_filter)))
         , _arc_filter(views::mapping_all(std::forward<_AF>(arc_filter))) {}
@@ -161,6 +162,7 @@ public:
             return std::views::filter(
                 melon::out_arcs(_graph, v),
                 [this](const arc & a) { return _arc_filter[a]; });
+            // return arc_filter.filter(melon::out_arcs(_graph, v));
         } else {
             return std::views::filter(
                 melon::out_arcs(_graph, v), [this](const arc & a) {
