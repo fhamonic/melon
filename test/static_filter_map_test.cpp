@@ -138,7 +138,7 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
 }
 
 GTEST_TEST(static_map_bool, filter) {
-    const std::size_t nb_bools = 8971;
+    const std::size_t nb_bools = 153;
     static_filter_map<std::size_t> map(nb_bools, false);
     std::vector<std::size_t> indices;
 
@@ -164,51 +164,64 @@ GTEST_TEST(static_map_bool, filter) {
 }
 
 GTEST_TEST(static_map_bool, filter_bench) {
-    const double density = 0.9;
-    const std::size_t nb_bools = 153546;
-    static_filter_map<std::size_t> map(nb_bools, false);
-    std::vector<std::size_t> indices;
+    std::cout << "density,map_filter,manual_filter\n";
 
     auto gen = std::bind(std::uniform_real_distribution<>(0, 1),
                          std::default_random_engine());
 
-    for(std::size_t i = 0; i < nb_bools; ++i) {
-        if(gen() > density) continue;
-        indices.emplace_back(i);
-        map[i] = true;
-    }
+    for(double hole_density : std::initializer_list<double>{
+            1.0, 0.99, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 0}) {
+        std::cout << hole_density << ',';
+        const std::size_t nb_bools = 13451;
+        static_filter_map<std::size_t> map(nb_bools, false);
+        std::vector<std::size_t> indices;
 
-    static_assert(std::random_access_iterator<std::vector<bool>::iterator>);
-    static_assert(
-        std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
+        std::size_t hole_size = 3;
 
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-
-        std::size_t cpt = 0;
-        for(auto && i :
-            map.filter(std::views::iota(std::size_t{0}, nb_bools))) {
-            ++cpt;
+        for(std::size_t i = 0; i < nb_bools - hole_size; ++i) {
+            if(gen() > hole_density) continue;
+            for(std::size_t j = 0; j < hole_size; ++j) map[i + j] = true;
         }
-        ASSERT_EQ(cpt, indices.size());
-
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = duration_cast<std::chrono::microseconds>(stop - start);
-        std::cout << "map filter : " << duration.count() << " us" << std::endl;
-    }
-
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-
-        std::size_t cpt = 0;
         for(std::size_t i = 0; i < nb_bools; ++i) {
-            if(!map[i]) continue;
-            ++cpt;
+            if(map[i]) indices.emplace_back(i);
         }
-        ASSERT_EQ(cpt, indices.size());
 
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = duration_cast<std::chrono::microseconds>(stop - start);
-        std::cout << "manual filter : " << duration.count() << " us" << std::endl;
+        static_assert(std::random_access_iterator<std::vector<bool>::iterator>);
+        static_assert(std::random_access_iterator<
+                      static_map<std::size_t, bool>::iterator>);
+
+        {
+            auto start = std::chrono::high_resolution_clock::now();
+
+            std::vector<std::size_t> ids;
+            for(auto && i :
+                map.filter(std::views::iota(std::size_t{0}, nb_bools))) {
+                ids.emplace_back(i);
+            }
+            ASSERT_TRUE(EQ_MULTISETS(ids, indices));
+
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration =
+                duration_cast<std::chrono::microseconds>(stop - start);
+
+            std::cout << duration.count() << ',';
+        }
+
+        {
+            auto start = std::chrono::high_resolution_clock::now();
+
+            std::vector<std::size_t> ids;
+            for(std::size_t i = 0; i < nb_bools; ++i) {
+                if(!map[i]) continue;
+                ids.emplace_back(i);
+            }
+            ASSERT_TRUE(EQ_MULTISETS(ids, indices));
+
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration =
+                duration_cast<std::chrono::microseconds>(stop - start);
+
+            std::cout << duration.count() << std::endl;
+        }
     }
 }

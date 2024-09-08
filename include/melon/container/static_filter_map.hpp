@@ -110,7 +110,7 @@ public:
 
     protected:
         constexpr void _bump_up() noexcept {
-            if(_local_index++ == N - 1) {
+            if(++_local_index == N) {
                 ++_p;
                 _local_index = 0;
             }
@@ -227,7 +227,7 @@ public:
         constexpr const_reference operator*() const noexcept {
             return (*iterator_base<const_iterator>::_p >>
                     iterator_base<const_iterator>::_local_index) &
-                   1;
+                   static_cast<span_type>(1);
         }
         constexpr const_reference operator[](difference_type i) const {
             return *(*this + i);
@@ -308,18 +308,22 @@ public:
             K begin_index = std::max(static_cast<K>(0), *std::ranges::begin(r));
             K end_index = std::min(static_cast<K>(_size), *std::ranges::end(r));
 
+            //*
             const_iterator begin_it(_data.get() + begin_index / N,
                                     begin_index & span_index_mask);
             const const_iterator end_it(_data.get() + end_index / N,
                                         end_index & span_index_mask);
 
             auto next_it = [end_it](const_iterator cursor) {
-                ++cursor;
-                span_type shifted = (*cursor._p) >> cursor._local_index;
+                span_type shifted;
+                if(++cursor._local_index == N) goto find_next_span;
+                shifted = (*cursor._p) >> cursor._local_index;
                 if(shifted == span_type{0}) {
+                find_next_span:
                     cursor._local_index = 0;
                     do {
-                        if(++cursor._p > end_it._p) return cursor;
+                        if(++cursor._p > end_it._p) [[unlikely]]
+                            return cursor;
                     } while(*cursor._p == span_type{0});
                     shifted = *cursor._p;
                 }
@@ -342,6 +346,25 @@ public:
                 [end_it](const const_iterator & cursor) -> bool {
                     return cursor < end_it;
                 });
+            /*/
+            auto next_index = [this, end_index](K i) {
+                for(;;) {
+                    const size_type offset = i & span_index_mask;
+                    i += static_cast<size_type>(std::countr_zero(
+                             _data[i / N] &
+                             ((~static_cast<span_type>(1)) << offset))) -
+                         offset;
+                    if((i >= end_index || at(i))) [[likely]]
+                        return i;
+                }
+            };
+
+            if(!at(begin_index)) begin_index = next_index(begin_index);
+
+            return intrusive_view(
+                begin_index, std::identity{}, std::move(next_index),
+                [end_index](const K & i) -> bool { return i < end_index; });
+            //*/
         } else {
             return std::views::filter(
                 std::views::transform(
