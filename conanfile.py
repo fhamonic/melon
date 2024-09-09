@@ -7,7 +7,7 @@ from conan.tools.build import check_min_cppstd
 
 class MelonConan(ConanFile):
     name = "melon"
-    version = "0.6.0"
+    version = "1.0.0-alpha.1"
 
     license = "BSL-1.0"
     description = (
