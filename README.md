@@ -13,30 +13,36 @@ Work in progress.
 
 ## How to link
 
-The beauty of Conan 2.0 allows this library to be linked either as a Conan package Git/CMake submodule. In both cases you need a recent compiler (at least GCC 12).
+| Compiler    | Minimum version |
+| ----------- | --------------- |
+|   GCC       |     12          |
+|   Clang     |     17          |
+|   MSVC      |     19          |
 
-### As a Conan package (preferred)
+### As a local Conan package (latest commit)
 
-Clone this repository and run:
 ```
-make package
-```
-
-Then add the dependency to melon in your `conanfile.txt` or `conanfile.py`:
-```
-melon/0.5
+git clone 
+cd melon
+conan create . -u -b=missing -pr=<your_conan_profile>
 ```
 
-### As git and cmake submodules
+Then add the dependency to melon in your project `conanfile.txt` or `conanfile.py`.
 
-Either clone or add this git as submodule in a folder named, for example, "dependencies"
+### As a Conan center package (latest release)
+
+Just add `melon/1.0.0-alpha.1` to your project `conanfile.txt` or `conanfile.py`.
+
+### Using CMAKE subdirectory
+
+Either clone or add this git as submodule:
 ```
-mkdir dependencies && cd dependencies
+cd <your_project> && mkdir dependencies && cd dependencies
 git clone https://github.com/fhamonic/melon
 ```
 or
 ```
-mkdir dependencies
+cd <your_project> && mkdir dependencies
 git submodule add https://github.com/fhamonic/melon dependencies/melon
 ```
 
@@ -44,16 +50,10 @@ Import the library and link it to your CMake targets with
 ```cmake
 add_subdirectory(dependencies/melon)
 ...
-target_link_libraries(<some_target> INTERFACE melon)
+target_link_libraries(<your_target> INTERFACE melon)
 ```
 
-Then ensure that your CMake can find [Range-v3](https://ericniebler.github.io/range-v3/) and [fmt](https://fmt.dev/latest/index.html) with the corresponding `find_package` calls.
-
-## How to Compile and Run Tests
-
-Having a compiler (GCC 12+ required), [CMake](https://cmake.org/cmake/help/latest/release/3.12.html) and [Conan](https://conan.io/), compile and run tests with
-
-    make
+Then ensure that your CMake can find [Range-v3](https://ericniebler.github.io/range-v3/) and [fmt](https://fmt.dev/latest/index.html) with `find_package` calls.
 
 ## Documentation
 
@@ -91,3 +91,22 @@ for(auto && component : strongly_connected_components(graph)) {
     }
 }
 ```
+
+## Roadmap
+
+Concepts and containers:
+    - tree graphs
+    - bipartite graph
+    - planar graph
+    - geometry coordinates (trilinear)
+
+Algorithms:
+    - Bentley-Ottman (line segment intersections)
+    - planar map intersection
+    - Network simplex
+    - Traveling salesman
+
+Utility:
+    - JSON serialization
+    - SVG / Graphviz printer
+

@@ -9,7 +9,7 @@ build:
 
 package:
 	conan create . -u -b=missing -pr=${CONAN_PROFILE}
-	
+
 clean:
 	@rm -rf CMakeUserPresets.json
 	@rm -rf build
