@@ -29,7 +29,7 @@ conan create . -u -b=missing -pr=<your_conan_profile>
 
 Then add the dependency to melon in your project `conanfile.txt` or `conanfile.py`.
 
-### As a Conan center package (latest release)
+### Soon, as a Conan center package (latest release)
 
 Just add `melon/1.0.0-alpha.1` to your project `conanfile.txt` or `conanfile.py`.
 
@@ -95,18 +95,18 @@ for(auto && component : strongly_connected_components(graph)) {
 ## Roadmap
 
 Concepts and containers:
-    - tree graphs
-    - bipartite graph
-    - planar graph
-    - geometry coordinates (trilinear)
+- tree graphs
+- bipartite graph
+- planar graph
+- geometry coordinates (trilinear)
 
 Algorithms:
-    - Bentley-Ottman (line segment intersections)
-    - planar map intersection
-    - Network simplex
-    - Traveling salesman
+- Bentley-Ottman (line segment intersections)
+- planar map intersection
+- Network simplex
+- Traveling salesman
 
 Utility:
-    - JSON serialization
-    - SVG / Graphviz printer
+- JSON serialization
+- SVG / Graphviz printer
 
