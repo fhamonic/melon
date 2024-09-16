@@ -36,14 +36,10 @@ concept dijkstra_trait = semiring<typename _Traits::semiring> &&
 template <typename _Graph, typename _ValueType>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<_ValueType>;
-    struct entry_cmp {
-        [[nodiscard]] constexpr bool operator()(
-            const auto & e1, const auto & e2) const noexcept {
-            return semiring::less(e1.second, e2.second);
-        }
-    };
-    using heap = d_ary_heap<2, vertex_t<_Graph>, _ValueType, entry_cmp,
-                            vertex_map_t<_Graph, std::size_t>>;
+    using heap =
+        d_ary_heap<2, std::pair<vertex_t<_Graph>, _ValueType>,
+                   views::get_map<1>, typename semiring::less_t,
+                   views::get_map<0>, vertex_map_t<_Graph, std::size_t>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -72,15 +68,13 @@ private:
     heap _heap;
     vertex_map_t<_Graph, vertex_status> _vertex_status_map;
 
-    [[no_unique_address]] vertex_map_if<
-        _Traits::store_paths && !has_arc_source<_Graph>, _Graph, vertex>
-        _pred_vertices_map;
+    [[no_unique_address]] vertex_map_if<_Traits::store_paths &&
+                                            !has_arc_source<_Graph>,
+                                        _Graph, vertex> _pred_vertices_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_paths, _Graph,
-                                        std::optional<arc>>
-        _pred_arcs_map;
+                                        std::optional<arc>> _pred_arcs_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph,
-                                        double>
-        _distances_map;
+                                        double> _distances_map;
 
 public:
     template <typename _G, typename _M>
@@ -118,7 +112,7 @@ public:
         const vertex & s,
         const value_t & dist = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
-        _heap.push(s, dist);
+        _heap.push(std::make_pair(s, dist));
         _vertex_status_map[s] = IN_HEAP;
         if constexpr(_Traits::store_paths) {
             _pred_arcs_map[s].reset();
@@ -161,7 +155,8 @@ public:
                     }
                 }
             } else if(w_status == PRE_HEAP) {
-                _heap.push(w, _Traits::semiring::plus(st_dist, _length_map[a]));
+                _heap.push(std::make_pair(
+                    w, _Traits::semiring::plus(st_dist, _length_map[a])));
                 _vertex_status_map[w] = IN_HEAP;
                 if constexpr(_Traits::store_paths) {
                     _pred_arcs_map[w].emplace(a);
@@ -236,9 +231,9 @@ public:
 template <typename _Graph, typename _LengthMap,
           typename _Traits = dijkstra_default_traits<
               _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
-dijkstra(_Graph &&, _LengthMap &&)
-    -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
-                _Traits>;
+dijkstra(_Graph &&,
+         _LengthMap &&) -> dijkstra<views::graph_all_t<_Graph>,
+                                    views::mapping_all_t<_LengthMap>, _Traits>;
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = dijkstra_default_traits<
@@ -248,9 +243,9 @@ dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
                 _Traits>;
 
 template <typename _Graph, typename _LengthMap, typename _Traits>
-dijkstra(_Traits, _Graph &&, _LengthMap &&)
-    -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
-                _Traits>;
+dijkstra(_Traits, _Graph &&,
+         _LengthMap &&) -> dijkstra<views::graph_all_t<_Graph>,
+                                    views::mapping_all_t<_LengthMap>, _Traits>;
 
 template <typename _Graph, typename _LengthMap, typename _Traits>
 dijkstra(_Traits, _Graph &&, _LengthMap &&, const vertex_t<_Graph> &)

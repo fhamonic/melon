@@ -10,23 +10,20 @@ namespace melon {
 // clang-format off
 template <typename Q>
 concept priority_queue = std::semiregular<Q> &&
-    requires(Q q, typename Q::key_type k, typename Q::priority_type v, typename Q::entry e) {
+    requires(Q q, typename Q::entry e) {
     { q.top() } -> std::same_as<typename Q::entry>;
-    { e.first } -> std::common_with<typename Q::key_type>;
-    { e.second } -> std::common_with<typename Q::priority_type>;
     q.pop();
-    q.push(k, v);
+    q.push(e);
     q.clear();
 };
 
 template <typename Q>
 concept updatable_priority_queue = priority_queue<Q> &&
-    requires(Q q, typename Q::key_type k, typename Q::priority_type v) {
-    { q.contains(k) } -> std::convertible_to<bool>;
-    { q.priority(k) } -> std::same_as<typename Q::priority_type>;
-    q.promote(k, v);
-    // q.demote(k, v);
-    // q.update(k, v);
+    requires(Q q, typename Q::id_type i, typename Q::priority_type v) {
+    { q.contains(i) } -> std::convertible_to<bool>;
+    { q.priority(i) } -> std::same_as<typename Q::priority_type>;
+    q.promote(i, v);
+    q.demote(i, v);
 };
 // clang-format on
 

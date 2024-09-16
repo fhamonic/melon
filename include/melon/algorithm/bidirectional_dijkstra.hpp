@@ -36,11 +36,10 @@ concept bidirectional_dijkstra_trait = semiring<typename _Traits::semiring> &&
 template <typename _Graph, typename _ValueType>
 struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<_ValueType>;
-    using heap = d_ary_heap<2, vertex_t<_Graph>, _ValueType,
-                            decltype([](const auto & e1, const auto & e2) {
-                                return semiring::less(e1.second, e2.second);
-                            }),
-                            vertex_map_t<_Graph, std::size_t>>;
+    using heap =
+        d_ary_heap<2, std::pair<vertex_t<_Graph>, _ValueType>,
+                   views::get_map<1>, typename semiring::less_t,
+                   views::get_map<0>, vertex_map_t<_Graph, std::size_t>>;
 
     static constexpr bool store_path = true;
 };
@@ -117,7 +116,7 @@ public:
         const vertex & s,
         const value_t dist = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s].first == PRE_HEAP);
-        _forward_heap.push(s, dist);
+        _forward_heap.push(std::make_pair(s, dist));
         _vertex_status_map[s].first = IN_HEAP;
         if constexpr(_Traits::store_path) _forward_pred_arcs_map[s].reset();
         return *this;
@@ -126,7 +125,7 @@ public:
         const vertex & t,
         const value_t dist = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[t].second == PRE_HEAP);
-        _reverse_heap.push(t, dist);
+        _reverse_heap.push(std::make_pair(t, dist));
         _vertex_status_map[t].second = IN_HEAP;
         if constexpr(_Traits::store_path) _reverse_pred_arcs_map[t].reset();
         return *this;
@@ -173,7 +172,7 @@ public:
                     } else if(w_forward_status == PRE_HEAP) {
                         const value_t new_w_dist =
                             _Traits::semiring::plus(u1_dist, _length_map[a]);
-                        _forward_heap.push(w, new_w_dist);
+                        _forward_heap.push(std::make_pair(w, new_w_dist));
                         _vertex_status_map[w].first = IN_HEAP;
                         if(w_reverse_status == IN_HEAP) {
                             const value_t new_st_dist =
@@ -219,7 +218,7 @@ public:
                     } else if(w_reverse_status == PRE_HEAP) {
                         const value_t new_w_dist =
                             _Traits::semiring::plus(u2_dist, _length_map[a]);
-                        _reverse_heap.push(w, new_w_dist);
+                        _reverse_heap.push(std::make_pair(w, new_w_dist));
                         _vertex_status_map[w].second = IN_HEAP;
                         if(w_forward_status == IN_HEAP) {
                             const value_t new_st_dist =

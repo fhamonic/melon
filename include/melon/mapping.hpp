@@ -223,7 +223,7 @@ namespace views {
 
 template <typename F>
 constexpr auto map(F && f) {
-    return mapping_owning_view { std::forward<F>(f) };
+    return mapping_owning_view{std::forward<F>(f)};
 }
 
 struct true_map : public mapping_view_base {
@@ -235,6 +235,21 @@ struct true_map : public mapping_view_base {
 struct false_map : public mapping_view_base {
     [[nodiscard]] constexpr bool operator[](const auto &) const noexcept {
         return false;
+    }
+};
+
+struct identity_map : public mapping_view_base {
+    template <class T>
+    [[nodiscard]] constexpr auto operator[](T && e) const noexcept {
+        return std::forward<T>(e);
+    }
+};
+
+template <std::size_t I>
+struct get_map : public mapping_view_base {
+    template <class T>
+    [[nodiscard]] constexpr decltype(auto) operator[](T && e) const noexcept {
+        return std::get<I>(e);
     }
 };
 }  // namespace views

@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/algorithm/breadth_first_search.hpp"
-#include "melon/algorithm/concurrent_dijkstras.hpp"
+#include "melon/algorithm/competing_dijkstras.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/erdos_renyi.hpp"
@@ -15,7 +15,7 @@
 
 using namespace fhamonic::melon;
 
-GTEST_TEST(concurrent_dijkstras, test) {
+GTEST_TEST(competing_dijkstras, test) {
     static_digraph_builder<static_digraph, int, int> builder(8);
 
     builder.add_arc(0, 1, 1, 2);
@@ -46,7 +46,7 @@ GTEST_TEST(concurrent_dijkstras, test) {
     auto sgraph = views::subgraph(
         graph, {},
         [](const arc_t<static_digraph> & a) -> bool { return a != 1; });
-    concurrent_dijkstras algo(sgraph, length_map, reduced_length_map);
+    competing_dijkstras algo(sgraph, length_map, reduced_length_map);
     algo.add_blue_source(6, length_map[1]);
     algo.add_red_source(0);
 
@@ -60,9 +60,9 @@ GTEST_TEST(concurrent_dijkstras, test) {
 }
 
 template <graph G>
-auto compute_concurrent_dijkstras_map(const G & g,
-                                      const arc_map_t<G, int> & length_map,
-                                      const arc_t<G> & uv) {
+auto compute_competing_dijkstras_map(const G & g,
+                                     const arc_map_t<G, int> & length_map,
+                                     const arc_t<G> & uv) {
     const auto & u = arc_source(g, uv);
     const auto & v = arc_target(g, uv);
     auto fiber_map = create_vertex_map<bool>(g, false);
@@ -78,7 +78,7 @@ auto compute_concurrent_dijkstras_map(const G & g,
     return fiber_map;
 }
 
-GTEST_TEST(concurrent_dijkstras, fuzzy) {
+GTEST_TEST(competing_dijkstras, fuzzy) {
     static constexpr std::size_t num_vertices = 15;
     static constexpr double density = 0.35;
     static constexpr int nb_tests = 1000;
@@ -111,23 +111,23 @@ GTEST_TEST(concurrent_dijkstras, fuzzy) {
                 graph, {}, [uv](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
                 });
-            concurrent_dijkstras concurrent_dijkstras_algo(
+            competing_dijkstras competing_dijkstras_algo(
                 sgraph, upper_length_map, lower_length_map);
-            concurrent_dijkstras_algo.add_red_source(u);
-            concurrent_dijkstras_algo.add_blue_source(v, upper_length_map[uv]);
+            competing_dijkstras_algo.add_red_source(u);
+            competing_dijkstras_algo.add_blue_source(v, upper_length_map[uv]);
 
             certificat_length_map[uv] = upper_length_map[uv];
-            for(const auto & [t, t_dist] : concurrent_dijkstras_algo) {
+            for(const auto & [t, t_dist] : competing_dijkstras_algo) {
                 strong_map[t] = true;
                 for(const auto & a : out_arcs(graph, t)) {
                     certificat_length_map[a] = upper_length_map[a];
                 }
             }
 
-            auto certificate_fiber_map = compute_concurrent_dijkstras_map(
+            auto certificate_fiber_map = compute_competing_dijkstras_map(
                 graph, certificat_length_map, uv);
 
-            auto concurrent_dijkstras_view = std::views::filter(
+            auto competing_dijkstras_view = std::views::filter(
                 vertices(graph), [&](auto && w) { return strong_map[w]; });
             auto certificate_fiber_view = std::views::filter(
                 vertices(graph),
@@ -136,7 +136,7 @@ GTEST_TEST(concurrent_dijkstras, fuzzy) {
             // std::cout << '(' << uv << ",(" << arc_source(graph, uv) << ','
             //           << arc_target(graph, uv) << "))" << std::endl;
 
-            if(!EQ_MULTISETS(concurrent_dijkstras_view,
+            if(!EQ_MULTISETS(competing_dijkstras_view,
                              certificate_fiber_view)) {
                 std::cout << "shit!" << std::endl;
                 graphviz_printer printer(graph);
@@ -176,8 +176,8 @@ GTEST_TEST(concurrent_dijkstras, fuzzy) {
                 printer.print(std::ostream_iterator<char>(std::cout));
             }
 
-            ASSERT_TRUE(EQ_MULTISETS(concurrent_dijkstras_view,
-                                     certificate_fiber_view));
+            ASSERT_TRUE(
+                EQ_MULTISETS(competing_dijkstras_view, certificate_fiber_view));
         }
     }
 }
@@ -208,7 +208,7 @@ auto compute_useless_fiber_map(const G & g,
 }
 
 template <outward_incidence_graph _Graph, typename _ValueType>
-struct useless_concurrent_dijkstras_traits {
+struct useless_competing_dijkstras_traits {
     using semiring = shortest_path_semiring<_ValueType>;
     using entry = std::pair<_ValueType, bool>;
     static bool compare_entries(const entry & e1, const entry & e2) {
@@ -220,10 +220,11 @@ struct useless_concurrent_dijkstras_traits {
     struct entry_cmp {
         [[nodiscard]] constexpr bool operator()(
             const auto & e1, const auto & e2) const noexcept {
-            return compare_entries(e1.second, e2.second);
+            return compare_entries(e1, e2);
         }
     };
-    using heap = d_ary_heap<2, vertex_t<_Graph>, entry, entry_cmp,
+    using heap = d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>,
+                            views::get_map<1>, entry_cmp, views::get_map<0>,
                             vertex_map_t<_Graph, std::size_t>>;
 
     static constexpr bool store_distances = false;
@@ -265,11 +266,11 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 graph, {}, [&](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
                 });
-            auto concurrent_dijkstras_algo = concurrent_dijkstras(
-                useless_concurrent_dijkstras_traits<decltype(sgraph), int>{},
+            auto competing_dijkstras_algo = competing_dijkstras(
+                useless_competing_dijkstras_traits<decltype(sgraph), int>{},
                 sgraph, upper_length_map, lower_length_map);
-            concurrent_dijkstras_algo.add_blue_source(u);
-            concurrent_dijkstras_algo.add_red_source(v, lower_length_map[uv]);
+            competing_dijkstras_algo.add_blue_source(u);
+            competing_dijkstras_algo.add_red_source(v, lower_length_map[uv]);
 
             auto certificat_length_map = lower_length_map;
             for(const auto a : out_arcs(graph, u)) {
@@ -278,7 +279,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
             }
 
             // std::cout << "run\n";
-            for(const auto & [t, t_dist] : concurrent_dijkstras_algo) {
+            for(const auto & [t, t_dist] : competing_dijkstras_algo) {
                 useless_map[t] = true;
                 for(const auto & a : out_arcs(graph, t)) {
                     certificat_length_map[a] = upper_length_map[a];
@@ -290,7 +291,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
             auto certificate_fiber_map =
                 compute_useless_fiber_map(graph, certificat_length_map, uv);
 
-            auto concurrent_dijkstras_view = std::views::filter(
+            auto competing_dijkstras_view = std::views::filter(
                 vertices(graph), [&](auto && w) { return useless_map[w]; });
             auto certificate_fiber_view = std::views::filter(
                 vertices(graph),
@@ -299,7 +300,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
             // std::cout << '(' << uv << ",(" << arc_source(graph, uv) << ','
             //           << arc_target(graph, uv) << "))" << std::endl;
 
-            if(!EQ_MULTISETS(concurrent_dijkstras_view,
+            if(!EQ_MULTISETS(competing_dijkstras_view,
                              certificate_fiber_view)) {
                 std::cout << "shit!" << std::endl;
                 graphviz_printer printer(graph);
@@ -341,8 +342,8 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 // std::cout << "ok!" << std::endl;
             }
 
-            ASSERT_TRUE(EQ_MULTISETS(concurrent_dijkstras_view,
-                                     certificate_fiber_view));
+            ASSERT_TRUE(
+                EQ_MULTISETS(competing_dijkstras_view, certificate_fiber_view));
         }
     }
 }

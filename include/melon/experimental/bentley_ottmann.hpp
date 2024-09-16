@@ -12,93 +12,68 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/planar_map.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-// clang-format off
-template <typename T>
-concept dijkstra_trait = semiring<typename T::semiring> &&
-    updatable_priority_queue<typename T::heap> && requires() {
-    { T::store_distances } -> std::convertible_to<bool>;
-    { T::store_paths } -> std::convertible_to<bool>;
-};
-// clang-format on
-
-template <typename G>
-struct bentley_ottman_default_traits {
-    using coords_t = vertex_coordinates_t<G>;
-    using coord_t =
-        std::decay_t<decltype(std::get<0>(std::declval<coords_t>()))>;
-    using sweepline = double;
-
-    struct event_cmp {
-        [[nodiscard]] constexpr bool operator()(
-            const coords_t & p1, const coords_t & p2) const noexcept {
-            if(std::get<0>(e1.second) == std::get<0>(p2.second))
-                return std::get<1>(p1.second) < std::get<1>(p2.second);
-            return std::get<0>(p1.second) < std::get<0>(p2.second);
-        }
-    };
-    using event_heap =
-        d_ary_heap<2, coords_t, std::vector<arc_t<G>>, event_cmp>;
-
-    struct segment_cmp {
-        std::reference_wrapper<sweepline> sweepline_x;
-
-        [[nodiscard]] constexpr coord_t sweepline_intersection_y(
-            const std::pair<coords_t, coords_t> & p) {
-            const coords_t & A = std::get<0>(p);
-            const coords_t & B = std::get<1>(p);
-            const coord_t dx = std::get<0>(B) - std::get<0>(A);
-            const coord_t dy = std::get<1>(B) - std::get<1>(A);
-            return std::get<1>(A) +
-                   (sweepline_x.get() - std::get<0>(A)) * dy / dx;
-        }
-        [[nodiscard]] constexpr bool operator()(
-            const std::pair<coords_t, coords_t> & p1,
-            const std::pair<coords_t, coords_t> & p2) {
-            return sweepline_intersection_y(p1) < sweepline_intersection_y(p2);
-        }
-    };
-    using segment_tree = std::set<std::pair<coords_t, coords_t>, segment_cmp>;
-};
-
-template <drawable_graph G>
-    requires has_vertex_map<G>
+template <
+    std::ranges::range _SegmentIdRange,
+    input_mapping<std::ranges::range_value_t<_SegmentIdRange>> _SegmentMap>
 class bentley_ottman {
 private:
-    using vertex = vertex_t<G>;
-    using arc = arc_t<G>;
-    using value_t = mapped_value_t<L, arc_t<G>>;
-    using traversal_entry = std::pair<vertex, value_t>;
-    using traits = T;
+    using segment_id = std::ranges::range_value_t<_SegmentIdRange>;
+    using segment = mapped_value_t<_SegmentMap, segment_id>;
+    // using point = mapped_value_t<EM, segment_id_t>;
 
-    static_assert(std::is_same_v<traversal_entry, typename traits::heap::entry>,
-                  "traversal_entry != heap_entry");
+    // struct event_cmp {
+    //     [[nodiscard]] constexpr bool operator()(
+    //         const coords_t & p1, const coords_t & p2) const noexcept {
+    //         if(std::get<0>(e1.second) == std::get<0>(p2.second))
+    //             return std::get<1>(p1.second) < std::get<1>(p2.second);
+    //         return std::get<0>(p1.second) < std::get<0>(p2.second);
+    //     }
+    // };
+    // using event_heap =
+    //     d_ary_heap<2, coords_t, std::vector<arc_t<G>>, event_cmp>;
 
-    using sweepline = traits::sweepline;
-    using event_heap = traits::event_heap;
-    using segment_cmp = traits::segment_cmp;
-    using segment_tree = traits::segment_tree;
+    // struct segment_cmp {
+    //     std::reference_wrapper<sweepline> sweepline_x;
+
+    //     [[nodiscard]] constexpr coord_t sweepline_intersection_y(
+    //         const std::pair<coords_t, coords_t> & p) {
+    //         const coords_t & A = std::get<0>(p);
+    //         const coords_t & B = std::get<1>(p);
+    //         const coord_t dx = std::get<0>(B) - std::get<0>(A);
+    //         const coord_t dy = std::get<1>(B) - std::get<1>(A);
+    //         return std::get<1>(A) +
+    //                (sweepline_x.get() - std::get<0>(A)) * dy / dx;
+    //     }
+    //     [[nodiscard]] constexpr bool operator()(
+    //         const std::pair<coords_t, coords_t> & p1,
+    //         const std::pair<coords_t, coords_t> & p2) {
+    //         return sweepline_intersection_y(p1) < sweepline_intersection_y(p2);
+    //     }
+    // };
+    // using segment_tree = std::set<std::pair<coords_t, coords_t>, segment_cmp>;
 
 private:
-    std::reference_wrapper<const G> _graph;
+    _SegmentIdRange _segments_ids_range;
+    _SegmentMap _segment_map;
 
-    sweepline _sweepline;
-    event_heap _event_heap;
-    segment_tree _segment_tree;
+    // int _sweepline;
+    // event_heap _event_heap;
+    // segment_tree _segment_tree;
 
 public:
-    [[nodiscard]] constexpr bentley_ottman(const G & g)
-        : _graph(g)
-        , _event_heap()
-        , _segment_tree(segment_cmp{std::ref(_sweepline)}) {}
+    template <typename _SIR, typename _SM>
+    bentley_ottman(_SIR && segments_ids_range, _SM && value_map) noexcept
+        : _segments_ids_range(
+              std::ranges::views::all(std::forward<_SIR>(segments_ids_range)))
+        , _value_map(views::mapping_all(std::forward<_SM>(value_map))) {}
 
-    [[nodiscard]] constexpr bentley_ottman(const bentley_ottman & bin) =
+    [[nodiscard]] constexpr bentley_ottman(const bentley_ottman &) =
         default;
-    [[nodiscard]] constexpr bentley_ottman(bentley_ottman && bin) = default;
+    [[nodiscard]] constexpr bentley_ottman(bentley_ottman &&) = default;
 
     constexpr bentley_ottman & operator=(const bentley_ottman &) = default;
     constexpr bentley_ottman & operator=(bentley_ottman &&) = default;
@@ -146,7 +121,6 @@ public:
             const auto [p, intersecting_arcs] = _even_heap.top();
             _even_heap.pop();
         } while(!finished() && _even_heap.top().second.size() < 2);
-        
     }
 
     constexpr void init() noexcept {
@@ -167,5 +141,10 @@ public:
 
 }  // namespace melon
 }  // namespace fhamonic
+
+template <typename _SegmentIdRange, typename _SegmentMap>
+bentley_ottman(_SegmentIdRange &&, _SegmentMap &&)
+    -> bentley_ottman<std::ranges::views::all_t<_SegmentIdRange>,
+                      views::mapping_all_t<_SegmentMap>>;
 
 #endif  // MELON_ALGORITHM_BENTLEY_OTTMANN_HPP
