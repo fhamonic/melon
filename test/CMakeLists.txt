@@ -41,7 +41,7 @@ add_executable(
   d_ary_heap_test.cpp
   dijkstra_test.cpp
   bidirectional_dijkstra_test.cpp
-  concurrent_dijkstras_test.cpp
+  competing_dijkstras_test.cpp
   intrusive_view_test.cpp
   edmonds_karp_test.cpp
   erdos_renyi_test.cpp
