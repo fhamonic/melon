@@ -2,11 +2,13 @@
 #include <gtest/gtest.h>
 
 #include <numeric>
+#include <queue>
 
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/view/zip.hpp>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/utility/priority_queue.hpp"
 
 #include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"
@@ -16,6 +18,9 @@ using namespace fhamonic::melon;
 GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
     d_ary_heap<2, int> heap;
+
+    static_assert(priority_queue<decltype(heap)>);
+
     for(auto && e : datas) {
         heap.push(e);
     }
@@ -152,6 +157,9 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
                          std::array<std::size_t, nb_elements>,
                          views::get_map<1>, views::get_map<0>>
         heap;
+
+    static_assert(updatable_priority_queue<decltype(heap)>);
+
     for(unsigned int i = 0; i < nb_elements; ++i) {
         heap.push(std::make_pair(i, datas[i]));
     }

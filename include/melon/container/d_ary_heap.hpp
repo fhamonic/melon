@@ -313,14 +313,14 @@ public:
     }
     constexpr void promote(const id_type & k,
                            const priority_type & p) noexcept {
-        value_type e = base_class::entry_ref(_heap_index_map[k]);
+        value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
         assert(
             !base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
         base_class::_entry_priority_map[e] = p;
         base_class::heap_push(_heap_index_map[k], std::move(e));
     }
     void demote(const id_type & k, const priority_type & p) noexcept {
-        value_type e = base_class::entry_ref(_heap_index_map[k]);
+        value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
         assert(
             base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
         base_class::_entry_priority_map[e] = p;
