@@ -37,9 +37,10 @@ template <typename _Graph, typename _ValueType>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<_ValueType>;
     using heap =
-        d_ary_heap<2, std::pair<vertex_t<_Graph>, _ValueType>,
-                   views::get_map<1>, typename semiring::less_t,
-                   views::get_map<0>, vertex_map_t<_Graph, std::size_t>>;
+        updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, _ValueType>,
+                             typename semiring::less_t,
+                             vertex_map_t<_Graph, std::size_t>,
+                             views::get_map<1>, views::get_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -52,15 +53,16 @@ class dijkstra {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
-    using value_t = mapped_value_t<_LengthMap, arc_t<_Graph>>;
-    using traversal_entry = std::pair<vertex, value_t>;
 
-    static_assert(
-        std::is_same_v<traversal_entry, typename _Traits::heap::entry>,
-        "traversal_entry != heap_entry");
+    using length_type = mapped_value_t<_LengthMap, arc_t<_Graph>>;
+    using traversal_entry = std::pair<vertex, length_type>;
 
     using heap = _Traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
+
+    static_assert(std::is_same_v<typename heap::value_type,
+                                 std::pair<vertex, length_type>>,
+                  "dijkstras requires heap entries type.");
 
 private:
     _Graph _graph;
@@ -81,7 +83,8 @@ public:
     [[nodiscard]] constexpr dijkstra(_G && g, _M && l)
         : _graph(views::graph_all(std::forward<_G>(g)))
         , _length_map(views::mapping_all(std::forward<_M>(l)))
-        , _heap(create_vertex_map<std::size_t>(_graph))
+        , _heap(typename _Traits::semiring::less_t(),
+                create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
@@ -110,7 +113,7 @@ public:
     }
     constexpr dijkstra & add_source(
         const vertex & s,
-        const value_t & dist = _Traits::semiring::zero) noexcept {
+        const length_type & dist = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, dist));
         _vertex_status_map[s] = IN_HEAP;
@@ -144,7 +147,7 @@ public:
             const vertex & w = melon::arc_target(_graph, a);
             const vertex_status & w_status = _vertex_status_map[w];
             if(w_status == IN_HEAP) {
-                const value_t new_dist =
+                const length_type new_dist =
                     _Traits::semiring::plus(st_dist, _length_map[a]);
                 if(_Traits::semiring::less(new_dist, _heap.priority(w))) {
                     _heap.promote(w, new_dist);
@@ -198,14 +201,14 @@ public:
         else
             return _pred_vertices_map[u];
     }
-    [[nodiscard]] constexpr value_t current_dist(
+    [[nodiscard]] constexpr length_type current_dist(
         const vertex & u) const noexcept
         requires(_Traits::store_distances)
     {
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }
-    [[nodiscard]] constexpr value_t dist(const vertex & u) const noexcept
+    [[nodiscard]] constexpr length_type dist(const vertex & u) const noexcept
         requires(_Traits::store_distances)
     {
         assert(visited(u));

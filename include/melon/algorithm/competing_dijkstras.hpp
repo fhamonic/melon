@@ -32,21 +32,19 @@ template <outward_incidence_graph _Graph, typename _ValueType>
 struct competing_dijkstras_default_traits {
     using semiring = shortest_path_semiring<_ValueType>;
     using entry = std::pair<_ValueType, bool>;
-    static bool compare_entries(const entry & e1, const entry & e2) {
-        if(e1.first == e2.first) {
-            return e1.second && !e2.second;
-        }
-        return semiring::less(e1.first, e2.first);
-    }
     struct entry_cmp {
-        [[nodiscard]] constexpr bool operator()(
-            const auto & e1, const auto & e2) const noexcept {
-            return compare_entries(e1, e2);
+        [[nodiscard]] constexpr bool operator()(const entry & e1,
+                                                const entry & e2) const {
+            if(e1.first == e2.first) {
+                return e1.second && !e2.second;
+            }
+            return semiring::less(e1.first, e2.first);
         }
     };
-    using heap = d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>,
-                            views::get_map<1>, entry_cmp, views::get_map<0>,
-                            vertex_map_t<_Graph, std::size_t>>;
+    using heap =
+        updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
+                             vertex_map_t<_Graph, std::size_t>,
+                             views::get_map<1>, views::get_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -63,10 +61,15 @@ class competing_dijkstras {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
-    using value_t = mapped_value_t<BLM, arc_t<_Graph>>;
+    using length_type = mapped_value_t<BLM, arc_t<_Graph>>;
     using entry_t = typename _Traits::entry;
     using entry_cmp = typename _Traits::entry_cmp;
     using heap = typename _Traits::heap;
+
+    static_assert(
+        std::is_same_v<typename _Traits::heap::value_type,
+                       std::pair<vertex, std::pair<length_type, bool>>>,
+        "competing_dijkstras requires matching value_type with heap.");
 
 private:
     _Graph _graph;
@@ -76,6 +79,7 @@ private:
     vertex_map_t<_Graph, vertex_status> _vertex_status_map;
     heap _heap;
     std::size_t _nb_blue_candidates;
+    [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
     template <typename _G, typename _BLM, typename _RLM>
@@ -84,7 +88,7 @@ public:
         , _blue_length_map(views::mapping_all(std::forward<_BLM>(l1)))
         , _red_length_map(views::mapping_all(std::forward<_RLM>(l2)))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
-        , _heap(create_vertex_map<std::size_t>(_graph), entry_cmp{})
+        , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
         , _nb_blue_candidates(0) {}
 
     template <typename... _Args>
@@ -115,7 +119,7 @@ public:
 
     competing_dijkstras & add_blue_source(
         const vertex & s,
-        const value_t dist_v = _Traits::semiring::zero) noexcept {
+        const length_type dist_v = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, true}));
         ++_nb_blue_candidates;
@@ -128,7 +132,7 @@ public:
     }
     competing_dijkstras & add_red_source(
         const vertex & s,
-        const value_t dist_v = _Traits::semiring::zero) noexcept {
+        const length_type dist_v = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, false}));
         _vertex_status_map[s] = IN_HEAP;
@@ -140,12 +144,12 @@ public:
     }
 
     void relax_blue_vertex(const vertex & w,
-                           const value_t new_dist_v) noexcept {
+                           const length_type new_dist_v) noexcept {
         const entry_t new_dist = {new_dist_v, true};
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const entry_t old_dist = _heap.priority(w);
-            if(_Traits::compare_entries(new_dist, old_dist)) {
+            if(_entry_cmp(new_dist, old_dist)) {
                 if(!old_dist.second) {
                     ++_nb_blue_candidates;
                 }
@@ -158,12 +162,13 @@ public:
         }
     }
 
-    void relax_red_vertex(const vertex & w, const value_t new_dist_v) noexcept {
+    void relax_red_vertex(const vertex & w,
+                          const length_type new_dist_v) noexcept {
         const entry_t new_dist = {new_dist_v, false};
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
             const entry_t old_dist = _heap.priority(w);
-            if(_Traits::compare_entries(new_dist, old_dist)) {
+            if(_entry_cmp(new_dist, old_dist)) {
                 if(old_dist.second) {
                     --_nb_blue_candidates;
                 }

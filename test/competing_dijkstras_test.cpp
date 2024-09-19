@@ -223,9 +223,9 @@ struct useless_competing_dijkstras_traits {
             return compare_entries(e1, e2);
         }
     };
-    using heap = d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>,
-                            views::get_map<1>, entry_cmp, views::get_map<0>,
-                            vertex_map_t<_Graph, std::size_t>>;
+    using heap = updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
+                            vertex_map_t<_Graph, std::size_t>,
+                            views::get_map<1>, views::get_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;

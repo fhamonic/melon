@@ -13,52 +13,45 @@
 namespace fhamonic {
 namespace melon {
 
-template <std::size_t D, typename _Entry,
-          input_mapping<_Entry> _EntryPriorityMap = views::identity_map,
-          std::strict_weak_order<mapped_value_t<_EntryPriorityMap, _Entry>,
-                                 mapped_value_t<_EntryPriorityMap, _Entry>>
-              _PriorityComparator =
-                  std::greater<mapped_value_t<_EntryPriorityMap, _Entry>>,
-          input_mapping<_Entry> _EntryIdMap = views::identity_map,
-          output_mapping<mapped_value_t<_EntryIdMap, _Entry>> _IndicesMap =
-              mapping_owning_view<std::unordered_map<
-                  mapped_value_t<_EntryIdMap, _Entry>, std::size_t>>>
-class d_ary_heap {
+template <typename _Derived, std::size_t D, typename _Entry,
+          typename _PriorityComparator = std::greater<_Entry>,
+          input_mapping<_Entry> _EntryPriorityMap = views::identity_map>
+    requires std::strict_weak_order<_PriorityComparator,
+                                    mapped_value_t<_EntryPriorityMap, _Entry>,
+                                    mapped_value_t<_EntryPriorityMap, _Entry>>
+class d_ary_heap_base {
 public:
-    using entry = _Entry;
-    using id_type = mapped_value_t<_EntryIdMap, _Entry>;
+    using value_type = _Entry;
+    using size_type = std::size_t;
     using priority_type = mapped_value_t<_EntryPriorityMap, _Entry>;
 
-private:
-    using size_type = std::size_t;
-
-    std::vector<entry> _heap_array;
-    [[no_unique_address]] _EntryPriorityMap _entry_priority_map;
+protected:
+    std::vector<value_type> _heap_array;
     [[no_unique_address]] _PriorityComparator _priority_cmp;
-    [[no_unique_address]] _EntryIdMap _entry_id_map;
-    [[no_unique_address]] _IndicesMap _heap_index_map;
+    [[no_unique_address]] _EntryPriorityMap _entry_priority_map;
 
 public:
-    [[nodiscard]] constexpr d_ary_heap()
-        : _heap_array(), _priority_cmp(), _heap_index_map() {}
+    [[nodiscard]] constexpr d_ary_heap_base()
+        : _heap_array(), _priority_cmp(), _entry_priority_map() {}
 
-    template <typename IMA>
-    [[nodiscard]] constexpr explicit d_ary_heap(IMA && indices_map_arg)
+    template <typename PC>
+    [[nodiscard]] constexpr d_ary_heap_base(PC && priority_cmp)
         : _heap_array()
-        , _priority_cmp()
-        , _heap_index_map(std::forward<IMA>(indices_map_arg)) {}
+        , _priority_cmp(std::forward<PC>(priority_cmp))
+        , _entry_priority_map() {}
 
-    template <typename IMA, typename CA>
-    [[nodiscard]] constexpr d_ary_heap(IMA && indices_map_arg, CA && cmp_arg)
+    template <typename PC, typename EPM>
+    [[nodiscard]] constexpr d_ary_heap_base(PC && priority_cmp,
+                                            EPM && entry_priority_map)
         : _heap_array()
-        , _priority_cmp(std::forward<CA>(cmp_arg))
-        , _heap_index_map(std::forward<IMA>(indices_map_arg)) {}
+        , _priority_cmp(std::forward<PC>(priority_cmp))
+        , _entry_priority_map(std::forward<EPM>(entry_priority_map)) {}
 
-    [[nodiscard]] constexpr d_ary_heap(const d_ary_heap &) = default;
-    [[nodiscard]] constexpr d_ary_heap(d_ary_heap &&) = default;
+    [[nodiscard]] constexpr d_ary_heap_base(const d_ary_heap_base &) = default;
+    [[nodiscard]] constexpr d_ary_heap_base(d_ary_heap_base &&) = default;
 
-    d_ary_heap & operator=(const d_ary_heap &) = default;
-    d_ary_heap & operator=(d_ary_heap &&) = default;
+    d_ary_heap_base & operator=(const d_ary_heap_base &) = default;
+    d_ary_heap_base & operator=(d_ary_heap_base &&) = default;
 
     [[nodiscard]] constexpr size_type size() const noexcept {
         return _heap_array.size();
@@ -68,14 +61,15 @@ public:
     }
     constexpr void clear() noexcept { _heap_array.resize(0); }
 
-private:
+protected:
     [[nodiscard]] static constexpr size_type parent_of(
         const size_type i) noexcept {
-        return (i - sizeof(entry)) / (sizeof(entry) * D) * sizeof(entry);
+        return (i - sizeof(value_type)) / (sizeof(value_type) * D) *
+               sizeof(value_type);
     }
     [[nodiscard]] static constexpr size_type first_child_of(
         const size_type i) noexcept {
-        return i * D + sizeof(entry);
+        return i * D + sizeof(value_type);
     }
     template <int I = D>
     [[nodiscard]] constexpr size_type minimum_child(
@@ -84,16 +78,16 @@ private:
             return first_child;
         else if constexpr(I == 2)
             return first_child +
-                   sizeof(entry) *
+                   sizeof(value_type) *
                        _priority_cmp(
                            _entry_priority_map[entry_ref(first_child +
-                                                         sizeof(entry))],
+                                                         sizeof(value_type))],
                            _entry_priority_map[entry_ref(first_child)]);
         else {
             const size_type first_half_minimum =
                 minimum_child<I / 2>(first_child);
-            const size_type second_half_minimum =
-                minimum_child<I - I / 2>(first_child + (I / 2) * sizeof(entry));
+            const size_type second_half_minimum = minimum_child<I - I / 2>(
+                first_child + (I / 2) * sizeof(value_type));
             return _priority_cmp(
                        _entry_priority_map[entry_ref(second_half_minimum)],
                        _entry_priority_map[entry_ref(first_half_minimum)])
@@ -127,7 +121,7 @@ private:
                         minimum_remaining_child(first_child, half);
                     const size_type second_half_minimum =
                         minimum_remaining_child(
-                            first_child + half * sizeof(entry),
+                            first_child + half * sizeof(value_type),
                             nb_children - half);
                     return _priority_cmp(_entry_priority_map[entry_ref(
                                              second_half_minimum)],
@@ -139,26 +133,23 @@ private:
         }
     }
 
-    [[nodiscard]] constexpr entry & entry_ref(const size_type i) noexcept {
-        assert(0 <= (i / sizeof(entry)) &&
-               (i / sizeof(entry)) < _heap_array.size());
-        return *(reinterpret_cast<entry *>(
+    [[nodiscard]] constexpr value_type & entry_ref(const size_type i) noexcept {
+        assert(0 <= (i / sizeof(value_type)) &&
+               (i / sizeof(value_type)) < _heap_array.size());
+        return *(reinterpret_cast<value_type *>(
             reinterpret_cast<std::byte *>(_heap_array.data()) + i));
     }
-    [[nodiscard]] constexpr const entry & entry_ref(
+    [[nodiscard]] constexpr const value_type & entry_ref(
         const size_type i) const noexcept {
-        assert(0 <= (i / sizeof(entry)) &&
-               (i / sizeof(entry)) < _heap_array.size());
-        return *(reinterpret_cast<const entry *>(
+        assert(0 <= (i / sizeof(value_type)) &&
+               (i / sizeof(value_type)) < _heap_array.size());
+        return *(reinterpret_cast<const value_type *>(
             reinterpret_cast<const std::byte *>(_heap_array.data()) + i));
     }
-    constexpr void heap_move(const size_type i, entry && p) noexcept {
-        assert(0 <= (i / sizeof(entry)) &&
-               (i / sizeof(entry)) < _heap_array.size());
-        _heap_index_map[_entry_id_map[p]] = i;
-        entry_ref(i) = std::move(p);
+    constexpr void heap_move(const size_type i, value_type && p) noexcept {
+        static_cast<_Derived *>(this)->heap_move(i, std::move(p));
     }
-    constexpr void heap_push(size_type hole_index, entry && p) noexcept {
+    constexpr void heap_push(size_type hole_index, value_type && p) noexcept {
         while(hole_index > 0) {
             const size_type parent = parent_of(hole_index);
             if(!_priority_cmp(_entry_priority_map[p],
@@ -171,13 +162,14 @@ private:
     }
     // EXPECTED_CPP23 goto in constexpr functions
     void adjust_heap(size_type hole_index, const size_type end,
-                     entry && p) noexcept {
+                     value_type && p) noexcept {
         size_type child_end;
         if constexpr(D > 2)
-            child_end =
-                end > D * sizeof(entry) ? end - (D - 1) * sizeof(entry) : 0;
+            child_end = end > D * sizeof(value_type)
+                            ? end - (D - 1) * sizeof(value_type)
+                            : 0;
         else
-            child_end = end - (D - 1) * sizeof(entry);
+            child_end = end - (D - 1) * sizeof(value_type);
         size_type child = first_child_of(hole_index);
         while(child < child_end) {
             child = minimum_child(child);
@@ -191,8 +183,8 @@ private:
             goto ok;
         }
         if(child < end) {
-            child =
-                minimum_remaining_child(child, (end - child) / sizeof(entry));
+            child = minimum_remaining_child(child,
+                                            (end - child) / sizeof(value_type));
             if(_priority_cmp(_entry_priority_map[entry_ref(child)],
                              _entry_priority_map[p])) {
                 heap_move(hole_index, std::move(entry_ref(child)));
@@ -202,27 +194,14 @@ private:
     ok:
         heap_move(hole_index, std::move(p));
     }
-    [[nodiscard]] constexpr size_type index_of(
-        const id_type & k) const noexcept {
-        return _heap_index_map[k];
-    }
 
 public:
-    constexpr void push(entry p) noexcept {
+    constexpr void push(value_type p) noexcept {
         const size_type n = _heap_array.size();
         _heap_array.emplace_back();
-        heap_push(size_type(n * sizeof(entry)), std::move(p));
+        heap_push(size_type(n * sizeof(value_type)), std::move(p));
     }
-    [[nodiscard]] constexpr priority_type priority(
-        const id_type & k) const noexcept {
-        return _entry_priority_map[entry_ref(index_of(k))];
-    }
-    [[nodiscard]] constexpr bool contains(const id_type & k) const noexcept {
-        const size_type i = index_of(k);
-        if(i >= _heap_array.size()) return false;
-        return _entry_id_map[_heap_array[i]] == k;
-    }
-    [[nodiscard]] constexpr entry top() const noexcept {
+    [[nodiscard]] constexpr value_type top() const noexcept {
         assert(!_heap_array.empty());
         return _heap_array.front();
     }
@@ -230,28 +209,124 @@ public:
         assert(!_heap_array.empty());
         const size_type n = _heap_array.size() - 1;
         if(n > 0)
-            adjust_heap(size_type(0), n * sizeof(entry),
+            adjust_heap(size_type(0), n * sizeof(value_type),
                         std::move(_heap_array.back()));
         _heap_array.pop_back();
     }
+};
+
+template <std::size_t D, typename _Entry,
+          typename _PriorityComparator = std::greater<_Entry>,
+          input_mapping<_Entry> _EntryPriorityMap = views::identity_map>
+class d_ary_heap
+    : public d_ary_heap_base<
+          d_ary_heap<D, _Entry, _PriorityComparator, _EntryPriorityMap>, D,
+          _Entry, _PriorityComparator, _EntryPriorityMap> {
+private:
+    using base_class = d_ary_heap_base<d_ary_heap, D, _Entry,
+                                       _PriorityComparator, _EntryPriorityMap>;
+
+public:
+    using typename base_class::size_type;
+    using typename base_class::value_type;
+
+    d_ary_heap() : base_class() {}
+
+    template <typename PC, typename EPM>
+    [[nodiscard]] constexpr d_ary_heap(PC && priority_cmp,
+                                       EPM && entry_priority_map)
+        : base_class(std::forward<PC>(priority_cmp),
+                     std::forward<EPM>(entry_priority_map)) {}
+
+private:
+    constexpr void heap_move(const size_type i, value_type && p) noexcept {
+        assert(0 <= (i / sizeof(value_type)) &&
+               (i / sizeof(value_type)) < base_class::_heap_array.size());
+        base_class::entry_ref(i) = std::move(p);
+    }
+    friend base_class;
+};
+
+template <std::size_t D, typename _Entry,
+          typename _PriorityComparator = std::greater<_Entry>,
+          typename _IndicesMap =
+              mapping_owning_view<std::unordered_map<_Entry, std::size_t>>,
+          input_mapping<_Entry> _EntryPriorityMap = views::identity_map,
+          input_mapping<_Entry> _EntryIdMap = views::identity_map>
+    requires std::strict_weak_order<
+                 _PriorityComparator, mapped_value_t<_EntryPriorityMap, _Entry>,
+                 mapped_value_t<_EntryPriorityMap, _Entry>> &&
+             output_mapping<_IndicesMap, mapped_value_t<_EntryIdMap, _Entry>>
+class updatable_d_ary_heap
+    : public d_ary_heap_base<
+          updatable_d_ary_heap<D, _Entry, _PriorityComparator, _IndicesMap,
+                               _EntryPriorityMap, _EntryIdMap>,
+          D, _Entry, _PriorityComparator, _EntryPriorityMap> {
+private:
+    using base_class = d_ary_heap_base<updatable_d_ary_heap, D, _Entry,
+                                       _PriorityComparator, _EntryPriorityMap>;
+
+public:
+    using typename base_class::priority_type;
+    using typename base_class::size_type;
+    using typename base_class::value_type;
+
+    using id_type = mapped_value_t<_EntryIdMap, _Entry>;
+
+private:
+    [[no_unique_address]] _EntryIdMap _entry_id_map;
+    [[no_unique_address]] _IndicesMap _heap_index_map;
+
+public:
+    updatable_d_ary_heap() : base_class() {}
+
+    template <typename PC, typename HIM>
+    updatable_d_ary_heap(PC && priority_cmp, HIM && heap_index_map)
+        : base_class(std::forward<PC>(priority_cmp))
+        , _entry_id_map()
+        , _heap_index_map(std::forward<HIM>(heap_index_map)) {}
+
+protected:
+    constexpr void heap_move(const size_type i, value_type && p) noexcept {
+        assert(0 <= (i / sizeof(value_type)) &&
+               (i / sizeof(value_type)) < base_class::_heap_array.size());
+        _heap_index_map[_entry_id_map[p]] = i;
+        base_class::entry_ref(i) = std::move(p);
+    }
+    friend base_class;
+
+    [[nodiscard]] constexpr size_type index_of(
+        const id_type & k) const noexcept {
+        return _heap_index_map[k];
+    }
+
+public:
+    [[nodiscard]] constexpr priority_type priority(
+        const id_type & k) const noexcept {
+        return base_class::_entry_priority_map[base_class::entry_ref(
+            index_of(k))];
+    }
+    [[nodiscard]] constexpr bool contains(const id_type & k) const noexcept {
+        const size_type i = index_of(k);
+        if(i >= base_class::_heap_array.size()) return false;
+        return _entry_id_map[base_class::_heap_array[i]] == k;
+    }
     constexpr void promote(const id_type & k,
                            const priority_type & p) noexcept {
-        entry e = entry_ref(_heap_index_map[k]);
-        assert(!_priority_cmp(_entry_priority_map[e], p));
-        _entry_priority_map[e] = p;
-        heap_push(_heap_index_map[k], std::move(e));
+        value_type e = base_class::entry_ref(_heap_index_map[k]);
+        assert(
+            !base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
+        base_class::_entry_priority_map[e] = p;
+        base_class::heap_push(_heap_index_map[k], std::move(e));
     }
     void demote(const id_type & k, const priority_type & p) noexcept {
-        entry e = entry_ref(_heap_index_map[k]);
-        assert(_priority_cmp(_entry_priority_map[e], p));
-        _entry_priority_map[e] = p;
-        adjust_heap(_heap_index_map[k], std::move(e));
+        value_type e = base_class::entry_ref(_heap_index_map[k]);
+        assert(
+            base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
+        base_class::_entry_priority_map[e] = p;
+        base_class::adjust_heap(_heap_index_map[k], std::move(e));
     }
-};  // class d_ary_heap
-
-// template <typename _Graph, typename _LengthMap, typename _Traits>
-// d_ary_heap(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
-//     -> d_ary_heap<views::mapping_all_t<_LengthMap>, _Traits>;
+};
 
 }  // namespace melon
 }  // namespace fhamonic
