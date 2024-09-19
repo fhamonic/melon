@@ -106,9 +106,9 @@ GTEST_TEST(dijkstra, algorithm_iterator) {
 struct dijkstra_traits {
     using semiring = shortest_path_semiring<int>;
     using heap =
-        d_ary_heap<2, std::pair<vertex_t<static_digraph>, int>,
-                   views::get_map<1>, semiring::less_t, views::get_map<0>,
-                   vertex_map_t<static_digraph, std::size_t>>;
+        updatable_d_ary_heap<2, std::pair<vertex_t<static_digraph>, int>,
+                   semiring::less_t, vertex_map_t<static_digraph, std::size_t>,
+                   views::get_map<1>, views::get_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = true;

@@ -77,8 +77,8 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
         auto zip_view = ranges::views::zip(datas, permuted_id);
 
-        d_ary_heap<2, std::pair<std::size_t, int>, views::get_map<1>,
-                   std::greater<int>, views::get_map<0>>
+        d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
+                   views::get_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -94,7 +94,6 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         ASSERT_TRUE(heap.empty());
     }
 }
-
 GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
     for(int it = 0; it < 10; ++it) {
         std::size_t size = 127;
@@ -103,8 +102,8 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
         auto zip_view = ranges::views::zip(datas, permuted_id);
 
-        d_ary_heap<3, std::pair<std::size_t, int>, views::get_map<1>,
-                   std::greater<int>, views::get_map<0>>
+        d_ary_heap<3, std::pair<std::size_t, int>, std::greater<int>,
+                   views::get_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -120,7 +119,6 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         ASSERT_TRUE(heap.empty());
     }
 }
-
 GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
     for(int it = 0; it < 10; ++it) {
         std::size_t size = 127;
@@ -129,8 +127,8 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
         auto zip_view = ranges::views::zip(datas, permuted_id);
 
-        d_ary_heap<4, std::pair<std::size_t, int>, views::get_map<1>,
-                   std::greater<int>, views::get_map<0>>
+        d_ary_heap<4, std::pair<std::size_t, int>, std::greater<int>,
+                   views::get_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -147,12 +145,14 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
     }
 }
 
-GTEST_TEST(d_ary_heap, 2_heap_promote_test) {
+GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-    d_ary_heap<2, std::pair<unsigned int, int>, views::get_map<1>,
-               std::greater<int>, views::get_map<0>>
+    constexpr std::size_t nb_elements = 6;
+    updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::greater<int>,
+                         std::array<std::size_t, nb_elements>,
+                         views::get_map<1>, views::get_map<0>>
         heap;
-    for(unsigned int i = 0; i < datas.size(); ++i) {
+    for(unsigned int i = 0; i < nb_elements; ++i) {
         heap.push(std::make_pair(i, datas[i]));
     }
     heap.promote(3u, 8);
@@ -197,8 +197,9 @@ GTEST_TEST(d_ary_heap, 2_heap_promote_test) {
     // }
 }
 
-// GTEST_TEST(d_ary_heap, 2_heap_promote_external_priority_test) {
+// GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
 //     external_priority_map::array = {0, 7, 3, 5, 6, 11};
+//     constexpr std::size_t nb_elements = 6;
 //     d_ary_heap<2, unsigned int, external_priority_map, std::greater<int>,
 //                views::identity_map>
 //         heap;
