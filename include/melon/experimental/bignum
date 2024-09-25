@@ -1,0 +1,68 @@
+#include <array>
+#include <cassert>
+#include <concepts>
+#include <iostream>
+#include <type_traits>
+
+template <std::integral T>
+constexpr bool will_add_overflow(const T& a, const T& b) {
+    if constexpr (std::is_signed_v<T>) {
+        return (b > 0 && a > std::numeric_limits<T>::max() - b) ||
+               (b < 0 && a < std::numeric_limits<T>::min() - b);
+    } else {
+        return (a > std::numeric_limits<T>::max() - b);
+    }
+}
+
+template <std::integral T>
+constexpr bool will_multiply_overflow(const T& a, const T& b) {
+    if constexpr (a == 0 || b == 0) return false;
+    return a != ((a * b) / b);
+}
+
+template <typename BI1, typename BI2>
+    requires(!will_add_overflow(BI1::max(), BI2::max()) &&
+             !will_add_overflow(BI1::min(), BI2::min()))
+struct select_addition_type {
+    using type =
+        std::common_type_t<typename BI1::value_type, typename BI2::value_type>;
+};
+
+template <std::integral T, T _MIN, T _MAX>
+    requires(_MIN <= _MAX)
+struct bounded_int {
+    using value_type = T;
+
+    static constexpr value_type min() { return _MIN; };
+    static constexpr value_type max() { return _MAX; };
+
+    value_type value;
+
+    bounded_int(const value_type& v) : value(v) {
+        assert(_MIN <= value && value <= _MAX);
+    }
+
+    template <typename _OT, _OT _OMIN, _OT _OMAX>
+    constexpr auto operator+(const bounded_int<_OT, _OMIN, _OMAX>& other) {
+        using return_type =
+            select_addition_type<bounded_int,
+                                 bounded_int<_OT, _OMIN, _OMAX>>::type;
+        return return_type(static_cast<return_type::value_type>(value) +
+                           static_cast<return_type::value_type>(other.value));
+    }
+
+    template <typename _OT, _OT _OMIN, _OT _OMAX>
+    constexpr std::strong_ordering operator<=>(
+        const bounded_int<_OT, _OMIN, _OMAX>& other) {
+        if constexpr (_MAX < _OMIN) return std::strong_ordering::less;
+        if constexpr (_MIN > _OMAX) return std::strong_ordering::greater;
+        return value <=> other.value;
+    }
+};
+
+int main() {
+    bounded_int<int, 0, 1> a(1);
+    bounded_int<int, 1, 3> b(2);
+
+    std::cout << (a + b).value << std::endl;
+}
