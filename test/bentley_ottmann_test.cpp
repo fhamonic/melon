@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <random>
 #include <ranges>
 
 #include "melon/experimental/bentley_ottmann.hpp"
@@ -97,11 +98,23 @@ GTEST_TEST(bentley_ottmann, fuzzy_test) {
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
     std::vector<segment> segments;
+    const std::size_t & num_segments = 100;
+
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<int64_t> dist(-15, 15);
+
+    for(std::size_t i = 0; i < num_segments; ++i) {
+        segments.emplace_back(std::make_pair(dist(rng), dist(rng)),
+                              std::make_pair(dist(rng), dist(rng)));
+        if(segments.back().first.first == segments.back().second.first)
+            segments.pop_back();
+    }
 
     std::vector<std::pair<intersection, std::vector<std::size_t>>>
         intersections_vec;
     for(const auto & [i, intersecting_segments] :
-        bentley_ottmann(std::views::iota(0ul, segments.size()), segments)) {
+        bentley_ottmann(std::views::iota(0ul, num_segments), segments)) {
         intersections_vec.emplace_back(std::make_pair(
             i, std::vector<std::size_t>(intersecting_segments.begin(),
                                         intersecting_segments.end())));
