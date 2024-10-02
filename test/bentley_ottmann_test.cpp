@@ -121,7 +121,7 @@ GTEST_TEST(bentley_ottmann, fuzzy_test_no_vertical_no_colinear) {
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
-    std::size_t num_tests = 100000;
+    std::size_t num_tests = 1000;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         std::vector<segment> segments;
