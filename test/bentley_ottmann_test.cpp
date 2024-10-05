@@ -4,7 +4,8 @@
 #include <random>
 #include <ranges>
 
-#include "melon/experimental/bentley_ottmann.hpp"
+#include "melon/algorithm/bentley_ottmann.hpp"
+
 using namespace fhamonic::melon;
 
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
@@ -26,7 +27,16 @@ auto naive_intersections(const std::vector<S> segments) {
         for(std::size_t j = i + 1; j < n; ++j) {
             const auto & s2 = segments[j];
             const auto & p = cartesian::segments_intersection(s1, s2);
-            if(!p.has_value()) continue;
+            if(!p.has_value()) {
+                const auto & is = cartesian::segments_overlap(s1, s2);
+                if(!is.has_value()) continue;
+                const auto & [k, l] = is.value();
+                intersections_map[k].emplace(i);
+                intersections_map[k].emplace(j);
+                intersections_map[l].emplace(i);
+                intersections_map[l].emplace(j);
+                continue;
+            }
             intersections_map[p.value()].emplace(i);
             intersections_map[p.value()].emplace(j);
         }
@@ -67,70 +77,26 @@ auto naive_intersections(const std::vector<S> segments) {
 //     alg.run();
 // }
 
-// GTEST_TEST(bentley_ottmann, test) {
-//     using segment =
-//         std::pair<std::pair<int64_t, int64_t>, std::pair<int64_t, int64_t>>;
-//     using intersection = decltype(cartesian::segments_intersection(
-//         std::declval<segment>(), std::declval<segment>()))::value_type;
-
-//     std::vector<segment> segments = {{{0, 0}, {2, 1}},  {{1, 1}, {2, -1}},
-//                                      {{1, 0}, {2, 1}},  {{1, 3}, {3, -1}},
-//                                      {{-1, 0}, {4, 0}}, {{0, -2}, {3, 0}}};
-//     // std::vector<segment> segments = {
-//     //     {{0, 0}, {2, 0}}, {{1, 0}, {2, 1}}, {{1, 0}, {2, -1}}};
-//     auto segments_ids = std::views::iota(0ul, segments.size());
-
-//     bentley_ottmann alg(segments_ids, segments);
-
-//     static_assert(std::ranges::input_range<decltype(alg)>);
-//     static_assert(std::ranges::viewable_range<decltype(alg)>);
-
-//     std::vector<std::pair<intersection, std::vector<std::size_t>>>
-//         intersections_vec;
-//     for(const auto & [i, intersecting_segments] : alg) {
-//         fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
-//                    std::get<0>(i).denom, std::get<1>(i).num,
-//                    std::get<1>(i).denom,
-//                    fmt::join(intersecting_segments, " , "));
-//         intersections_vec.emplace_back(std::make_pair(
-//             i, std::vector<std::size_t>(intersecting_segments.begin(),
-//                                         intersecting_segments.end())));
-//     }
-//     fmt::print("\n");
-//     auto naive_intersections_vec = naive_intersections(segments);
-//     for(const auto & [i, intersecting_segments] : naive_intersections_vec) {
-//         fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
-//                    std::get<0>(i).denom, std::get<1>(i).num,
-//                    std::get<1>(i).denom,
-//                    fmt::join(intersecting_segments, " , "));
-//     }
-
-//     ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),
-//                              std::views::keys(naive_intersections_vec)));
-
-//     const std::size_t num_intersections = intersections_vec.size();
-//     for(std::size_t i = 0; i < num_intersections; ++i) {
-//         ASSERT_TRUE(EQ_MULTISETS(intersections_vec[i].second,
-//                                  naive_intersections_vec[i].second));
-//     }
-// }
-
 GTEST_TEST(bentley_ottmann, fuzzy_test_no_colinear) {
     using segment =
         std::pair<std::pair<int64_t, int64_t>, std::pair<int64_t, int64_t>>;
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
-    std::size_t num_tests = 100000;
+    const std::size_t num_tests = 1000;
+    std::size_t num_intersection_sum = 0;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
-        const std::size_t & num_segments = 10;
+        const std::size_t & num_segments = 100;
         std::vector<segment> segments;
         segments.reserve(num_segments);
 
         std::random_device dev;
         std::mt19937 rng(dev());
-        std::uniform_int_distribution<int64_t> dist(-63, 63);
+        using coord_type = int8_t;
+        std::uniform_int_distribution<int64_t> dist(
+            std::numeric_limits<coord_type>::min(),
+            std::numeric_limits<coord_type>::max());
 
         while(segments.size() < num_segments) {
             const auto & s =
@@ -145,16 +111,16 @@ GTEST_TEST(bentley_ottmann, fuzzy_test_no_colinear) {
             //     segments.pop_back();
             //     continue;
             // }
-            if(std::any_of(segments.begin(), std::prev(segments.end()),
-                           [s](auto && s2) {
-                               return cartesian::line_slope(
-                                          cartesian::segment_to_line(s)) ==
-                                      cartesian::line_slope(
-                                          cartesian::segment_to_line(s2));
-                           })) {
-                segments.pop_back();
-                continue;
-            }
+            // if(std::any_of(segments.begin(), std::prev(segments.end()),
+            //                [s](auto && s2) {
+            //                    return cartesian::line_slope(
+            //                               cartesian::segment_to_line(s)) ==
+            //                           cartesian::line_slope(
+            //                               cartesian::segment_to_line(s2));
+            //                })) {
+            //     segments.pop_back();
+            //     continue;
+            // }
         }
 
         // fmt::print("test {}\n", test_i);
@@ -180,15 +146,18 @@ GTEST_TEST(bentley_ottmann, fuzzy_test_no_colinear) {
             //            std::get<1>(i).denom,
             //            fmt::join(intersecting_segments, " , "));
         }
+        const std::size_t num_intersections = intersections_vec.size();
+        num_intersection_sum += num_intersections;
         auto naive_intersections_vec = naive_intersections(segments);
 
         ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),
                                  std::views::keys(naive_intersections_vec)));
 
-        const std::size_t num_intersections = intersections_vec.size();
         for(std::size_t i = 0; i < num_intersections; ++i) {
             ASSERT_TRUE(EQ_MULTISETS(intersections_vec[i].second,
                                      naive_intersections_vec[i].second));
         }
     }
+    // fmt::println("avg number of intersections : {}",
+    //              num_intersection_sum / num_tests);
 }
