@@ -23,65 +23,15 @@
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/mapping.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
+#include "melon/utility/geometry.hpp"
 
-namespace fhamonic {
-namespace melon {
 
-template <typename Num, typename Denom = Num>
-struct rational {
-    Num num;
-    Denom denom;
-
-    constexpr rational(Num n = Num{0}, Denom d = Denom{1}) : num(n), denom(d) {
-        normalize();
-    }
-
-    void normalize() {
-        auto g = std::gcd(num, denom);
-        num /= g;
-        denom /= g;
-        if constexpr(std::numeric_limits<Num>::is_signed) {
-            if(denom < 0) {
-                num = -num;
-                denom = -denom;
-            }
-        }
-    }
-
-    rational operator+(const rational & other) const {
-        return rational(num * other.denom + other.num * denom,
-                        denom * other.denom);
-    }
-    rational operator-(const rational & other) const {
-        return rational(num * other.denom - other.num * denom,
-                        denom * other.denom);
-    }
-    rational operator*(const rational & other) const {
-        return rational(num * other.num, denom * other.denom);
-    }
-    rational operator/(const rational & other) const {
-        return rational(num * other.denom, denom * other.num);
-    }
-    bool operator==(const rational & other) const {
-        return num == other.num && denom == other.denom;
-    }
-    template <typename ONum, typename ODenom>
-    std::strong_ordering operator<=>(
-        const rational<ONum, ODenom> & other) const {
-        return (num * other.denom) <=> (other.num * denom);
-    }
-    template <typename O>
-    std::strong_ordering operator<=>(const O & other) const {
-        return num <=> (other * denom);
-    }
-};
-}  // namespace melon
-}  // namespace fhamonic
 
 namespace std {
 template <typename T>
 struct hash<fhamonic::melon::rational<T>> {
     std::size_t operator()(const fhamonic::melon::rational<T> & r) const {
+        r.normalize();
         std::size_t h1 = std::hash<T>()(r.num);
         std::size_t h2 = std::hash<T>()(r.denom);
         return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
@@ -102,102 +52,6 @@ struct hash<
 
 namespace fhamonic {
 namespace melon {
-template <typename _Tp>
-concept cartesian_point = requires(const _Tp & __t) {
-    { std::get<0>(__t) };
-    { std::get<1>(__t) };
-};
-template <typename _Tp>
-concept cartesian_segment = requires(const _Tp & __t) {
-    { std::get<0>(__t) } -> cartesian_point;
-    { std::get<1>(__t) } -> cartesian_point;
-};
-template <typename _Tp>
-concept cartesian_line = requires(const _Tp & __t) {
-    { std::get<0>(__t) };
-    { std::get<1>(__t) };
-    { std::get<2>(__t) };
-};
-
-struct cartesian {
-    static constexpr auto segment_to_line(const cartesian_segment auto & s) {
-        const auto a =
-            std::get<1>(std::get<1>(s)) - std::get<1>(std::get<0>(s));
-        const auto b =
-            std::get<0>(std::get<0>(s)) - std::get<0>(std::get<1>(s));
-        const auto c =
-            a * std::get<0>(std::get<0>(s)) + b * std::get<1>(std::get<0>(s));
-        return std::tuple(a, b, c);
-    }
-    static constexpr auto lines_intersection(const cartesian_line auto & A,
-                                             const cartesian_line auto & B) {
-        const auto determinant =
-            std::get<0>(A) * std::get<1>(B) - std::get<1>(A) * std::get<0>(B);
-        return determinant == 0
-                   ? std::nullopt
-                   : std::make_optional(std::make_pair(
-                         rational(std::get<2>(A) * std::get<1>(B) -
-                                      std::get<2>(B) * std::get<1>(A),
-                                  determinant),
-                         rational(std::get<0>(A) * std::get<2>(B) -
-                                      std::get<0>(B) * std::get<2>(A),
-                                  determinant)));
-    }
-    static constexpr auto line_slope(const cartesian_line auto & l) {
-        // return rational(std::get<0>(l), std::get<1>(l));
-        return rational(std::get<1>(l) != 0 ? std::get<0>(l) : -1,
-                        std::get<1>(l));
-    }
-    static constexpr auto segments_intersection(
-        const cartesian_segment auto & A, const cartesian_segment auto & B) {
-        const auto intersection_opt =
-            lines_intersection(segment_to_line(A), segment_to_line(B));
-
-        if(!intersection_opt.has_value()) return intersection_opt;
-        const auto & intersection = intersection_opt.value();
-
-        const auto & [Ax_min, Ax_max] = std::minmax(
-            std::get<0>(std::get<0>(A)), std::get<0>(std::get<1>(A)));
-        const auto & [Bx_min, Bx_max] = std::minmax(
-            std::get<0>(std::get<0>(B)), std::get<0>(std::get<1>(B)));
-        const auto & [Ay_min, Ay_max] = std::minmax(
-            std::get<1>(std::get<0>(A)), std::get<1>(std::get<1>(A)));
-        const auto & [By_min, By_max] = std::minmax(
-            std::get<1>(std::get<0>(B)), std::get<1>(std::get<1>(B)));
-
-        return (std::max(Ax_min, Bx_min) > std::get<0>(intersection) ||
-                std::min(Ax_max, Bx_max) < std::get<0>(intersection) ||
-                std::max(Ay_min, By_min) > std::get<1>(intersection) ||
-                std::min(Ay_max, By_max) < std::get<1>(intersection))
-                   ? std::nullopt
-                   : intersection_opt;
-    }
-    static constexpr auto segments_overlaps(const cartesian_segment auto & A,
-                                            const cartesian_segment auto & B) {
-        const auto intersection_opt =
-            line_intersection(segment_to_line(A), segment_to_line(B));
-
-        if(!intersection_opt.has_value()) return intersection_opt;
-        const auto & intersection = intersection_opt.value();
-
-        const auto & [Ax_min, Ax_max] = std::minmax(
-            std::get<0>(std::get<0>(A)), std::get<0>(std::get<1>(A)));
-        const auto & [Bx_min, Bx_max] = std::minmax(
-            std::get<0>(std::get<0>(B)), std::get<0>(std::get<1>(B)));
-        const auto & [Ay_min, Ay_max] = std::minmax(
-            std::get<1>(std::get<0>(A)), std::get<1>(std::get<1>(A)));
-        const auto & [By_min, By_max] = std::minmax(
-            std::get<1>(std::get<0>(B)), std::get<1>(std::get<1>(B)));
-
-        return (std::max(Ax_min, Bx_min) > std::get<0>(intersection) ||
-                std::min(Ax_max, Bx_max) < std::get<0>(intersection) ||
-                std::max(Ay_min, By_min) > std::get<1>(intersection) ||
-                std::min(Ay_max, By_max) < std::get<1>(intersection))
-                   ? std::nullopt
-                   : intersection_opt;
-    }
-};
-
 template <std::ranges::range _SegmentIdRange,
           input_mapping<std::ranges::range_value_t<_SegmentIdRange>>
               _SegmentMap = views::identity_map>
@@ -210,15 +64,7 @@ private:
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
-    struct event_cmp {
-        [[nodiscard]] constexpr bool operator()(
-            const auto & p1, const auto & p2) const noexcept {
-            if(std::get<0>(p1) == std::get<0>(p2))
-                return std::get<1>(p1) < std::get<1>(p2);
-            return std::get<0>(p1) < std::get<0>(p2);
-        }
-    };
-
+    using event_cmp = cartesian::point_xy_comparator;
     using event_heap = d_ary_heap<2, intersection, event_cmp>;
 
     struct segment_entry {
@@ -267,7 +113,7 @@ private:
                 const auto m1 = cartesian::line_slope(e1.line);
                 const auto m2 = cartesian::line_slope(e2.line);
                 if(m1 == m2) return e1.segment_id < e2.segment_id;
-                return (y1 <= std::get<1>(event_point.get())) == (m1 > m2);
+                return (y1 <= std::get<1>(event_point.get())) == (m1 < m2);
             }
             return y1 < y2;
         }
@@ -409,52 +255,30 @@ private:
 
         auto after_last_removed_it = _segment_tree.end();
         for(const auto & [s, et] : evts) {
-            if(et == event_type::starting) continue;
+            if(et != event_type::ending) continue;
             after_last_removed_it =
                 _segment_tree.erase(_segment_tree.find(segment_entry(
                     s, cartesian::segment_to_line(_segment_map[s]), i)));
         }
-        ////
         _intersections.resize(0);
-        // fmt::print("\ttree\n");
         {
             auto tree_it = _segment_tree.lower_bound(i);
             while(tree_it != _segment_tree.end() &&
                   tree_it->sweepline_y_intersection(i) == std::get<1>(i)) {
                 auto next_it = std::next(tree_it);
-                // const auto & [p1, p2] = _segment_map[tree_it->segment_id];
-                // fmt::print("\t{} : [({}, {}), ({}, {})] ({}/{})\n",
-                //            tree_it->segment_id, p1.first, p1.second, p2.first,
-                //            p2.second, tree_it->sweepline_y_intersection(i).num,
-                //            tree_it->sweepline_y_intersection(i).denom);
                 _intersections.emplace_back(tree_it->segment_id);
                 tmp_tree.insert(tmp_tree.begin(),
                                 _segment_tree.extract(tree_it));
                 tree_it = std::move(next_it);
             }
-            // fmt::print("\tevts\n");
             for(const auto & [s, et] : evts) {
-                // const auto & [p1, p2] = _segment_map[s];
-                // fmt::print("\t{} : [({}, {}), ({}, {})] ({})\n", s, p1.first,
-                //            p1.second, p2.first, p2.second,
-                //            et == event_type::starting ? "starting" : "ending");
                 _intersections.emplace_back(s);
             }
         }
-        // fmt::print("before i segment_tree ({}) : {}\n", well_formed_tree(),
-        //            fmt::join(std::views::transform(
-        //                          _segment_tree,
-        //                          [](const auto & e) { return e.segment_id; }),
-        //                      ","));
         _current_event_point = i;
-        // fmt::print("after i segment_tree ({}) : {}\n", well_formed_tree(),
-        //            fmt::join(std::views::transform(
-        //                          _segment_tree,
-        //                          [](const auto & e) { return e.segment_id; }),
-        //                      ","));
 
         for(const auto & [s, et] : evts) {
-            if(et == event_type::ending) continue;
+            if(et != event_type::starting) continue;
             tmp_tree.emplace(
                 segment_entry(s, cartesian::segment_to_line(_segment_map[s]),
                               _current_event_point));
@@ -467,7 +291,6 @@ private:
             }
             return;
         }
-        // _segment_tree.merge(std::move(tmp_tree));
         auto smallest_added_it = _segment_tree.end();
         auto greatest_added_it = _segment_tree.end();
         {
@@ -526,16 +349,17 @@ public:
             const intersection & i = _event_heap.top();
             _current_event_it = _events_map.find(i);
 
-            // fmt::print("({}/{}, {}/{})\n", std::get<0>(i).num,
-            //            std::get<0>(i).denom, std::get<1>(i).num,
-            //            std::get<1>(i).denom);
+            fmt::print("({}/{}, {}/{})\n", std::get<0>(i).num,
+                       std::get<0>(i).denom, std::get<1>(i).num,
+                       std::get<1>(i).denom);
 
             handle_event(*_current_event_it);
 
             // fmt::print("segment_tree ({}) : {}\n", well_formed_tree(),
             //            fmt::join(std::views::transform(_segment_tree,
             //                                            [](const auto & e) {
-            //                                                return e.segment_id;
+            //                                                return
+            //                                                e.segment_id;
             //                                            }),
             //                      ","));
 
