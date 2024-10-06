@@ -98,10 +98,8 @@ Concepts and containers:
 - tree graphs
 - bipartite graph
 - planar graph
-- geometry coordinates (trilinear)
 
 Algorithms:
-- Bentley-Ottman (line segment intersections)
 - planar map intersection
 - Network simplex
 - Traveling salesman
