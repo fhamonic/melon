@@ -1,63 +1,82 @@
 #ifndef RATIONAL_HPP
 #define RATIONAL_HPP
 
+#include <concepts>
 #include <limits>
 
 namespace fhamonic {
 namespace melon {
 
-template <typename Num, typename Denom = Num>
+template <typename NumT, typename DenT = NumT>
 struct rational {
-    mutable Num num;
-    mutable Denom denom;
+    mutable NumT num;
+    mutable DenT den;
 
-    constexpr rational(Num n = Num{0}, Denom d = Denom{1}) : num(n), denom(d) {
-        if constexpr(std::numeric_limits<Num>::is_signed) {
-            if(denom < 0) {
+    constexpr rational(NumT n = NumT{0}, DenT d = DenT{1}) : num(n), den(d) {
+        if constexpr(std::numeric_limits<NumT>::is_signed) {
+            if(den < 0) {
                 num = -num;
-                denom = -denom;
+                den = -den;
             }
         }
         // normalize();
     }
 
     void normalize() const {
-        const auto & g = std::gcd(num, denom);
+        const auto & g = std::gcd(num, den);
         num /= g;
-        denom /= g;
-        if constexpr(std::numeric_limits<Num>::is_signed) {
-            if(denom < 0) {
+        den /= g;
+        if constexpr(std::numeric_limits<NumT>::is_signed) {
+            if(den < 0) {
                 num = -num;
-                denom = -denom;
+                den = -den;
             }
         }
     }
 
     rational operator+(const rational & other) const {
-        return rational(num * other.denom + other.num * denom,
-                        denom * other.denom);
+        return rational(num * other.den + other.num * den, den * other.den);
     }
     rational operator-(const rational & other) const {
-        return rational(num * other.denom - other.num * denom,
-                        denom * other.denom);
+        return rational(num * other.den - other.num * den, den * other.den);
     }
     rational operator*(const rational & other) const {
-        return rational(num * other.num, denom * other.denom);
+        return rational(num * other.num, den * other.den);
     }
     rational operator/(const rational & other) const {
-        return rational(num * other.denom, denom * other.num);
+        return rational(num * other.den, den * other.num);
     }
+
+    rational operator+(const std::integral auto & other) const {
+        return rational(num + other * den, den);
+    }
+
+    rational operator-(const std::integral auto & other) const {
+        return rational(num - other * den, den);
+    }
+
+    rational operator*(const std::integral auto & other) const {
+        return rational(num * other, den);
+    }
+
+    rational operator/(const std::integral auto & other) const {
+        return rational(num, den * other);
+    }
+
+    rational operator+() const { return rational(num, den); }
+    rational operator-() const { return rational(-num, den); }
+
     bool operator==(const rational & other) const {
-        return (num * other.denom) == (other.num * denom);
+        return (num * other.den) == (other.num * den);
     }
-    template <typename ONum, typename ODenom>
+    template <typename ONumT, typename ODenT>
     std::strong_ordering operator<=>(
-        const rational<ONum, ODenom> & other) const {
-        return (num * other.denom) <=> (other.num * denom);
+        const rational<ONumT, ODenT> & other) const {
+        return (num * other.den) <=> (other.num * den);
     }
     template <typename O>
     std::strong_ordering operator<=>(const O & other) const {
-        return num <=> (other * denom);
+        return num <=> (other * den);
     }
 };
 }  // namespace melon

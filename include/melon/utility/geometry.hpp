@@ -61,6 +61,20 @@ struct cartesian {
         return rational(std::get<1>(l) != 0 ? std::get<0>(l) : 1,
                         -std::get<1>(l));  // (1/0) represents infinity
     }
+    static constexpr bool point_on_line(const cartesian_point auto & p,
+                                        const cartesian_line auto & l) {
+        return std::get<0>(l) * std::get<0>(p) +
+                   std::get<1>(l) * std::get<1>(p) ==
+               std::get<2>(l);
+    }
+    static constexpr auto point_on_segment(const cartesian_point auto & p,
+                                           const cartesian_segment auto & s) {
+        if(!point_on_line(p, segment_to_line(s))) return false;
+        const point_xy_comparator cmp;
+        const auto & [s_min, s_max] =
+            std::minmax(std::get<0>(s), std::get<1>(s), cmp);
+        return !cmp(p, s_min) && !cmp(s_max, p);
+    }
     static constexpr auto segments_intersection(
         const cartesian_segment auto & A, const cartesian_segment auto & B) {
         const auto intersection_opt =
@@ -85,7 +99,7 @@ struct cartesian {
                    ? std::nullopt
                    : intersection_opt;
     }
-    static constexpr auto colinear_segments_overlap(
+    static constexpr auto aligned_segments_overlap(
         const cartesian_segment auto & A, const cartesian_segment auto & B) {
         const point_xy_comparator cmp;
         const auto & [A_min, A_max] =
@@ -99,6 +113,16 @@ struct cartesian {
                          std::make_pair(std::max(A_min, B_min, cmp),
                                         std::min(A_max, B_max, cmp)));
     }
+    static constexpr auto colinear_segments_overlap(
+        const cartesian_segment auto & A, const cartesian_segment auto & B) {
+        const auto lA = segment_to_line(A);
+        const auto lB = segment_to_line(B);
+
+        return (std::get<2>(lA) * std::get<1>(lB) !=
+                std::get<2>(lB) * std::get<1>(lA))
+                   ? std::nullopt
+                   : aligned_segments_overlap(A, B);
+    }
     static constexpr auto segments_overlap(const cartesian_segment auto & A,
                                            const cartesian_segment auto & B) {
         const auto lA = segment_to_line(A);
@@ -109,7 +133,7 @@ struct cartesian {
                 std::get<2>(lA) * std::get<1>(lB) !=
                     std::get<2>(lB) * std::get<1>(lA))
                    ? std::nullopt
-                   : colinear_segments_overlap(A, B);
+                   : aligned_segments_overlap(A, B);
     }
 };
 }  // namespace melon
