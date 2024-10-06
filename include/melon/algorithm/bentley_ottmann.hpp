@@ -6,6 +6,7 @@
 #include <concepts>
 #include <functional>
 #include <limits>
+#include <map>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -25,15 +26,13 @@
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/geometry.hpp"
 
-
-
 namespace std {
 template <typename T>
 struct hash<fhamonic::melon::rational<T>> {
     std::size_t operator()(const fhamonic::melon::rational<T> & r) const {
         r.normalize();
         std::size_t h1 = std::hash<T>()(r.num);
-        std::size_t h2 = std::hash<T>()(r.denom);
+        std::size_t h2 = std::hash<T>()(r.den);
         return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
     }
 };
@@ -86,9 +85,9 @@ private:
             const intersection & event_point) const {
             std::get<0>(sweepline_intersection) = std::get<0>(event_point);
             std::get<1>(sweepline_intersection) =
-                rational(std::get<2>(line) * std::get<0>(event_point).denom -
+                rational(std::get<2>(line) * std::get<0>(event_point).den -
                              std::get<0>(line) * std::get<0>(event_point).num,
-                         std::get<1>(line) * std::get<0>(event_point).denom);
+                         std::get<1>(line) * std::get<0>(event_point).den);
         }
 
         [[nodiscard]] constexpr const auto & sweepline_y_intersection(
@@ -129,9 +128,10 @@ private:
 
     using segment_tree = std::set<segment_entry, segment_cmp>;
 
-    enum event_type { starting, ending };
+    enum event_type { starting, ending, coincident };
     using events = std::vector<std::pair<segment_id_type, event_type>>;
-    using events_map = std::unordered_map<intersection, events>;
+    // using events_map = std::unordered_map<intersection, events>;
+    using events_map = std::map<intersection, events, cartesian::point_xy_comparator>;
 
 private:
     _SegmentIdRange _segments_ids_range;
@@ -158,10 +158,18 @@ public:
         , _segment_cmp(std::cref(_current_event_point))
         , _segment_tree(_segment_cmp) {
         for(auto && s : segments_ids_range) {
-            auto [p1, p2] = segment_map[s];
-            if(_event_cmp(p2, p1)) std::swap(p1, p2);
-            push_segment_start(p1, s);
-            push_segment_end(p2, s);
+            const auto & [p1, p2] = segment_map[s];
+            if(_event_cmp(p1, p2)) {
+                push_segment_start(p1, s);
+                push_segment_end(p2, s);
+                continue;
+            }
+            if(_event_cmp(p2, p1)) {
+                push_segment_start(p2, s);
+                push_segment_end(p1, s);
+                continue;
+            }
+            push_segment_coincident(p1, s);
         }
     }
 
@@ -182,9 +190,6 @@ private:
         auto && [it, inserted] = _events_map.try_emplace(i);
         if(inserted) {
             _event_heap.push(i);
-            // fmt::print("pushed start ({}/{}, {}/{})\n", std::get<0>(i).num,
-            //            std::get<0>(i).denom, std::get<1>(i).num,
-            //            std::get<1>(i).denom);
         }
         it->second.emplace_back(s, event_type::starting);
     }
@@ -192,47 +197,52 @@ private:
         auto && [it, inserted] = _events_map.try_emplace(i);
         if(inserted) {
             _event_heap.push(i);
-            // fmt::print("pushed end ({}/{}, {}/{})\n", std::get<0>(i).num,
-            //            std::get<0>(i).denom, std::get<1>(i).num,
-            //            std::get<1>(i).denom);
         }
         it->second.emplace_back(s, event_type::ending);
+    }
+    void push_segment_coincident(const intersection & i,
+                                 const segment_id_type & s) {
+        auto && [it, inserted] = _events_map.try_emplace(i);
+        if(inserted) {
+            _event_heap.push(i);
+        }
+        it->second.emplace_back(s, event_type::coincident);
     }
     void push_intersection(const intersection & i) {
         auto && [it, inserted] = _events_map.try_emplace(i);
         if(inserted) {
             _event_heap.push(i);
-            // fmt::print("pushed intersection ({}/{}, {}/{})\n",
-            //            std::get<0>(i).num, std::get<0>(i).denom,
-            //            std::get<1>(i).num, std::get<1>(i).denom);
         }
     }
     void detect_intersection(const segment_entry & e1,
                              const segment_entry & e2) noexcept {
         const auto & [a, b] = _segment_map[e1.segment_id];
         const auto & [c, d] = _segment_map[e2.segment_id];
-        // xs overlaps because segments are in tree
-        // so test if ys overlaps
-        const auto & [y1_min, y1_max] =
-            std::minmax(std::get<1>(a), std::get<1>(b));
-        const auto & [y2_min, y2_max] =
-            std::minmax(std::get<1>(c), std::get<1>(d));
 
-        if(y1_min > y2_max || y2_min > y1_max) return;
+        const auto dx_ab = std::get<0>(b) - std::get<0>(a);
+        const auto dy_ab = std::get<1>(b) - std::get<1>(a);
+        const auto dx_ac = std::get<0>(c) - std::get<0>(a);
+        const auto dy_ac = std::get<1>(c) - std::get<1>(a);
+        const auto dx_ad = std::get<0>(d) - std::get<0>(a);
+        const auto dy_ad = std::get<1>(d) - std::get<1>(a);
+        const auto dx_bc = std::get<0>(c) - std::get<0>(b);
+        const auto dy_bc = std::get<1>(c) - std::get<1>(b);
+        const auto dx_dc = std::get<0>(c) - std::get<0>(d);
+        const auto dy_dc = std::get<1>(c) - std::get<1>(d);
+
+        // test if segments intersect
+        // a and b (resp. c and d) on same side from cd (resp. ab)
+        if((dx_ab * dy_ac - dx_ac * dy_ab > 0) ==
+               (dx_ab * dy_ad - dx_ad * dy_ab > 0) ||
+           (dx_dc * dy_ac - dx_ac * dy_dc > 0) ==
+               (dx_dc * dy_bc - dx_bc * dy_dc > 0))
+            return;
+
         const auto & i_opt = cartesian::lines_intersection(e1.line, e2.line);
         if(!i_opt.has_value()) return;
         const auto & i = i_opt.value();
 
-        if(std::max(y1_min, y2_min) > std::get<1>(i) ||
-           std::min(y1_max, y2_max) < std::get<1>(i))
-            return;
-
-        const auto & x1_max = std::max(std::get<0>(a), std::get<0>(b));
-        const auto & x2_max = std::max(std::get<0>(c), std::get<0>(d));
-
-        if(_event_cmp(i, _current_event_point) ||
-           std::get<0>(i) > std::min(x1_max, x2_max))
-            return;
+        if(_event_cmp(i, _current_event_point)) return;
 
         push_intersection(i);
     }
@@ -325,8 +335,6 @@ public:
 
     [[nodiscard]] constexpr auto current() const noexcept {
         assert(!finished());
-        // return std::make_pair(_event_heap.top(),
-        //                       ranges::views::keys(_current_event_it->second));
         return std::make_pair(_event_heap.top(),
                               std::views::all(_intersections));
     }
@@ -343,35 +351,6 @@ public:
             _current_event_it = _events_map.find(i);
             handle_event(*_current_event_it);
         } while(_intersections.size() < 2);
-    }
-    void run() noexcept {
-        while(!_event_heap.empty()) {
-            const intersection & i = _event_heap.top();
-            _current_event_it = _events_map.find(i);
-
-            fmt::print("({}/{}, {}/{})\n", std::get<0>(i).num,
-                       std::get<0>(i).denom, std::get<1>(i).num,
-                       std::get<1>(i).denom);
-
-            handle_event(*_current_event_it);
-
-            // fmt::print("segment_tree ({}) : {}\n", well_formed_tree(),
-            //            fmt::join(std::views::transform(_segment_tree,
-            //                                            [](const auto & e) {
-            //                                                return
-            //                                                e.segment_id;
-            //                                            }),
-            //                      ","));
-
-            // for(const auto & s : _intersections) {
-            //     const auto & [p1, p2] = _segment_map[s];
-            //     fmt::print("\t{} : [({}, {}), ({}, {})]\n", s, p1.first,
-            //                p1.second, p2.first, p2.second);
-            // }
-
-            _event_heap.pop();
-            _events_map.erase(_current_event_it);
-        }
     }
 
     [[nodiscard]] constexpr auto begin() noexcept {

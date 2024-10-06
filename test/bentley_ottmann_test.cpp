@@ -10,7 +10,7 @@ using namespace fhamonic::melon;
 
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const rational<long int> & r) {
-    return result << "(" << r.num << '/' << r.denom << ")";
+    return result << "(" << r.num << '/' << r.den << ")";
 }
 
 #include "ranges_test_helper.hpp"
@@ -21,11 +21,39 @@ auto naive_intersections(const std::vector<S> segments) {
         std::declval<S>(), std::declval<S>()))::value_type;
     std::unordered_map<intersection, std::set<std::size_t>> intersections_map;
 
+    auto point_eq = [](const auto & p1, const auto & p2) {
+        return std::get<0>(p1) == std::get<0>(p2) &&
+               std::get<1>(p1) == std::get<1>(p2);
+    };
+
     const std::size_t n = segments.size();
     for(std::size_t i = 0; i < n; ++i) {
         const auto & s1 = segments[i];
+        const auto & [a, b] = s1;
         for(std::size_t j = i + 1; j < n; ++j) {
             const auto & s2 = segments[j];
+            const auto & [c, d] = s2;
+            if(point_eq(a, b) && point_eq(c, d)) {
+                if(point_eq(a, c)) {
+                    intersections_map[a].emplace(i);
+                    intersections_map[a].emplace(j);
+                }
+                continue;
+            }
+            if(point_eq(a, b) && !point_eq(c, d)) {
+                if(cartesian::point_on_segment(a, s2)) {
+                    intersections_map[a].emplace(i);
+                    intersections_map[a].emplace(j);
+                }
+                continue;
+            }
+            if(!point_eq(a, b) && point_eq(c, d)) {
+                if(cartesian::point_on_segment(c, s1)) {
+                    intersections_map[c].emplace(i);
+                    intersections_map[c].emplace(j);
+                }
+                continue;
+            }
             const auto & p = cartesian::segments_intersection(s1, s2);
             if(!p.has_value()) {
                 const auto & is = cartesian::segments_overlap(s1, s2);
@@ -48,6 +76,10 @@ auto naive_intersections(const std::vector<S> segments) {
         naive_intersections_vec.emplace_back(std::make_pair(
             i, std::vector<std::size_t>(intersecting_segments.begin(),
                                         intersecting_segments.end())));
+        // fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
+        //            std::get<0>(i).den, std::get<1>(i).num,
+        //            std::get<1>(i).den,
+        //            fmt::join(intersecting_segments, " , "));
     }
     std::ranges::sort(
         naive_intersections_vec, [](const auto & e1, const auto & e2) {
@@ -77,13 +109,13 @@ auto naive_intersections(const std::vector<S> segments) {
 //     alg.run();
 // }
 
-GTEST_TEST(bentley_ottmann, fuzzy_test_no_colinear) {
+GTEST_TEST(bentley_ottmann, fuzzy_test) {
     using segment =
         std::pair<std::pair<int64_t, int64_t>, std::pair<int64_t, int64_t>>;
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
-    const std::size_t num_tests = 1000;
+    const std::size_t num_tests = 10000;
     std::size_t num_intersection_sum = 0;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
@@ -94,23 +126,27 @@ GTEST_TEST(bentley_ottmann, fuzzy_test_no_colinear) {
         std::random_device dev;
         std::mt19937 rng(dev());
         using coord_type = int8_t;
-        std::uniform_int_distribution<int64_t> dist(
-            std::numeric_limits<coord_type>::min(),
-            std::numeric_limits<coord_type>::max());
+        // std::uniform_int_distribution<int64_t> dist(
+        //     std::numeric_limits<coord_type>::min(),
+        //     std::numeric_limits<coord_type>::max());
+        std::uniform_int_distribution<int64_t> dist(-15, 15);
 
         while(segments.size() < num_segments) {
             const auto & s =
                 segments.emplace_back(std::make_pair(dist(rng), dist(rng)),
                                       std::make_pair(dist(rng), dist(rng)));
-            if(s.first.first == s.second.first &&
-               s.first.second == s.second.second) {
-                segments.pop_back();
-                continue;
-            }
+            // coincident points
+            // if(s.first.first == s.second.first &&
+            //    s.first.second == s.second.second) {
+            //     segments.pop_back();
+            //     continue;
+            // }
+            // vertical segments
             // if(s.first.first == s.second.first) {
             //     segments.pop_back();
             //     continue;
             // }
+            // colinear segments
             // if(std::any_of(segments.begin(), std::prev(segments.end()),
             //                [s](auto && s2) {
             //                    return cartesian::line_slope(
@@ -142,8 +178,8 @@ GTEST_TEST(bentley_ottmann, fuzzy_test_no_colinear) {
                                             intersecting_segments.end())));
 
             // fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
-            //            std::get<0>(i).denom, std::get<1>(i).num,
-            //            std::get<1>(i).denom,
+            //            std::get<0>(i).den, std::get<1>(i).num,
+            //            std::get<1>(i).den,
             //            fmt::join(intersecting_segments, " , "));
         }
         const std::size_t num_intersections = intersections_vec.size();
