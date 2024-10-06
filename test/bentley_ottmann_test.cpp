@@ -19,7 +19,9 @@ template <typename S>
 auto naive_intersections(const std::vector<S> segments) {
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<S>(), std::declval<S>()))::value_type;
-    std::unordered_map<intersection, std::set<std::size_t>> intersections_map;
+    std::map<intersection, std::set<std::size_t>,
+             cartesian::point_xy_comparator>
+        intersections_map;
 
     auto point_eq = [](const auto & p1, const auto & p2) {
         return std::get<0>(p1) == std::get<0>(p2) &&
@@ -183,7 +185,7 @@ GTEST_TEST(bentley_ottmann, fuzzy_test) {
             //            fmt::join(intersecting_segments, " , "));
         }
         const std::size_t num_intersections = intersections_vec.size();
-        num_intersection_sum += num_intersections;
+        // num_intersection_sum += num_intersections;
         auto naive_intersections_vec = naive_intersections(segments);
 
         ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),

@@ -26,32 +26,22 @@
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/geometry.hpp"
 
-namespace std {
-template <typename T>
-struct hash<fhamonic::melon::rational<T>> {
-    std::size_t operator()(const fhamonic::melon::rational<T> & r) const {
-        r.normalize();
-        std::size_t h1 = std::hash<T>()(r.num);
-        std::size_t h2 = std::hash<T>()(r.den);
-        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-    }
-};
-template <typename T>
-struct hash<
-    std::pair<fhamonic::melon::rational<T>, fhamonic::melon::rational<T>>> {
-    std::size_t operator()(
-        const std::pair<fhamonic::melon::rational<T>,
-                        fhamonic::melon::rational<T>> & p) const {
-        std::size_t h1 = std::hash<fhamonic::melon::rational<T>>()(p.first);
-        std::size_t h2 = std::hash<fhamonic::melon::rational<T>>()(p.second);
-        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-    }
-};
-}  // namespace std
-
 namespace fhamonic {
 namespace melon {
-template <std::ranges::range _SegmentIdRange,
+
+// clang-format off
+template <typename _Traits>
+concept bentley_ottmann_traits = requires() {
+    { _Traits::report_endpoints } -> std::convertible_to<bool>;
+};
+// clang-format on
+
+template <typename _Segment>
+struct default_bentley_ottmann_traits {
+    static constexpr bool report_endpoints = true;
+};
+
+template <bentley_ottmann_traits _Traits, std::ranges::range _SegmentIdRange,
           input_mapping<std::ranges::range_value_t<_SegmentIdRange>>
               _SegmentMap = views::identity_map>
 class bentley_ottmann {
@@ -130,8 +120,8 @@ private:
 
     enum event_type { starting, ending, coincident };
     using events = std::vector<std::pair<segment_id_type, event_type>>;
-    // using events_map = std::unordered_map<intersection, events>;
-    using events_map = std::map<intersection, events, cartesian::point_xy_comparator>;
+    using events_map =
+        std::map<intersection, events, cartesian::point_xy_comparator>;
 
 private:
     _SegmentIdRange _segments_ids_range;
@@ -247,18 +237,6 @@ private:
         push_intersection(i);
     }
 
-    bool well_formed_tree() const {
-        auto it = _segment_tree.begin();
-        if(it == _segment_tree.end()) return true;
-        auto next = std::next(it);
-        while(next != _segment_tree.end()) {
-            if(!_segment_tree.key_comp()(*it, *next)) return false;
-            it = next;
-            next = std::next(next);
-        }
-        return true;
-    }
-
     void handle_event(const std::pair<intersection, events> & e) noexcept {
         const auto & [i, evts] = e;
         segment_tree tmp_tree(segment_cmp{i});
@@ -281,8 +259,10 @@ private:
                                 _segment_tree.extract(tree_it));
                 tree_it = std::move(next_it);
             }
-            for(const auto & [s, et] : evts) {
-                _intersections.emplace_back(s);
+            if constexpr(_Traits::report_endpoints) {
+                for(const auto & [s, et] : evts) {
+                    _intersections.emplace_back(s);
+                }
             }
         }
         _current_event_point = i;
@@ -364,13 +344,18 @@ public:
 
 template <typename _SegmentIdRange>
 bentley_ottmann(_SegmentIdRange &&)
-    -> bentley_ottmann<std::ranges::views::all_t<_SegmentIdRange>,
+    -> bentley_ottmann<default_bentley_ottmann_traits<
+                           std::ranges::range_value_t<_SegmentIdRange>>,
+                       std::ranges::views::all_t<_SegmentIdRange>,
                        views::identity_map>;
 
 template <typename _SegmentIdRange, typename _SegmentMap>
 bentley_ottmann(_SegmentIdRange &&, _SegmentMap &&)
-    -> bentley_ottmann<std::ranges::views::all_t<_SegmentIdRange>,
-                       views::mapping_all_t<_SegmentMap>>;
+    -> bentley_ottmann<
+        default_bentley_ottmann_traits<mapped_value_t<
+            _SegmentMap, std::ranges::range_value_t<_SegmentIdRange>>>,
+        std::ranges::views::all_t<_SegmentIdRange>,
+        views::mapping_all_t<_SegmentMap>>;
 
 }  // namespace melon
 }  // namespace fhamonic
