@@ -38,7 +38,7 @@ public:
     {
         return melon::num_vertices(_graph);
     }
-    [[nodiscard]] constexpr decltype(auto) nb_edges() const noexcept
+    [[nodiscard]] constexpr decltype(auto) num_edges() const noexcept
         requires requires(_Graph g) { melon::num_arcs(g); }
     {
         return melon::num_arcs(_graph);

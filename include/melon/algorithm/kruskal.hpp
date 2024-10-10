@@ -47,8 +47,8 @@ public:
     constexpr kruskal & operator=(kruskal &&) = default;
 
     constexpr void reset() noexcept {
-        if constexpr(has_nb_edges<_UGraph>) {
-            _sorted_edges.reserve(nb_edges(_ugraph));
+        if constexpr(has_num_edges<_UGraph>) {
+            _sorted_edges.reserve(num_edges(_ugraph));
         }
         std::ranges::copy(edges(_ugraph), std::back_inserter(_sorted_edges));
         std::ranges::sort(_sorted_edges, [this](auto && e1, auto && e2) {

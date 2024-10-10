@@ -152,15 +152,15 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
 
 GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-    constexpr std::size_t nb_elements = 6;
+    constexpr std::size_t num_elements = 6;
     updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::greater<int>,
-                         std::array<std::size_t, nb_elements>,
+                         std::array<std::size_t, num_elements>,
                          views::get_map<1>, views::get_map<0>>
         heap;
 
     static_assert(updatable_priority_queue<decltype(heap)>);
 
-    for(unsigned int i = 0; i < nb_elements; ++i) {
+    for(unsigned int i = 0; i < num_elements; ++i) {
         heap.push(std::make_pair(i, datas[i]));
     }
     heap.promote(3u, 8);
@@ -207,7 +207,7 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
 
 // GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
 //     external_priority_map::array = {0, 7, 3, 5, 6, 11};
-//     constexpr std::size_t nb_elements = 6;
+//     constexpr std::size_t num_elements = 6;
 //     d_ary_heap<2, unsigned int, external_priority_map, std::greater<int>,
 //                views::identity_map>
 //         heap;

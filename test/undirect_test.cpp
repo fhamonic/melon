@@ -25,7 +25,7 @@ GTEST_TEST(undirect_views, static_graph) {
     auto ugraph = views::undirect(graph);
 
     ASSERT_EQ(num_vertices(graph), num_vertices(ugraph));
-    ASSERT_EQ(num_arcs(graph), nb_edges(ugraph));
+    ASSERT_EQ(num_arcs(graph), num_edges(ugraph));
 
     ASSERT_TRUE(EQ_RANGES(vertices(graph), vertices(ugraph)));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), edges(ugraph)));

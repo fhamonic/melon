@@ -74,11 +74,11 @@ private:
                    best_sol_value)
                     goto backtrack;
             begin: {
-                const std::size_t nb_take =
+                const std::size_t num_take =
                     static_cast<std::size_t>(budget_left / it->second);
-                current_sol_value += static_cast<Value>(nb_take) * it->first;
-                budget_left -= static_cast<Cost>(nb_take) * it->second;
-                current_sol.emplace_back(it, nb_take);
+                current_sol_value += static_cast<Value>(num_take) * it->first;
+                budget_left -= static_cast<Cost>(num_take) * it->second;
+                current_sol.emplace_back(it, num_take);
             }
             }
             if(current_sol_value <= best_sol_value) continue;
@@ -109,11 +109,11 @@ private:
                    best_sol_value)
                     goto backtrack;
             begin: {
-                const std::size_t nb_take =
+                const std::size_t num_take =
                     static_cast<std::size_t>(budget_left / it->second);
-                current_sol_value += static_cast<Value>(nb_take) * it->first;
-                budget_left -= static_cast<Cost>(nb_take) * it->second;
-                current_sol.emplace_back(it, nb_take);
+                current_sol_value += static_cast<Value>(num_take) * it->first;
+                budget_left -= static_cast<Cost>(num_take) * it->second;
+                current_sol.emplace_back(it, num_take);
             }
             }
             if(current_sol_value <= best_sol_value) continue;
@@ -146,8 +146,8 @@ private:
             if(i_cost == item_cost && i_value == item_value)
                 return (it < item_it);
             if(i_cost > item_cost) continue;
-            int nb_times = static_cast<int>(item_cost / i_cost);
-            if(nb_times * i_value > item_value) return true;
+            int num_times = static_cast<int>(item_cost / i_cost);
+            if(num_times * i_value > item_value) return true;
         }
         return false;
     }
@@ -157,9 +157,9 @@ public:
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
         if constexpr(std::ranges::sized_range<_ItemRange>) {
-            auto nb_items = std::ranges::size(_items_range);
-            _permuted_items.reserve(nb_items);
-            _value_cost_pairs.reserve(nb_items);
+            auto num_items = std::ranges::size(_items_range);
+            _permuted_items.reserve(num_items);
+            _value_cost_pairs.reserve(num_items);
         }
         for(auto it = _items_range.begin(); it != _items_range.end(); ++it) {
             const auto & i = *it;

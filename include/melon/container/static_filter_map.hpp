@@ -25,7 +25,7 @@ private:
     static_assert(std::is_unsigned_v<span_type>);
     static constexpr size_type N = sizeof(span_type) << 3;
     static constexpr size_type span_index_mask = N - 1;
-    static constexpr size_type nb_spans(std::size_t n) {
+    static constexpr size_type num_spans(std::size_t n) {
         return (n + N - 1) / N;
     }
 
@@ -241,7 +241,7 @@ private:
 public:
     static_filter_map() : _data(nullptr), _size(0) {};
     static_filter_map(size_type size)
-        : _data(std::make_unique_for_overwrite<span_type[]>(nb_spans(size)))
+        : _data(std::make_unique_for_overwrite<span_type[]>(num_spans(size)))
         , _size(size) {};
 
     static_filter_map(size_type size, bool init_value)
@@ -251,14 +251,14 @@ public:
 
     static_filter_map(const static_filter_map & other)
         : static_filter_map(other._size) {
-        std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
+        std::copy(other._data.get(), other._data.get() + num_spans(other._size),
                   _data.get());
     };
     static_filter_map(static_filter_map &&) = default;
 
     static_filter_map & operator=(const static_filter_map & other) {
         resize(other.size());
-        std::copy(other._data.get(), other._data.get() + nb_spans(other._size),
+        std::copy(other._data.get(), other._data.get() + num_spans(other._size),
                   _data.get());
         return *this;
     };
@@ -278,7 +278,7 @@ public:
     size_type size() const noexcept { return _size; }
     void resize(size_type n) {
         if(n == _size) return;
-        _data = std::make_unique_for_overwrite<span_type[]>(nb_spans(n));
+        _data = std::make_unique_for_overwrite<span_type[]>(num_spans(n));
         _size = n;
     }
 
@@ -298,7 +298,7 @@ public:
     }
 
     void fill(bool b) noexcept {
-        std::fill(_data.get(), _data.get() + nb_spans(_size),
+        std::fill(_data.get(), _data.get() + num_spans(_size),
                   b ? ~span_type(0) : span_type(0));
     }
 

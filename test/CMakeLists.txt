@@ -12,6 +12,9 @@ include(CompilerWarnings)
 find_package(range-v3)
 find_package(fmt)
 find_package(GTest)
+find_package(Boost REQUIRED)
+find_package(gmp REQUIRED)
+find_package(mp++ REQUIRED)
 
 include(GoogleTest)
 
@@ -20,7 +23,7 @@ add_library(melon INTERFACE)
 target_include_directories(
     melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(melon INTERFACE range-v3::range-v3 fmt::fmt)
+target_link_libraries(melon INTERFACE range-v3::range-v3 fmt::fmt boost::boost gmp::gmp mp++::mp++)
 
 set_project_warnings(melon)
 

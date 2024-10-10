@@ -145,9 +145,9 @@ public:
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
         if constexpr(std::ranges::sized_range<_ItemRange>) {
-            auto nb_items = std::ranges::size(_items_range);
-            _permuted_items.reserve(nb_items);
-            _value_cost_pairs.reserve(nb_items);
+            auto num_items = std::ranges::size(_items_range);
+            _permuted_items.reserve(num_items);
+            _value_cost_pairs.reserve(num_items);
         }
         for(auto it = _items_range.begin(); it != _items_range.end(); ++it) {
             const auto & i = *it;

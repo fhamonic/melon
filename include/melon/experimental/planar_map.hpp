@@ -217,23 +217,23 @@ using face_t = std::ranges::range_value_t<faces_range_t<_Tp>>;
 
 namespace __cust_access {
 template <typename _Tp>
-concept __member_nb_faces = requires(const _Tp & __t) {
-                                { __t.nb_faces() } -> std::integral;
+concept __member_num_faces = requires(const _Tp & __t) {
+                                { __t.num_faces() } -> std::integral;
                             };
 
 template <typename _Tp>
-concept __adl_nb_faces = requires(const _Tp & __t) {
-                             { nb_faces(__t) } -> std::integral;
+concept __adl_num_faces = requires(const _Tp & __t) {
+                             { num_faces(__t) } -> std::integral;
                          };
 
 struct _NbFaces {
 private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
-        if constexpr(__member_nb_faces<_Tp>)
-            return noexcept(std::declval<_Tp &>().nb_faces());
-        else if constexpr(__adl_nb_faces<_Tp>)
-            return noexcept(nb_faces(std::declval<_Tp &>()));
+        if constexpr(__member_num_faces<_Tp>)
+            return noexcept(std::declval<_Tp &>().num_faces());
+        else if constexpr(__adl_num_faces<_Tp>)
+            return noexcept(num_faces(std::declval<_Tp &>()));
         else
             return noexcept(
                 std::ranges::size(melon::faces(std::declval<_Tp &>())));
@@ -241,14 +241,14 @@ private:
 
 public:
     template <typename _Tp>
-        requires __member_nb_faces<_Tp> || __adl_nb_faces<_Tp> ||
+        requires __member_num_faces<_Tp> || __adl_num_faces<_Tp> ||
                  std::ranges::sized_range<faces_range_t<_Tp>>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
         noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_nb_faces<_Tp>)
-            return __t.nb_faces();
-        else if constexpr(__adl_nb_faces<_Tp>)
-            return nb_faces(__t);
+        if constexpr(__member_num_faces<_Tp>)
+            return __t.num_faces();
+        else if constexpr(__adl_num_faces<_Tp>)
+            return num_faces(__t);
         else
             return std::ranges::size(melon::faces(__t));
     }
@@ -256,7 +256,7 @@ public:
 }  // namespace __cust_access
 
 inline namespace __cust {
-inline constexpr __cust_access::_NbFaces nb_faces{};
+inline constexpr __cust_access::_NbFaces num_faces{};
 }  // namespace __cust
 
 namespace __cust_access {

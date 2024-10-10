@@ -78,7 +78,7 @@ private:
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
     vertex_map_t<_Graph, vertex_status> _vertex_status_map;
     heap _heap;
-    std::size_t _nb_blue_candidates;
+    std::size_t _num_blue_candidates;
     [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
@@ -89,7 +89,7 @@ public:
         , _red_length_map(views::mapping_all(std::forward<_RLM>(l2)))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
-        , _nb_blue_candidates(0) {}
+        , _num_blue_candidates(0) {}
 
     template <typename... _Args>
     [[nodiscard]] constexpr competing_dijkstras(_Traits, _Args &&... args)
@@ -113,7 +113,7 @@ public:
     competing_dijkstras & reset() noexcept {
         _vertex_status_map.fill(PRE_HEAP);
         _heap.clear();
-        _nb_blue_candidates = 0;
+        _num_blue_candidates = 0;
         return *this;
     }
 
@@ -122,7 +122,7 @@ public:
         const length_type dist_v = _Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, true}));
-        ++_nb_blue_candidates;
+        ++_num_blue_candidates;
         _vertex_status_map[s] = IN_HEAP;
         // if constexpr(_Traits::store_paths) {
         //     _pred_arcs_map[s].reset();
@@ -151,14 +151,14 @@ public:
             const entry_t old_dist = _heap.priority(w);
             if(_entry_cmp(new_dist, old_dist)) {
                 if(!old_dist.second) {
-                    ++_nb_blue_candidates;
+                    ++_num_blue_candidates;
                 }
                 _heap.promote(w, new_dist);
             }
         } else if(w_status == PRE_HEAP) {
             _heap.push(std::make_pair(w, new_dist));
             _vertex_status_map[w] = IN_HEAP;
-            ++_nb_blue_candidates;
+            ++_num_blue_candidates;
         }
     }
 
@@ -170,7 +170,7 @@ public:
             const entry_t old_dist = _heap.priority(w);
             if(_entry_cmp(new_dist, old_dist)) {
                 if(old_dist.second) {
-                    --_nb_blue_candidates;
+                    --_num_blue_candidates;
                 }
                 _heap.promote(w, new_dist);
             }
@@ -181,7 +181,7 @@ public:
     }
 
     [[nodiscard]] constexpr bool finished() const noexcept {
-        return _nb_blue_candidates == 0;
+        return _num_blue_candidates == 0;
     }
 
     [[nodiscard]] constexpr auto current() const noexcept {
@@ -199,7 +199,7 @@ public:
             if(t_dist.second) {
                 prefetch_mapped_values(out_arcs_range, _blue_length_map);
                 _heap.pop();
-                --_nb_blue_candidates;
+                --_num_blue_candidates;
                 for(const arc & a : out_arcs_range) {
                     const vertex & w = arc_target(_graph, a);
                     relax_blue_vertex(
@@ -215,7 +215,7 @@ public:
                                             t_dist.first, _red_length_map[a]));
                 }
             }
-        } while(_nb_blue_candidates > 0 && !_heap.top().second.second);
+        } while(_num_blue_candidates > 0 && !_heap.top().second.second);
     }
 
     constexpr void init() noexcept {
