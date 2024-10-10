@@ -98,33 +98,33 @@ GTEST_TEST(static_map_bool, accessor_write_and_read) {
 }
 
 GTEST_TEST(static_map_bool, accessor_extensive_write_and_read) {
-    const std::size_t nb_bools = 153;
-    std::vector<bool> datas(nb_bools);
-    static_map<std::size_t, bool> map(nb_bools, false);
+    const std::size_t num_bools = 153;
+    std::vector<bool> datas(num_bools);
+    static_map<std::size_t, bool> map(num_bools, false);
 
     auto gen = std::bind(std::uniform_int_distribution<>(0, 1),
                          std::default_random_engine());
 
-    for(std::size_t i = 0; i < nb_bools; ++i) {
+    for(std::size_t i = 0; i < num_bools; ++i) {
         bool b = gen();
         datas[i] = b;
         map[i] = b;
     }
 
-    for(std::size_t i = 0; i < nb_bools; ++i) {
+    for(std::size_t i = 0; i < num_bools; ++i) {
         ASSERT_EQ(datas[i], map[i]);
     }
 }
 
 GTEST_TEST(static_map_bool, iterator_extensive_read) {
-    const std::size_t nb_bools = 153;
-    std::vector<bool> datas(nb_bools);
-    static_map<std::size_t, bool> map(nb_bools);
+    const std::size_t num_bools = 153;
+    std::vector<bool> datas(num_bools);
+    static_map<std::size_t, bool> map(num_bools);
 
     auto gen = std::bind(std::uniform_int_distribution<>(0, 1),
                          std::default_random_engine());
 
-    for(std::size_t i = 0; i < nb_bools; ++i) {
+    for(std::size_t i = 0; i < num_bools; ++i) {
         bool b = gen();
         datas[i] = b;
         map[i] = b;
@@ -138,14 +138,14 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
 }
 
 GTEST_TEST(static_map_bool, filter) {
-    const std::size_t nb_bools = 153;
-    static_filter_map<std::size_t> map(nb_bools, false);
+    const std::size_t num_bools = 153;
+    static_filter_map<std::size_t> map(num_bools, false);
     std::vector<std::size_t> indices;
 
     auto gen = std::bind(std::uniform_int_distribution<>(0, 1),
                          std::default_random_engine());
 
-    for(std::size_t i = 0; i < nb_bools; ++i) {
+    for(std::size_t i = 0; i < num_bools; ++i) {
         bool b = gen();
         if(!b) continue;
         indices.emplace_back(i);
@@ -157,10 +157,10 @@ GTEST_TEST(static_map_bool, filter) {
         std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
 
     ASSERT_TRUE(EQ_MULTISETS(
-        map.filter(std::views::iota(std::size_t{0}, nb_bools)), indices));
+        map.filter(std::views::iota(std::size_t{0}, num_bools)), indices));
 
     ASSERT_TRUE(EQ_MULTISETS(
-        map.filter(std::views::iota(int{0}, int{nb_bools})), indices));
+        map.filter(std::views::iota(int{0}, int{num_bools})), indices));
 }
 
 GTEST_TEST(static_map_bool, filter_bench) {
@@ -172,17 +172,17 @@ GTEST_TEST(static_map_bool, filter_bench) {
     for(double hole_density : std::initializer_list<double>{
             1.0, 0.99, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 0}) {
         std::cout << hole_density << ',';
-        const std::size_t nb_bools = 13451;
-        static_filter_map<std::size_t> map(nb_bools, false);
+        const std::size_t num_bools = 13451;
+        static_filter_map<std::size_t> map(num_bools, false);
         std::vector<std::size_t> indices;
 
         std::size_t hole_size = 3;
 
-        for(std::size_t i = 0; i < nb_bools - hole_size; ++i) {
+        for(std::size_t i = 0; i < num_bools - hole_size; ++i) {
             if(gen() > hole_density) continue;
             for(std::size_t j = 0; j < hole_size; ++j) map[i + j] = true;
         }
-        for(std::size_t i = 0; i < nb_bools; ++i) {
+        for(std::size_t i = 0; i < num_bools; ++i) {
             if(map[i]) indices.emplace_back(i);
         }
 
@@ -195,7 +195,7 @@ GTEST_TEST(static_map_bool, filter_bench) {
 
             std::vector<std::size_t> ids;
             for(auto && i :
-                map.filter(std::views::iota(std::size_t{0}, nb_bools))) {
+                map.filter(std::views::iota(std::size_t{0}, num_bools))) {
                 ids.emplace_back(i);
             }
             ASSERT_TRUE(EQ_MULTISETS(ids, indices));
@@ -211,7 +211,7 @@ GTEST_TEST(static_map_bool, filter_bench) {
             auto start = std::chrono::high_resolution_clock::now();
 
             std::vector<std::size_t> ids;
-            for(std::size_t i = 0; i < nb_bools; ++i) {
+            for(std::size_t i = 0; i < num_bools; ++i) {
                 if(!map[i]) continue;
                 ids.emplace_back(i);
             }

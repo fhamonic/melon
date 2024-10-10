@@ -52,10 +52,10 @@ public:
     {
         return melon::num_vertices(*_undirected_graph);
     }
-    [[nodiscard]] constexpr decltype(auto) nb_edges() const noexcept
-        requires requires(G g) { melon::nb_edges(g); }
+    [[nodiscard]] constexpr decltype(auto) num_edges() const noexcept
+        requires requires(G g) { melon::num_edges(g); }
     {
-        return melon::nb_edges(*_undirected_graph);
+        return melon::num_edges(*_undirected_graph);
     }
 
     [[nodiscard]] constexpr decltype(auto) vertices() const noexcept {
@@ -148,10 +148,10 @@ public:
     {
         return melon::num_vertices(_undirected_graph);
     }
-    [[nodiscard]] constexpr decltype(auto) nb_edges() const noexcept
-        requires requires(G g) { melon::nb_edges(g); }
+    [[nodiscard]] constexpr decltype(auto) num_edges() const noexcept
+        requires requires(G g) { melon::num_edges(g); }
     {
-        return melon::nb_edges(_undirected_graph);
+        return melon::num_edges(_undirected_graph);
     }
 
     [[nodiscard]] constexpr decltype(auto) vertices() const noexcept {

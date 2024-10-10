@@ -97,11 +97,11 @@ protected:
     }
     [[nodiscard]] constexpr size_type minimum_remaining_child(
         const size_type first_child,
-        const size_type nb_children) const noexcept {
+        const size_type num_children) const noexcept {
         if constexpr(D == 2)
             return first_child;
         else if constexpr(D == 4) {
-            switch(nb_children) {
+            switch(num_children) {
                 case 1:
                     return minimum_child<1>(first_child);
                 case 2:
@@ -110,19 +110,19 @@ protected:
                     return minimum_child<3>(first_child);
             }
         } else {
-            switch(nb_children) {
+            switch(num_children) {
                 case 1:
                     return minimum_child<1>(first_child);
                 case 2:
                     return minimum_child<2>(first_child);
                 default:
-                    const size_type half = nb_children / 2;
+                    const size_type half = num_children / 2;
                     const size_type first_half_minimum =
                         minimum_remaining_child(first_child, half);
                     const size_type second_half_minimum =
                         minimum_remaining_child(
                             first_child + half * sizeof(value_type),
-                            nb_children - half);
+                            num_children - half);
                     return _priority_cmp(_entry_priority_map[entry_ref(
                                              second_half_minimum)],
                                          _entry_priority_map[entry_ref(

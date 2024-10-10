@@ -59,23 +59,23 @@ using edge_t = std::ranges::range_value_t<edges_range_t<_Tp>>;
 
 namespace __cust_access {
 template <typename _Tp>
-concept __member_nb_edges = requires(const _Tp & __t) {
-    { __t.nb_edges() } -> std::integral;
+concept __member_num_edges = requires(const _Tp & __t) {
+    { __t.num_edges() } -> std::integral;
 };
 
 template <typename _Tp>
-concept __adl_nb_edges = requires(const _Tp & __t) {
-    { nb_edges(__t) } -> std::integral;
+concept __adl_num_edges = requires(const _Tp & __t) {
+    { num_edges(__t) } -> std::integral;
 };
 
 struct _NumEdges {
 private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
-        if constexpr(__member_nb_edges<_Tp>)
-            return noexcept(std::declval<_Tp &>().nb_edges());
-        else if constexpr(__adl_nb_edges<_Tp>)
-            return noexcept(nb_edges(std::declval<_Tp &>()));
+        if constexpr(__member_num_edges<_Tp>)
+            return noexcept(std::declval<_Tp &>().num_edges());
+        else if constexpr(__adl_num_edges<_Tp>)
+            return noexcept(num_edges(std::declval<_Tp &>()));
         else
             return noexcept(
                 std::ranges::size(melon::edges(std::declval<_Tp &>())));
@@ -83,14 +83,14 @@ private:
 
 public:
     template <typename _Tp>
-        requires __member_nb_edges<_Tp> || __adl_nb_edges<_Tp> ||
+        requires __member_num_edges<_Tp> || __adl_num_edges<_Tp> ||
                  std::ranges::sized_range<edges_range_t<_Tp>>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
         noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_nb_edges<_Tp>)
-            return __t.nb_edges();
-        else if constexpr(__adl_nb_edges<_Tp>)
-            return nb_edges(__t);
+        if constexpr(__member_num_edges<_Tp>)
+            return __t.num_edges();
+        else if constexpr(__adl_num_edges<_Tp>)
+            return num_edges(__t);
         else
             return std::ranges::size(melon::edges(__t));
     }
@@ -98,7 +98,7 @@ public:
 }  // namespace __cust_access
 
 inline namespace __cust {
-inline constexpr __cust_access::_NumEdges nb_edges{};
+inline constexpr __cust_access::_NumEdges num_edges{};
 }  // namespace __cust
 
 namespace __cust_access {
@@ -268,8 +268,8 @@ concept undirected_graph = requires(const _Tp & __t) {
 };
 
 template <typename _Tp>
-concept has_nb_edges =
-    undirected_graph<_Tp> && requires(const _Tp & __t) { melon::nb_edges(__t); };
+concept has_num_edges =
+    undirected_graph<_Tp> && requires(const _Tp & __t) { melon::num_edges(__t); };
 
 template <typename _Tp>
 concept has_incidence =
