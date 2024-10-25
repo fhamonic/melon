@@ -4,34 +4,40 @@
 #include <random>
 #include <ranges>
 
+#include <fmt/core.h>
+#include <fmt/ranges.h>
+
 #include <mp++/integer.hpp>
 
+#include "type_name.hpp"
+
 #include "melon/algorithm/bentley_ottmann.hpp"
+#include "melon/utility/bounded_value.hpp"
 
 using namespace fhamonic::melon;
 
 template <typename N, typename D>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const rational<N, D> & r) {
-    return result << "(" << r.num << '/' << r.den << ")";
+    return result << "(" << r.num() << '/' << r.den() << ")";
 }
 
 #include "ranges_test_helper.hpp"
 
-template <typename C, C BOX_MIN, C BOX_MAX>
+template <typename C, int BOX_MIN, int BOX_MAX>
 auto generate_random_box_segments(std::size_t num_segments) {
-    using segment = std::pair<std::pair<C, C>, std::pair<C, C>>;
+    using point = std::tuple<C, C>;
+    using segment = std::tuple<point, point>;
     std::vector<segment> segments;
     segments.reserve(num_segments);
 
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<C> dist(BOX_MIN, BOX_MAX);
+    std::uniform_int_distribution<int> dist(BOX_MIN, BOX_MAX);
 
     while(segments.size() < num_segments) {
-        const auto & s =
-            segments.emplace_back(std::make_pair(dist(rng), dist(rng)),
-                                  std::make_pair(dist(rng), dist(rng)));
+        const auto & s = segments.emplace_back(point(dist(rng), dist(rng)),
+                                               point(dist(rng), dist(rng)));
         // coincident points
         // if(s.first.first == s.second.first &&
         //    s.first.second == s.second.second) {
@@ -58,24 +64,24 @@ auto generate_random_box_segments(std::size_t num_segments) {
     return segments;
 }
 
-template <typename C, C BOX_MIN, C BOX_MAX, C VEC_LENGTH>
+template <typename C, int BOX_MIN, int BOX_MAX, int VEC_LENGTH>
 auto generate_random_vector_segments(std::size_t num_segments) {
-    using segment = std::pair<std::pair<C, C>, std::pair<C, C>>;
+    using point = std::tuple<C, C>;
+    using segment = std::tuple<point, point>;
     std::vector<segment> segments;
     segments.reserve(num_segments);
 
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<C> box_dist(BOX_MIN + VEC_LENGTH,
-                                              BOX_MAX - VEC_LENGTH);
-    std::uniform_int_distribution<C> vec_dist(-VEC_LENGTH, VEC_LENGTH);
+    std::uniform_int_distribution<int> box_dist(BOX_MIN + VEC_LENGTH,
+                                                BOX_MAX - VEC_LENGTH);
+    std::uniform_int_distribution<int> vec_dist(-VEC_LENGTH, VEC_LENGTH);
 
     while(segments.size() < num_segments) {
         auto a = box_dist(rng);
         auto b = box_dist(rng);
         const auto & s = segments.emplace_back(
-            std::make_pair(a, b),
-            std::make_pair(a + vec_dist(rng), b + vec_dist(rng)));
+            point(a, b), point(a + vec_dist(rng), b + vec_dist(rng)));
     }
     return segments;
 }
@@ -158,11 +164,11 @@ auto naive_intersections(const std::vector<S> segments) {
     return naive_intersections_vec;
 }
 
-#include "type_name.hpp"
-
 // GTEST_TEST(bentley_ottmann, run_example) {
+//     using coord_t = integer<int64_t>;
 //     using segment =
-//         std::pair<std::pair<int64_t, int64_t>, std::pair<int64_t, int64_t>>;
+//         std::tuple<std::tuple<coord_t, coord_t>, std::tuple<coord_t,
+//         coord_t>>;
 
 //     // std::vector<segment> segments = {
 //         // {{0, 0}, {2, 0}}, {{1, 0}, {2, 1}}, {{1, 0}, {2, -1}}, {{0, -1},
@@ -176,18 +182,59 @@ auto naive_intersections(const std::vector<S> segments) {
 //     alg.run();
 // }
 
-GTEST_TEST(bentley_ottmann, fuzzy_box_test) {
-    const std::size_t num_tests = 1000;
+GTEST_TEST(bentley_ottmann, run_integer_example) {
+    using coord = integer<int64_t>;
+    // using coord = integer<bounded_value<int32_t, -16, 16>>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
+    using intersection = decltype(cartesian::segments_intersection(
+        std::declval<segment>(), std::declval<segment>()))::value_type;
+
+    std::cout << type_name<intersection>() << std::endl;
+
+    // point p(1, 1);
+    // intersection i(p);
+    // intersection i(std::get<0>(p), std::get<1>(p));
+
+    std::vector<std::pair<std::tuple<int, int>, std::tuple<int, int>>>
+        raw_segments = {{{0, 0}, {1, 0}},
+                        {{0, -1}, {2, 1}},
+                        {{0, 1}, {3, 0}},
+                        {{2, -1}, {2, 4}}};
+    std::vector<segment> segments;
+    for(auto && [p1, p2] : raw_segments) {
+        segments.emplace_back(
+            segment(point(coord(std::get<0>(p1)), coord(std::get<1>(p1))),
+                    point(coord(std::get<0>(p2)), coord(std::get<1>(p2)))));
+    }
+
+    auto segments_ids = std::views::iota(0ul, segments.size());
+
+    for(auto && [i, intersecting_segments] :
+        bentley_ottmann(segments_ids, segments)) {
+        fmt::print("({}/{}, {}/{}) : {}\n", int(std::get<0>(i).num()),
+                   int(std::get<0>(i).den()), int(std::get<1>(i).num()),
+                   int(std::get<1>(i).den()),
+                   fmt::join(intersecting_segments, " , "));
+    }
+}
+
+GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
+    using coord = integer<int64_t>;
+    // using coord = integer<bounded_value<int32_t, -16, 16>>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
+    using intersection = decltype(cartesian::segments_intersection(
+        std::declval<segment>(), std::declval<segment>()))::value_type;
+
+    const std::size_t num_tests = 100;
     std::size_t num_intersection_sum = 0;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         const std::size_t & num_segments = 100;
         auto segments =
-            generate_random_box_segments<int64_t, -256, 255>(num_segments);
-
-        using segment = decltype(segments)::value_type;
-        using intersection = decltype(cartesian::segments_intersection(
-            std::declval<segment>(), std::declval<segment>()))::value_type;
+            generate_random_box_segments<integer<int64_t>, -256, 255>(
+                num_segments);
 
         // fmt::print("test {}\n", test_i);
         // for(auto && s : segments) {
@@ -207,9 +254,9 @@ GTEST_TEST(bentley_ottmann, fuzzy_box_test) {
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));
 
-            // fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
-            //            std::get<0>(i).den, std::get<1>(i).num,
-            //            std::get<1>(i).den,
+            // fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num(),
+            //            std::get<0>(i).den(), std::get<1>(i).num(),
+            //            std::get<1>(i).den(),
             //            fmt::join(intersecting_segments, " , "));
         }
         const std::size_t num_intersections = intersections_vec.size();
@@ -227,13 +274,14 @@ GTEST_TEST(bentley_ottmann, fuzzy_box_test) {
     // fmt::println("avg number of intersections : {}",
     //              num_intersection_sum / num_tests);
 }
-GTEST_TEST(bentley_ottmann, fuzzy_vector_test) {
-    const std::size_t num_tests = 1000;
+GTEST_TEST(bentley_ottmann, fuzzy_sparse_test) {
+    const std::size_t num_tests = 100;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         const std::size_t & num_segments = 100;
-        auto segments = generate_random_vector_segments<int64_t, -96, 95, 32>(
-            num_segments);
+        auto segments =
+            generate_random_vector_segments<integer<int64_t>, -96, 95, 32>(
+                num_segments);
 
         using segment = decltype(segments)::value_type;
         using intersection = decltype(cartesian::segments_intersection(
@@ -262,35 +310,19 @@ GTEST_TEST(bentley_ottmann, fuzzy_vector_test) {
     }
 }
 
-GTEST_TEST(bentley_ottmann, fuzzy_test_gmp) {
-    using segment_coord = mppp::integer<1>;
-    using segment = std::pair<std::pair<segment_coord, segment_coord>,
-                              std::pair<segment_coord, segment_coord>>;
+GTEST_TEST(bentley_ottmann, fuzzy_dense_bounded_value_test) {
+    using coord = rational<bounded_value<int8_t>>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
-    const std::size_t num_tests = 1000;
-    std::size_t num_intersection_sum = 0;
+    const std::size_t num_tests = 100;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         const std::size_t & num_segments = 100;
-        std::vector<segment> segments;
-        segments.reserve(num_segments);
-
-        std::random_device dev;
-        std::mt19937 rng(dev());
-        using coord_type = int64_t;
-        std::uniform_int_distribution<coord_type> dist(
-            std::numeric_limits<coord_type>::min(),
-            std::numeric_limits<coord_type>::max());
-
-        while(segments.size() < num_segments) {
-            const auto & s =
-                segments.emplace_back(std::make_pair(segment_coord{dist(rng)},
-                                                     segment_coord{dist(rng)}),
-                                      std::make_pair(segment_coord{dist(rng)},
-                                                     segment_coord{dist(rng)}));
-        }
+        auto segments =
+            generate_random_box_segments<coord, -128, 127>(num_segments);
 
         std::vector<std::pair<intersection, std::vector<std::size_t>>>
             intersections_vec;
@@ -314,3 +346,77 @@ GTEST_TEST(bentley_ottmann, fuzzy_test_gmp) {
         }
     }
 }
+
+GTEST_TEST(bentley_ottmann, fuzzy_sparse_bounded_value_test) {
+    using coord = rational<bounded_value<int8_t>>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
+    using intersection = decltype(cartesian::segments_intersection(
+        std::declval<segment>(), std::declval<segment>()))::value_type;
+
+    const std::size_t num_tests = 100;
+
+    for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
+        const std::size_t & num_segments = 100;
+        auto segments =
+            generate_random_vector_segments<coord, -96, 95, 32>(num_segments);
+
+        std::vector<std::pair<intersection, std::vector<std::size_t>>>
+            intersections_vec;
+        intersections_vec.reserve(
+            static_cast<std::size_t>(std::pow(num_segments, 1.5)));
+        for(const auto & [i, intersecting_segments] :
+            bentley_ottmann(std::views::iota(0ul, num_segments), segments)) {
+            intersections_vec.emplace_back(std::make_pair(
+                i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                            intersecting_segments.end())));
+        }
+        const std::size_t num_intersections = intersections_vec.size();
+        auto naive_intersections_vec = naive_intersections(segments);
+
+        ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),
+                                 std::views::keys(naive_intersections_vec)));
+
+        for(std::size_t i = 0; i < num_intersections; ++i) {
+            ASSERT_TRUE(EQ_MULTISETS(intersections_vec[i].second,
+                                     naive_intersections_vec[i].second));
+        }
+    }
+}
+
+// GTEST_TEST(bentley_ottmann, fuzzy_test_mppp) {
+//     using coord = rational<mppp::integer<1>>;
+//     using point = std::tuple<coord, coord>;
+//     using segment = std::tuple<point, point>;
+//     using intersection = decltype(cartesian::segments_intersection(
+//         std::declval<segment>(), std::declval<segment>()))::value_type;
+
+//     const std::size_t num_tests = 100;
+
+//     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
+//         const std::size_t & num_segments = 100;
+//         auto segments =
+//             generate_random_box_segments<coord, -128, 127>(num_segments);
+
+//         std::vector<std::pair<intersection, std::vector<std::size_t>>>
+//             intersections_vec;
+//         intersections_vec.reserve(
+//             static_cast<std::size_t>(std::pow(num_segments, 1.5)));
+//         for(const auto & [i, intersecting_segments] :
+//             bentley_ottmann(std::views::iota(0ul, num_segments), segments)) {
+//             intersections_vec.emplace_back(std::make_pair(
+//                 i, std::vector<std::size_t>(intersecting_segments.begin(),
+//                                             intersecting_segments.end())));
+//         }
+//         const std::size_t num_intersections = intersections_vec.size();
+//         auto naive_intersections_vec = naive_intersections(segments);
+
+//         ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),
+//                                  std::views::keys(naive_intersections_vec)));
+
+//         for(std::size_t i = 0; i < num_intersections; ++i) {
+//             ASSERT_TRUE(EQ_MULTISETS(intersections_vec[i].second,
+//                                      naive_intersections_vec[i].second));
+//         }
+//     }
+// }

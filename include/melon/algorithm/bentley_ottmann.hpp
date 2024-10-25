@@ -38,10 +38,10 @@ struct default_bentley_ottmann_traits {
         std::declval<segment_type>()))::value_type;
 
     template <typename T, typename CMP>
-    using segment_tree = std::set<T, CMP>;
+    using segments_tree = std::set<T, CMP>;
 
     template <typename T>
-    using events_map =
+    using events_tree =
         std::map<intersection_type, T,
                  typename coordinate_system::point_xy_comparator>;
 
@@ -55,14 +55,31 @@ private:
     using segment_id_type = _SegmentId;
     using coordinate_system = typename _Traits::coordinate_system;
     using segment_type = typename _Traits::segment_type;
+    using endpoint_type =
+        std::common_type_t<decltype(std::get<0>(std::declval<segment_type>()),
+                                    std::get<1>(std::declval<segment_type>()))>;
     using line_type = typename _Traits::line_type;
     using intersection_type = typename _Traits::intersection_type;
 
     using event_cmp = coordinate_system::point_xy_comparator;
-    using event_heap = d_ary_heap<2, intersection_type, event_cmp>;
+
+    static constexpr auto compute_sweepline_intersection(
+        const intersection_type & event_point, const line_type & line) {
+        return std::make_tuple(
+            std::get<0>(event_point),
+            (std::get<2>(line) - std::get<0>(line) * std::get<0>(event_point)) /
+                std::get<1>(line));
+    }
 
     struct segment_entry {
-        mutable intersection_type sweepline_intersection;
+        using sweepline_intersection_type =
+            std::decay_t<decltype(compute_sweepline_intersection(
+                std::declval<intersection_type>(), std::declval<line_type>()))>;
+
+        using sweepline_y_intersection_type = std::decay_t<decltype(std::get<1>(
+            std::declval<sweepline_intersection_type>()))>;
+
+        mutable sweepline_intersection_type sweepline_intersection;
         const line_type line;
         const segment_type segment;
         const segment_id_type segment_id;
@@ -80,22 +97,14 @@ private:
         segment_entry & operator=(const segment_entry &) = default;
         segment_entry & operator=(segment_entry &&) = default;
 
-        constexpr void compute_sweepline_intersection(
-            const intersection_type & event_point) const {
-            std::get<0>(sweepline_intersection) = std::get<0>(event_point);
-            std::get<1>(sweepline_intersection) =
-                rational(std::get<2>(line) * std::get<0>(event_point).den -
-                             std::get<0>(line) * std::get<0>(event_point).num,
-                         std::get<1>(line) * std::get<0>(event_point).den);
-        }
-
-        [[nodiscard]] constexpr const auto & sweepline_y_intersection(
-            const intersection_type & event_point) const {
+        [[nodiscard]] constexpr const sweepline_y_intersection_type
+        sweepline_y_intersection(const intersection_type & event_point) const {
             if(std::get<1>(line) == 0) return std::get<1>(event_point);
             if(std::get<0>(sweepline_intersection) == std::get<0>(event_point))
                 return std::get<1>(sweepline_intersection);
 
-            compute_sweepline_intersection(event_point);
+            sweepline_intersection =
+                compute_sweepline_intersection(event_point, line);
             return std::get<1>(sweepline_intersection);
         }
     };
@@ -125,23 +134,21 @@ private:
         }
     };
 
-    using segment_tree =
-        typename _Traits::segment_tree<segment_entry, segment_cmp>;
+    using segments_tree =
+        typename _Traits::segments_tree<segment_entry, segment_cmp>;
     enum event_type { starting, ending, coincident };
     using events = std::vector<std::pair<segment_id_type, event_type>>;
-    using events_map = typename _Traits::events_map<events>;
+    using events_tree = typename _Traits::events_tree<events>;
 
 private:
     [[no_unique_address]] _SegmentMap _segment_map;
     [[no_unique_address]] event_cmp _event_cmp;
-    event_heap _event_heap;
-    segment_tree _segment_tree;
-    segment_tree _tmp_tree;
-    events_map _events_map;
+    segments_tree _segments_tree;
+    segments_tree _tmp_tree;
+    events_tree _events_tree;
 
     intersection_type _current_event_point;
     intersection_type _tmp_event_point;
-    events_map::const_iterator _current_event_it;
 
     std::vector<segment_id_type> _intersections;
 
@@ -151,7 +158,7 @@ public:
     bentley_ottmann(_SegmentIdRange && segments_ids_range,
                     _SM && segment_map = {}) noexcept
         : _segment_map(views::mapping_all(std::forward<_SM>(segment_map)))
-        , _segment_tree(segment_cmp(std::cref(_current_event_point)))
+        , _segments_tree(segment_cmp(std::cref(_current_event_point)))
         , _tmp_tree(segment_cmp(std::cref(_tmp_event_point))) {
         for(auto && s : segments_ids_range) {
             const auto & [p1, p2] = segment_map[s];
@@ -180,25 +187,20 @@ public:
     constexpr bentley_ottmann & operator=(bentley_ottmann &&) = default;
 
     constexpr bentley_ottmann & reset() noexcept {
-        _event_heap.clear();
-        _segment_tree.clear();
+        _events_tree.clear();
+        _segments_tree.clear();
         return *this;
     }
 
 private:
-    void push_segment_endpoint(const intersection_type & i,
+    void push_segment_endpoint(const endpoint_type & i,
                                const segment_id_type & s, const event_type et) {
-        auto && [it, inserted] = _events_map.try_emplace(i);
-        if(inserted) {
-            _event_heap.push(i);
-        }
+        // auto && [it, inserted] = _events_tree.try_emplace(i);
+        auto && [it, inserted] = _events_tree.try_emplace(intersection_type(i));
         it->second.emplace_back(s, et);
     }
     void push_intersection(const intersection_type & i) {
-        auto && [it, inserted] = _events_map.try_emplace(i);
-        if(inserted) {
-            _event_heap.push(i);
-        }
+        _events_tree.try_emplace(i);
     }
     void detect_intersection(const segment_entry & e1,
                              const segment_entry & e2) noexcept {
@@ -235,26 +237,27 @@ private:
     }
     void handle_event(const std::pair<intersection_type, events> & e) noexcept {
         const auto & [i, evts] = e;
+        _tmp_event_point = i;
 
         _intersections.resize(0);
-        auto after_last_removed_it = _segment_tree.lower_bound(i);
-        while(after_last_removed_it != _segment_tree.end() &&
+        auto after_last_removed_it = _segments_tree.lower_bound(i);
+        while(after_last_removed_it != _segments_tree.end() &&
               after_last_removed_it->sweepline_y_intersection(i) ==
                   std::get<1>(i)) {
             _intersections.emplace_back(after_last_removed_it->segment_id);
 
             if constexpr(requires {
-                             _segment_tree.extract_and_get_next(
+                             _segments_tree.extract_and_get_next(
                                  after_last_removed_it);
                          }) {
                 auto && [node, next] =
-                    _segment_tree.extract_and_get_next(after_last_removed_it);
+                    _segments_tree.extract_and_get_next(after_last_removed_it);
                 _tmp_tree.insert(std::move(node));
                 after_last_removed_it = next;
             } else {
                 const auto next_it = std::next(after_last_removed_it);
                 _tmp_tree.insert(_tmp_tree.begin(),
-                                 _segment_tree.extract(after_last_removed_it));
+                                 _segments_tree.extract(after_last_removed_it));
                 after_last_removed_it = std::move(next_it);
             }
         }
@@ -276,58 +279,51 @@ private:
         }
 
         if(_tmp_tree.empty()) {
-            if(after_last_removed_it != _segment_tree.end() &&
-               after_last_removed_it != _segment_tree.begin()) {
+            if(after_last_removed_it != _segments_tree.end() &&
+               after_last_removed_it != _segments_tree.begin()) {
                 detect_intersection(*std::prev(after_last_removed_it),
                                     *after_last_removed_it);
             }
             return;
         }
-        auto last_added_it =
-            _segment_tree.insert(after_last_removed_it,
-                                 _tmp_tree.extract(std::prev(_tmp_tree.end())));
-
+        auto last_added_it = _segments_tree.insert(
+            after_last_removed_it,
+            _tmp_tree.extract(std::prev(_tmp_tree.end())));
         if(auto next_it = std::next(last_added_it);
-           next_it != _segment_tree.end())
+           next_it != _segments_tree.end())
             detect_intersection(*last_added_it, *next_it);
 
         while(!_tmp_tree.empty()) {
-            last_added_it = _segment_tree.insert(
+            last_added_it = _segments_tree.insert(
                 last_added_it, _tmp_tree.extract(std::prev(_tmp_tree.end())));
         }
 
-        if(last_added_it != _segment_tree.begin())
+        if(last_added_it != _segments_tree.begin())
             detect_intersection(*std::prev(last_added_it), *last_added_it);
     }
     void init() {
-        if(_event_heap.empty()) return;
-        _current_event_it = _events_map.find(_event_heap.top());
-        handle_event(*_current_event_it);
+        if(_events_tree.empty()) return;
+        handle_event(*_events_tree.begin());
         if(_intersections.size() < 2) advance();
     }
 
 public:
     [[nodiscard]] constexpr bool finished() const noexcept {
-        return _event_heap.empty();
+        return _events_tree.empty();
     }
 
     [[nodiscard]] constexpr auto current() const noexcept {
         assert(!finished());
-        return std::make_pair(_event_heap.top(),
+        return std::make_pair(_events_tree.begin()->first,
                               std::views::all(_intersections));
     }
 
     constexpr void advance() noexcept {
         assert(!finished());
         do {
-            _event_heap.pop();
-            _events_map.erase(_current_event_it);
-
+            _events_tree.erase(_events_tree.begin());
             if(finished()) return;
-
-            _tmp_event_point = _event_heap.top();
-            _current_event_it = _events_map.find(_tmp_event_point);
-            handle_event(*_current_event_it);
+            handle_event(*_events_tree.begin());
         } while(_intersections.size() < 2);
     }
 
