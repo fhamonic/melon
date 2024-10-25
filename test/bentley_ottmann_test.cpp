@@ -196,17 +196,10 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
     // intersection i(p);
     // intersection i(std::get<0>(p), std::get<1>(p));
 
-    std::vector<std::pair<std::tuple<int, int>, std::tuple<int, int>>>
-        raw_segments = {{{0, 0}, {1, 0}},
-                        {{0, -1}, {2, 1}},
-                        {{0, 1}, {3, 0}},
-                        {{2, -1}, {2, 4}}};
-    std::vector<segment> segments;
-    for(auto && [p1, p2] : raw_segments) {
-        segments.emplace_back(
-            segment(point(coord(std::get<0>(p1)), coord(std::get<1>(p1))),
-                    point(coord(std::get<0>(p2)), coord(std::get<1>(p2)))));
-    }
+    std::vector<segment> segments = {{{0, 0}, {1, 0}},
+                                     {{0, -1}, {2, 1}},
+                                     {{0, 1}, {3, 0}},
+                                     {{2, -1}, {2, 4}}};
 
     auto segments_ids = std::views::iota(0ul, segments.size());
 
@@ -221,20 +214,17 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
 
 GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
     using coord = integer<int64_t>;
-    // using coord = integer<bounded_value<int32_t, -16, 16>>;
     using point = std::tuple<coord, coord>;
     using segment = std::tuple<point, point>;
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
     const std::size_t num_tests = 100;
-    std::size_t num_intersection_sum = 0;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         const std::size_t & num_segments = 100;
         auto segments =
-            generate_random_box_segments<integer<int64_t>, -256, 255>(
-                num_segments);
+            generate_random_box_segments<coord, -256, 255>(num_segments);
 
         // fmt::print("test {}\n", test_i);
         // for(auto && s : segments) {
@@ -260,7 +250,6 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
             //            fmt::join(intersecting_segments, " , "));
         }
         const std::size_t num_intersections = intersections_vec.size();
-        // num_intersection_sum += num_intersections;
         auto naive_intersections_vec = naive_intersections(segments);
 
         ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),
@@ -271,21 +260,20 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
                                      naive_intersections_vec[i].second));
         }
     }
-    // fmt::println("avg number of intersections : {}",
-    //              num_intersection_sum / num_tests);
 }
 GTEST_TEST(bentley_ottmann, fuzzy_sparse_test) {
+    using coord = integer<int64_t>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
+    using intersection = decltype(cartesian::segments_intersection(
+        std::declval<segment>(), std::declval<segment>()))::value_type;
+
     const std::size_t num_tests = 100;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         const std::size_t & num_segments = 100;
         auto segments =
-            generate_random_vector_segments<integer<int64_t>, -96, 95, 32>(
-                num_segments);
-
-        using segment = decltype(segments)::value_type;
-        using intersection = decltype(cartesian::segments_intersection(
-            std::declval<segment>(), std::declval<segment>()))::value_type;
+            generate_random_vector_segments<coord, -96, 95, 32>(num_segments);
 
         std::vector<std::pair<intersection, std::vector<std::size_t>>>
             intersections_vec;
@@ -311,7 +299,7 @@ GTEST_TEST(bentley_ottmann, fuzzy_sparse_test) {
 }
 
 GTEST_TEST(bentley_ottmann, fuzzy_dense_bounded_value_test) {
-    using coord = rational<bounded_value<int8_t>>;
+    using coord = integer<bounded_value<int8_t>>;
     using point = std::tuple<coord, coord>;
     using segment = std::tuple<point, point>;
     using intersection = decltype(cartesian::segments_intersection(
@@ -322,7 +310,8 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_bounded_value_test) {
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
         const std::size_t & num_segments = 100;
         auto segments =
-            generate_random_box_segments<coord, -128, 127>(num_segments);
+            generate_random_box_segments<rational<bounded_value<int8_t>>, -128,
+                                         127>(num_segments);
 
         std::vector<std::pair<intersection, std::vector<std::size_t>>>
             intersections_vec;
@@ -348,11 +337,13 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_bounded_value_test) {
 }
 
 GTEST_TEST(bentley_ottmann, fuzzy_sparse_bounded_value_test) {
-    using coord = rational<bounded_value<int8_t>>;
+    using coord = integer<bounded_value<int8_t>>;
     using point = std::tuple<coord, coord>;
     using segment = std::tuple<point, point>;
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
+
+    // std::cout << type_name<intersection>() << std::endl;
 
     const std::size_t num_tests = 100;
 
