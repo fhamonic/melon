@@ -1,4 +1,6 @@
-# MELON
+# ![MELON](misc/melon_128.png)
+
+
 
 MELON stands for Modern and Efficient Library for Optimization in Networks.
 The goal of this project is to provide a graph library using modern C ++ functionalities in order to be more user-friendly than the [Boost.Graph library](https://www.boost.org/doc/libs/release/libs/graph/) while being as performant as the [LEMON Graph library](https://lemon.cs.elte.hu/trac/lemon) which is unfortunately not maintained and does not compile with C++ 20.
