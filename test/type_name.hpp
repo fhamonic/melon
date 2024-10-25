@@ -1,4 +1,3 @@
-
 #include <type_traits>
 #include <typeinfo>
 #ifndef _MSC_VER
