@@ -60,9 +60,6 @@ private:
                                     std::get<1>(std::declval<segment_type>()))>;
     using line_type = typename _Traits::line_type;
     using intersection_type = typename _Traits::intersection_type;
-
-    using event_cmp = coordinate_system::point_xy_comparator;
-
     static constexpr auto compute_sweepline_intersection(
         const intersection_type & event_point, const line_type & line) {
         return std::make_tuple(
@@ -70,15 +67,15 @@ private:
             (std::get<2>(line) - std::get<0>(line) * std::get<0>(event_point)) /
                 std::get<1>(line));
     }
+    using sweepline_intersection_type =
+        std::decay_t<decltype(compute_sweepline_intersection(
+            std::declval<intersection_type>(), std::declval<line_type>()))>;
+    using sweepline_intersection_y_type = std::decay_t<decltype(std::get<1>(
+        std::declval<sweepline_intersection_type>()))>;
+
+    using event_cmp = coordinate_system::point_xy_comparator;
 
     struct segment_entry {
-        using sweepline_intersection_type =
-            std::decay_t<decltype(compute_sweepline_intersection(
-                std::declval<intersection_type>(), std::declval<line_type>()))>;
-
-        using sweepline_y_intersection_type = std::decay_t<decltype(std::get<1>(
-            std::declval<sweepline_intersection_type>()))>;
-
         mutable sweepline_intersection_type sweepline_intersection;
         const line_type line;
         const segment_type segment;
@@ -97,7 +94,7 @@ private:
         segment_entry & operator=(const segment_entry &) = default;
         segment_entry & operator=(segment_entry &&) = default;
 
-        [[nodiscard]] constexpr const sweepline_y_intersection_type
+        [[nodiscard]] constexpr const sweepline_intersection_y_type
         sweepline_y_intersection(const intersection_type & event_point) const {
             if(std::get<1>(line) == 0) return std::get<1>(event_point);
             if(std::get<0>(sweepline_intersection) == std::get<0>(event_point))
