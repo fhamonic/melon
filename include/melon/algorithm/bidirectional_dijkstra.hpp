@@ -13,6 +13,8 @@
 
 #include <range/v3/view/concat.hpp>
 
+#include "melon/detail/range-v3_compatibility.hpp"
+
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/intrusive_view.hpp"
 #include "melon/detail/map_if.hpp"

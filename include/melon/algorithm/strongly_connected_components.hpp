@@ -12,8 +12,9 @@
 
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/single.hpp>
+#include "melon/detail/range-v3_compatibility.hpp"
 
-#include "melon/detail/consumable_range.hpp"
+#include "melon/detail/consumable_view.hpp"
 #include "melon/detail/intrusive_view.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -37,9 +38,9 @@ private:
 
 private:
     _Graph _graph;
-    consumable_range<vertices_range_t<_Graph>> _remaining_vertices;
+    consumable_view<vertices_range_t<_Graph>> _remaining_vertices;
     std::vector<
-        std::pair<vertex, consumable_range<out_neighbors_range_t<_Graph>>>>
+        std::pair<vertex, consumable_view<out_neighbors_range_t<_Graph>>>>
         _dfs_stack;
     std::vector<vertex> _tarjan_stack;
     component_num start_index;

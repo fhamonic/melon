@@ -5,6 +5,7 @@
 #include <ranges>
 
 #include <range/v3/view/concat.hpp>
+#include "melon/detail/range-v3_compatibility.hpp"
 
 #include "melon/graph.hpp"
 #include "melon/views/graph_view.hpp"
@@ -64,12 +65,12 @@ public:
                  inward_incidence_graph<_Graph>
     {
         return ranges::views::concat(
-            std::ranges::views::transform(
+            std::views::transform(
                 melon::out_arcs(_graph, u),
                 [&](auto && a) -> std::pair<edge, vertex> {
                     return {a, melon::arc_target(_graph, a)};
                 }),
-            std::ranges::views::transform(
+            std::views::transform(
                 melon::in_arcs(_graph, u),
                 [&](auto && a) -> std::pair<edge, vertex> {
                     return {a, melon::arc_source(_graph, a)};

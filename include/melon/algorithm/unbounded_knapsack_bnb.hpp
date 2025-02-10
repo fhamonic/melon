@@ -127,7 +127,7 @@ public:
     template <typename _IR, typename _VM, typename _CM, typename _B>
     unbounded_knapsack_bnb(_IR && items_range, _VM && value_map,
                            _CM && cost_map, const _B budget) noexcept
-        : _items_range(std::ranges::views::all(std::forward<_IR>(items_range)))
+        : _items_range(std::views::all(std::forward<_IR>(items_range)))
         , _value_map(views::mapping_all(std::forward<_VM>(value_map)))
         , _cost_map(views::mapping_all(std::forward<_CM>(cost_map)))
         , _budget(budget) {
@@ -171,7 +171,7 @@ public:
             _permuted_items.emplace_back(it);
             _value_cost_pairs.emplace_back(value, cost);
         }
-        auto zip_view = ranges::views::zip(_permuted_items, _value_cost_pairs);
+        auto zip_view = ranges::zip_view(_permuted_items, _value_cost_pairs);
         ranges::sort(zip_view, [this](auto p1, auto p2) {
             return value_cost_ratio(p1.second) > value_cost_ratio(p2.second);
         });
@@ -205,7 +205,7 @@ public:
     }
 
     auto solution_items() const noexcept {
-        return std::ranges::views::transform(_best_sol, [this](auto && p) {
+        return std::views::transform(_best_sol, [this](auto && p) {
             return std::make_pair(
                 *_permuted_items[static_cast<std::size_t>(
                     std::distance(_value_cost_pairs.cbegin(), p.first))],
@@ -230,7 +230,7 @@ public:
 
 template <typename _ItemRange, typename _ValueMap, typename _CostMap>
 unbounded_knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
-    -> unbounded_knapsack_bnb<std::ranges::views::all_t<_ItemRange>,
+    -> unbounded_knapsack_bnb<std::views::all_t<_ItemRange>,
                               views::mapping_all_t<_ValueMap>,
                               views::mapping_all_t<_CostMap>>;
 

@@ -25,7 +25,7 @@ std::vector<T> random_vector_all_diff(std::size_t size, T min_value = 0,
 
     std::vector<T> out;
     out.reserve(size);
-    std::ranges::copy(std::ranges::iota_view(min_value, max_value + 1),
+    std::ranges::copy(std::views::iota(min_value, max_value + 1),
                       std::back_inserter(out));
     std::ranges::shuffle(out, engine);
     out.resize(size);
