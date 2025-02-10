@@ -57,8 +57,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
             {{0, {0, 1}}, {1, {0, 2}}, {2, {1, 2}}, {3, {2, 0}}, {4, {2, 1}}});
 
     static_forward_digraph graph(
-        3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
-        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
+        3, std::views::keys(std::views::values(arc_pairs)),
+        std::views::values(std::views::values(arc_pairs)));
     ASSERT_EQ(num_vertices(graph), 3);
     ASSERT_EQ(num_arcs(graph), 5);
 
@@ -97,8 +97,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
                    {8, {6, 5}}});
 
     static_forward_digraph graph(
-        8, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
-        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
+        8, std::views::keys(std::views::values(arc_pairs)),
+        std::views::values(std::views::values(arc_pairs)));
     ASSERT_EQ(num_vertices(graph), 8);
     ASSERT_EQ(num_arcs(graph), 9);
 

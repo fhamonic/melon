@@ -61,7 +61,9 @@ add_executable(
   knapsack_bnb_test.cpp
   unbounded_knapsack_bnb_test.cpp
   bentley_ottmann_test.cpp
-  bounded_value_test.cpp)
+  bounded_value_test.cpp
+  consumable_view_test.cpp
+  )
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)

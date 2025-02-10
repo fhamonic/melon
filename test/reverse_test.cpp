@@ -18,8 +18,8 @@ GTEST_TEST(reverse_views, static_graph) {
             {{0, {0, 1}}, {1, {0, 2}}, {2, {1, 2}}, {3, {2, 0}}, {4, {2, 1}}});
 
     static_digraph graph(
-        3, std::ranges::views::keys(std::ranges::views::values(arc_pairs)),
-        std::ranges::views::values(std::ranges::views::values(arc_pairs)));
+        3, std::views::keys(std::views::values(arc_pairs)),
+        std::views::values(std::views::values(arc_pairs)));
 
     auto reverse_graph = views::reverse(graph);
 

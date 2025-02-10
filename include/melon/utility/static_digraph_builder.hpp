@@ -53,7 +53,7 @@ public:
     auto build() {
         auto arcs_zipped_view = std::apply(
             [this](auto &&... property_map) {
-                return ranges::views::zip(_arc_sources, _arc_targets,
+                return ranges::zip_view(_arc_sources, _arc_targets,
                                          property_map...);
             },
             _arc_property_maps);

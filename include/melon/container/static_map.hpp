@@ -31,10 +31,12 @@ private:
     size_type _size;
 
 public:
-    [[nodiscard]] constexpr static_map() noexcept : _data(nullptr), _size(0){};
+    [[nodiscard]] constexpr static_map() noexcept : _data(nullptr), _size(0) {};
     [[nodiscard]] constexpr explicit static_map(const size_type size)
         : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
-        , _size(size){};
+        // : _data(reinterpret_cast<mapped_type *>(
+        //       std::malloc(size * sizeof(mapped_type))))
+        , _size(size) {};
 
     [[nodiscard]] constexpr static_map(const size_type size,
                                        const mapped_type & init_value)
@@ -51,7 +53,7 @@ public:
     [[nodiscard]] constexpr explicit static_map(R && r)
         : static_map(r.begin(), r.end()) {}
     static_map(const static_map & other)
-        : static_map(other.data(), other.data() + other.size()){};
+        : static_map(other.data(), other.data() + other.size()) {};
     [[nodiscard]] constexpr static_map(static_map &&) = default;
 
     static_map & operator=(const static_map & other) {
