@@ -24,8 +24,9 @@ class MelonConan(ConanFile):
     def requirements(self):
         self.requires("range-v3/0.12.0", transitive_headers=True)
         self.requires("fmt/[>=10.0.0]", transitive_headers=True)
+        
         self.test_requires("gtest/[>=1.10.0 <cci]")
-        self.test_requires("boost/1.84.0")
+        self.test_requires("boost/1.85.0")
         self.test_requires("gmp/6.3.0")
         self.test_requires("mppp/1.0.3")
 

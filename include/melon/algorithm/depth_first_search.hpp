@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/detail/consumable_range.hpp"
+#include "melon/detail/consumable_view.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -41,7 +41,7 @@ private:
 
 private:
     _Graph _graph;
-    std::vector<std::pair<vertex, consumable_range<stack_range>>> _stack;
+    std::vector<std::pair<vertex, consumable_view<stack_range>>> _stack;
     vertex_map_t<_Graph, bool> _reached_map;
 
     [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
