@@ -80,7 +80,7 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         std::vector<int> datas = random_vector_all_diff(size, 0, 1000);
         std::vector<std::size_t> permuted_id(size);
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
-        auto zip_view = ranges::views::zip(datas, permuted_id);
+        auto zip_view = ranges::zip_view(datas, permuted_id);
 
         d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
                    views::get_map<1>>
@@ -105,7 +105,7 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         std::vector<int> datas = random_vector_all_diff(size, 0, 1000);
         std::vector<std::size_t> permuted_id(size);
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
-        auto zip_view = ranges::views::zip(datas, permuted_id);
+        auto zip_view = ranges::zip_view(datas, permuted_id);
 
         d_ary_heap<3, std::pair<std::size_t, int>, std::greater<int>,
                    views::get_map<1>>
@@ -130,7 +130,7 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
         std::vector<int> datas = random_vector_all_diff(size, 0, 1000);
         std::vector<std::size_t> permuted_id(size);
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
-        auto zip_view = ranges::views::zip(datas, permuted_id);
+        auto zip_view = ranges::zip_view(datas, permuted_id);
 
         d_ary_heap<4, std::pair<std::size_t, int>, std::greater<int>,
                    views::get_map<1>>

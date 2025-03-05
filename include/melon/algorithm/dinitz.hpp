@@ -6,7 +6,7 @@
 #include <ranges>
 #include <vector>
 
-#include "melon/detail/consumable_range.hpp"
+#include "melon/detail/consumable_view.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
@@ -31,9 +31,9 @@ private:
     arc_map_t<_Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
     vertex_map_t<_Graph, std::size_t> _vertex_rank_map;
-    vertex_map_t<_Graph, consumable_range<out_arcs_range_t<_Graph>>>
+    vertex_map_t<_Graph, consumable_view_t<out_arcs_range_t<_Graph>>>
         _remaining_out_arcs;
-    vertex_map_t<_Graph, consumable_range<in_arcs_range_t<_Graph>>>
+    vertex_map_t<_Graph, consumable_view_t<in_arcs_range_t<_Graph>>>
         _remaining_in_arcs;
 
 public:
@@ -44,10 +44,10 @@ public:
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
         , _remaining_out_arcs(
-              create_vertex_map<consumable_range<out_arcs_range_t<_Graph>>>(
+              create_vertex_map<consumable_view_t<out_arcs_range_t<_Graph>>>(
                   _graph))
         , _remaining_in_arcs(
-              create_vertex_map<consumable_range<in_arcs_range_t<_Graph>>>(
+              create_vertex_map<consumable_view_t<in_arcs_range_t<_Graph>>>(
                   _graph)) {
         if constexpr(has_num_vertices<_Graph>) {
             _bfs_queue.reserve(num_vertices(_graph));
@@ -157,8 +157,7 @@ public:
                 _remaining_in_arcs[u] = in_arcs(_graph, u);
             }
             while(dfs_push_flow(_s, std::numeric_limits<value_t>::max()) >
-                  value_t{0})
-                ;
+                  value_t{0});
         }
         return *this;
     }

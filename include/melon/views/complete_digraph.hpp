@@ -5,6 +5,7 @@
 #include <ranges>
 
 #include <range/v3/view/concat.hpp>
+#include "melon/detail/range-v3_compatibility.hpp"
 
 #include "melon/container/static_map.hpp"
 #include "melon/detail/intrusive_view.hpp"
@@ -62,8 +63,9 @@ public:
 
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(u < _num_vertices);
-        return std::views::iota(static_cast<arc>(u * (_num_vertices - 1)),
-                                static_cast<arc>((u + 1) * (_num_vertices - 1)));
+        return std::views::iota(
+            static_cast<arc>(u * (_num_vertices - 1)),
+            static_cast<arc>((u + 1) * (_num_vertices - 1)));
     }
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(u < _num_vertices);

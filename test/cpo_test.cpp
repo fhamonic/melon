@@ -42,7 +42,7 @@ GTEST_TEST(CPO, test) {
 
     static_assert(std::ranges::contiguous_range<G>);
     static_assert(std::ranges::contiguous_range<
-                  decltype(std::ranges::views::all(std::declval<G>()))>);
+                  decltype(std::views::all(std::declval<G>()))>);
 
     G vec = {{1, 2}, {2}, {0, 1}};
     for(auto && v : melon::vertices(vec)) {
