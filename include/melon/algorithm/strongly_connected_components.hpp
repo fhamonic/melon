@@ -10,15 +10,10 @@
 #include <variant>
 #include <vector>
 
-#include <range/v3/view/concat.hpp>
-#include <range/v3/view/single.hpp>
-#include "melon/detail/range-v3_compatibility.hpp"
-
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/intrusive_view.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
-
 #include "melon/views/graph_view.hpp"
 
 namespace fhamonic {
@@ -96,20 +91,27 @@ public:
 
     [[nodiscard]] constexpr auto current() noexcept {
         assert(!finished());
-        return ranges::views::concat(
-            intrusive_view(
-                std::monostate{},
-                [this](std::monostate) -> const vertex & {
-                    return _tarjan_stack.back();
-                },
-                [this](std::monostate) mutable -> std::monostate {
-                    pop_tarjan();
-                    return std::monostate{};
-                },
-                [this](std::monostate) -> bool {
-                    return _dfs_stack.back().first != _tarjan_stack.back();
+        // return std::views::concat(
+        //     intrusive_view(
+        //         std::monostate{},
+        //         [this](std::monostate) -> const vertex & {
+        //             return _tarjan_stack.back();
+        //         },
+        //         [this](std::monostate) mutable -> std::monostate {
+        //             pop_tarjan();
+        //             return std::monostate{};
+        //         },
+        //         [this](std::monostate) -> bool {
+        //             return _dfs_stack.back().first != _tarjan_stack.back();
+        //         }),
+        //     std::views::single(_dfs_stack.back().first));
+        return std::views::concat(
+            std::views::take_while(
+                std::views::reverse(_tarjan_stack),
+                [last_v = _dfs_stack.back().first](const vertex & v) -> bool {
+                    return v != last_v;
                 }),
-            ranges::single_view(_dfs_stack.back().first));
+            std::views::single(_dfs_stack.back().first));
     }
 
     constexpr bool reached(const vertex & v) const {

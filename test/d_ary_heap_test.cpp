@@ -4,9 +4,6 @@
 #include <numeric>
 #include <queue>
 
-#include <range/v3/algorithm/sort.hpp>
-#include <range/v3/view/zip.hpp>
-
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/utility/priority_queue.hpp"
 
@@ -80,7 +77,7 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         std::vector<int> datas = random_vector_all_diff(size, 0, 1000);
         std::vector<std::size_t> permuted_id(size);
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
-        auto zip_view = ranges::zip_view(datas, permuted_id);
+        auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
                    views::get_map<1>>
@@ -89,8 +86,9 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
             heap.push(std::make_pair(i, datas[i]));
         }
 
-        ranges::sort(zip_view,
-                     [](auto p1, auto p2) { return p1.first > p2.first; });
+        std::ranges::sort(zip_view, [](auto p1, auto p2) {
+            return std::get<0>(p1) > std::get<0>(p2);
+        });
         for(std::size_t i = 0; i < size; ++i) {
             ASSERT_FALSE(heap.empty());
             ASSERT_EQ(heap.top(), std::make_pair(permuted_id[i], datas[i]));
@@ -105,7 +103,7 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         std::vector<int> datas = random_vector_all_diff(size, 0, 1000);
         std::vector<std::size_t> permuted_id(size);
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
-        auto zip_view = ranges::zip_view(datas, permuted_id);
+        auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<3, std::pair<std::size_t, int>, std::greater<int>,
                    views::get_map<1>>
@@ -114,8 +112,9 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
             heap.push(std::make_pair(i, datas[i]));
         }
 
-        ranges::sort(zip_view,
-                     [](auto p1, auto p2) { return p1.first > p2.first; });
+        std::ranges::sort(zip_view, [](auto p1, auto p2) {
+            return std::get<0>(p1) > std::get<0>(p2);
+        });
         for(std::size_t i = 0; i < size; ++i) {
             ASSERT_FALSE(heap.empty());
             ASSERT_EQ(heap.top(), std::make_pair(permuted_id[i], datas[i]));
@@ -130,7 +129,7 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
         std::vector<int> datas = random_vector_all_diff(size, 0, 1000);
         std::vector<std::size_t> permuted_id(size);
         std::iota(permuted_id.begin(), permuted_id.end(), 0);
-        auto zip_view = ranges::zip_view(datas, permuted_id);
+        auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<4, std::pair<std::size_t, int>, std::greater<int>,
                    views::get_map<1>>
@@ -139,8 +138,8 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
             heap.push(std::make_pair(i, datas[i]));
         }
 
-        ranges::sort(zip_view,
-                     [](auto p1, auto p2) { return p1.first > p2.first; });
+        std::ranges::sort(zip_view,
+                          [](auto p1, auto p2) { return std::get<0>(p1) > std::get<0>(p2); });
         for(std::size_t i = 0; i < size; ++i) {
             ASSERT_FALSE(heap.empty());
             ASSERT_EQ(heap.top(), std::make_pair(permuted_id[i], datas[i]));

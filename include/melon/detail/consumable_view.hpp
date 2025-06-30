@@ -4,8 +4,6 @@
 #include <ranges>
 #include <type_traits>
 
-#include <range/v3/view/all.hpp>
-
 namespace fhamonic {
 namespace melon {
 
@@ -38,17 +36,7 @@ public:
     decltype(auto) current() const { return *it; }
 };
 
-template <typename R>
-    requires std::ranges::viewable_range<R>
-consumable_view(R &&) -> consumable_view<std::views::all_t<R>>;
-
-template <typename R>
-    requires(!std::ranges::viewable_range<R>) && ranges::viewable_range<R>
-consumable_view(R &&) -> consumable_view<ranges::views::all_t<R>>;
-
-template <typename R>
-    requires(std::ranges::view<R> || ranges::view_<R>) &&
-            (std::ranges::borrowed_range<R> || ranges::borrowed_range<R>)
+template <std::ranges::viewable_range R>
 class consumable_view<R> : public std::ranges::view_base {
 private:
     std::ranges::iterator_t<R> it;
@@ -76,14 +64,8 @@ public:
     decltype(auto) current() const { return *it; }
 };
 
-template <typename R>
-    requires std::ranges::viewable_range<R> && std::ranges::borrowed_range<R>
+template <std::ranges::viewable_range R>
 consumable_view(R &&) -> consumable_view<std::views::all_t<R>>;
-
-template <typename R>
-    requires(!std::ranges::viewable_range<R>) && ranges::viewable_range<R> &&
-            ranges::borrowed_range<R>
-consumable_view(R &&) -> consumable_view<ranges::views::all_t<R>>;
 
 template <typename R>
 using consumable_view_t =

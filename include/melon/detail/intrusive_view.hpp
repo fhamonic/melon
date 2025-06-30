@@ -141,15 +141,4 @@ template <typename I, typename Incr, typename Deref, typename Cond>
 inline constexpr bool std::ranges::enable_view<
     fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> = true;
 
-// EXPECTED_CPP23
-#include <range/v3/range/concepts.hpp>
-template <typename I, typename Incr, typename Deref, typename Cond>
-inline constexpr bool
-    ranges::enable_view<fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> =
-        true;
-
-template <typename I, typename Incr, typename Deref, typename Cond>
-inline constexpr bool ranges::enable_borrowed_range<
-    fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> = true;
-
 #endif  // MELON_DETAIL_INTRUSIVE_VIEW_HPP

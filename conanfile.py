@@ -26,9 +26,7 @@ class MelonConan(ConanFile):
         self.requires("fmt/[>=10.0.0]", transitive_headers=True)
         
         self.test_requires("gtest/[>=1.10.0 <cci]")
-        self.test_requires("boost/1.85.0")
-        self.test_requires("gmp/6.3.0")
-        self.test_requires("mppp/1.0.3")
+        # self.test_requires("mppp/1.0.3")
 
     def validate(self):
         check_min_cppstd(self, 20)

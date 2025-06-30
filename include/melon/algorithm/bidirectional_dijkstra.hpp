@@ -11,10 +11,6 @@
 #include <variant>
 #include <vector>
 
-#include <range/v3/view/concat.hpp>
-
-#include "melon/detail/range-v3_compatibility.hpp"
-
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/intrusive_view.hpp"
 #include "melon/detail/map_if.hpp"
@@ -267,8 +263,7 @@ public:
         requires(_Traits::store_path)
     {
         assert(path_found());
-        // EXPECTED_CPP23 std::ranges::concat
-        return ranges::views::concat(
+        return std::ranges::views::concat(
             intrusive_view(
                 _forward_pred_arcs_map[_midpoint.value()],
                 [](const std::optional<arc> & oa) -> arc { return oa.value(); },
