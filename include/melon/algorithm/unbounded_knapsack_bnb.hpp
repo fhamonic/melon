@@ -1,6 +1,7 @@
 #ifndef MELON_ALGORITHM_KNAPSACK_BNB_HPP
 #define MELON_ALGORITHM_KNAPSACK_BNB_HPP
 
+#include <algorithm>
 #include <chrono>
 #include <future>
 #include <numeric>
@@ -9,10 +10,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-
-#include <range/v3/algorithm/sort.hpp>
-#include <range/v3/view/transform.hpp>
-#include <range/v3/view/zip.hpp>
 
 #include "melon/mapping.hpp"
 
@@ -171,9 +168,10 @@ public:
             _permuted_items.emplace_back(it);
             _value_cost_pairs.emplace_back(value, cost);
         }
-        auto zip_view = ranges::zip_view(_permuted_items, _value_cost_pairs);
-        ranges::sort(zip_view, [this](auto p1, auto p2) {
-            return value_cost_ratio(p1.second) > value_cost_ratio(p2.second);
+        auto zip_view = std::views::zip(_permuted_items, _value_cost_pairs);
+        std::ranges::sort(zip_view, [this](auto p1, auto p2) {
+            return value_cost_ratio(std::get<1>(p1)) >
+                   value_cost_ratio(std::get<1>(p2));
         });
         return *this;
     }

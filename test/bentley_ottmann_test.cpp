@@ -7,7 +7,7 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
-#include <mp++/integer.hpp>
+// #include <mp++/integer.hpp>
 
 #include "type_name.hpp"
 

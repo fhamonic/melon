@@ -8,21 +8,12 @@
 #include <initializer_list>
 #include <ranges>
 
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/zip.hpp>
-
 // template <typename T1, typename T2>
 // testing::AssertionResult & operator<<(testing::AssertionResult & result,
 //                                       const std::pair<T1, T2> & p);
 template <typename T1, typename T2>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const std::pair<T1, T2> & p) {
-    return result << "(" << p.first << "," << p.second << ")";
-}
-
-template <typename T1, typename T2>
-testing::AssertionResult & operator<<(testing::AssertionResult & result,
-                                      const ranges::common_pair<T1, T2> & p) {
     return result << "(" << p.first << "," << p.second << ")";
 }
 
@@ -88,7 +79,7 @@ testing::AssertionResult EQ_RANGES(R1 && r1, R2 && r2) {
 template <typename R, typename T>
     requires std::convertible_to<T, std::ranges::range_value_t<R>>
 testing::AssertionResult EQ_RANGES(R && r1, std::initializer_list<T> l) {
-    auto r2 = ranges::to_vector(std::views::transform(l, [](const auto & e) {
+    auto r2 = std::ranges::to<std::vector<std::ranges::range_value_t<R>>>(std::views::transform(l, [](const auto & e) {
         return static_cast<std::ranges::range_value_t<R>>(e);
     }));
     return EQ_RANGES(r1, r2);
@@ -100,10 +91,10 @@ template <typename R1, typename R2>
 testing::AssertionResult EQ_MULTISETS(R1 && r1, R2 && r2) {
     using vector_t = std::vector<std::ranges::range_value_t<R1>>;
 
-    vector_t s1 = ranges::to_vector(r1);
+    vector_t s1 = std::ranges::to<vector_t>(r1);
     std::ranges::sort(s1);
 
-    vector_t s2 = ranges::to_vector(r2);
+    vector_t s2 = std::ranges::to<vector_t>(r2);
     std::ranges::sort(s2);
 
     vector_t s1_minus_s2;
@@ -128,7 +119,7 @@ testing::AssertionResult EQ_MULTISETS(R1 && r1, R2 && r2) {
 template <typename R, typename T>
     requires std::convertible_to<T, std::ranges::range_value_t<R>>
 testing::AssertionResult EQ_MULTISETS(R && r1, std::initializer_list<T> l) {
-    auto r2 = ranges::to_vector(std::views::transform(l, [](const auto & e) {
+    auto r2 = std::ranges::to<std::vector<std::ranges::range_value_t<R>>>(std::views::transform(l, [](const auto & e) {
         return static_cast<std::ranges::range_value_t<R>>(e);
     }));
     return EQ_MULTISETS(r1, r2);

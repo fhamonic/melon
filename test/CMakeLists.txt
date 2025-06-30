@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(MelonUnitTests CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
  
 # ################### Modules ####################
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -9,12 +9,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(CompilerWarnings)
 
 # ################### Packages ###################
-find_package(range-v3)
 find_package(fmt)
 find_package(GTest)
-find_package(Boost REQUIRED)
-find_package(gmp REQUIRED)
-find_package(mp++ REQUIRED)
+# find_package(mp++ REQUIRED)
 
 include(GoogleTest)
 
@@ -23,7 +20,7 @@ add_library(melon INTERFACE)
 target_include_directories(
     melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(melon INTERFACE range-v3::range-v3 fmt::fmt boost::boost gmp::gmp mp++::mp++)
+target_link_libraries(melon INTERFACE fmt::fmt) # mp++::mp++)
 
 set_project_warnings(melon)
 

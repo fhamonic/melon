@@ -6,9 +6,6 @@
 #include <ranges>
 #include <vector>
 
-#include <range/v3/algorithm/sort.hpp>
-#include <range/v3/view/zip.hpp>
-
 #include "melon/graph.hpp"
 
 namespace fhamonic {
@@ -53,11 +50,11 @@ public:
     auto build() {
         auto arcs_zipped_view = std::apply(
             [this](auto &&... property_map) {
-                return ranges::zip_view(_arc_sources, _arc_targets,
+                return std::views::zip(_arc_sources, _arc_targets,
                                          property_map...);
             },
             _arc_property_maps);
-        ranges::sort(arcs_zipped_view, [](const auto & a, const auto & b) {
+        std::ranges::sort(arcs_zipped_view, [](const auto & a, const auto & b) {
             if(std::get<0>(a) == std::get<0>(b))
                 return std::get<1>(a) < std::get<1>(b);
             return std::get<0>(a) < std::get<0>(b);

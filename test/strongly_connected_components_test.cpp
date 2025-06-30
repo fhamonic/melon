@@ -1,8 +1,6 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
-#include <range/v3/view/zip.hpp>
-
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -92,6 +90,7 @@ GTEST_TEST(strongly_connected_components, graph1_algorithm_iterator) {
     std::vector<std::vector<vertex>> alg_components;
 
     for(auto component : strongly_connected_components(graph)) {
+        static_assert(std::ranges::range<decltype(component)>);
         auto & alg_component = alg_components.emplace_back();
         for(vertex v : component) {
             alg_component.push_back(v);
@@ -99,7 +98,7 @@ GTEST_TEST(strongly_connected_components, graph1_algorithm_iterator) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }
@@ -207,7 +206,7 @@ GTEST_TEST(strongly_connected_components, graph2_algorithm_iterator) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }
@@ -274,7 +273,7 @@ GTEST_TEST(strongly_connected_components, subgraph_true_map_test) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }
@@ -312,7 +311,7 @@ GTEST_TEST(strongly_connected_components, subgraph_true_map2_test) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }
@@ -350,7 +349,7 @@ GTEST_TEST(strongly_connected_components, subgraph_test) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }
@@ -375,7 +374,7 @@ GTEST_TEST(strongly_connected_components, no_arcs_test) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }
@@ -409,7 +408,7 @@ GTEST_TEST(strongly_connected_components, subgraph_lambda_test) {
     }
 
     for(auto && [component, alg_component] :
-        ranges::zip_view(components, alg_components)) {
+        std::views::zip(components, alg_components)) {
         ASSERT_TRUE(EQ_MULTISETS(component, alg_component));
     }
 }

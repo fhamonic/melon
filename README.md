@@ -1,7 +1,7 @@
 # ![MELON](misc/melon_title.png)
 
 MELON stands for Modern and Efficient Library for Optimization in Networks.
-The goal of this project is to provide a graph library using modern C ++ functionalities in order to be more user-friendly than the [Boost.Graph library](https://www.boost.org/doc/libs/release/libs/graph/) while being as performant as the [LEMON Graph library](https://lemon.cs.elte.hu/trac/lemon) which is unfortunately not maintained and does not compile with C++ 20.
+The goal of this project is to provide a graph library using modern C ++ functionalities in order to be more user-friendly than the [Boost.Graph library](https://www.boost.org/doc/libs/release/libs/graph/) while being as performant as the [LEMON Graph library](https://lemon.cs.elte.hu/trac/lemon) which is unfortunately not maintained and does not compile with C++ 20 and above.
 Implemented data structures and algorithms are often benchmarked in the repository https://github.com/fhamonic/melon_benchmark and shown to outperform both Boost.Graph and LEMON!
 
 Work in progress.
@@ -13,11 +13,13 @@ Work in progress.
 
 ## How to link
 
+Since commit #### the use of Range-v3 has been replaced by C++26 ranges functionnalities that are currently only implemented in GCC 15.
+
 | Compiler    | Minimum version |
 | ----------- | --------------- |
-|   GCC       |     12          |
-|   Clang     |     17          |
-|   MSVC      |     19          |
+|   GCC       |     15          |
+|   Clang     |     --          |
+|   MSVC      |     --          |
 
 ### As a local Conan package (latest commit)
 
@@ -53,11 +55,11 @@ add_subdirectory(dependencies/melon)
 target_link_libraries(<your_target> INTERFACE melon)
 ```
 
-Then ensure that your CMake can find [Range-v3](https://ericniebler.github.io/range-v3/) and [fmt](https://fmt.dev/latest/index.html) with `find_package` calls.
+Then ensure that your CMake can find [fmt](https://fmt.dev/latest/index.html) with `find_package` calls.
 
 ## Documentation
 
-The extensive use of C++20 concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in the wiki page [Concepts](https://github.com/fhamonic/melon/wiki/Concepts).
+The extensive use of concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in the wiki page [Concepts](https://github.com/fhamonic/melon/wiki/Concepts).
 Thus, this library aims to allow users to bring their own graph structures, best suited to their needs.
 However, we provide classical implementations of graphs such as 'static_digraph' and 'mutable_digraph'.
 The graph structures provided are described in the wiki page [Containers#Graph-structures](https://github.com/fhamonic/melon/wiki/Containers#Graph-structures).
