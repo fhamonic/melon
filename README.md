@@ -13,7 +13,7 @@ Work in progress.
 
 ## How to link
 
-Since commit #### the use of Range-v3 has been replaced by C++26 ranges functionnalities that are currently only implemented in GCC 15.
+:warning: Since commit [e494eb8d7db1629af280354dc4d76d3c36ed8701](https://github.com/fhamonic/melon/blob/e494eb8d7db1629af280354dc4d76d3c36ed8701/index.html) the use of Range-v3 has been replaced by C++26 ranges functionnalities which are currently only implemented in GCC 15.
 
 | Compiler    | Minimum version |
 | ----------- | --------------- |
@@ -31,7 +31,7 @@ conan create . -u -b=missing -pr=<your_conan_profile>
 
 Then add the dependency to melon in your project `conanfile.txt` or `conanfile.py`.
 
-### Soon, as a Conan center package (latest release)
+### As a Conan center package (latest release, still depending on range-v3)
 
 Just add `melon/1.0.0-alpha.1` to your project `conanfile.txt` or `conanfile.py`.
 
@@ -104,7 +104,6 @@ Concepts and containers:
 Algorithms:
 - planar map intersection
 - Network simplex
-- Traveling salesman
 
 Utility:
 - JSON serialization
