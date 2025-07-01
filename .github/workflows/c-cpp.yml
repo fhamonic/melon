@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Log Ubuntu version
+      run: uname -v
     - name: Install GCC 15
       run: sudo apt install -y gcc-15 g++-15
     - name: Install Conan 2.0
