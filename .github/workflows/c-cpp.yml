@@ -13,13 +13,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install GCC 12
-      run: sudo apt install -y gcc-12 g++-12
+    - name: Install GCC 15
+      run: sudo apt install -y gcc-15 g++-15
     - name: Install Conan 2.0
       run: pip install conan
     - name: Autodetect a default conan profile
       run: conan profile detect --name=default
     - name: Modify the default conan profile
-      run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings.compiler=gcc settings.compiler.version=12 settings.compiler.cppstd=20 buildenv.CC=/usr/bin/gcc-12 buildenv.CXX=/usr/bin/g++-12
+      run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings.compiler=gcc settings.compiler.version=15 settings.compiler.cppstd=26 buildenv.CC=/usr/bin/gcc-15 buildenv.CXX=/usr/bin/g++-15
     - name: Build and run unit tests
       run: make BUILD_TYPE=default
