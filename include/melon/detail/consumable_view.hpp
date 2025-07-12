@@ -7,7 +7,7 @@
 namespace fhamonic {
 namespace melon {
 
-template <typename R>
+template <std::ranges::range R>
 class consumable_view {
 private:
     R range;
@@ -36,7 +36,7 @@ public:
     decltype(auto) current() const { return *it; }
 };
 
-template <std::ranges::viewable_range R>
+template <std::ranges::borrowed_range R>
 class consumable_view<R> : public std::ranges::view_base {
 private:
     std::ranges::iterator_t<R> it;
