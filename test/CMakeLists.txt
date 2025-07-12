@@ -67,17 +67,17 @@ gtest_discover_tests(melon_test)
 
 target_compile_options(melon_test INTERFACE -fconcepts-diagnostics-depth=10)
 
-# execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
-#                 OUTPUT_VARIABLE LIBASAN_PATH
-#                 OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
+                OUTPUT_VARIABLE LIBASAN_PATH
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-# message("cxx : ${CMAKE_CXX_COMPILER}")
-# message("libasan : ${LIBASAN_PATH}")
+message("cxx : ${CMAKE_CXX_COMPILER}")
+message("libasan : ${LIBASAN_PATH}")
 
-# if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
-#   target_compile_options(melon_test PRIVATE -fsanitize=address)
-#   target_link_options(melon_test PRIVATE -fno-omit-frame-pointer -fsanitize=address -lpthread)
-#   target_link_libraries(melon_test "${LIBASAN_PATH}")
-# endif()
+if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
+  target_compile_options(melon_test PRIVATE -fsanitize=address)
+  target_link_options(melon_test PRIVATE -fsanitize=address -lpthread)
+  target_link_libraries(melon_test "${LIBASAN_PATH}")
+endif()
 
 

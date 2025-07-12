@@ -91,27 +91,28 @@ public:
 
     [[nodiscard]] constexpr auto current() noexcept {
         assert(!finished());
+        return std::views::concat(
+            std::views::single(_dfs_stack.back().first),
+            intrusive_view(
+                std::monostate{},
+                [this](std::monostate) -> const vertex & {
+                    return _tarjan_stack.back();
+                },
+                [this](std::monostate) mutable -> std::monostate {
+                    pop_tarjan();
+                    return std::monostate{};
+                },
+                [this](std::monostate) -> bool {
+                    return _dfs_stack.back().first != _tarjan_stack.back();
+                }));
         // return std::views::concat(
-        //     intrusive_view(
-        //         std::monostate{},
-        //         [this](std::monostate) -> const vertex & {
-        //             return _tarjan_stack.back();
-        //         },
-        //         [this](std::monostate) mutable -> std::monostate {
-        //             pop_tarjan();
-        //             return std::monostate{};
-        //         },
-        //         [this](std::monostate) -> bool {
-        //             return _dfs_stack.back().first != _tarjan_stack.back();
+        //     std::views::take_while(
+        //         std::views::reverse(_tarjan_stack),
+        //         [last_v = _dfs_stack.back().first](const vertex & v) -> bool
+        //         {
+        //             return v != last_v;
         //         }),
         //     std::views::single(_dfs_stack.back().first));
-        return std::views::concat(
-            std::views::take_while(
-                std::views::reverse(_tarjan_stack),
-                [last_v = _dfs_stack.back().first](const vertex & v) -> bool {
-                    return v != last_v;
-                }),
-            std::views::single(_dfs_stack.back().first));
     }
 
     constexpr bool reached(const vertex & v) const {
@@ -131,25 +132,26 @@ public:
         assert(!_remaining_vertices.empty());
 
         if(!_dfs_stack.empty()) {
-            vertex v = _dfs_stack.back().first;
+            const vertex v = _dfs_stack.back().first;
             while(_tarjan_stack.back() != v) {
                 pop_tarjan();
             }
             pop_tarjan();
             _dfs_stack.pop_back();
             if(!_dfs_stack.empty()) {
-                vertex parent = _dfs_stack.back().first;
+                const vertex parent = _dfs_stack.back().first;
                 _lowlink_map[parent] =
                     std::min(_lowlink_map[parent], _lowlink_map[v]);
             }
         }
 
         if(_dfs_stack.empty()) {
+            assert(!_remaining_vertices.empty());
             while(reached(_remaining_vertices.current())) {
                 _remaining_vertices.advance();
                 if(_remaining_vertices.empty()) return;
             }
-            vertex s = _remaining_vertices.current();
+            const vertex s = _remaining_vertices.current();
             _index_map[s] = _lowlink_map[s] = start_index = index;
             ++index;
             push_tarjan(s);
@@ -158,7 +160,7 @@ public:
 
         for(;;) {
             while(!_dfs_stack.back().second.empty()) {
-                vertex w = _dfs_stack.back().second.current();
+                const vertex w = _dfs_stack.back().second.current();
                 _dfs_stack.back().second.advance();
                 if(reached(w)) {
                     if(_in_tarjan_stack_map[w]) {
@@ -173,7 +175,7 @@ public:
                 push_tarjan(w);
                 _dfs_stack.emplace_back(w, out_neighbors(_graph, w));
             }
-            vertex v = _dfs_stack.back().first;
+            const vertex v = _dfs_stack.back().first;
             if(_index_map[v] == _lowlink_map[v]) return;
             _dfs_stack.pop_back();
             const vertex & parent = _dfs_stack.back().first;
