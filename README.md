@@ -13,7 +13,7 @@ Work in progress.
 
 ## How to link
 
-:warning: Since commit [e494eb8d7db1629af280354dc4d76d3c36ed8701](https://github.com/fhamonic/melon/blob/e494eb8d7db1629af280354dc4d76d3c36ed8701/index.html) the use of Range-v3 has been replaced by C++26 ranges functionnalities which are currently only implemented in GCC 15.
+:warning: Since commit [e494eb8d7db1629af280354dc4d76d3c36ed8701](https://github.com/fhamonic/melon/commit/e494eb8d7db1629af280354dc4d76d3c36ed8701) the use of Range-v3 has been replaced by C++26 ranges functionnalities which are currently only implemented in GCC 15.
 
 | Compiler    | Minimum version |
 | ----------- | --------------- |
