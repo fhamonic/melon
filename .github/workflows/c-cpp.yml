@@ -16,6 +16,8 @@ jobs:
     - name: Log Ubuntu version
       run: uname -v
     - name: Install GCC 15
+      run: sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa
+      run: sudo apt update
       run: sudo apt install -y gcc-15 g++-15
     - name: Install Conan 2.0
       run: pip install conan
