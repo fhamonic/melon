@@ -45,7 +45,7 @@ GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
 
 // GTEST_TEST(d_ary_heap, 2_heap_prio_map_push_pop_test) {
 //     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-//     d_ary_heap<2, std::pair<bool, int>, views::get_map<1>> heap;
+//     d_ary_heap<2, std::pair<bool, int>, views::element_map<1>> heap;
 //     for(auto && e : datas) {
 //         heap.push(std::make_pair(true, e));
 //     }
@@ -80,7 +80,7 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
-                   views::get_map<1>>
+                   views::element_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -106,7 +106,7 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<3, std::pair<std::size_t, int>, std::greater<int>,
-                   views::get_map<1>>
+                   views::element_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -132,7 +132,7 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<4, std::pair<std::size_t, int>, std::greater<int>,
-                   views::get_map<1>>
+                   views::element_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -154,7 +154,7 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     constexpr std::size_t num_elements = 6;
     updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::greater<int>,
                          std::array<std::size_t, num_elements>,
-                         views::get_map<1>, views::get_map<0>>
+                         views::element_map<1>, views::element_map<0>>
         heap;
 
     static_assert(updatable_priority_queue<decltype(heap)>);

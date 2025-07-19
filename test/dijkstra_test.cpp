@@ -108,7 +108,7 @@ struct dijkstra_traits {
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<static_digraph>, int>,
                    semiring::less_t, vertex_map_t<static_digraph, std::size_t>,
-                   views::get_map<1>, views::get_map<0>>;
+                   views::element_map<1>, views::element_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = true;

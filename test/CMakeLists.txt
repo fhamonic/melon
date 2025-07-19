@@ -9,7 +9,6 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(CompilerWarnings)
 
 # ################### Packages ###################
-find_package(fmt)
 find_package(GTest)
 # find_package(mp++ REQUIRED)
 
@@ -20,7 +19,7 @@ add_library(melon INTERFACE)
 target_include_directories(
     melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(melon INTERFACE fmt::fmt) # mp++::mp++)
+# target_link_libraries(melon INTERFACE mp++::mp++)
 
 set_project_warnings(melon)
 
@@ -65,7 +64,7 @@ target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)
 
-target_compile_options(melon_test INTERFACE -fconcepts-diagnostics-depth=10)
+target_compile_options(melon_test INTERFACE -fconcepts-diagnostics-depth=20)
 
 execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
                 OUTPUT_VARIABLE LIBASAN_PATH

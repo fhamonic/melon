@@ -4,9 +4,6 @@
 #include <random>
 #include <ranges>
 
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-
 // #include <mp++/integer.hpp>
 
 #include "type_name.hpp"
@@ -149,10 +146,9 @@ auto naive_intersections(const std::vector<S> segments) {
         naive_intersections_vec.emplace_back(std::make_pair(
             i, std::vector<std::size_t>(intersecting_segments.begin(),
                                         intersecting_segments.end())));
-        // fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
-        //            std::get<0>(i).den, std::get<1>(i).num,
-        //            std::get<1>(i).den,
-        //            fmt::join(intersecting_segments, " , "));
+        // std::cout << std::format("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
+        //                          std::get<0>(i).den, std::get<1>(i).num,
+        //                          std::get<1>(i).den, intersecting_segments);
     }
     std::ranges::sort(
         naive_intersections_vec, [](const auto & e1, const auto & e2) {
@@ -205,10 +201,10 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
 
     for(auto && [i, intersecting_segments] :
         bentley_ottmann(segments_ids, segments)) {
-        fmt::print("({}/{}, {}/{}) : {}\n", int(std::get<0>(i).num()),
-                   int(std::get<0>(i).den()), int(std::get<1>(i).num()),
-                   int(std::get<1>(i).den()),
-                   fmt::join(intersecting_segments, " , "));
+        std::cout << std::format(
+            "({}/{}, {}/{}) : {}\n", int(std::get<0>(i).num()),
+            int(std::get<0>(i).den()), int(std::get<1>(i).num()),
+            int(std::get<1>(i).den()), intersecting_segments);
     }
 }
 
@@ -226,12 +222,13 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
         auto segments =
             generate_random_box_segments<coord, -256, 255>(num_segments);
 
-        // fmt::print("test {}\n", test_i);
+        // std::cout << std::format("test {}\n", test_i);
         // for(auto && s : segments) {
         //     auto && [a, b] = s;
         //     auto && [ax, ay] = a;
         //     auto && [bx, by] = b;
-        //     fmt::print("{{{{{},{}}},{{{},{}}}}},\n", ax, ay, bx, by);
+        //     std::cout << std::format("{{{{{},{}}},{{{},{}}}}},\n", ax, ay,
+        //     bx, by);
         // }
 
         std::vector<std::pair<intersection, std::vector<std::size_t>>>
@@ -244,10 +241,11 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));
 
-            // fmt::print("({}/{}, {}/{}) : {}\n", std::get<0>(i).num(),
+            // std::cout << std::format("({}/{}, {}/{}) : {}\n",
+            // std::get<0>(i).num(),
             //            std::get<0>(i).den(), std::get<1>(i).num(),
             //            std::get<1>(i).den(),
-            //            fmt::join(intersecting_segments, " , "));
+            //            intersecting_segments);
         }
         const std::size_t num_intersections = intersections_vec.size();
         auto naive_intersections_vec = naive_intersections(segments);

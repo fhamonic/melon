@@ -55,8 +55,6 @@ add_subdirectory(dependencies/melon)
 target_link_libraries(<your_target> INTERFACE melon)
 ```
 
-Then ensure that your CMake can find [fmt](https://fmt.dev/latest/index.html) with `find_package` calls.
-
 ## Documentation
 
 The extensive use of concepts allows to provide genericity to the graph algorithms in the sense that they would work on any graph implementation fulfilling their requirements. We describe the fundamental concepts of the library and their motivation in the wiki page [Concepts](https://github.com/fhamonic/melon/wiki/Concepts).
