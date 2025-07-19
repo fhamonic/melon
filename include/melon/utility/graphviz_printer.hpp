@@ -1,13 +1,11 @@
 #ifndef MELON_UTILITY_GRAPHVIZ_PRINTER_HPP
 #define MELON_UTILITY_GRAPHVIZ_PRINTER_HPP
 
-// #include <format>
 #include <algorithm>
+#include <format>
 #include <iterator>
 #include <optional>
 #include <utility>
-
-#include <fmt/format.h>
 
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -15,8 +13,7 @@
 namespace fhamonic {
 namespace melon {
 
-template <graph
- G>
+template <graph G>
 class graphviz_printer {
 public:
     using vertex = vertex_t<G>;
@@ -81,11 +78,10 @@ public:
         return *this;
     }
 
-    graphviz_printer<G> & set_vertex_pos(const vertex & v,
-                                           const point2d & p) {
+    graphviz_printer<G> & set_vertex_pos(const vertex & v, const point2d & p) {
         if(!_vertex_pos_map.has_value())
-            _vertex_pos_map.emplace(
-                create_vertex_map<std::string>(_graph.get(), point2d{0.0,0.0}));
+            _vertex_pos_map.emplace(create_vertex_map<std::string>(
+                _graph.get(), point2d{0.0, 0.0}));
         _vertex_pos_map.value()[v] = p;
         return *this;
     }
@@ -99,8 +95,7 @@ public:
         return *this;
     }
 
-    graphviz_printer<G> & set_vertex_size(const vertex & v,
-                                           const double s) {
+    graphviz_printer<G> & set_vertex_size(const vertex & v, const double s) {
         _vertex_size_map[v] = s;
         return *this;
     }
@@ -113,8 +108,7 @@ public:
         return *this;
     }
 
-    graphviz_printer<G> & set_vertex_color(const vertex & v,
-                                           const color c) {
+    graphviz_printer<G> & set_vertex_color(const vertex & v, const color c) {
         _vertex_color_map[v] = c;
         return *this;
     }
@@ -127,8 +121,7 @@ public:
         return *this;
     }
 
-    graphviz_printer<G> & set_arc_label(const arc & a,
-                                           const std::string l) {
+    graphviz_printer<G> & set_arc_label(const arc & a, const std::string l) {
         _arc_label_map[a] = l;
         return *this;
     }
@@ -142,8 +135,7 @@ public:
         return *this;
     }
 
-    graphviz_printer<G> & set_arc_size(const arc & a,
-                                           const double s) {
+    graphviz_printer<G> & set_arc_size(const arc & a, const double s) {
         _arc_size_map[a] = s;
         return *this;
     }
@@ -155,9 +147,7 @@ public:
         return *this;
     }
 
-
-    graphviz_printer<G> & set_arc_color(const arc & a,
-                                           const color & c) {
+    graphviz_printer<G> & set_arc_color(const arc & a, const color & c) {
         _arc_color_map[a] = c;
         return *this;
     }
@@ -213,61 +203,61 @@ public:
                       return _arc_color_map[a.first] < _arc_color_map[b.first];
                   });
 
-        fmt::format_to(output, "digraph {{size=\"{},{}\";\n", _page_width,
+        std::format_to(output, "digraph {{size=\"{},{}\";\n", _page_width,
                        _page_height);
-        fmt::format_to(
+        std::format_to(
             output,
             "_graph [pad=\"0.2,0.1\" bgcolor=transparent overlap=scale]\n");
-        fmt::format_to(output, "node [style=filled shape=\"circle\"]\n");
-        fmt::format_to(output, "edge [style=filled]\n");
+        std::format_to(output, "node [style=filled shape=\"circle\"]\n");
+        std::format_to(output, "edge [style=filled]\n");
 
         std::optional<color> prev_color;
         for(vertex u : color_sorted_vertices) {
             if(!prev_color.has_value() ||
                _vertex_color_map[u] != prev_color.value()) {
-                fmt::format_to(output,
+                std::format_to(output,
                                "node [fillcolor=\"#{:02x}{:02x}{:02x}\"]\n",
                                std::get<0>(_vertex_color_map[u]),
                                std::get<1>(_vertex_color_map[u]),
                                std::get<2>(_vertex_color_map[u]));
                 prev_color.emplace(_vertex_color_map[u]);
             }
-            fmt::format_to(output, "{} [width=\"{}\"", u,
+            std::format_to(output, "{} [width=\"{}\"", u,
                            scale_size(std::sqrt(_vertex_size_map[u])));
             if(_vertex_label_map.has_value()) {
-                fmt::format_to(output, " label=\"{}\"",
+                std::format_to(output, " label=\"{}\"",
                                _vertex_label_map.value()[u]);
             }
             if(_vertex_pos_map.has_value()) {
-                fmt::format_to(output, " pos=\"{},{}\"]\n",
+                std::format_to(output, " pos=\"{},{}\"]\n",
                                scale_x(_vertex_pos_map.value()[u].first),
                                scale_y(_vertex_pos_map.value()[u].second));
             }
-            fmt::format_to(output, "]\n");
+            std::format_to(output, "]\n");
         }
 
         prev_color.reset();
         for(const auto & [a, vertices_pair] : color_sorted_arcs_entries) {
             if(!prev_color.has_value() ||
                _arc_color_map[a] != prev_color.value()) {
-                fmt::format_to(output, "edge [color=\"#{:02x}{:02x}{:02x}\"]\n",
+                std::format_to(output, "edge [color=\"#{:02x}{:02x}{:02x}\"]\n",
                                std::get<0>(_arc_color_map[a]),
                                std::get<1>(_arc_color_map[a]),
                                std::get<2>(_arc_color_map[a]));
                 prev_color.emplace(_arc_color_map[a]);
             }
-            fmt::format_to(output, "{} -> {} [penwidth=\"{}\"",
+            std::format_to(output, "{} -> {} [penwidth=\"{}\"",
                            vertices_pair.first, vertices_pair.second,
                            _arc_size_map[a]);
 
             if(_arc_label_map.has_value()) {
-                fmt::format_to(output, " label=\"{}\"",
+                std::format_to(output, " label=\"{}\"",
                                _arc_label_map.value()[a]);
             }
-            fmt::format_to(output, "]\n");
+            std::format_to(output, "]\n");
         }
 
-        fmt::format_to(output, "}}\n");
+        std::format_to(output, "}}\n");
     }
 };
 }  // namespace melon

@@ -44,7 +44,7 @@ struct competing_dijkstras_default_traits {
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
                              vertex_map_t<_Graph, std::size_t>,
-                             views::get_map<1>, views::get_map<0>>;
+                             views::element_map<1>, views::element_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;

@@ -38,7 +38,7 @@ struct bidirectional_dijkstra_default_traits {
         updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, _ValueType>,
                              typename semiring::less_t,
                              vertex_map_t<_Graph, std::size_t>,
-                             views::get_map<1>, views::get_map<0>>;
+                             views::element_map<1>, views::element_map<0>>;
 
     static constexpr bool store_path = true;
 };

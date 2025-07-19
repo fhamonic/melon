@@ -246,7 +246,7 @@ struct identity_map : public mapping_view_base {
 };
 
 template <std::size_t I>
-struct get_map : public mapping_view_base {
+struct element_map : public mapping_view_base {
     template <class T>
     [[nodiscard]] constexpr decltype(auto) operator[](T && e) const noexcept {
         return std::get<I>(e);

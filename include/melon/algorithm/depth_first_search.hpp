@@ -45,8 +45,7 @@ private:
     vertex_map_t<_Graph, bool> _reached_map;
 
     [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
-                                        vertex>
-        _pred_vertices_map;
+                                        vertex> _pred_vertices_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_pred_arcs, _Graph, arc>
         _pred_arcs_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph, int>
@@ -122,9 +121,9 @@ public:
                     if constexpr(_Traits::store_distances)
                         _dist_map[w] = _dist_map[_stack.back().first] + 1;
                     _stack.emplace_back(w, out_arcs(_graph, w));
+                    remaining_arcs.advance();
                     return;
                 }
-
             } else {
                 for(auto & remaining_neighbors = _stack.back().second;
                     !remaining_neighbors.empty();
@@ -137,6 +136,7 @@ public:
                     if constexpr(_Traits::store_distances)
                         _dist_map[w] = _dist_map[_stack.back().first] + 1;
                     _stack.emplace_back(w, out_neighbors(_graph, w));
+                    remaining_neighbors.advance();
                     return;
                 }
             }

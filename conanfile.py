@@ -21,14 +21,12 @@ class MelonConan(ConanFile):
     no_copy_source = True
     generators = "CMakeToolchain", "CMakeDeps"
 
-    def requirements(self):
-        self.requires("fmt/[>=10.0.0]", transitive_headers=True)
-        
+    def requirements(self):        
         self.test_requires("gtest/[>=1.10.0 <cci]")
         # self.test_requires("mppp/1.0.3")
 
     def validate(self):
-        check_min_cppstd(self, 20)
+        check_min_cppstd(self, 26)
 
     def layout(self):
         cmake_layout(self)
