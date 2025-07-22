@@ -38,6 +38,7 @@ private:
         std::pair<vertex, consumable_view<out_neighbors_range_t<_Graph>>>>
         _dfs_stack;
     std::vector<vertex> _tarjan_stack;
+    std::vector<vertex>::iterator _component_begin;
     component_num start_index;
     component_num index;
     vertex_map_t<_Graph, bool> _in_tarjan_stack_map;
@@ -91,28 +92,7 @@ public:
 
     [[nodiscard]] constexpr auto current() noexcept {
         assert(!finished());
-        return std::views::concat(
-            std::views::single(_dfs_stack.back().first),
-            intrusive_view(
-                std::monostate{},
-                [this](std::monostate) -> const vertex & {
-                    return _tarjan_stack.back();
-                },
-                [this](std::monostate) mutable -> std::monostate {
-                    pop_tarjan();
-                    return std::monostate{};
-                },
-                [this](std::monostate) -> bool {
-                    return _dfs_stack.back().first != _tarjan_stack.back();
-                }));
-        // return std::views::concat(
-        //     std::views::take_while(
-        //         std::views::reverse(_tarjan_stack),
-        //         [last_v = _dfs_stack.back().first](const vertex & v) -> bool
-        //         {
-        //             return v != last_v;
-        //         }),
-        //     std::views::single(_dfs_stack.back().first));
+        return std::span(_component_begin, _tarjan_stack.end());
     }
 
     constexpr bool reached(const vertex & v) const {
@@ -123,20 +103,13 @@ public:
         _tarjan_stack.push_back(v);
         _in_tarjan_stack_map[v] = true;
     }
-    constexpr void pop_tarjan() {
-        _in_tarjan_stack_map[_tarjan_stack.back()] = false;
-        _tarjan_stack.pop_back();
-    }
 
     constexpr void advance() noexcept {
         assert(!_remaining_vertices.empty());
 
         if(!_dfs_stack.empty()) {
             const vertex v = _dfs_stack.back().first;
-            while(_tarjan_stack.back() != v) {
-                pop_tarjan();
-            }
-            pop_tarjan();
+            _tarjan_stack.erase(_component_begin, _tarjan_stack.end());
             _dfs_stack.pop_back();
             if(!_dfs_stack.empty()) {
                 const vertex parent = _dfs_stack.back().first;
@@ -176,7 +149,19 @@ public:
                 _dfs_stack.emplace_back(w, out_neighbors(_graph, w));
             }
             const vertex v = _dfs_stack.back().first;
-            if(_index_map[v] == _lowlink_map[v]) return;
+            if(_index_map[v] == _lowlink_map[v]) {
+                // _component_begin =
+                //     --std::ranges::find(std::views::reverse(_tarjan_stack),
+                //                         _dfs_stack.back().first)
+                //           .base();
+
+                for(_component_begin = _tarjan_stack.end() - 1;
+                    *_component_begin != v; --_component_begin) {
+                    _in_tarjan_stack_map[*_component_begin] = false;
+                }
+                _in_tarjan_stack_map[v] = false;
+                return;
+            }
             _dfs_stack.pop_back();
             const vertex & parent = _dfs_stack.back().first;
             _lowlink_map[parent] =
