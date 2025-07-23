@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "melon/container/static_map.hpp"
-#include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/mapping.hpp"
 
 namespace fhamonic {
@@ -47,13 +47,76 @@ private:
     std::size_t _num_vertices;
     std::size_t _num_arcs;
 
+    class vertices_iterator
+        : public intrusive_iterator_base<mutable_digraph, vertex> {
+    public:
+        using intrusive_iterator_base<mutable_digraph,
+                                      vertex>::intrusive_iterator_base;
+
+        constexpr vertices_iterator & operator++() noexcept {
+            _cursor = _structure->_vertices[_cursor].next_vertex;
+            return *this;
+        }
+        constexpr vertices_iterator operator++(int) noexcept {
+            vertices_iterator it(*this);
+            _cursor = _structure->_vertices[_cursor].next_vertex;
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const vertices_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor == INVALID_VERTEX;
+        }
+    };
+
+    class out_arcs_iterator
+        : public intrusive_iterator_base<mutable_digraph, arc> {
+    public:
+        using intrusive_iterator_base<mutable_digraph,
+                                      arc>::intrusive_iterator_base;
+
+        constexpr out_arcs_iterator & operator++() noexcept {
+            _cursor = _structure->_arcs[_cursor].next_out_arc;
+            return *this;
+        }
+        constexpr out_arcs_iterator operator++(int) noexcept {
+            out_arcs_iterator it(*this);
+            _cursor = _structure->_arcs[_cursor].next_out_arc;
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const out_arcs_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor == INVALID_ARC;
+        }
+    };
+
+    class in_arcs_iterator
+        : public intrusive_iterator_base<mutable_digraph, arc> {
+    public:
+        using intrusive_iterator_base<mutable_digraph,
+                                      arc>::intrusive_iterator_base;
+
+        constexpr in_arcs_iterator & operator++() noexcept {
+            _cursor = _structure->_arcs[_cursor].next_in_arc;
+            return *this;
+        }
+        constexpr in_arcs_iterator operator++(int) noexcept {
+            in_arcs_iterator it(*this);
+            _cursor = _structure->_arcs[_cursor].next_in_arc;
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const in_arcs_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor == INVALID_ARC;
+        }
+    };
+
 public:
     [[nodiscard]] constexpr mutable_digraph() noexcept
         : _first_vertex(INVALID_VERTEX)
         , _first_free_vertex(INVALID_VERTEX)
         , _first_free_arc(INVALID_ARC)
         , _num_vertices(0)
-        , _num_arcs(0){};
+        , _num_arcs(0) {};
     [[nodiscard]] constexpr mutable_digraph(const mutable_digraph & graph) =
         default;
     [[nodiscard]] constexpr mutable_digraph(mutable_digraph && graph) = default;
@@ -76,12 +139,8 @@ public:
     [[nodiscard]] constexpr auto num_arcs() const noexcept { return _num_arcs; }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
-        return intrusive_view(
-            _first_vertex, std::identity(),
-            [this](const vertex v) -> vertex {
-                return _vertices[v].next_vertex;
-            },
-            [](const vertex a) -> bool { return a != INVALID_VERTEX; });
+        return std::ranges::subrange(vertices_iterator(this, _first_vertex),
+                                     std::default_sentinel);
     }
     [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
         assert(is_valid_arc(a));
@@ -101,17 +160,15 @@ public:
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
-        return intrusive_view(
-            _vertices[v].first_out_arc, std::identity(),
-            [this](const arc a) -> arc { return _arcs[a].next_out_arc; },
-            [](const arc a) -> bool { return a != INVALID_ARC; });
+        return std::ranges::subrange(
+            out_arcs_iterator(this, _vertices[v].first_out_arc),
+            std::default_sentinel);
     }
     [[nodiscard]] constexpr auto in_arcs(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
-        return intrusive_view(
-            _vertices[v].first_in_arc, std::identity(),
-            [this](const arc a) -> arc { return _arcs[a].next_in_arc; },
-            [](const arc a) -> bool { return a != INVALID_ARC; });
+        return std::ranges::subrange(
+            in_arcs_iterator(this, _vertices[v].first_in_arc),
+            std::default_sentinel);
     }
     [[nodiscard]] constexpr auto out_neighbors(const vertex v) const noexcept {
         assert(is_valid_vertex(v));

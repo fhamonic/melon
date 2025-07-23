@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
@@ -177,7 +177,7 @@ public:
         return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() noexcept {
-        return algorithm_end_sentinel();
+        return std::default_sentinel;
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
@@ -215,28 +215,48 @@ public:
         return _distances_map[u];
     }
 
+private:
+    class path_iterator : public intrusive_iterator_base<dijkstra, vertex> {
+    public:
+        using value_type = arc;
+        using reference = arc;
+        using intrusive_iterator_base<dijkstra,
+                                      vertex>::intrusive_iterator_base;
+
+        constexpr const reference operator*() const {
+            return this->_structure->_pred_arcs_map[this->_cursor].value();
+        }
+        constexpr path_iterator & operator++() noexcept {
+            this->_cursor = this->_structure->pred_vertex(this->_cursor);
+            return *this;
+        }
+        constexpr path_iterator operator++(int) noexcept {
+            path_iterator it(*this);
+            this->_cursor = this->_structure->pred_vertex(this->_cursor);
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const path_iterator & it, std::default_sentinel_t) noexcept {
+            return !it._structure->_pred_arcs_map[it._cursor].has_value();
+        }
+    };
+
+public:
     [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
         requires(_Traits::store_paths)
     {
         assert(reached(t));
-        return intrusive_view(
-            static_cast<vertex>(t),
-            [this](const vertex & v) -> arc {
-                return _pred_arcs_map[v].value();
-            },
-            [this](const vertex & v) -> vertex { return pred_vertex(v); },
-            [this](const vertex & v) -> bool {
-                return _pred_arcs_map[v].has_value();
-            });
+        return std::ranges::subrange(path_iterator(this, t),
+                                     std::default_sentinel);
     }
 };
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = dijkstra_default_traits<
               _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
-dijkstra(_Graph &&,
-         _LengthMap &&) -> dijkstra<views::graph_all_t<_Graph>,
-                                    views::mapping_all_t<_LengthMap>, _Traits>;
+dijkstra(_Graph &&, _LengthMap &&)
+    -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
+                _Traits>;
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = dijkstra_default_traits<
@@ -246,9 +266,9 @@ dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
                 _Traits>;
 
 template <typename _Graph, typename _LengthMap, typename _Traits>
-dijkstra(_Traits, _Graph &&,
-         _LengthMap &&) -> dijkstra<views::graph_all_t<_Graph>,
-                                    views::mapping_all_t<_LengthMap>, _Traits>;
+dijkstra(_Traits, _Graph &&, _LengthMap &&)
+    -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
+                _Traits>;
 
 template <typename _Graph, typename _LengthMap, typename _Traits>
 dijkstra(_Traits, _Graph &&, _LengthMap &&, const vertex_t<_Graph> &)

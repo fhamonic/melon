@@ -19,10 +19,8 @@ concept algorithmic_generator = requires(A alg) {
 
 template <typename A>
     requires algorithmic_generator<A>
-using traversal_entry_t = std::decay_t<decltype(std::declval<A &&>().current())>;
-
-
-struct algorithm_end_sentinel {};
+using traversal_entry_t =
+    std::decay_t<decltype(std::declval<A &&>().current())>;
 
 template <algorithmic_generator A>
 class algorithm_iterator {
@@ -51,7 +49,7 @@ public:
     // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0541r0.html
     void operator++(int) noexcept { operator++(); }
     friend bool operator==(const algorithm_iterator & it,
-                           algorithm_end_sentinel) noexcept {
+                           std::default_sentinel_t) noexcept {
         return it.algorithm.get().finished();
     }
     value_type operator*() const noexcept { return algorithm.get().current(); }

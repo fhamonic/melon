@@ -5,7 +5,6 @@
 #include <ranges>
 
 #include "melon/container/static_map.hpp"
-#include "melon/detail/intrusive_view.hpp"
 #include "melon/mapping.hpp"
 #include "melon/views/graph_view.hpp"
 
@@ -64,24 +63,76 @@ public:
             static_cast<arc>(u * (_num_vertices - 1)),
             static_cast<arc>((u + 1) * (_num_vertices - 1)));
     }
+
+private:
+    template <std::integral T>
+    class custom_iota_iterator {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = T;
+        using reference = T;
+        using pointer = void;
+        using difference_type = std::ptrdiff_t;
+
+    private:
+        T _cursor;
+        T _upper_bound;
+        T _increment;
+
+    public:
+        constexpr custom_iota_iterator(T cursor, T upper_bound,
+                                       T increment = T{1})
+            : _cursor(cursor)
+            , _upper_bound(upper_bound)
+            , _increment(increment) {}
+
+        constexpr custom_iota_iterator() = default;
+        constexpr custom_iota_iterator(custom_iota_iterator &&) = default;
+        constexpr custom_iota_iterator(const custom_iota_iterator &) = default;
+
+        constexpr const reference operator*() const { return _cursor; }
+        constexpr custom_iota_iterator & operator++() noexcept {
+            _cursor += _increment;
+            return *this;
+        }
+        constexpr custom_iota_iterator operator++(int) noexcept {
+            custom_iota_iterator it(*this);
+            _cursor += _increment;
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const custom_iota_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor >= it._upper_bound;
+        }
+
+        constexpr custom_iota_iterator & operator=(custom_iota_iterator &&) =
+            default;
+        constexpr custom_iota_iterator & operator=(
+            const custom_iota_iterator &) = default;
+
+        [[nodiscard]] constexpr friend bool operator==(
+            const custom_iota_iterator & it1,
+            const custom_iota_iterator & it2) noexcept {
+            assert(it1._increment == it2._increment);
+            return it1._cursor == it2._cursor;
+        }
+    };
+
+public:
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(u < _num_vertices);
+        const auto increment = static_cast<arc>(_num_vertices - 1);
         return std::views::concat(
-            intrusive_view(
-                static_cast<arc>(u - 1), std::identity(),
-                [offset = static_cast<arc>(_num_vertices - 1)](const arc a) {
-                    return a + offset;
-                },
-                [offset = static_cast<arc>(_num_vertices - 1), u](const arc a)
-                    -> bool { return a < static_cast<arc>(u) * offset; }),
-            intrusive_view(
-                static_cast<arc>((u + 1) * _num_vertices - 1), std::identity(),
-                [offset = static_cast<arc>(_num_vertices - 1)](const arc a) {
-                    return a + offset;
-                },
-                [m = static_cast<arc>(num_arcs())](const arc a) -> bool {
-                    return a < m;
-                }));
+            std::ranges::subrange(
+                custom_iota_iterator(static_cast<arc>(u - 1),
+                                     static_cast<arc>(u) * increment,
+                                     increment),
+                std::default_sentinel),
+            std::ranges::subrange(
+                custom_iota_iterator(
+                    static_cast<arc>((u + 1) * _num_vertices - 1),
+                    static_cast<arc>(num_arcs()), increment),
+                std::default_sentinel));
     }
 
     template <typename T>

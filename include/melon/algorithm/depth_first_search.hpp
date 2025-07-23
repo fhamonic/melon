@@ -151,7 +151,7 @@ public:
         return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() const noexcept {
-        return algorithm_end_sentinel();
+        return std::default_sentinel;
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
