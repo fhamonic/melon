@@ -230,7 +230,7 @@ public:
         return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() noexcept {
-        return algorithm_end_sentinel();
+        return std::default_sentinel;
     }
 };
 

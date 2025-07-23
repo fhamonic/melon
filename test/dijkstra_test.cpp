@@ -142,7 +142,8 @@ GTEST_TEST(dijkstra, path_to) {
     alg.add_source(0u).run();
 
     auto path = alg.path_to(3u);
-    static_assert(std::ranges::input_range<decltype(path)>);
+    static_assert(std::ranges::forward_range<decltype(path)>);
+    static_assert(std::ranges::borrowed_range<decltype(path)>);
     static_assert(std::ranges::viewable_range<decltype(path)>);
 
     ASSERT_TRUE(EQ_MULTISETS(

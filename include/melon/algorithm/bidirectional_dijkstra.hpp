@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
@@ -259,31 +259,83 @@ public:
     {
         return _midpoint.has_value();
     }
+
+private:
+    class forward_path_iterator
+        : public intrusive_iterator_base<bidirectional_dijkstra,
+                                         std::optional<arc>> {
+    public:
+        using value_type = arc;
+        using reference = arc;
+        using intrusive_iterator_base<
+            bidirectional_dijkstra,
+            std::optional<arc>>::intrusive_iterator_base;
+
+        constexpr const reference operator*() const {
+            return this->_cursor.value();
+        }
+        constexpr forward_path_iterator & operator++() noexcept {
+            this->_cursor = this->_structure->_forward_pred_arcs_map[arc_source(
+                this->_structure->_graph, operator*())];
+            return *this;
+        }
+        constexpr forward_path_iterator operator++(int) noexcept {
+            forward_path_iterator it(*this);
+            this->_cursor = this->_structure->_forward_pred_arcs_map[arc_source(
+                this->_structure->_graph, operator*())];
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const forward_path_iterator & it,
+            std::default_sentinel_t) noexcept {
+            return !it._cursor.has_value();
+        }
+    };
+    class reverse_path_iterator
+        : public intrusive_iterator_base<bidirectional_dijkstra,
+                                         std::optional<arc>> {
+    public:
+        using value_type = arc;
+        using reference = arc;
+        using intrusive_iterator_base<
+            bidirectional_dijkstra,
+            std::optional<arc>>::intrusive_iterator_base;
+
+        constexpr const reference operator*() const {
+            return this->_cursor.value();
+        }
+        constexpr reverse_path_iterator & operator++() noexcept {
+            this->_cursor = this->_structure->_reverse_pred_arcs_map[arc_target(
+                this->_structure->_graph, operator*())];
+            return *this;
+        }
+        constexpr reverse_path_iterator operator++(int) noexcept {
+            reverse_path_iterator it(*this);
+            this->_cursor = this->_structure->_reverse_pred_arcs_map[arc_target(
+                this->_structure->_graph, operator*())];
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const reverse_path_iterator & it,
+            std::default_sentinel_t) noexcept {
+            return !it._cursor.has_value();
+        }
+    };
+
+public:
     [[nodiscard]] constexpr auto path() const noexcept
         requires(_Traits::store_path)
     {
         assert(path_found());
         return std::ranges::views::concat(
-            intrusive_view(
-                _forward_pred_arcs_map[_midpoint.value()],
-                [](const std::optional<arc> & oa) -> arc { return oa.value(); },
-                [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _forward_pred_arcs_map[arc_source(_graph,
-                                                             oa.value())];
-                },
-                [](const std::optional<arc> & oa) -> bool {
-                    return oa.has_value();
-                }),
-            intrusive_view(
-                _reverse_pred_arcs_map[_midpoint.value()],
-                [](const std::optional<arc> & oa) -> arc { return oa.value(); },
-                [this](const std::optional<arc> & oa) -> optional_arc {
-                    return _reverse_pred_arcs_map[arc_target(_graph,
-                                                             oa.value())];
-                },
-                [](const std::optional<arc> & oa) -> bool {
-                    return oa.has_value();
-                }));
+            std::ranges::subrange(
+                forward_path_iterator(
+                    this, _forward_pred_arcs_map[_midpoint.value()]),
+                std::default_sentinel),
+            std::ranges::subrange(
+                reverse_path_iterator(
+                    this, _reverse_pred_arcs_map[_midpoint.value()]),
+                std::default_sentinel));
     }
 };
 

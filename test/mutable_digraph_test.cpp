@@ -22,6 +22,13 @@ static_assert(melon::has_arc_removal<mutable_digraph>);
 static_assert(melon::has_change_arc_source<mutable_digraph>);
 static_assert(melon::has_change_arc_target<mutable_digraph>);
 
+static_assert(std::ranges::forward_range<vertices_range_t<mutable_digraph>>);
+static_assert(std::ranges::borrowed_range<vertices_range_t<mutable_digraph>>);
+static_assert(std::ranges::forward_range<out_arcs_range_t<mutable_digraph>>);
+static_assert(std::ranges::borrowed_range<out_arcs_range_t<mutable_digraph>>);
+static_assert(std::ranges::forward_range<in_arcs_range_t<mutable_digraph>>);
+static_assert(std::ranges::borrowed_range<in_arcs_range_t<mutable_digraph>>);
+
 using Graph = mutable_digraph;
 using arc_entries_list = std::initializer_list<
     std::pair<arc_t<Graph>, std::pair<vertex_t<Graph>, vertex_t<Graph>>>>;
@@ -131,7 +138,7 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
     for(std::size_t j = 0; j < 10; ++j) {
         mutable_digraph graph;
         dumb_digraph dummy_graph;
-        
+
         for(std::size_t i = 0; i < 200; ++i) {
             Operation op;
             for(;;) {

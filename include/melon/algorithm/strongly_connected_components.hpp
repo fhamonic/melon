@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "melon/detail/consumable_view.hpp"
-#include "melon/detail/intrusive_view.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/views/graph_view.hpp"
@@ -176,7 +175,7 @@ public:
         return algorithm_iterator(*this);
     }
     [[nodiscard]] constexpr auto end() const noexcept {
-        return algorithm_end_sentinel();
+        return std::default_sentinel;
     }
 
     [[nodiscard]] constexpr bool same_component(
