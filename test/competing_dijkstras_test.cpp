@@ -49,6 +49,7 @@ GTEST_TEST(competing_dijkstras, test) {
     competing_dijkstras algo(sgraph, length_map, reduced_length_map);
     algo.add_blue_source(6, length_map[1]);
     algo.add_red_source(0);
+    algo.init();
 
     std::vector<vertex_t<static_digraph>> strong_nodes;
     for(const auto & [u, u_dist] : algo) {
@@ -111,13 +112,14 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                 graph, {}, [uv](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
                 });
-            competing_dijkstras competing_dijkstras_algo(
-                sgraph, upper_length_map, lower_length_map);
-            competing_dijkstras_algo.add_red_source(u);
-            competing_dijkstras_algo.add_blue_source(v, upper_length_map[uv]);
+            competing_dijkstras algo(sgraph, upper_length_map,
+                                     lower_length_map);
+            algo.add_red_source(u);
+            algo.add_blue_source(v, upper_length_map[uv]);
+            algo.init();
 
             certificat_length_map[uv] = upper_length_map[uv];
-            for(const auto & [t, t_dist] : competing_dijkstras_algo) {
+            for(const auto & [t, t_dist] : algo) {
                 strong_map[t] = true;
                 for(const auto & a : out_arcs(graph, t)) {
                     certificat_length_map[a] = upper_length_map[a];
@@ -223,9 +225,10 @@ struct useless_competing_dijkstras_traits {
             return compare_entries(e1, e2);
         }
     };
-    using heap = updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
-                            vertex_map_t<_Graph, std::size_t>,
-                            views::element_map<1>, views::element_map<0>>;
+    using heap =
+        updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
+                             vertex_map_t<_Graph, std::size_t>,
+                             views::element_map<1>, views::element_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -266,11 +269,12 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 graph, {}, [&](const arc_t<static_digraph> & a) -> bool {
                     return a != uv;
                 });
-            auto competing_dijkstras_algo = competing_dijkstras(
+            auto algo = competing_dijkstras(
                 useless_competing_dijkstras_traits<decltype(sgraph), int>{},
                 sgraph, upper_length_map, lower_length_map);
-            competing_dijkstras_algo.add_blue_source(u);
-            competing_dijkstras_algo.add_red_source(v, lower_length_map[uv]);
+            algo.add_blue_source(u);
+            algo.add_red_source(v, lower_length_map[uv]);
+            algo.init();
 
             auto certificat_length_map = lower_length_map;
             for(const auto a : out_arcs(graph, u)) {
@@ -279,7 +283,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
             }
 
             // std::cout << "run\n";
-            for(const auto & [t, t_dist] : competing_dijkstras_algo) {
+            for(const auto & [t, t_dist] : algo) {
                 useless_map[t] = true;
                 for(const auto & a : out_arcs(graph, t)) {
                     certificat_length_map[a] = upper_length_map[a];

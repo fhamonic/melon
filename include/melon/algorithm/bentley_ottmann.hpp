@@ -50,7 +50,8 @@ struct default_bentley_ottmann_traits {
 
 template <bentley_ottmann_traits _Traits, typename _SegmentId,
           input_mapping<_SegmentId> _SegmentMap = views::identity_map>
-class bentley_ottmann {
+class bentley_ottmann : public algorithm_view_interface<
+                            bentley_ottmann<_Traits, _SegmentId, _SegmentMap>> {
 private:
     using segment_id_type = _SegmentId;
     using coordinate_system = typename _Traits::coordinate_system;
@@ -171,6 +172,7 @@ public:
             }
             push_segment_endpoint(p1, s, event_type::coincident);
         }
+        init();
     }
 
     template <typename... _Args>
@@ -323,30 +325,19 @@ public:
             handle_event(*_events_tree.begin());
         } while(_intersections.size() < 2);
     }
-
-    [[nodiscard]] constexpr auto begin() noexcept {
-        init();
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() noexcept {
-        return std::default_sentinel;
-    }
 };
 
 template <typename _SegmentIdRange>
-bentley_ottmann(_SegmentIdRange &&)
-    -> bentley_ottmann<default_bentley_ottmann_traits<
-                           std::ranges::range_value_t<_SegmentIdRange>>,
-                       std::ranges::range_value_t<_SegmentIdRange>,
-                       views::identity_map>;
+bentley_ottmann(_SegmentIdRange &&) -> bentley_ottmann<
+    default_bentley_ottmann_traits<std::ranges::range_value_t<_SegmentIdRange>>,
+    std::ranges::range_value_t<_SegmentIdRange>, views::identity_map>;
 
 template <typename _SegmentIdRange, typename _SegmentMap>
-bentley_ottmann(_SegmentIdRange &&, _SegmentMap &&)
-    -> bentley_ottmann<
-        default_bentley_ottmann_traits<mapped_value_t<
-            _SegmentMap, std::ranges::range_value_t<_SegmentIdRange>>>,
-        std::ranges::range_value_t<_SegmentIdRange>,
-        views::mapping_all_t<_SegmentMap>>;
+bentley_ottmann(_SegmentIdRange &&, _SegmentMap &&) -> bentley_ottmann<
+    default_bentley_ottmann_traits<mapped_value_t<
+        _SegmentMap, std::ranges::range_value_t<_SegmentIdRange>>>,
+    std::ranges::range_value_t<_SegmentIdRange>,
+    views::mapping_all_t<_SegmentMap>>;
 
 template <typename _SegmentIdRange, typename _Traits>
 bentley_ottmann(_Traits, _SegmentIdRange &&)

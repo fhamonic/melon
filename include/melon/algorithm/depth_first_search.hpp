@@ -27,7 +27,8 @@ struct depth_first_search_default_traits {
 template <outward_adjacency_graph _Graph,
           typename _Traits = depth_first_search_default_traits>
     requires has_vertex_map<_Graph>
-class depth_first_search {
+class depth_first_search
+    : public algorithm_view_interface<depth_first_search<_Graph, _Traits>> {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -146,12 +147,6 @@ public:
 
     constexpr void run() noexcept {
         while(!finished()) advance();
-    }
-    [[nodiscard]] constexpr auto begin() noexcept {
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() const noexcept {
-        return std::default_sentinel;
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {

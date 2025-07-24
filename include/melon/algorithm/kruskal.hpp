@@ -9,7 +9,6 @@
 #include <variant>
 #include <vector>
 
-// #include "melon/detail/map_if.hpp"
 #include "melon/container/disjoint_sets.hpp"
 #include "melon/undirected_graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -19,7 +18,7 @@ namespace melon {
 
 template <undirected_graph _UGraph, input_mapping<edge_t<_UGraph>> _CostMap>
     requires has_vertex_map<_UGraph>
-class kruskal {
+class kruskal : public algorithm_view_interface<kruskal<_UGraph, _CostMap>> {
 private:
     using vertex = vertex_t<_UGraph>;
     using edge = edge_t<_UGraph>;
@@ -76,13 +75,6 @@ public:
             _components_sets.merge(cu, cv);
             return;
         }
-    }
-
-    [[nodiscard]] constexpr auto begin() noexcept {
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() noexcept {
-        return std::default_sentinel;
     }
 };
 

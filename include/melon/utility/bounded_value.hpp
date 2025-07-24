@@ -7,8 +7,6 @@
 #include <limits>
 #include <type_traits>
 
-#include "melon/detail/specialization_of.hpp"
-
 namespace fhamonic {
 namespace melon {
 

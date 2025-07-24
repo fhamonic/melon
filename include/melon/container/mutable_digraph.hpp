@@ -59,7 +59,7 @@ private:
         }
         constexpr vertices_iterator operator++(int) noexcept {
             vertices_iterator it(*this);
-            _cursor = _structure->_vertices[_cursor].next_vertex;
+            operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(
@@ -80,7 +80,7 @@ private:
         }
         constexpr out_arcs_iterator operator++(int) noexcept {
             out_arcs_iterator it(*this);
-            _cursor = _structure->_arcs[_cursor].next_out_arc;
+            operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(
@@ -101,7 +101,7 @@ private:
         }
         constexpr in_arcs_iterator operator++(int) noexcept {
             in_arcs_iterator it(*this);
-            _cursor = _structure->_arcs[_cursor].next_in_arc;
+            operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(

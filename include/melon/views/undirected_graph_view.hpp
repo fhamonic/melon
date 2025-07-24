@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <ranges>
 
+#include "melon/detail/specialization_of.hpp"
 #include "melon/undirected_graph.hpp"
 
 namespace fhamonic {

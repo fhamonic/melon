@@ -5,8 +5,6 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/detail/specialization_of.hpp"
-
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
