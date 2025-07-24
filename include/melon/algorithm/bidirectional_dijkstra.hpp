@@ -281,8 +281,7 @@ private:
         }
         constexpr forward_path_iterator operator++(int) noexcept {
             forward_path_iterator it(*this);
-            this->_cursor = this->_structure->_forward_pred_arcs_map[arc_source(
-                this->_structure->_graph, operator*())];
+            operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(
@@ -311,8 +310,7 @@ private:
         }
         constexpr reverse_path_iterator operator++(int) noexcept {
             reverse_path_iterator it(*this);
-            this->_cursor = this->_structure->_reverse_pred_arcs_map[arc_target(
-                this->_structure->_graph, operator*())];
+            operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(

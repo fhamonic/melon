@@ -24,7 +24,8 @@ struct topological_sort_default_traits {
 
 template <graph _Graph, typename _Traits = topological_sort_default_traits>
     requires outward_incidence_graph<_Graph> && has_vertex_map<_Graph>
-class topological_sort {
+class topological_sort
+    : public algorithm_view_interface<topological_sort<_Graph, _Traits>> {
 public:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -135,12 +136,6 @@ public:
 
     constexpr void run() noexcept {
         while(!finished()) advance();
-    }
-    [[nodiscard]] constexpr auto begin() noexcept {
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() const noexcept {
-        return std::default_sentinel;
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {

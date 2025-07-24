@@ -25,7 +25,8 @@ using traversal_entry_t =
 template <algorithmic_generator A>
 class algorithm_iterator {
 private:
-    std::reference_wrapper<A> algorithm;
+    // std::reference_wrapper<A> algorithm;
+    A * algorithm;
 
 public:
     using iterator_category = std::input_iterator_tag;
@@ -40,9 +41,10 @@ public:
     algorithm_iterator & operator=(const algorithm_iterator &) = default;
     algorithm_iterator & operator=(algorithm_iterator &&) = default;
 
-    explicit algorithm_iterator(A & alg) : algorithm(alg) {}
+    explicit algorithm_iterator(A & alg) : algorithm(&alg) {}
     algorithm_iterator & operator++() noexcept {
-        algorithm.get().advance();
+        // algorithm.get().advance();
+        algorithm->advance();
         return *this;
     }
     // P0541 : post-increment on input iterators returns void
@@ -50,9 +52,24 @@ public:
     void operator++(int) noexcept { operator++(); }
     friend bool operator==(const algorithm_iterator & it,
                            std::default_sentinel_t) noexcept {
-        return it.algorithm.get().finished();
+        // return it.algorithm.get().finished();
+        return it.algorithm->finished();
     }
-    value_type operator*() const noexcept { return algorithm.get().current(); }
+    value_type operator*() const noexcept { 
+        // return algorithm.get().current();
+        return algorithm->current();
+     }
+};
+
+template <typename T>
+class algorithm_view_interface : public std::ranges::view_interface<T> {
+public:
+    [[nodiscard]] constexpr auto begin() noexcept {
+        return algorithm_iterator(*static_cast<T*>(this));
+    }
+    [[nodiscard]] constexpr auto end() noexcept {
+        return std::default_sentinel;
+    }
 };
 
 }  // namespace melon

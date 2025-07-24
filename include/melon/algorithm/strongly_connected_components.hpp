@@ -20,7 +20,8 @@ namespace melon {
 
 template <outward_adjacency_graph _Graph>
     requires has_vertex_map<_Graph>
-class strongly_connected_components {
+class strongly_connected_components
+    : public algorithm_view_interface<strongly_connected_components<_Graph>> {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -170,12 +171,6 @@ public:
 
     constexpr void run() noexcept {
         while(!finished()) advance();
-    }
-    [[nodiscard]] constexpr auto begin() noexcept {
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() const noexcept {
-        return std::default_sentinel;
     }
 
     [[nodiscard]] constexpr bool same_component(

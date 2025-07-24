@@ -57,7 +57,9 @@ template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> BLM,
                   _Graph, mapped_value_t<BLM, arc_t<_Graph>>>>
     requires std::is_same_v<mapped_value_t<BLM, arc_t<_Graph>>,
                             mapped_value_t<RLM, arc_t<_Graph>>>
-class competing_dijkstras {
+class competing_dijkstras
+    : public algorithm_view_interface<
+          competing_dijkstras<_Graph, BLM, RLM, _Traits>> {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -224,13 +226,6 @@ public:
 
     constexpr void run() noexcept {
         while(!finished()) advance();
-    }
-    [[nodiscard]] constexpr auto begin() noexcept {
-        init();
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() noexcept {
-        return std::default_sentinel;
     }
 };
 

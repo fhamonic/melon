@@ -49,7 +49,8 @@ struct dijkstra_default_traits {
 template <outward_incidence_graph _Graph,
           input_mapping<arc_t<_Graph>> _LengthMap, dijkstra_trait _Traits>
     requires has_vertex_map<_Graph>
-class dijkstra {
+class dijkstra : public algorithm_view_interface<
+                     dijkstra<_Graph, _LengthMap, _Traits>> {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -173,12 +174,6 @@ public:
     constexpr void run() noexcept {
         while(!finished()) advance();
     }
-    [[nodiscard]] constexpr auto begin() noexcept {
-        return algorithm_iterator(*this);
-    }
-    [[nodiscard]] constexpr auto end() noexcept {
-        return std::default_sentinel;
-    }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
         return _vertex_status_map[u] != PRE_HEAP;
@@ -232,7 +227,7 @@ private:
         }
         constexpr path_iterator operator++(int) noexcept {
             path_iterator it(*this);
-            this->_cursor = this->_structure->pred_vertex(this->_cursor);
+            operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(
