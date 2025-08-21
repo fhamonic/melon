@@ -22,10 +22,10 @@ namespace melon {
 // clang-format off
 template <typename _Traits>
 concept competing_dijkstras_trait = semiring<typename _Traits::semiring> &&
-    updatable_priority_queue<typename _Traits::heap> && requires() {
-    { _Traits::store_distances } -> std::convertible_to<bool>;
-    { _Traits::store_paths } -> std::convertible_to<bool>;
-};
+    updatable_priority_queue<typename _Traits::heap> && requires(typename _Traits::entry & e) {
+    e.first;
+    { e.second } -> std::convertible_to<bool>;
+} && std::strict_weak_order<typename _Traits::entry_cmp, typename _Traits::entry, typename _Traits::entry>;
 // clang-format on
 
 template <outward_incidence_graph _Graph, typename _ValueType>
@@ -45,9 +45,6 @@ struct competing_dijkstras_default_traits {
         updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
                              vertex_map_t<_Graph, std::size_t>,
                              views::element_map<1>, views::element_map<0>>;
-
-    static constexpr bool store_distances = false;
-    static constexpr bool store_paths = false;
 };
 
 template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> BLM,
@@ -126,10 +123,6 @@ public:
         _heap.push(std::make_pair(s, entry_t{dist_v, true}));
         ++_num_blue_candidates;
         _vertex_status_map[s] = IN_HEAP;
-        // if constexpr(_Traits::store_paths) {
-        //     _pred_arcs_map[s].reset();
-        //     if constexpr(!has_arc_source<_Graph>) _pred_vertices_map[s] = s;
-        // }
         return *this;
     }
     competing_dijkstras & add_red_source(
@@ -138,10 +131,6 @@ public:
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, false}));
         _vertex_status_map[s] = IN_HEAP;
-        // if constexpr(_Traits::store_paths) {
-        //     _pred_arcs_map[s].reset();
-        //     if constexpr(!has_arc_source<_Graph>) _pred_vertices_map[s] = s;
-        // }
         return *this;
     }
 

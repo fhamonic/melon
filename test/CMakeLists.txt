@@ -59,6 +59,7 @@ add_executable(
   bentley_ottmann_test.cpp
   bounded_value_test.cpp
   consumable_view_test.cpp
+  network_voronoi.cpp
   )
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
