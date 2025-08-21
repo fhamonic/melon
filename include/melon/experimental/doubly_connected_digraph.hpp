@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "melon/container/static_map.hpp"
-#include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/mapping.hpp"
 
 namespace fhamonic {
@@ -54,6 +54,109 @@ private:
     std::size_t _num_arcs;
     std::size_t _num_faces;
 
+    class vertices_iterator
+        : public intrusive_iterator_base<doubly_connected_digraph, vertex> {
+    public:
+        using intrusive_iterator_base<doubly_connected_digraph,
+                                      vertex>::intrusive_iterator_base;
+
+        constexpr vertices_iterator & operator++() noexcept {
+            _cursor = _structure->_vertices[_cursor].next_vertex;
+            return *this;
+        }
+        constexpr vertices_iterator operator++(int) noexcept {
+            vertices_iterator it(*this);
+            operator++();
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const vertices_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor == INVALID_VERTEX;
+        }
+    };
+
+    class out_arcs_iterator
+        : public intrusive_iterator_base<doubly_connected_digraph, arc> {
+    private:
+        const arc _first;
+
+    public:
+        out_arcs_iterator(const doubly_connected_digraph * s, const arc a)
+            : intrusive_iterator_base<doubly_connected_digraph,
+                                      arc>::intrusive_iterator_base(s, a)
+            , _first(a) {}
+
+        constexpr out_arcs_iterator & operator++() noexcept {
+            _cursor = _structure->_arcs[_structure->_arcs[_cursor].twin]
+                          .next_boundary_arc;
+            return *this;
+        }
+        constexpr out_arcs_iterator operator++(int) noexcept {
+            out_arcs_iterator it(*this);
+            operator++();
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const out_arcs_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor == it._first;
+        }
+    };
+
+    class in_arcs_iterator
+        : public intrusive_iterator_base<doubly_connected_digraph, arc> {
+    private:
+        const arc _first;
+
+    public:
+        in_arcs_iterator(const doubly_connected_digraph * s, const arc a)
+            : intrusive_iterator_base<doubly_connected_digraph,
+                                      arc>::intrusive_iterator_base(s, a)
+            , _first(a) {}
+
+        constexpr in_arcs_iterator & operator++() noexcept {
+            _cursor =
+                _structure->_arcs[_structure->_arcs[_cursor].next_boundary_arc]
+                    .twin;
+            return *this;
+        }
+        constexpr in_arcs_iterator operator++(int) noexcept {
+            in_arcs_iterator it(*this);
+            operator++();
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const in_arcs_iterator & it, std::default_sentinel_t) noexcept {
+            return it._cursor == it._first;
+        }
+    };
+
+    class bounding_arcs_iterator
+        : public intrusive_iterator_base<doubly_connected_digraph, arc> {
+    private:
+        const arc _first;
+
+    public:
+        bounding_arcs_iterator(const doubly_connected_digraph * s, const arc a)
+            : intrusive_iterator_base<doubly_connected_digraph,
+                                      arc>::intrusive_iterator_base(s, a)
+            , _first(a) {}
+
+        constexpr bounding_arcs_iterator & operator++() noexcept {
+            _cursor = _structure->_arcs[_cursor].next_boundary_arc;
+            return *this;
+        }
+        constexpr bounding_arcs_iterator operator++(int) noexcept {
+            bounding_arcs_iterator it(*this);
+            operator++();
+            return it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const bounding_arcs_iterator & it,
+            std::default_sentinel_t) noexcept {
+            return it._cursor == it._first;
+        }
+    };
+
 public:
     [[nodiscard]] constexpr doubly_connected_digraph() noexcept
         : _first_vertex(INVALID_VERTEX)
@@ -63,49 +166,51 @@ public:
         , _num_vertices(0)
         , _num_arcs(0)
         , _num_faces(0) {};
-    [[nodiscard]] constexpr doubly_connected_digraph(const doubly_connected_digraph & graph) =
-        default;
-    [[nodiscard]] constexpr doubly_connected_digraph(doubly_connected_digraph && graph) = default;
+    [[nodiscard]] constexpr doubly_connected_digraph(
+        const doubly_connected_digraph & graph) = default;
+    [[nodiscard]] constexpr doubly_connected_digraph(
+        doubly_connected_digraph && graph) = default;
 
-    constexpr doubly_connected_digraph & operator=(const doubly_connected_digraph &) = default;
-    constexpr doubly_connected_digraph & operator=(doubly_connected_digraph &&) = default;
+    constexpr doubly_connected_digraph & operator=(
+        const doubly_connected_digraph &) = default;
+    constexpr doubly_connected_digraph & operator=(
+        doubly_connected_digraph &&) = default;
 
-    [[nodiscard]] constexpr bool is_valid_vertex(
-        const vertex v) const noexcept {
-        if(v >= _vertices.size()) return false;
-        return _vertices_filter[v];
-    }
-    [[nodiscard]] constexpr bool is_valid_arc(const arc a) const noexcept {
-        if(a >= _arcs.size()) return false;
-        return _arcs[a].twin != INVALID_ARC;
-    }
-    [[nodiscard]] constexpr bool is_valid_face(const arc a) const noexcept {
-        if(a >= _arcs.size()) return false;
-        return _arcs_filter[a];
-    }
+    // [[nodiscard]] constexpr bool is_valid_vertex(
+    //     const vertex v) const noexcept {
+    //     if(v >= _vertices.size()) return false;
+    //     return _vertices_filter[v];
+    // }
+    // [[nodiscard]] constexpr bool is_valid_arc(const arc a) const noexcept {
+    //     if(a >= _arcs.size()) return false;
+    //     return _arcs[a].twin != INVALID_ARC;
+    // }
+    // [[nodiscard]] constexpr bool is_valid_face(const arc a) const noexcept {
+    //     if(a >= _arcs.size()) return false;
+    //     return _arcs_filter[a];
+    // }
     [[nodiscard]] constexpr auto num_vertices() const noexcept {
         return _num_vertices;
     }
     [[nodiscard]] constexpr auto num_arcs() const noexcept { return _num_arcs; }
+    [[nodiscard]] constexpr auto num_faces() const noexcept {
+        return _num_faces;
+    }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
-        return intrusive_view(
-            _first_vertex, std::identity(),
-            [this](const vertex v) -> vertex {
-                return _vertices[v].next_vertex;
-            },
-            [](const vertex a) -> bool { return a != INVALID_VERTEX; });
+        return std::ranges::subrange(vertices_iterator(this, _first_vertex),
+                                     std::default_sentinel);
     }
     [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
-        assert(is_valid_arc(a));
-        return _arcs[a].source;
+        // assert(is_valid_arc(a));
+        return _arcs[_arcs[a].twin].target;
     }
     [[nodiscard]] constexpr auto arc_sources_map() const noexcept {
         return views::map(
-            [this](const arc a) -> vertex { return _arcs[a].source; });
+            [this](const arc a) -> vertex { return arc_source(a); });
     }
     [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
-        assert(is_valid_arc(a));
+        // assert(is_valid_arc(a));
         return _arcs[a].target;
     }
     [[nodiscard]] constexpr auto arc_targets_map() const noexcept {
@@ -114,41 +219,37 @@ public:
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
-        return intrusive_view(
-            _vertices[v].first_out_arc, std::identity(),
-            [this](const arc a) -> arc { return _arcs[a].next_out_arc; },
-            [](const arc a) -> bool { return a != INVALID_ARC; });
+        return std::ranges::subrange(
+            out_arcs_iterator(this, _vertices[v].first_out_arc),
+            std::default_sentinel);
     }
     [[nodiscard]] constexpr auto in_arcs(const vertex v) const noexcept {
         assert(is_valid_vertex(v));
-        return intrusive_view(
-            _vertices[v].first_in_arc, std::identity(),
-            [this](const arc a) -> arc { return _arcs[a].next_in_arc; },
-            [](const arc a) -> bool { return a != INVALID_ARC; });
-    }
-    [[nodiscard]] constexpr auto out_neighbors(const vertex v) const noexcept {
-        assert(is_valid_vertex(v));
-        return std::views::transform(
-            out_arcs(v),
-            [this](const arc & a) -> vertex { return _arcs[a].target; });
-    }
-    [[nodiscard]] constexpr auto in_neighbors(const vertex v) const noexcept {
-        assert(is_valid_vertex(v));
-        return std::views::transform(
-            in_arcs(v),
-            [this](const arc & a) -> vertex { return _arcs[a].source; });
+        return std::ranges::subrange(
+            in_arcs_iterator(this, _vertices[v].first_out_arc),
+            std::default_sentinel);
     }
 
-    [[nodiscard]] constexpr auto arcs() const noexcept {
-        return std::views::join(std::views::transform(
-            vertices(), [this](auto v) { return out_arcs(v); }));
+    [[nodiscard]] constexpr auto bounding_arcs(const face f) const noexcept {
+        return std::ranges::subrange(
+            bounding_arcs_iterator(this, _faces[f].first_boundary_arc),
+            std::default_sentinel);
     }
-    [[nodiscard]] constexpr auto arcs_entries() const noexcept {
-        return std::views::transform(arcs(), [this](const arc & a) {
-            return std::make_pair(
-                a, std::make_pair(_arcs[a].source, _arcs[a].target));
-        });
-    }
+
+    // [[nodiscard]] constexpr auto out_neighbors(const vertex v) const noexcept
+    // {
+    //     assert(is_valid_vertex(v));
+    //     return std::views::transform(
+    //         out_arcs(v),
+    //         [this](const arc & a) -> vertex { return _arcs[a].target; });
+    // }
+    // [[nodiscard]] constexpr auto in_neighbors(const vertex v) const noexcept
+    // {
+    //     assert(is_valid_vertex(v));
+    //     return std::views::transform(
+    //         in_arcs(v),
+    //         [this](const arc & a) -> vertex { return _arcs[a].source; });
+    // }
 
     [[nodiscard]] constexpr vertex create_vertex() noexcept {
         vertex new_vertex;
