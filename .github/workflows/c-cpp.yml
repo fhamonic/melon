@@ -31,6 +31,6 @@ jobs:
     - name: Autodetect a default conan profile
       run: conan profile detect --name=default
     - name: Modify the default conan profile
-      run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings:compiler=gcc settings:compiler.cppstd=26 settings:compiler.version=15 settings:compiler.libcxx=libstdc++11 settings:compiler.threads=posix settings:compiler.exception=seh build_requires:cmake/3.28.1 build_requires:mingw-builds/15.1.0 [rm]settings:compiler.runtime  
+      run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings:compiler=gcc settings:compiler.cppstd=26 settings:compiler.version=15 settings:compiler.libcxx=libstdc++11 settings:compiler.threads=posix settings:compiler.exception=seh tool_requires:mingw-builds/15.1.0 [rm]settings:compiler.runtime  
     - name: Build and run unit tests
       run: make CONAN_PROFILE=default
