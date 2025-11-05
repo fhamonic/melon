@@ -13,17 +13,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Log Ubuntu version
-      run: uname -v
-    - name: Add GCC 15 ppa
-      run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt update
-    - name: Install GCC 15
-      run: sudo apt install -y gcc-15 g++-15
     - name: Install Conan 2.0
       run: pip install conan
     - name: Autodetect a default conan profile
       run: conan profile detect --name=default
     - name: Modify the default conan profile
-      run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings.compiler=gcc settings.compiler.version=15 settings.compiler.cppstd=26 buildenv.CC=/usr/bin/gcc-15 buildenv.CXX=/usr/bin/g++-15
+      run: python .github/workflows/edit_conan_profile.py $(conan profile path default) settings.compiler=gcc settings.compiler.version=15 settings.compiler.cppstd=26 tool_requires=gcc/15.1.0
     - name: Build and run unit tests
       run: make BUILD_TYPE=default
