@@ -22,4 +22,4 @@ jobs:
     - name: cat conan profile
       run: cat $(conan profile path default)
     - name: Build and run unit tests
-      run: make BUILD_TYPE=default
+      run: make CONAN_PROFILE=default
