@@ -31,9 +31,9 @@ for arg in sys.argv[2:]:
     stripped_line = arg[arg.find(':')+1:]
     if "=" in stripped_line:
         setting, value = stripped_line.split('=')
-        profile[current_section][0][setting] = value
+        profile[section][0][setting] = value
     else:
-        profile[current_section][1].append(stripped_line)
+        profile[section][1].append(stripped_line)
 
 print(profile)
 
