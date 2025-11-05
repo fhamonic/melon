@@ -102,6 +102,7 @@ Concepts and containers:
 Algorithms:
 - planar map intersection
 - Network simplex
+- Laplacian combinatorial solver
 
 Utility:
 - JSON serialization
