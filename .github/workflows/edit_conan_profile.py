@@ -41,5 +41,5 @@ with open(profile_path, "w") as f:
             f.write('\n['+section+"]\n")
         for setting, value in settings[0].items():
             f.write(setting+'='+value+'\n')
-        for value in settings[1].items():
+        for value in settings[1]:
             f.write(value+'\n')
