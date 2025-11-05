@@ -35,6 +35,8 @@ for arg in sys.argv[2:]:
     else:
         profile[current_section][1].append(stripped_line)
 
+print(profile)
+
 with open(profile_path, "w") as f:
     for section, settings in profile.items():
         if section != "":
