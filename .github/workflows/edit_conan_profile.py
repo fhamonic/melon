@@ -25,6 +25,12 @@ with open(profile_path, "r") as f:
             profile[current_section][1].append(stripped_line)
 
 for arg in sys.argv[2:]:
+    if arg.startswith("[rm]"):
+        section = arg[4:arg.find(':')]
+        if section not in profile:
+            continue
+        del profile[section][0][arg[arg.find(':')+1:]]      
+        continue
     section = arg[0:arg.find(':')]
     if section not in profile:
         profile[section] = (dict(),list())
