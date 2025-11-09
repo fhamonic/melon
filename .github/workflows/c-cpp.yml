@@ -22,9 +22,10 @@ jobs:
         apt install -y pipx
         pipx install conan
         echo "/github/home/.local/bin" >> $GITHUB_PATH
-        conan profile detect --name=default
     - name: Build and run unit tests
-      run: make CONAN_PROFILE=.github/workflows/gcc15_c++26
+      run: |
+       conan profile detect --name=default
+       make CONAN_PROFILE=.github/workflows/gcc15_c++26
 
   # windows-build:
   #   runs-on: windows-latest
