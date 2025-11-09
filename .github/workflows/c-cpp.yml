@@ -17,12 +17,12 @@ jobs:
       run: apt-get update && apt-get upgrade -y
     - name: Install GCC-15 an CMake
       run: apt-get install -y gcc-15 cmake
-    - name: Install pip and conan
-      run: apt install -y python3-pip && pip install conan
     - name: Install Conan 2.0
-      run: apt install python3-pip && pip install --break-system-packages conan
-    - name: Autodetect a default conan profile
-      run: conan profile detect --name=default
+      run: |
+        apt install -y pipx
+        pipx ensurepath
+        pipx install conan
+        conan profile detect --name=default
     - name: Build and run unit tests
       run: make CONAN_PROFILE=.github/workflows/gcc15_c++26
 
