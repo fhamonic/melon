@@ -16,7 +16,7 @@ jobs:
     - name: Update APT
       run: apt-get update && apt-get upgrade -y
     - name: Install GCC-15 an CMake
-      run: apt-get install -y gcc-15 cmake
+      run: apt-get install -y gcc-15 g++-15 cmake
     - name: Install Conan 2.0
       run: |
         apt install -y pipx

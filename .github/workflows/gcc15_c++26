@@ -8,5 +8,5 @@ compiler.version=15
 compiler.libcxx=libstdc++11
 
 [buildenv]
-CC=/usr/bin/gcc-15
-CXX=/usr/bin/g++-15
+CC=gcc-15
+CXX=g++-15
