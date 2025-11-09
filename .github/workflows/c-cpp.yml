@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Update APT
-      run: RUN apt-get update && apt-get upgrade -y
+      run: apt-get update && apt-get upgrade -y
     - name: Install GCC-15 an CMake
       run: apt-get install -y gcc-15 cmake
     - name: Install Python and GCC-15
