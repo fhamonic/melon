@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Conan 2.0
-      run: pip install conan
+      run: apt install python3-pip && pip install conan
     - name: Autodetect a default conan profile
       run: conan profile detect --name=default
     - name: Build and run unit tests
