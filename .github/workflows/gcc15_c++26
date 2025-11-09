@@ -9,4 +9,3 @@ compiler.libcxx=libstdc++11
 
 [tool_requires]
 cmake/3.28.1
-gcc/15.1.0
