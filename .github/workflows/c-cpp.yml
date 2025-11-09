@@ -20,8 +20,8 @@ jobs:
     - name: Install Conan 2.0
       run: |
         apt install -y pipx
-        pipx ensurepath
         pipx install conan
+        pipx ensurepath
         export PATH=$PATH:/github/home/.local/bin
         conan profile detect --name=default
     - name: Build and run unit tests
