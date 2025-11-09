@@ -23,7 +23,7 @@ jobs:
         pipx install conan
         pipx ensurepath
         export PATH=$PATH:/github/home/.local/bin
-        conan profile detect --name=default
+        echo "/github/home/.local/bin" >> $GITHUB_PATH
     - name: Build and run unit tests
       run: make CONAN_PROFILE=.github/workflows/gcc15_c++26
 
