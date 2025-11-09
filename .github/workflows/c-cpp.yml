@@ -20,7 +20,7 @@ jobs:
     - name: Install pip and conan
       run: apt install -y python3-pip && pip install conan
     - name: Install Conan 2.0
-      run: apt install python3-pip && sudo pip install conan
+      run: apt install python3-pip && pip install --break-system-packages conan
     - name: Autodetect a default conan profile
       run: conan profile detect --name=default
     - name: Build and run unit tests
