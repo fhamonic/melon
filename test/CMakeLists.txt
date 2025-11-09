@@ -60,6 +60,7 @@ add_executable(
   bounded_value_test.cpp
   consumable_view_test.cpp
   network_voronoi.cpp
+  alias_method_sampler.cpp
   )
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)

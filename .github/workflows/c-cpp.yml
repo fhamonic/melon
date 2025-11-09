@@ -7,19 +7,10 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # linux-build:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Install Conan 2.0
-  #     run: pip install conan
-  #   - name: Autodetect a default conan profile
-  #     run: conan profile detect --name=default
-  #   - name: Build and run unit tests
-  #     run: make CONAN_PROFILE=.github/workflows/gcc15_c++26
-
-  windows-build:
-    runs-on: windows-latest
+  linux-build:
+    runs-on: ubuntu-latest
+    container:
+      image: gcc:15
     steps:
     - uses: actions/checkout@v3
     - name: Install Conan 2.0
@@ -27,4 +18,15 @@ jobs:
     - name: Autodetect a default conan profile
       run: conan profile detect --name=default
     - name: Build and run unit tests
-      run: make CONAN_PROFILE=.github/workflows/mingw15_c++26
+      run: make CONAN_PROFILE=.github/workflows/gcc15_c++26
+
+  # windows-build:
+  #   runs-on: windows-latest
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Install Conan 2.0
+  #     run: pip install conan
+  #   - name: Autodetect a default conan profile
+  #     run: conan profile detect --name=default
+  #   - name: Build and run unit tests
+  #     run: make CONAN_PROFILE=.github/workflows/mingw15_c++26
