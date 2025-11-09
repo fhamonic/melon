@@ -1,11 +1,10 @@
 #ifndef MELON_UTILITY_ALIAS_METHOD_SAMPLER_HPP
 #define MELON_UTILITY_ALIAS_METHOD_SAMPLER_HPP
 
+#include <algorithm>
 #include <concepts>
-#include <queue>
 #include <random>
 #include <ranges>
-#include <stack>
 #include <utility>
 #include <vector>
 
@@ -50,14 +49,12 @@ public:
               static_cast<index_type>(_items.size()) - index_type{1})
         , _prob_distribution(0.0, 1.0) {
         const std::size_t n = _items.size();
-        for(auto && [i, item] : std::views::enumerate(_items)) {
-            _probs[static_cast<index_type>(i)] =
-                prob_map(item) * static_cast<_Prob>(n);
-        }
         std::vector<index_type> overful_buckets, underful_buckets;
         overful_buckets.reserve(n);
         underful_buckets.reserve(n);
-        for(auto && [i, prob] : std::views::enumerate(_probs)) {
+        for(auto && [i, item] : std::views::enumerate(_items)) {
+            const auto prob = prob_map(item) * static_cast<_Prob>(n);
+            _probs[static_cast<index_type>(i)] = prob;
             if(prob < 1.0) {
                 underful_buckets.emplace_back(i);
                 continue;
@@ -123,6 +120,9 @@ public:
         const index_type i = _index_distribution(gen);
         const auto prob = _probs[i];
         const auto alias = _aliases[i];
+        // if (_prob_distribution(gen) > prob)
+        //     return _items[alias];
+        // return _items[i];
         return _items[i + (_prob_distribution(gen) > prob) * (alias - i)];
     }
 };
