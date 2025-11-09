@@ -21,8 +21,8 @@ jobs:
       run: |
         apt install -y pipx
         pipx ensurepath
-        source ~/.bashrc
         pipx install conan
+        export PATH=$PATH:/github/home/.local/bin
         conan profile detect --name=default
     - name: Build and run unit tests
       run: make CONAN_PROFILE=.github/workflows/gcc15_c++26
