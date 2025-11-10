@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <memory>
 #include <random>
 #include <ranges>
 #include <utility>
@@ -49,33 +50,34 @@ public:
               static_cast<index_type>(_items.size()) - index_type{1})
         , _prob_distribution(0.0, 1.0) {
         const std::size_t n = _items.size();
-        std::vector<index_type> overful_buckets, underful_buckets;
-        overful_buckets.reserve(n);
-        underful_buckets.reserve(n);
+        auto overful_buckets = std::make_unique_for_overwrite<index_type[]>(n);
+        auto underful_buckets = std::make_unique_for_overwrite<index_type[]>(n);
+
+        auto overful_end = overful_buckets.get();
+        auto underful_end = underful_buckets.get();
+
         for(auto && [i, item] : std::views::enumerate(_items)) {
             const auto prob = prob_map(item) * static_cast<_Prob>(n);
             _probs[static_cast<index_type>(i)] = prob;
-            if(prob < 1.0) {
-                underful_buckets.emplace_back(i);
-                continue;
-            }
-            overful_buckets.emplace_back(i);
+            *overful_end = *underful_end = static_cast<index_type>(i);
+            const bool is_underful = (prob < 1.0);
+            underful_end += is_underful;
+            overful_end += !is_underful;
         }
 
+        auto overful_it = overful_buckets.get();
+        auto underful_it = underful_buckets.get();
+
         if constexpr(_Traits::heuristic_preprocessing) {
-            std::ranges::make_heap(
-                overful_buckets,
+            std::make_heap(
+                overful_it, overful_end,
                 [this](auto && i, auto && j) { return _probs[i] < _probs[j]; });
-            std::ranges::make_heap(
-                underful_buckets,
+            std::make_heap(
+                underful_it, underful_end,
                 [this](auto && i, auto && j) { return _probs[i] > _probs[j]; });
         }
 
-        auto overful_it = overful_buckets.begin();
-        auto underful_it = underful_buckets.begin();
-
-        for(; overful_it != overful_buckets.end() &&
-              underful_it != underful_buckets.end();
+        for(; overful_it != overful_end && underful_it != underful_end;
             ++overful_it, ++underful_it) {
             const index_type overful_index = *overful_it;
             const index_type underful_index = *underful_it;
@@ -86,18 +88,15 @@ public:
             underful_alias = overful_index;
             overful_prob = (overful_prob + underful_prob) - 1.0;
 
-            if(overful_prob > 1.0) {
-                overful_buckets.push_back(overful_index);
-                continue;
-            }
-            underful_buckets.push_back(overful_index);
+            *overful_end = *underful_end = overful_index;
+            const bool became_underful = (overful_prob < 1.0);
+            underful_end += became_underful;
+            overful_end += !became_underful;
         }
-        for(; overful_it != overful_buckets.end(); ++overful_it) {
+        for(; overful_it != overful_end; ++overful_it)
             _probs[*overful_it] = 1.0;
-        }
-        for(; underful_it != underful_buckets.end(); ++underful_it) {
+        for(; underful_it != underful_end; ++underful_it)
             _probs[*underful_it] = 1.0;
-        }
     }
 
 public:
@@ -120,9 +119,6 @@ public:
         const index_type i = _index_distribution(gen);
         const auto prob = _probs[i];
         const auto alias = _aliases[i];
-        // if (_prob_distribution(gen) > prob)
-        //     return _items[alias];
-        // return _items[i];
         return _items[i + (_prob_distribution(gen) > prob) * (alias - i)];
     }
 };
