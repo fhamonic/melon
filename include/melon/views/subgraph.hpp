@@ -26,8 +26,8 @@ public:
 
 private:
     _Graph _graph;
-    _VertexFilter _vertex_filter;
-    _ArcFilter _arc_filter;
+    [[no_unique_address]] _VertexFilter _vertex_filter;
+    [[no_unique_address]] _ArcFilter _arc_filter;
 
 public:
     template <typename _G, typename _VF = true_map, typename _AF = true_map>
@@ -238,6 +238,51 @@ template <typename _G, typename _VF = true_map, typename _AF = true_map>
 subgraph(_G &&, _VF && = {}, _AF && = {})
     -> subgraph<views::graph_all_t<_G>, views::mapping_all_t<_VF>,
                 views::mapping_all_t<_AF>>;
+
+template <graph _Graph, std::ranges::viewable_range _Vertices>
+    requires std::convertible_to<std::ranges::range_value_t<_Vertices>,
+                                 vertex_t<_Graph>> &&
+             has_vertex_map<_Graph>
+class induced_subgraph
+    : public subgraph<_Graph,
+                      const mapping_owning_view<vertex_map_t<_Graph, bool>>,
+                      true_map> {
+private:
+    using vertex = vertex_t<_Graph>;
+    using arc = arc_t<_Graph>;
+
+    _Vertices _vertices;
+
+    template <typename _G, typename _VR>
+    constexpr auto construct_vertex_filter(_G && g, _VR && vertices_range) {
+        auto filter = melon::create_vertex_map<bool>(g, false);
+        for(const auto & v : vertices_range) filter[v] = true;
+        return filter;
+    }
+
+public:
+    template <typename _G, typename _VR>
+    [[nodiscard]] constexpr explicit induced_subgraph(_G && g,
+                                                      _VR && vertices_range)
+        : subgraph<_Graph,
+                   const mapping_owning_view<vertex_map_t<_Graph, bool>>,
+                   true_map>(std::forward<_G>(g),
+                             construct_vertex_filter(g, vertices_range), {})
+        , _vertices(std::views::all(std::forward<_VR>(vertices_range))) {}
+
+    [[nodiscard]] constexpr induced_subgraph(const induced_subgraph &) =
+        default;
+    [[nodiscard]] constexpr induced_subgraph(induced_subgraph &&) = default;
+
+    constexpr induced_subgraph & operator=(const induced_subgraph &) = default;
+    constexpr induced_subgraph & operator=(induced_subgraph &&) = default;
+
+    auto vertices() const noexcept { return _vertices; }
+};
+
+template <typename _G, typename _VR>
+induced_subgraph(_G &&, _VR &&)
+    -> induced_subgraph<views::graph_all_t<_G>, std::views::all_t<_VR>>;
 
 }  // namespace views
 }  // namespace melon
