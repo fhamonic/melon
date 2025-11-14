@@ -62,16 +62,23 @@ public:
                  inward_incidence_graph<_Graph>
     {
         return std::views::concat(
-            std::views::transform(
-                melon::out_arcs(_graph, u),
-                [&](auto && a) -> std::pair<edge, vertex> {
-                    return {a, melon::arc_target(_graph, a)};
-                }),
-            std::views::transform(
-                melon::in_arcs(_graph, u),
-                [&](auto && a) -> std::pair<edge, vertex> {
-                    return {a, melon::arc_source(_graph, a)};
-                }));
+            std::views::transform(melon::out_arcs(_graph, u),
+                                  [&](auto && a) -> std::pair<edge, vertex> {
+                                      return {a, melon::arc_target(_graph, a)};
+                                  }),
+            std::views::transform(melon::in_arcs(_graph, u),
+                                  [&](auto && a) -> std::pair<edge, vertex> {
+                                      return {a, melon::arc_source(_graph, a)};
+                                  }));
+    }
+
+    [[nodiscard]] constexpr decltype(auto) adjacency(
+        const vertex & u) const noexcept
+        requires outward_adjacency_graph<_Graph> &&
+                 inward_adjacency_graph<_Graph>
+    {
+        return std::views::concat(melon::out_neighbors(_graph, u),
+                                  melon::in_neighbors(_graph, u));
     }
 
     template <typename T>
