@@ -152,6 +152,9 @@ public:
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
         return _reached_map[u];
     }
+    [[nodiscard]] constexpr auto reached_map() const noexcept {
+        return views::mapping_all(_reached_map);
+    }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
         requires(_Traits::store_pred_vertices)
     {

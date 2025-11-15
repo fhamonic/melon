@@ -1,26 +1,20 @@
 #ifndef MELON_ALGORITHM_CONNECTED_COMPONENTS_HPP
 #define MELON_ALGORITHM_CONNECTED_COMPONENTS_HPP
 
-#include <algorithm>
 #include <cassert>
 #include <ranges>
-#include <stack>
-#include <type_traits>
-#include <utility>
-#include <variant>
 #include <vector>
 
 #include "melon/detail/consumable_view.hpp"
 #include "melon/undirected_graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
-#include "melon/views/graph_view.hpp"
 #include "melon/views/undirect.hpp"
 
 namespace fhamonic {
 namespace melon {
 
-template <typename _UGraph>
-// requires has_incidence<_UGraph> && has_vertex_map<_UGraph>
+template <undirected_graph _UGraph>
+    requires has_incidence<_UGraph> && has_vertex_map<_UGraph>
 class connected_components
     : public algorithm_view_interface<connected_components<_UGraph>> {
 private:
@@ -37,9 +31,9 @@ private:
     vertex_map_t<_UGraph, bool> _reached_map;
 
 public:
-    template <typename _Tp>
-    [[nodiscard]] constexpr explicit connected_components(_Tp && g) noexcept
-        : _graph(views::undirected_graph_all(std::forward<_Tp>(g)))
+    template <typename _UG>
+    [[nodiscard]] constexpr explicit connected_components(_UG && g) noexcept
+        : _graph(views::undirected_graph_all(std::forward<_UG>(g)))
         , _remaining_vertices(vertices(_graph))
         , _queue()
         , _reached_map(create_vertex_map<bool>(_graph, false)) {
@@ -95,7 +89,7 @@ private:
             return _queue[_queue_current];
         }
     }
-    [[nodiscard]] constexpr void _reset_current_vertex() noexcept {
+    constexpr void _reset_current_vertex() noexcept {
         assert(!finished());
         if constexpr(has_num_vertices<_UGraph>) {
             _queue_current = _queue.begin();

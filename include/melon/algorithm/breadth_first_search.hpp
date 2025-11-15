@@ -20,12 +20,26 @@ struct breadth_first_search_default_traits {
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
     static constexpr bool store_distances = false;
+    static constexpr bool store_traversal_range = false;
 };
 
-template <outward_adjacency_graph _Graph,
+namespace __detail {
+template <typename _Graph, typename _Traits>
+concept enable_branchless_bfs =
+    has_num_vertices<_Graph> &&
+    std::is_trivially_copyable_v<vertex_t<_Graph>> &&
+    (!_Traits::store_pred_vertices && !_Traits::store_pred_arcs &&
+     !_Traits::store_distances);
+}
+
+template <typename _Graph,
           typename _Traits = breadth_first_search_default_traits>
-    requires has_vertex_map<_Graph>
-class breadth_first_search
+struct breadth_first_search;
+
+template <outward_adjacency_graph _Graph, typename _Traits>
+    requires has_vertex_map<_Graph> &&
+             (!__detail::enable_branchless_bfs<_Graph, _Traits>)
+class breadth_first_search<_Graph, _Traits>
     : public algorithm_view_interface<breadth_first_search<_Graph, _Traits>> {
 private:
     using vertex = vertex_t<_Graph>;
@@ -41,6 +55,9 @@ private:
 private:
     _Graph _graph;
     std::vector<vertex> _queue;
+    [[no_unique_address]] std::conditional_t<_Traits::store_traversal_range,
+                                             cursor, std::monostate>
+        _queue_traversal_begin;
     cursor _queue_current;
     vertex_map_t<_Graph, bool> _reached_map;
 
@@ -74,6 +91,10 @@ public:
         add_source(s);
     }
 
+    template <typename... _Args>
+    [[nodiscard]] constexpr breadth_first_search(_Traits, _Args &&... args)
+        : breadth_first_search(std::forward<_Args>(args)...) {}
+
     [[nodiscard]] constexpr breadth_first_search(const breadth_first_search &) =
         default;
     [[nodiscard]] constexpr breadth_first_search(breadth_first_search &&) =
@@ -100,6 +121,8 @@ public:
         _reached_map[s] = true;
         if constexpr(_Traits::store_pred_vertices) _pred_vertices_map[s] = s;
         if constexpr(_Traits::store_distances) _dist_map[s] = 0;
+        if constexpr(_Traits::store_traversal_range)
+            _queue_traversal_begin = _queue_current;
         return *this;
     }
 
@@ -110,7 +133,6 @@ public:
             return _queue_current == _queue.size();
         }
     }
-
     [[nodiscard]] constexpr const vertex & current() const noexcept {
         assert(!finished());
         if constexpr(has_num_vertices<_Graph>) {
@@ -119,7 +141,6 @@ public:
             return _queue[_queue_current];
         }
     }
-
     constexpr void advance() noexcept {
         assert(!finished());
         const vertex & u = current();
@@ -152,11 +173,12 @@ public:
     constexpr void run() noexcept {
         while(!finished()) advance();
     }
-
     [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
         return _reached_map[u];
     }
-
+    [[nodiscard]] constexpr auto reached_map() const noexcept {
+        return views::mapping_all(_reached_map);
+    }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
         requires(_Traits::store_pred_vertices)
     {
@@ -174,6 +196,133 @@ public:
     {
         assert(reached(u));
         return _dist_map[u];
+    }
+    [[nodiscard]] constexpr auto traversal() const noexcept
+        requires(_Traits::store_traversal_range)
+    {
+        if constexpr(has_num_vertices<_Graph>) {
+            return std::ranges::subrange(_queue_traversal_begin,
+                                         _queue_current);
+        } else {
+            return std::ranges::subrange(
+                _queue.begin() + _queue_traversal_begin,
+                _queue.begin() + _queue_current);
+        }
+    }
+};
+
+template <outward_adjacency_graph _Graph, typename _Traits>
+    requires has_vertex_map<_Graph> &&
+             __detail::enable_branchless_bfs<_Graph, _Traits>
+class breadth_first_search<_Graph, _Traits>
+    : public algorithm_view_interface<breadth_first_search<_Graph, _Traits>> {
+private:
+    using vertex = vertex_t<_Graph>;
+
+    _Graph _graph;
+    std::unique_ptr<vertex[]> _queue;
+    vertex * _queue_traversal_begin;
+    vertex * _queue_traversal_end;
+    vertex * _queue_current;
+    vertex_map_t<_Graph, bool> _reached_map;
+
+public:
+    template <typename _G>
+    [[nodiscard]] constexpr explicit breadth_first_search(_G && g)
+        : _graph(views::graph_all(std::forward<_G>(g)))
+        , _queue(std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) +
+                                                          1))
+        , _queue_traversal_begin(_queue.get())
+        , _queue_traversal_end(_queue.get())
+        , _queue_current(_queue.get())
+        , _reached_map(create_vertex_map<bool>(_graph, false)) {}
+
+    template <typename _G>
+    [[nodiscard]] constexpr breadth_first_search(_G && g, const vertex & s)
+        : breadth_first_search(std::forward<_G>(g)) {
+        add_source(s);
+    }
+
+    template <typename... _Args>
+    [[nodiscard]] constexpr breadth_first_search(_Traits, _Args &&... args)
+        : breadth_first_search(std::forward<_Args>(args)...) {}
+
+    [[nodiscard]] constexpr breadth_first_search(const breadth_first_search & o)
+        : _graph(o._graph)
+        , _queue(std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) +
+                                                          1ul))
+        , _queue_traversal_begin(_queue.get() +
+                                 (o._queue_traversal_begin - o._queue.get()))
+        , _queue_traversal_end(_queue.get() +
+                               (o._queue_traversal_end - o._queue.get()))
+        , _queue_current(_queue.get() + (o._queue_current - o._queue.get()))
+        , _reached_map(o._reached_map) {
+        std::copy(o._queue_traversal_begin, o._queue_traversal_end,
+                  _queue_traversal_begin);
+    }
+    [[nodiscard]] constexpr breadth_first_search(breadth_first_search &&) =
+        default;
+
+    constexpr breadth_first_search & operator=(const breadth_first_search & o) {
+        _graph = o._graph;
+        _queue =
+            std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) + 1);
+        _queue_traversal_begin =
+            _queue.get() + (o._queue_traversal_begin - o._queue.get());
+        _queue_current = _queue.get() + (o._queue_current - o._queue.get());
+        _queue_traversal_end =
+            _queue.get() + (o._queue_traversal_end - o._queue.get());
+        _reached_map = o._reached_map;
+        std::copy(o._queue_traversal_begin, o._queue_traversal_end,
+                  _queue_traversal_begin);
+    }
+    constexpr breadth_first_search & operator=(breadth_first_search &&) =
+        default;
+
+    constexpr breadth_first_search & reset() noexcept {
+        _queue_traversal_begin = _queue_current = _queue_traversal_end =
+            _queue.get();
+        _reached_map.fill(false);
+        return *this;
+    }
+    constexpr breadth_first_search & add_source(const vertex & s) noexcept {
+        assert(!_reached_map[s]);
+        _queue_traversal_begin = _queue_current;
+        *_queue_traversal_end = s;
+        ++_queue_traversal_end;
+        _reached_map[s] = true;
+        return *this;
+    }
+
+    [[nodiscard]] constexpr bool finished() const noexcept {
+        return _queue_current == _queue_traversal_end;
+    }
+
+    [[nodiscard]] constexpr const vertex & current() const noexcept {
+        assert(!finished());
+        return *_queue_current;
+    }
+    constexpr void advance() noexcept {
+        assert(!finished());
+        const vertex & u = current();
+        ++_queue_current;
+        for(auto && w : out_neighbors(_graph, u)) {
+            *_queue_traversal_end = w;
+            _queue_traversal_end += !_reached_map[w];
+            _reached_map[w] = true;
+        }
+    }
+    constexpr void run() noexcept {
+        while(!finished()) advance();
+    }
+    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
+        return _reached_map[u];
+    }
+    [[nodiscard]] constexpr auto reached_map() const noexcept {
+        return views::mapping_all(_reached_map);
+    }
+    [[nodiscard]] constexpr auto traversal() const noexcept {
+        return std::span(_queue_traversal_begin, _queue_current);
     }
 };
 

@@ -146,7 +146,6 @@ inline namespace __cust {
 inline constexpr __cust_access::_EdgeEndpoints edge_endpoints{};
 }  // namespace __cust
 
-
 namespace __cust_access {
 template <typename _Tp>
 concept __member_incidence =
@@ -155,10 +154,9 @@ concept __member_incidence =
     };
 
 template <typename _Tp>
-concept __adl_incidence =
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        { incidence(__t, __v) } -> std::ranges::input_range;
-    };
+concept __adl_incidence = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
+    { incidence(__t, __v) } -> std::ranges::input_range;
+};
 
 struct _IncidentEdges {
 private:
@@ -169,7 +167,7 @@ private:
                 std::declval<vertex_t<_Tp> &>()));
         else
             return noexcept(incidence(std::declval<_Tp &>(),
-                                           std::declval<vertex_t<_Tp> &>()));
+                                      std::declval<vertex_t<_Tp> &>()));
     }
 
 public:
@@ -195,25 +193,21 @@ using incidence_range_t = decltype(melon::incidence(
     std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
 
 template <typename _Tp>
-using incidence_iterator_t =
-    std::ranges::iterator_t<incidence_range_t<_Tp>>;
+using incidence_iterator_t = std::ranges::iterator_t<incidence_range_t<_Tp>>;
 
 template <typename _Tp>
-using incidence_sentinel_t =
-    std::ranges::sentinel_t<incidence_range_t<_Tp>>;
+using incidence_sentinel_t = std::ranges::sentinel_t<incidence_range_t<_Tp>>;
 
 namespace __cust_access {
 template <typename _Tp>
-concept __member_degree =
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        { __t.degree(__v) } -> std::integral;
-    };
+concept __member_degree = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
+    { __t.degree(__v) } -> std::integral;
+};
 
 template <typename _Tp>
-concept __adl_degree =
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        { degree(__t, __v) } -> std::integral;
-    };
+concept __adl_degree = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
+    { degree(__t, __v) } -> std::integral;
+};
 
 template <typename _Tp>
 concept __has_sized_incidence =
@@ -226,11 +220,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_degree<_Tp>)
-            return noexcept(std::declval<_Tp &>().degree(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(
+                std::declval<_Tp &>().degree(std::declval<vertex_t<_Tp> &>()));
         else if constexpr(__adl_degree<_Tp>)
-            return noexcept(degree(std::declval<_Tp &>(),
-                                       std::declval<vertex_t<_Tp> &>()));
+            return noexcept(
+                degree(std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
         else
             return noexcept(std::ranges::size(melon::incidence(
                 std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>())));
@@ -257,7 +251,6 @@ inline namespace __cust {
 inline constexpr __cust_access::_Degree degree{};
 }  // namespace __cust
 
-
 template <typename _Tp>
 concept undirected_graph = requires(const _Tp & __t) {
     melon::vertices(__t);
@@ -266,8 +259,8 @@ concept undirected_graph = requires(const _Tp & __t) {
 };
 
 template <typename _Tp>
-concept has_num_edges =
-    undirected_graph<_Tp> && requires(const _Tp & __t) { melon::num_edges(__t); };
+concept has_num_edges = undirected_graph<_Tp> &&
+                        requires(const _Tp & __t) { melon::num_edges(__t); };
 
 template <typename _Tp>
 concept has_incidence =
@@ -275,8 +268,12 @@ concept has_incidence =
     requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
         melon::incidence(__t, __v);
     } &&
-    std::convertible_to<std::ranges::range_value_t<incidence_range_t<_Tp>>,
-                        arc_t<_Tp>>;
+    std::convertible_to<
+        typename std::ranges::range_value_t<incidence_range_t<_Tp>>::first_type,
+        edge_t<_Tp>> &&
+    std::convertible_to<typename std::ranges::range_value_t<
+                            incidence_range_t<_Tp>>::second_type,
+                        vertex_t<_Tp>>;
 
 template <typename _Tp>
 concept has_degree =

@@ -38,7 +38,7 @@ GTEST_TEST(alias_method_sampler, statistics) {
 
     std::random_device dev;
     std::mt19937 rng(dev());
-    for(int i = 0; i < 1000; ++i) count_map[sampler(rng)] += 1e-3;
+    for(int i = 0; i < 10000; ++i) count_map[sampler(rng)] += 1e-4;
 
     ASSERT_NEAR(count_map[2], 0.5, 0.05);
     ASSERT_NEAR(count_map[4], 0.25, 0.05);
