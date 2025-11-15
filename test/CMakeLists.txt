@@ -62,6 +62,7 @@ add_executable(
   network_voronoi.cpp
   alias_method_sampler.cpp
   connected_components.cpp
+  traversal_forest.cpp
   )
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)

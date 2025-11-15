@@ -31,9 +31,9 @@ private:
     disjoint_sets<vertex, vertex_map_t<_UGraph, unsigned int>> _components_sets;
 
 public:
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr explicit kruskal(_G && g, _M && c)
-        : _ugraph(views::undirected_graph_all(std::forward<_G>(g)))
+    template <typename _UG, typename _M>
+    [[nodiscard]] constexpr explicit kruskal(_UG && g, _M && c)
+        : _ugraph(views::undirected_graph_all(std::forward<_UG>(g)))
         , _cost_map(views::mapping_all(std::forward<_M>(c)))
         , _components_sets(create_vertex_map<unsigned int>(_ugraph)) {
         reset();

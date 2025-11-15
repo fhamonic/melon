@@ -4,7 +4,6 @@
 #include "melon/algorithm/connected_components.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
-#include "melon/views/subgraph.hpp"
 #include "melon/views/undirect.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -38,6 +37,6 @@ GTEST_TEST(connected_components, test) {
     alg.advance();
     ASSERT_FALSE(alg.finished());
     ASSERT_TRUE(EQ_MULTISETS(alg.current(), {7u}));
-    // alg.advance();
-    // ASSERT_TRUE(alg.finished());
+    alg.advance();
+    ASSERT_TRUE(alg.finished());
 }
