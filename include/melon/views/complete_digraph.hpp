@@ -5,6 +5,7 @@
 #include <ranges>
 
 #include "melon/container/static_map.hpp"
+#include "melon/detail/concat_view.hpp"
 #include "melon/mapping.hpp"
 #include "melon/views/graph_view.hpp"
 
@@ -122,7 +123,7 @@ public:
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(u < _num_vertices);
         const auto increment = static_cast<arc>(_num_vertices - 1);
-        return std::views::concat(
+        return detail::views::concat(
             std::ranges::subrange(
                 custom_iota_iterator(static_cast<arc>(u - 1),
                                      static_cast<arc>(u) * increment,
