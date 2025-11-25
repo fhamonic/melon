@@ -201,10 +201,24 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
 
     for(auto && [i, intersecting_segments] :
         bentley_ottmann(segments_ids, segments)) {
+#if defined(__cpp_lib_format_ranges) && __cpp_lib_format_ranges >= 202207L
         std::cout << std::format(
             "({}/{}, {}/{}) : {}\n", int(std::get<0>(i).num()),
             int(std::get<0>(i).den()), int(std::get<1>(i).num()),
             int(std::get<1>(i).den()), intersecting_segments);
+#else
+        std::cout << "(" << int(std::get<0>(i).num()) << "/"
+                    << int(std::get<0>(i).den()) << ", "
+                    << int(std::get<1>(i).num()) << "/"
+                    << int(std::get<1>(i).den()) << ") : {";
+        bool first = true;
+        for(auto id : intersecting_segments) {
+            if(!first) std::cout << ", ";
+            std::cout << id;
+            first = false;
+        }
+        std::cout << "}\n";
+#endif
     }
 }
 
