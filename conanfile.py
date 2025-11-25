@@ -9,6 +9,9 @@ class MelonConan(ConanFile):
     name = "melon"
     version = "1.0.0-alpha.1"
 
+    options = {"gcc14_compat": [True, False]}
+    default_options = {"gcc14_compat": False}
+
     license = "BSL-1.0"
     description = (
         "A modern and efficient graph library using C++20 ranges and concepts."
@@ -21,12 +24,16 @@ class MelonConan(ConanFile):
     no_copy_source = True
     generators = "CMakeToolchain", "CMakeDeps"
 
-    def requirements(self):        
+    def requirements(self):
         self.test_requires("gtest/[>=1.10.0 <cci]")
         # self.test_requires("mppp/1.0.3")
 
+    def _gcc14_enabled(self):
+        return bool(self.options.get_safe("gcc14_compat", False))
+
     def validate(self):
-        check_min_cppstd(self, 26)
+        min_std = 23 if self._gcc14_enabled() else 26
+        check_min_cppstd(self, min_std)
 
     def layout(self):
         cmake_layout(self)
@@ -34,7 +41,15 @@ class MelonConan(ConanFile):
     def build(self):
         if not self.conf.get("tools.build:skip_test", default=False):
             cmake = CMake(self)
-            cmake.configure(build_script_folder="test")
+            cmake.configure(
+                build_script_folder="test",
+                variables={
+                    "MELON_ENABLE_GCC14_SUPPORT": "ON"
+                    if self._gcc14_enabled()
+                    else "OFF",
+                    "MELON_FROM_CONAN": "ON",
+                },
+            )
             cmake.build()
             self.run(os.path.join(self.cpp.build.bindir, "melon_test"))
 
