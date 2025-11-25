@@ -13,13 +13,15 @@ Work in progress.
 
 ## How to link
 
-:warning: Since commit [e494eb8d7db1629af280354dc4d76d3c36ed8701](https://github.com/fhamonic/melon/commit/e494eb8d7db1629af280354dc4d76d3c36ed8701) the use of Range-v3 has been replaced by C++26 ranges functionnalities which are currently only implemented in GCC 15.
+:warning: Since commit [e494eb8d7db1629af280354dc4d76d3c36ed8701](https://github.com/fhamonic/melon/commit/e494eb8d7db1629af280354dc4d76d3c36ed8701) the library leans on C++26 ranges functionalities which are currently only implemented in GCC 15.
 
 | Compiler    | Minimum version |
 | ----------- | --------------- |
 |   GCC       |     15          |
 |   Clang     |     --          |
 |   MSVC      |     --          |
+
+:bulb: Need to stay on GCC 14 / C++23? Configure with `-DMELON_ENABLE_GCC14_SUPPORT=ON` (or pass `-o melon:gcc14_compat=True` when using Conan) to make Melon use its internal adapter shims so you keep the same API without any extra dependencies.
 
 ### As a local Conan package (latest commit)
 
