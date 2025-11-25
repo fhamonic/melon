@@ -27,6 +27,26 @@ jobs:
        conan profile detect --name=default
        make CONAN_PROFILE=.github/workflows/gcc15_c++26
 
+  linux-gcc14-build:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Update APT
+      run: sudo apt-get update && sudo apt-get upgrade -y
+    - name: Install GCC-14 and CMake
+      run: sudo apt-get install -y gcc-14 g++-14 cmake
+    - name: Install Conan 2.0
+      run: |
+        sudo apt-get install -y pipx
+        pipx install conan
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - name: Build and run unit tests
+      run: |
+       conan profile detect --name=default
+       make CONAN_PROFILE=.github/workflows/gcc14_c++23
+
   # windows-build:
   #   runs-on: windows-latest
   #   steps:
