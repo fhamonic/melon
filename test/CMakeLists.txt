@@ -11,14 +11,31 @@ include(CompilerWarnings)
 # ################### Packages ###################
 find_package(GTest)
 # find_package(mp++ REQUIRED)
+if(NOT GTest_FOUND)
+  if(MELON_FROM_CONAN)
+    message(
+      FATAL_ERROR
+        "GTest must be provided by Conan when MELON_FROM_CONAN is enabled.")
+  endif()
+  message(STATUS "GTest not found in registry. Fetching with FetchContent...")
+  include(FetchContent)
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  )
+  FetchContent_MakeAvailable(googletest)
+endif()
 
 include(GoogleTest)
 
 # ################### Library ####################
-add_library(melon INTERFACE)
-target_include_directories(
-    melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
-                    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+if(NOT TARGET melon)
+  add_library(melon INTERFACE)
+  target_include_directories(
+      melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
+                      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+endif()
 # target_link_libraries(melon INTERFACE mp++::mp++)
 
 set_project_warnings(melon)
@@ -82,5 +99,3 @@ if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
   target_link_options(melon_test PRIVATE -fsanitize=address -lpthread)
   target_link_libraries(melon_test "${LIBASAN_PATH}")
 endif()
-
-

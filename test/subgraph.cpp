@@ -3,6 +3,7 @@
 
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/detail/concat_view.hpp"
 #include "melon/mapping.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/graph_view.hpp"
@@ -183,7 +184,8 @@ GTEST_TEST(induces_subgraph_views, test) {
     auto [fgraph, length_map] = builder.build();
     auto graph = views::induced_subgraph(
         fgraph,
-        std::views::concat(std::views::iota(0u, 2u), std::views::iota(4u, 6u)));
+        detail::views::concat(std::views::iota(0u, 2u),
+                              std::views::iota(4u, 6u)));
 
     auto alg = dijkstra(graph, length_map);
 
