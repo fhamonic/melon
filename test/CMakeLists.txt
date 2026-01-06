@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 project(MelonUnitTests CXX)
-
-set(CMAKE_CXX_STANDARD 26)
  
 # ################### Modules ####################
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
