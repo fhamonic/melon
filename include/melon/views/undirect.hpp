@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <ranges>
 
+#include "melon/detail/concat_view.hpp"
 #include "melon/graph.hpp"
 #include "melon/views/graph_view.hpp"
 
@@ -61,7 +62,7 @@ public:
         requires outward_incidence_graph<_Graph> &&
                  inward_incidence_graph<_Graph>
     {
-        return std::views::concat(
+        return detail::views::concat(
             std::views::transform(melon::out_arcs(_graph, u),
                                   [&](auto && a) -> std::pair<edge, vertex> {
                                       return {a, melon::arc_target(_graph, a)};
@@ -77,8 +78,8 @@ public:
         requires outward_adjacency_graph<_Graph> &&
                  inward_adjacency_graph<_Graph>
     {
-        return std::views::concat(melon::out_neighbors(_graph, u),
-                                  melon::in_neighbors(_graph, u));
+        return detail::views::concat(melon::out_neighbors(_graph, u),
+                                     melon::in_neighbors(_graph, u));
     }
 
     template <typename T>

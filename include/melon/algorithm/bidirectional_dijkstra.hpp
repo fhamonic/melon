@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/concat_view.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
@@ -325,7 +326,7 @@ public:
         requires(_Traits::store_path)
     {
         assert(path_found());
-        return std::ranges::views::concat(
+        return detail::views::concat(
             std::ranges::subrange(
                 forward_path_iterator(
                     this, _forward_pred_arcs_map[_midpoint.value()]),
