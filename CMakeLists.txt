@@ -7,14 +7,13 @@ project(
 
 # ################### Options ####################
 option(MELON_ENABLE_GCC14_SUPPORT
-       "Enable the optional GNU++14/C++23 compatibility layer." ON)
-if(MELON_ENABLE_GCC14_SUPPORT)
-    set(_melon_default_cxx 23)
-else()
-    set(_melon_default_cxx 26)
-endif()
+       "Enable the optional GNU++14/C++23 compatibility layer." OFF)
 if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD ${_melon_default_cxx})
+    if(MELON_ENABLE_GCC14_SUPPORT)
+        set(CMAKE_CXX_STANDARD 23)
+    else()
+        set(CMAKE_CXX_STANDARD 26)
+    endif()
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
