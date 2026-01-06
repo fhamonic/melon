@@ -34,12 +34,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Update APT
-      run: sudo apt-get update && sudo apt-get upgrade -y
+      run: apt-get update && apt-get upgrade -y
     - name: Install GCC-14 and CMake
-      run: sudo apt-get install -y gcc-14 g++-14 cmake
+      run: apt-get install -y gcc-14 g++-14 cmake
     - name: Install Conan 2.0
       run: |
-        sudo apt-get install -y pipx
+        apt-get install -y pipx
         pipx install conan
         echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: Build and run unit tests
