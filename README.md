@@ -98,13 +98,13 @@ for(auto && component : strongly_connected_components(graph)) {
 
 Concepts and containers:
 - tree graphs
-- bipartite graph
 - planar graph
+- bipartite graph
 
 Algorithms:
-- planar map intersection
 - Network simplex
 - Laplacian combinatorial solver
+- planar map intersection
 
 Utility:
 - JSON serialization
