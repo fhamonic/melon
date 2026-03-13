@@ -79,7 +79,8 @@ add_executable(
   connected_components.cpp
   traversal_forest.cpp
   concat_view_fallback.cpp
-  )
+  biobjective_dijkstra.cpp
+)
 target_link_libraries(melon_test GTest::gtest)
 target_link_libraries(melon_test melon)
 gtest_discover_tests(melon_test)
