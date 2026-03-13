@@ -82,7 +82,7 @@ public:
         , _red_length_map(views::mapping_all(std::forward<_RLM>(l2)))
         , _pareto_front_map(
               create_vertex_map<std::set<label, labels_cmp>>(_graph))
-        , _heap(typename _Traits::blue_semiring::less_t()) {}
+        , _heap() {}
 
     template <typename... _Args>
     [[nodiscard]] constexpr biobjective_dijkstra(_Traits, _Args &&... args)
@@ -109,15 +109,14 @@ public:
         return *this;
     }
 
-private:
     bool is_dominated(const vertex & v, const label & l) const noexcept {
         auto & labels = _pareto_front_map[v];
         auto it = labels.upper_bound(l);
-        if(it != labels.begin()) {
-            const auto pred_it = std::prev(it);
+        if(it == labels.begin()) return false;
+        const auto pred_it = std::prev(it);
+        if(_Traits::blue_semiring::less(pred_it->first, l.first))
             return !_Traits::red_semiring::less(l.second, pred_it->second);
-        }
-        return false;
+        return _Traits::red_semiring::less(pred_it->second, l.second);
     }
 
     void relax(const vertex & v, const label & l) noexcept {
@@ -140,7 +139,6 @@ private:
         _heap.push(std::make_pair(v, l));
     }
 
-public:
     biobjective_dijkstra & add_source(
         const vertex & s,
         const blue_length_type blue_length = _Traits::blue_semiring::zero,
@@ -187,6 +185,10 @@ public:
 
     constexpr void run() noexcept {
         while(!finished()) advance();
+    }
+
+    constexpr auto pareto_front(const vertex & v) const noexcept {
+        return std::views::all(_pareto_front_map[v]);
     }
 };
 
