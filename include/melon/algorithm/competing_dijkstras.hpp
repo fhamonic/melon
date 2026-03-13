@@ -1,5 +1,5 @@
-#ifndef MELON_competing_dijksTRAS_HPP
-#define MELON_competing_dijksTRAS_HPP
+#ifndef MELON_COMPETING_DIJKSTRAS_HPP
+#define MELON_COMPETING_DIJKSTRAS_HPP
 
 #include <algorithm>
 #include <ranges>
@@ -235,4 +235,4 @@ competing_dijkstras(_Traits, _Graph &&, _BLM &&, _RLM &&)
 }  // namespace melon
 }  // namespace fhamonic
 
-#endif  // MELON_competing_dijksTRAS_HPP
+#endif  // MELON_COMPETING_DIJKSTRAS_HPP
