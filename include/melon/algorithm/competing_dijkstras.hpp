@@ -1,12 +1,8 @@
 #ifndef MELON_COMPETING_DIJKSTRAS_HPP
 #define MELON_COMPETING_DIJKSTRAS_HPP
 
-#include <algorithm>
-#include <ranges>
-#include <type_traits>
+#include <concepts>
 #include <utility>
-#include <variant>
-#include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/prefetch.hpp"
