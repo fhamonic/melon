@@ -49,8 +49,8 @@ struct dijkstra_default_traits {
 template <outward_incidence_graph _Graph,
           input_mapping<arc_t<_Graph>> _LengthMap, dijkstra_trait _Traits>
     requires has_vertex_map<_Graph>
-class dijkstra : public algorithm_view_interface<
-                     dijkstra<_Graph, _LengthMap, _Traits>> {
+class dijkstra
+    : public algorithm_view_interface<dijkstra<_Graph, _LengthMap, _Traits>> {
 private:
     using vertex = vertex_t<_Graph>;
     using arc = arc_t<_Graph>;
@@ -77,7 +77,7 @@ private:
     [[no_unique_address]] vertex_map_if<_Traits::store_paths, _Graph,
                                         std::optional<arc>> _pred_arcs_map;
     [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph,
-                                        double> _distances_map;
+                                        length_type> _distances_map;
 
 public:
     template <typename _G, typename _M>
