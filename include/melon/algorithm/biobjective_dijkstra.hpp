@@ -1,15 +1,8 @@
 #ifndef MELON_BIOBJECTIVE_DIJKSTRA_HPP
 #define MELON_BIOBJECTIVE_DIJKSTRA_HPP
 
-#include <algorithm>
-#include <optional>
-#include <ranges>
 #include <set>
-#include <tuple>
-#include <type_traits>
 #include <utility>
-#include <variant>
-#include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/prefetch.hpp"
