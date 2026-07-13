@@ -8,7 +8,6 @@
 #include "melon/graph.hpp"
 #include "melon/views/graph_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 namespace views {
 
@@ -112,6 +111,5 @@ undirect(_G &&) -> undirect<views::graph_all_t<_G>>;
 
 }  // namespace views
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_VIEWS_UNDIRECT_HPP

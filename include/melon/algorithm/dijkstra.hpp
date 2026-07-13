@@ -21,7 +21,6 @@
 #include "melon/utility/semiring.hpp"
 #include "melon/views/graph_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -271,6 +270,5 @@ dijkstra(_Traits, _Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
                 _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_DIJKSTA_HPP

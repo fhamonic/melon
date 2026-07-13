@@ -12,7 +12,6 @@
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/container/static_map.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -138,6 +137,5 @@ alias_method_sampler(_Traits, _Range &&, _ProbMap &&) -> alias_method_sampler<
     _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UTILITY_ALIAS_METHOD_SAMPLER_HPP

@@ -6,7 +6,6 @@
 
 #include "melon/planar_map.hpp"
 
-namespace fhamonic {
 namespace melon {
 namespace views {
 
@@ -153,6 +152,5 @@ public:
 
 }  // namespace views
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_VIEWS_DUAL_HPP

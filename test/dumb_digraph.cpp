@@ -6,8 +6,7 @@
 #include "dumb_digraph.hpp"
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic;
-using namespace fhamonic::melon;
+using namespace melon;
 
 static_assert(melon::graph<dumb_digraph>);
 static_assert(melon::outward_incidence_graph<dumb_digraph>);

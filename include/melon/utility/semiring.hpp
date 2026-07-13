@@ -3,7 +3,6 @@
 
 #include <concepts>
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -68,6 +67,5 @@ struct minimum_spanning_tree_semiring {
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UTILITY_SEMIRING_HPP

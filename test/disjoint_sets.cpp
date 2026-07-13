@@ -5,7 +5,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(disjoint_sets, test) {
     std::vector<int> elems = {11, 20, 3, 14};

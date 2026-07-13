@@ -7,7 +7,6 @@
 
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <std::ranges::range R>
@@ -37,6 +36,5 @@ constexpr void prefetch_mapped_values(const _Keys & __keys,
 }
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_DETAIL_PREFETCH_HPP

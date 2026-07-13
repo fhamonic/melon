@@ -10,7 +10,6 @@
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <graph G>
@@ -261,6 +260,5 @@ public:
     }
 };
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UTILITY_GRAPHVIZ_PRINTER_HPP

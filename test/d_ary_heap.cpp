@@ -10,7 +10,7 @@
 #include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};

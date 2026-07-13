@@ -6,8 +6,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic;
-using namespace fhamonic::melon;
+using namespace melon;
 
 using G = views::complete_digraph<>;
 

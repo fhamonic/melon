@@ -4,7 +4,6 @@
 #include <cassert>
 #include <iterator>
 
-namespace fhamonic {
 namespace melon {
 
 template <typename S, typename T>
@@ -45,6 +44,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_INTRUSIVE_ITERATOR_HPP

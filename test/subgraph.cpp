@@ -11,7 +11,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(subgraph_views, static_graph) {
     std::vector<

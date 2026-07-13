@@ -5,7 +5,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(erdos_renyi, test) {
     auto random_graph1 = erdos_renyi<static_digraph>(100, 0.0);

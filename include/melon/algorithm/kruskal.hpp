@@ -13,7 +13,6 @@
 #include "melon/undirected_graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <undirected_graph _UGraph, input_mapping<edge_t<_UGraph>> _CostMap>
@@ -84,6 +83,5 @@ kruskal(_UGraph &&, _CostMap &&)
                views::mapping_all_t<_CostMap>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_KRUSKAL_HPP

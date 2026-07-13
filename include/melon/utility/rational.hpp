@@ -9,7 +9,6 @@
 #include "melon/detail/specialization_of.hpp"
 #include "melon/utility/bounded_value.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <typename NumT, typename DenT = const_value<int, 1>>
@@ -115,6 +114,5 @@ template <typename T = int>
 using integer = rational<T, const_value<int, 1>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // RATIONAL_HPP

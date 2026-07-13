@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <utility>
 
-namespace fhamonic {
 namespace melon {
 
 template <typename I, typename Incr, typename Deref, typename Cond>
@@ -131,14 +130,13 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 template <typename I, typename Incr, typename Deref, typename Cond>
 inline constexpr bool std::ranges::enable_borrowed_range<
-    fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> = true;
+    melon::intrusive_view<I, Incr, Deref, Cond>> = true;
 
 template <typename I, typename Incr, typename Deref, typename Cond>
 inline constexpr bool std::ranges::enable_view<
-    fhamonic::melon::intrusive_view<I, Incr, Deref, Cond>> = true;
+    melon::intrusive_view<I, Incr, Deref, Cond>> = true;
 
 #endif  // MELON_DETAIL_INTRUSIVE_VIEW_HPP

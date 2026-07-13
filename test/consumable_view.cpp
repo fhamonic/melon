@@ -5,7 +5,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(consumable_view, test_std_iota_view) {
     auto v = std::views::iota(0, 9);

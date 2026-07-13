@@ -8,7 +8,6 @@
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 namespace __cust_access {
@@ -375,7 +374,6 @@ concept has_edge_map =
     };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #include "views/undirected_graph_view.hpp"
 

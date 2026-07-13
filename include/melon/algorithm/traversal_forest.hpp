@@ -8,7 +8,6 @@
 #include "melon/detail/consumable_view.hpp"
 #include "melon/graph.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <graph _Graph, std::ranges::range _Sources>
@@ -99,6 +98,5 @@ traversal_forest(_Graph &&, _Sources &&)
                         std::views::all_t<_Sources>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_TRAVERSAL_FOREST_HPP

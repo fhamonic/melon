@@ -10,7 +10,6 @@
 
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <typename K,
@@ -88,6 +87,5 @@ public:
 };  // class disjoint_sets
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_DISJOINT_SETS_HPP

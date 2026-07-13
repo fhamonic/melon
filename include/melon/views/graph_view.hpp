@@ -6,7 +6,6 @@
 
 #include "melon/graph.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 struct graph_view_base {};
@@ -304,6 +303,5 @@ using graph_all_t = decltype(graph_all(std::declval<_Graph>()));
 
 }  // namespace views
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_GRAPH_VIEW_HPP

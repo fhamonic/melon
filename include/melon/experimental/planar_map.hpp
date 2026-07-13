@@ -7,7 +7,6 @@
 
 #include "melon/graph.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 namespace __cust_access {
@@ -511,6 +510,5 @@ concept has_face_map =
                            melon::create_face_map<_ValueType>(__t, __d);
                        };
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_PLANAR_MAP_HPP

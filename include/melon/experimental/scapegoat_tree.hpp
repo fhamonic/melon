@@ -11,7 +11,6 @@
 
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <float ALPHA, typename _Entry,
@@ -207,6 +206,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_SCAPEGOAT_TREE_HPP

@@ -12,7 +12,6 @@
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -229,6 +228,5 @@ competing_dijkstras(_Traits, _Graph &&, _BLM &&, _RLM &&)
                            views::mapping_all_t<_RLM>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_COMPETING_DIJKSTRAS_HPP

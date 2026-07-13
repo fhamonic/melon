@@ -15,7 +15,6 @@
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 struct depth_first_search_default_traits {
@@ -186,6 +185,5 @@ depth_first_search(_Traits, _Graph &&, const vertex_t<_Graph> &)
     -> depth_first_search<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_depth_first_search_HPP

@@ -13,7 +13,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(competing_dijkstras, test) {
     static_digraph_builder<static_digraph, int, int> builder(8);

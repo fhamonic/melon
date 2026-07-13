@@ -7,7 +7,6 @@
 #include "melon/detail/specialization_of.hpp"
 #include "melon/undirected_graph.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 struct undirected_graph_view_base {};
@@ -252,6 +251,5 @@ using undirected_graph_all_t =
 
 }  // namespace views
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UNDIRECTED_GRAPH_VIEW_HPP

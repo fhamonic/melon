@@ -5,7 +5,6 @@
 
 #include "melon/graph.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <bool _Cond, typename _Graph, typename _Type,
@@ -57,6 +56,5 @@ struct arc_map_if<true, _Graph, _Type, _DiscriminatingT> {
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_DETAIL_MAP_IF_HPP

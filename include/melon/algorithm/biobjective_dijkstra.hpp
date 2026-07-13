@@ -12,7 +12,6 @@
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format on
@@ -33,14 +32,9 @@ struct biobjective_dijkstra_default_traits {
     using blue_semiring = shortest_path_semiring<_BlueValueType>;
     using red_semiring = shortest_path_semiring<_RedValueType>;
     using label = std::pair<_BlueValueType, _RedValueType>;
-    struct label_blue_cmp {
-        [[nodiscard]] constexpr bool operator()(const label & e1,
-                                                const label & e2) const {
-            return blue_semiring::less(e1.first, e2.first);
-        }
-    };
-    using heap = d_ary_heap<2, std::pair<vertex_t<_Graph>, label>,
-                            label_blue_cmp, views::element_map<1>>;
+    using heap =
+        d_ary_heap<2, std::pair<vertex_t<_Graph>, label>,
+                   typename blue_semiring::less_t, views::element_map<1, 0>>;
 };
 
 template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> BLM,
@@ -208,6 +202,5 @@ biobjective_dijkstra(_Traits, _Graph &&, _BLM &&, _RLM &&)
                             views::mapping_all_t<_RLM>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_BIOBJECTIVE_DIJKSTRA_HPP

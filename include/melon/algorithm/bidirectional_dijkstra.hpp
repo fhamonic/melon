@@ -21,7 +21,6 @@
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -365,6 +364,5 @@ bidirectional_dijkstra(_Traits, _Graph &&, _LengthMap &&,
                               views::mapping_all_t<_LengthMap>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_BIDIRECTIONAL_DIJKSTA_HPP

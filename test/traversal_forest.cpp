@@ -8,7 +8,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(traversal_forest, test) {
     static_digraph_builder<static_digraph> builder(4);

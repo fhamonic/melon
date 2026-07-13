@@ -7,7 +7,6 @@
 #include <limits>
 #include <type_traits>
 
-namespace fhamonic {
 namespace melon {
 
 namespace detail {
@@ -331,6 +330,5 @@ template <typename T, T V, typename PS = default_promotion_strategy>
 using const_value = bounded_value<T, V, V, PS>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_BOUNDED_VALUE_HPP

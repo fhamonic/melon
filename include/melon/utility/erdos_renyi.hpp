@@ -7,7 +7,6 @@
 #include "melon/graph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <typename G>
@@ -32,6 +31,5 @@ G erdos_renyi(const std::size_t num_vertices,
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UTILITY_ERDOS_RENYI_HPP

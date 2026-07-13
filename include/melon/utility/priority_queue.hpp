@@ -4,7 +4,6 @@
 #include <concepts>
 #include <ranges>
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -30,6 +29,5 @@ concept updatable_priority_queue = priority_queue<Q> &&
 // clang-format on
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UTILITY_PRIORITY_QUEUE_HPP

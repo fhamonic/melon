@@ -9,7 +9,6 @@
 #include "melon/mapping.hpp"
 #include "melon/views/graph_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 namespace views {
 
@@ -286,6 +285,5 @@ induced_subgraph(_G &&, _VR &&)
 
 }  // namespace views
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_VIEWS_SUBGRAPH_HPP

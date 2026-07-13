@@ -17,7 +17,6 @@
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/geometry.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -350,6 +349,5 @@ bentley_ottmann(_Traits, _SegmentIdRange &&, _SegmentMap &&)
                        views::mapping_all_t<_SegmentMap>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_BENTLEY_OTTMANN_HPP

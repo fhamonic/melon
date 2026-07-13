@@ -10,7 +10,6 @@
 
 #include "melon/detail/intrusive_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <std::integral K>
@@ -377,6 +376,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_STATIC_FILTER_MAP_HPP

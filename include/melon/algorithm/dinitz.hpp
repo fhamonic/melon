@@ -10,7 +10,6 @@
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <graph _Graph, input_mapping<arc_t<_Graph>> _CapacityMap>
@@ -200,6 +199,5 @@ dinitz(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
     -> dinitz<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_DINITZ_HPP

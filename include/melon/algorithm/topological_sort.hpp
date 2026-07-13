@@ -13,7 +13,6 @@
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 struct topological_sort_default_traits {
@@ -171,6 +170,5 @@ topological_sort(_Traits, _Graph &&)
     -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_TOPOLOGICAL_SORT_HPP
