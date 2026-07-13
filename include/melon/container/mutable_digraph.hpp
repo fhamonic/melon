@@ -12,7 +12,6 @@
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 class mutable_digraph {
@@ -374,6 +373,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_MUTABLE_DIGRAPH_HPP

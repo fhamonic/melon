@@ -9,7 +9,6 @@
 
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 namespace __cust_access {
@@ -1458,7 +1457,6 @@ concept has_arc_map =
     };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #include "views/graph_view.hpp"
 

@@ -10,7 +10,6 @@
 
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <typename _Derived, std::size_t D, typename _Entry,
@@ -329,6 +328,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_D_ARY_HEAP_HPP

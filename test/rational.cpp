@@ -6,7 +6,7 @@
 #include "melon/utility/rational.hpp"
 #include "melon/utility/bounded_value.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(rational, add_test) {
     auto a = bounded_value<int8_t, -10, 21>(5);

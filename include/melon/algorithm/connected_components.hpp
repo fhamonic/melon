@@ -10,7 +10,6 @@
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/views/undirect.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <undirected_graph _UGraph>
@@ -145,6 +144,5 @@ constexpr auto weakly_connected_components(_Graph && g) {
 }
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_CONNECTED_COMPONENTS_HPP

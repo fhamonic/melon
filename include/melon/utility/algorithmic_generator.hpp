@@ -5,7 +5,6 @@
 #include <iterator>
 #include <type_traits>
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -73,6 +72,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_UTILITY_ALGORITHM_GENERATOR_HPP

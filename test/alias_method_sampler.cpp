@@ -10,7 +10,7 @@
 #include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 static std::vector<double> make_weights(std::size_t n) {
     std::vector<double> w(n);

@@ -7,7 +7,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(intrusive_range, test) {
     std::vector<int> values = {1, 2, 6, 3, 7};

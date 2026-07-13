@@ -8,7 +8,6 @@
 #include <memory>
 #include <ranges>
 
-namespace fhamonic {
 namespace melon {
 
 template <std::integral K = std::size_t, typename V = std::size_t>
@@ -110,6 +109,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_STATIC_MAP_HPP

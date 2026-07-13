@@ -11,7 +11,7 @@
 #include "melon/algorithm/bentley_ottmann.hpp"
 #include "melon/utility/bounded_value.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 template <typename N, typename D>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,

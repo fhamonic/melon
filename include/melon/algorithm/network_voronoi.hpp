@@ -21,7 +21,6 @@
 #include "melon/utility/semiring.hpp"
 #include "melon/views/graph_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 // clang-format off
@@ -200,6 +199,5 @@ network_voronoi(_Traits, _Graph &&, _LengthMap &&, _Kernels &&)
                        views::mapping_all_t<_LengthMap>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_NETWORK_VORONOI_HPP

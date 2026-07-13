@@ -6,7 +6,6 @@
 
 #include "melon/utility/rational.hpp"
 
-namespace fhamonic {
 namespace melon {
 template <typename _Tp>
 concept cartesian_point = requires(const _Tp & __t) {
@@ -170,6 +169,5 @@ struct cartesian {
     }
 };
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // GEOMETRIC_SYSTEMS_HPP

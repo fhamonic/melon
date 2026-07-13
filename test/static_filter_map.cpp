@@ -9,7 +9,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 static_assert(std::copyable<static_map<std::size_t, bool>>);
 static_assert(std::ranges::random_access_range<static_map<std::size_t, bool>>);

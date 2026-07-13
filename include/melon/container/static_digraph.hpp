@@ -12,7 +12,6 @@
 #include "melon/container/static_map.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 class static_digraph {
@@ -151,6 +150,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_STATIC_DIGRAPH_HPP

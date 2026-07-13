@@ -5,7 +5,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(knapsack_bnb, test) {
     std::vector<std::size_t> items = {0u, 1u, 2u, 3u, 4u};

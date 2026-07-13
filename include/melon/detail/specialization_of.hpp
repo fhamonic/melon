@@ -5,7 +5,6 @@
 #include <ranges>
 #include <type_traits>
 
-namespace fhamonic {
 namespace melon {
 
 namespace __detail {
@@ -32,6 +31,5 @@ inline constexpr int _range_rank() {
 }  // namespace __detail
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_SPECIALIZATION_OF_HPP

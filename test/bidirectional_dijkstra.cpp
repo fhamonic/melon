@@ -7,7 +7,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(bidirectional_dijkstra, test) {
     static_digraph_builder<static_digraph, int> builder(6);

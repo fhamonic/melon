@@ -13,7 +13,6 @@
 
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <std::ranges::range _ItemRange,
@@ -233,6 +232,5 @@ unbounded_knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
                               views::mapping_all_t<_CostMap>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_KNAPSACK_BNB_HPP

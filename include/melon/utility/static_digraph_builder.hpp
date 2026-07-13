@@ -8,7 +8,6 @@
 
 #include "melon/graph.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <graph G, typename... ArcProperty>
@@ -71,6 +70,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_STATIC_DIGRAPH_BUILDER_HPP

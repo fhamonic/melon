@@ -8,7 +8,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(strongly_connected_components, graph1_test) {
     static_assert(views::__cust_access::__detail::__can_graph_ref_view<

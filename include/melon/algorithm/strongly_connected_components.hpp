@@ -15,7 +15,6 @@
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/views/graph_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <outward_adjacency_graph _Graph>
@@ -184,6 +183,5 @@ strongly_connected_components(_Graph &&)
     -> strongly_connected_components<views::graph_all_t<_Graph>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_STRONGLY_CONNECTED_COMPONENTS_HPP

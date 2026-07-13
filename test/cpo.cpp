@@ -23,7 +23,6 @@ constexpr auto create_vertex_map(const G & g, const V & d) {
 
 #include "melon/graph.hpp"
 
-using namespace fhamonic;
 
 GTEST_TEST(CPO, test) {
     static_assert(melon::graph<G>);

@@ -13,7 +13,6 @@
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 struct breadth_first_search_default_traits {
@@ -345,6 +344,5 @@ breadth_first_search(_Traits, _Graph &&, const vertex_t<_Graph> &)
     -> breadth_first_search<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_BFS_HPP

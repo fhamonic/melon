@@ -10,7 +10,6 @@
 
 #include "melon/container/static_map.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 class static_forward_digraph {
@@ -103,6 +102,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_STATIC_FORWARD_DIGRAPH_HPP

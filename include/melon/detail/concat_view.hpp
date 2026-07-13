@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <utility>
 
-namespace fhamonic {
 namespace melon {
 namespace detail {
 namespace views {
@@ -142,6 +141,5 @@ inline constexpr concat_fn concat{};
 }  // namespace views
 }  // namespace detail
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_DETAIL_CONCAT_VIEW_HPP

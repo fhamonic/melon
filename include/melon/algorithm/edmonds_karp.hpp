@@ -10,7 +10,6 @@
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <graph _Graph, input_mapping<arc_t<_Graph>> _CapacityMap>
@@ -183,6 +182,5 @@ edmonds_karp(_Graph &&, _CapacityMap &&, const vertex_t<_Graph> &,
                     views::mapping_all_t<_CapacityMap>>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_ALGORITHM_EDMONDS_KARP_HPP

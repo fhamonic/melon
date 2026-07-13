@@ -9,7 +9,6 @@
 #include "melon/mapping.hpp"
 #include "melon/views/graph_view.hpp"
 
-namespace fhamonic {
 namespace melon {
 namespace views {
 
@@ -159,6 +158,5 @@ public:
 
 }  // namespace views
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_VIEWS_COMPLETE_DIGRAPH_HPP

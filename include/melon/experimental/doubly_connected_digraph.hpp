@@ -12,7 +12,6 @@
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/mapping.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 class doubly_connected_digraph {
@@ -431,6 +430,5 @@ public:
 };
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_DOUBLY_CONNECTED_DIGRAPH_HPP

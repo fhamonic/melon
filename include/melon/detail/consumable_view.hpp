@@ -4,7 +4,6 @@
 #include <ranges>
 #include <type_traits>
 
-namespace fhamonic {
 namespace melon {
 
 template <typename _Iterator, typename _Sentinel>
@@ -137,6 +136,5 @@ using consumable_view_t =
     std::decay_t<decltype(consumable_view(std::declval<R>()))>;
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_DETAIL_consumable_view_HPP

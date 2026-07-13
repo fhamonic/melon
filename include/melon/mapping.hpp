@@ -8,7 +8,6 @@
 
 #include "melon/detail/specialization_of.hpp"
 
-namespace fhamonic {
 namespace melon {
 
 template <typename _Map, typename _Key>
@@ -42,7 +41,7 @@ concept output_mapping =
         {
             map[key] = value
         } -> std::same_as<
-              std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
+            std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
     };
 
 template <typename _Map, typename _Key, typename _Value>
@@ -245,16 +244,26 @@ struct identity_map : public mapping_view_base {
     }
 };
 
-template <std::size_t I>
+template <std::size_t... I>
 struct element_map : public mapping_view_base {
-    template <class T>
+private:
+    template <std::size_t First, std::size_t... Rest, typename T>
+    static constexpr decltype(auto) get_chain(T && e) noexcept {
+        if constexpr(sizeof...(Rest) == 0) {
+            return std::get<First>(std::forward<T>(e));
+        } else {
+            return get_chain<Rest...>(std::get<First>(std::forward<T>(e)));
+        }
+    }
+
+public:
+    template <typename T>
     [[nodiscard]] constexpr decltype(auto) operator[](T && e) const noexcept {
-        return std::get<I>(e);
+        return get_chain<I...>(std::forward<T>(e));
     }
 };
 }  // namespace views
 
 }  // namespace melon
-}  // namespace fhamonic
 
 #endif  // MELON_mapping_HPP

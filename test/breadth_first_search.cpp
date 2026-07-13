@@ -7,7 +7,7 @@
 
 #include "ranges_test_helper.hpp"
 
-using namespace fhamonic::melon;
+using namespace melon;
 
 GTEST_TEST(breadth_first_search, no_arcs_graph) {
     static_digraph_builder<static_digraph> builder(2);
