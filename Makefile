@@ -1,6 +1,7 @@
 # CONAN_PROFILE = clang
-CONAN_PROFILE = default_c++26
-# CONAN_PROFILE = debug_c++26
+# CONAN_PROFILE = gcc14_c++23
+CONAN_PROFILE = gcc15_c++26
+# CONAN_PROFILE = gcc15_c++26_debug
 
 .PHONY: build package clean
 

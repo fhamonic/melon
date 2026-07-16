@@ -7,9 +7,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace melon {
-namespace detail {
-namespace views {
+namespace melon::detail::views {
 
 #if defined(__cpp_lib_ranges_concat)
 
@@ -51,12 +49,16 @@ private:
         std::ranges::sentinel_t<SecondBase> _second_end{};
         bool _in_first = true;
 
-        void satisfy() {
+        constexpr void satisfy() {
             if(_in_first && _first_it == _first_end) _in_first = false;
         }
 
     public:
-        using iterator_concept = std::input_iterator_tag;
+        using iterator_concept =
+            std::conditional_t<std::ranges::forward_range<FirstBase> &&
+                                   std::ranges::forward_range<SecondBase>,
+                               std::forward_iterator_tag,
+                               std::input_iterator_tag>;
         using iterator_category = std::input_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type =
@@ -68,7 +70,7 @@ private:
 
         iterator() = default;
 
-        iterator(Parent & parent)
+        constexpr iterator(Parent & parent)
             : _first_it(std::ranges::begin(parent._first))
             , _first_end(std::ranges::end(parent._first))
             , _second_it(std::ranges::begin(parent._second))
@@ -76,11 +78,12 @@ private:
             satisfy();
         }
 
-        reference operator*() const {
-            return _in_first ? *_first_it : *_second_it;
+        constexpr reference operator*() const {
+            if(_in_first) return static_cast<reference>(*_first_it);
+            return static_cast<reference>(*_second_it);
         }
 
-        iterator & operator++() {
+        constexpr iterator & operator++() {
             if(_in_first) {
                 ++_first_it;
                 satisfy();
@@ -90,12 +93,31 @@ private:
             return *this;
         }
 
-        void operator++(int) { ++(*this); }
+        constexpr void operator++(int) { ++(*this); }
+        constexpr iterator operator++(int)
+            requires std::forward_iterator<
+                         std::ranges::iterator_t<FirstBase> > &&
+                     std::forward_iterator<std::ranges::iterator_t<SecondBase> >
+        {
+            auto tmp = *this;
+            ++(*this);
+            return tmp;
+        }
 
-        friend bool operator==(const iterator & it,
-                               std::default_sentinel_t) noexcept {
+        friend constexpr bool operator==(const iterator & it,
+                                         std::default_sentinel_t) noexcept {
             if(it._in_first) return false;
             return it._second_it == it._second_end;
+        }
+        friend constexpr bool operator==(const iterator & lhs,
+                                         const iterator & rhs)
+            requires std::equality_comparable<
+                         std::ranges::iterator_t<FirstBase> > &&
+                     std::equality_comparable<
+                         std::ranges::iterator_t<SecondBase> >
+        {
+            return lhs._first_it == rhs._first_it &&
+                   lhs._second_it == rhs._second_it;
         }
     };
 
@@ -138,8 +160,6 @@ inline constexpr concat_fn concat{};
 
 #endif
 
-}  // namespace views
-}  // namespace detail
-}  // namespace melon
+}  // namespace melon::detail::views
 
 #endif  // MELON_DETAIL_CONCAT_VIEW_HPP

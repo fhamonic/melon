@@ -6,20 +6,12 @@ project(
     LANGUAGES CXX)
 
 # ################### Options ####################
-option(MELON_ENABLE_GCC14_SUPPORT
-       "Enable the optional GCC-14/C++23 compatibility layer." OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 option(MELON_BUILD_TESTS "Build the melon test suite" ON)
 option(MELON_FROM_CONAN "Indicates the project is configured from Conan" OFF)
 
-if(NOT DEFINED CMAKE_CXX_STANDARD)
-    if(MELON_ENABLE_GCC14_SUPPORT)
-        set(CMAKE_CXX_STANDARD 23)
-    else()
-        set(CMAKE_CXX_STANDARD 26)
-    endif()
-endif()
+set(CMAKE_CXX_STANDARD 23)
 
 # ################### Modules ####################
 include(GNUInstallDirs)

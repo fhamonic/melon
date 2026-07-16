@@ -10,6 +10,3 @@ compiler.libcxx=libstdc++11
 [buildenv]
 CC=gcc-14
 CXX=g++-14
-
-[options]
-gcc14_compat=True
