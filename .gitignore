@@ -3,3 +3,7 @@
 CMakeUserPresets.json
 *.log
 *.lp
+
+Makefile
+MakeW64.bat
+TODO_1.0.0.md

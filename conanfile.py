@@ -7,10 +7,7 @@ from conan.tools.build import check_min_cppstd
 
 class MelonConan(ConanFile):
     name = "melon"
-    version = "1.0.0-alpha.1"
-
-    options = {"gcc14_compat": [True, False]}
-    default_options = {"gcc14_compat": False}
+    version = "1.0.0-alpha.2"
 
     license = "BSL-1.0"
     description = (
@@ -28,12 +25,8 @@ class MelonConan(ConanFile):
         self.test_requires("gtest/[>=1.10.0 <cci]")
         # self.test_requires("mppp/1.0.3")
 
-    def _gcc14_enabled(self):
-        return bool(self.options.get_safe("gcc14_compat", False))
-
     def validate(self):
-        min_std = 23 if self._gcc14_enabled() else 26
-        check_min_cppstd(self, min_std)
+        check_min_cppstd(self, 23)
 
     def layout(self):
         cmake_layout(self)
@@ -43,12 +36,7 @@ class MelonConan(ConanFile):
             cmake = CMake(self)
             cmake.configure(
                 build_script_folder="test",
-                variables={
-                    "MELON_ENABLE_GCC14_SUPPORT": "ON"
-                    if self._gcc14_enabled()
-                    else "OFF",
-                    "MELON_FROM_CONAN": "ON",
-                },
+                variables={"MELON_FROM_CONAN": "ON"},
             )
             cmake.build()
             self.run(os.path.join(self.cpp.build.bindir, "melon_test"))

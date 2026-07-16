@@ -10,5 +10,5 @@ compiler.threads=posix
 compiler.exception=seh
 
 [tool_requires]
-cmake/3.28.1
+cmake/4.3.2
 mingw-builds/15.1.0

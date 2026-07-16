@@ -2,58 +2,124 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  linux-build:
+  linux-gcc15-build:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:25.10
+      image: ubuntu:25.04
     steps:
-    - uses: actions/checkout@v3
-    - name: Update APT
-      run: apt-get update && apt-get upgrade -y
-    - name: Install GCC-15 an CMake
-      run: apt-get install -y gcc-15 g++-15 cmake
-    - name: Install Conan 2.0
-      run: |
-        apt install -y pipx
-        pipx install conan
-        echo "/github/home/.local/bin" >> $GITHUB_PATH
-    - name: Build and run unit tests
-      run: |
-       conan profile detect --name=default
-       make CONAN_PROFILE=.github/workflows/gcc15_c++26
+      - uses: actions/checkout@v3
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install GCC-15 an CMake
+        run: apt-get install -y gcc-15 g++-15 cmake
+      - name: Install Conan 2.0
+        run: |
+          apt install -y pipx
+          pipx install conan
+          echo "/github/home/.local/bin" >> $GITHUB_PATH
+      - name: Build and run unit tests
+        run: |
+          conan profile detect --name=default
+          make CONAN_PROFILE=.github/workflows/gcc15_c++26
 
   linux-gcc14-build:
     runs-on: ubuntu-latest
     container:
       image: ubuntu:24.04
     steps:
-    - uses: actions/checkout@v3
-    - name: Update APT
-      run: apt-get update && apt-get upgrade -y
-    - name: Install GCC-14 and CMake
-      run: apt-get install -y gcc-14 g++-14 cmake
-    - name: Install Conan 2.0
-      run: |
-        apt-get install -y pipx
-        pipx install conan
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-    - name: Build and run unit tests
-      run: |
-       conan profile detect --name=default
-       make CONAN_PROFILE=.github/workflows/gcc14_c++23
+      - uses: actions/checkout@v3
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install GCC-14 and CMake
+        run: apt-get install -y gcc-14 g++-14 cmake
+      - name: Install Conan 2.0
+        run: |
+          apt-get install -y pipx
+          pipx install conan
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Build and run unit tests
+        run: |
+          conan profile detect --name=default
+          make CONAN_PROFILE=.github/workflows/gcc14_c++23
 
-  # windows-build:
-  #   runs-on: windows-latest
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Install Conan 2.0
-  #     run: pip install conan
-  #   - name: Autodetect a default conan profile
-  #     run: conan profile detect --name=default
-  #   - name: Build and run unit tests
-  #     run: make CONAN_PROFILE=.github/workflows/mingw15_c++26
+  cmake-submodule-test:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:25.04
+    steps:
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install GCC-15 and CMake
+        run: apt-get install -y gcc-15 g++-15 cmake
+      - uses: actions/checkout@v3
+        with:
+          path: consumer/external/melon
+      - name: Create a consumer project using melon as a submodule
+        run: |
+          cat > consumer/CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.12)
+          project(MelonSubmoduleConsumer LANGUAGES CXX)
+
+          set(CMAKE_CXX_STANDARD 23)
+          set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+          add_subdirectory(external/melon)
+
+          add_executable(melon_consumer main.cpp)
+          target_link_libraries(melon_consumer PRIVATE melon)
+          EOF
+          cat > consumer/main.cpp << 'EOF'
+          #include <iostream>
+
+          #include "melon/algorithm/dijkstra.hpp"
+          #include "melon/container/static_digraph.hpp"
+          #include "melon/utility/static_digraph_builder.hpp"
+
+          int main() {
+              using namespace melon;
+
+              static_digraph_builder<static_digraph, int> builder(6);
+              builder.add_arc(0, 1, 7)
+                  .add_arc(0, 2, 9)
+                  .add_arc(0, 5, 14)
+                  .add_arc(1, 2, 10)
+                  .add_arc(1, 3, 15)
+                  .add_arc(2, 3, 12)
+                  .add_arc(2, 5, 2)
+                  .add_arc(3, 4, 6)
+                  .add_arc(4, 5, 9);
+              auto [graph, length_map] = builder.build();
+
+              dijkstra alg(graph, length_map);
+              alg.add_source(0u);
+              for(const auto & [v, dist] : alg) {
+                  std::cout << "vertex " << v << " at distance " << dist
+                            << '\n';
+              }
+              return 0;
+          }
+          EOF
+      - name: Configure, build and run the consumer project
+        env:
+          CC: gcc-15
+          CXX: g++-15
+        run: |
+          cmake -S consumer -B consumer/build -DCMAKE_BUILD_TYPE=Release -DMELON_BUILD_TESTS=OFF
+          cmake --build consumer/build
+          ./consumer/build/melon_consumer
+
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Conan 2.0
+        run: pip install conan
+      - name: Autodetect a default conan profile
+        run: conan profile detect --name=default
+      - name: Build and run unit tests
+        run: make CONAN_PROFILE=.github/workflows/mingw15_c++26
