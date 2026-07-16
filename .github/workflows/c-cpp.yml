@@ -113,7 +113,7 @@ jobs:
           cmake --build consumer/build
           ./consumer/build/melon_consumer
 
-  windows-build:
+  windows-mingw15-build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
