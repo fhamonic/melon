@@ -30,8 +30,11 @@ private:
 public:
     using iterator_category = std::input_iterator_tag;
     using value_type = traversal_entry_t<A>;
-    using reference = value_type const &;
-    using pointer = value_type *;
+    // operator* below returns a prvalue and there is no operator->, so
+    // std::iterator_traits used to report a reference and a pointer that this
+    // iterator never produces.
+    using reference = value_type;
+    using pointer = void;
     using difference_type = std::ptrdiff_t;
 
     algorithm_iterator(const algorithm_iterator &) = default;
@@ -41,23 +44,21 @@ public:
     algorithm_iterator & operator=(algorithm_iterator &&) = default;
 
     explicit algorithm_iterator(A & alg) : algorithm(&alg) {}
-    algorithm_iterator & operator++() noexcept {
-        // algorithm.get().advance();
+    // Forwards straight into the algorithm's advance(), which may allocate
+    // and run user code, so it cannot promise noexcept.
+    algorithm_iterator & operator++() {
         algorithm->advance();
         return *this;
     }
     // P0541 : post-increment on input iterators returns void
     // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0541r0.html
-    void operator++(int) noexcept { operator++(); }
+    void operator++(int) { operator++(); }
     friend bool operator==(const algorithm_iterator & it,
                            std::default_sentinel_t) noexcept {
         // return it.algorithm.get().finished();
         return it.algorithm->finished();
     }
-    value_type operator*() const noexcept {
-        // return algorithm.get().current();
-        return algorithm->current();
-    }
+    value_type operator*() const { return algorithm->current(); }
 };
 
 template <typename T>

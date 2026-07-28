@@ -151,3 +151,57 @@ GTEST_TEST(dijkstra, path_to) {
         std::views::transform(path, [&id](const auto & a) { return id[a]; }),
         {2, 8}));
 }
+
+// ################## regression: noexcept honesty ############################
+
+// advance(), add_source(), run() and reset() push into the heap -- which
+// allocates -- and run the user's length map and semiring, so an unconditional
+// noexcept turned any throw from those into std::terminate. The same applied
+// to algorithm_iterator, which forwards straight into advance().
+namespace {
+using probe_dijkstra =
+    dijkstra<graph_ref_view<static_digraph>,
+             mapping_ref_view<const static_map<unsigned int, int>>,
+             dijkstra_default_traits<static_digraph, int>>;
+using probe_iterator = decltype(std::declval<probe_dijkstra &>().begin());
+}  // namespace
+
+static_assert(!noexcept(std::declval<probe_dijkstra &>().advance()));
+static_assert(!noexcept(std::declval<probe_dijkstra &>().run()));
+static_assert(!noexcept(std::declval<probe_dijkstra &>().reset()));
+static_assert(!noexcept(std::declval<probe_dijkstra &>().add_source(
+    std::declval<const unsigned int &>())));
+static_assert(!noexcept(++std::declval<probe_iterator &>()));
+static_assert(noexcept(std::declval<const probe_dijkstra &>().finished()));
+
+// ########## regression: current_dist was gated on store_distances ###########
+
+// current_dist reads the heap, not _distances_map, so requiring
+// store_distances kept it out of reach of every default-configured dijkstra.
+namespace {
+struct traits_without_distances : dijkstra_default_traits<static_digraph, int> {
+    static constexpr bool store_distances = false;
+    static constexpr bool store_paths = false;
+};
+template <typename D>
+concept has_current_dist =
+    requires(const D & d, const unsigned int & u) { d.current_dist(u); };
+}  // namespace
+
+static_assert(dijkstra_trait<traits_without_distances>);
+
+GTEST_TEST(dijkstra, current_dist_without_store_distances) {
+    static_digraph_builder<static_digraph, int> builder(3);
+    builder.add_arc(0u, 1u, 4);
+    builder.add_arc(1u, 2u, 6);
+    auto [graph, length_map] = builder.build();
+
+    dijkstra algo(traits_without_distances{}, graph, length_map, 0u);
+    // the whole point: available even though store_distances is false
+    static_assert(!traits_without_distances::store_distances);
+    static_assert(has_current_dist<decltype(algo)>);
+    algo.advance();  // settles 0, puts 1 in the heap at distance 4
+    ASSERT_TRUE(algo.reached(1u));
+    ASSERT_FALSE(algo.visited(1u));
+    ASSERT_EQ(algo.current_dist(1u), 4);
+}

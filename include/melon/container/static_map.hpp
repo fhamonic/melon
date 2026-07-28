@@ -14,12 +14,16 @@ class static_map {
 public:
     using key_type = K;
     using mapped_type = V;
-    using value_type = std::pair<const K, V &>;
+    // These describe what the iterators below actually yield. They used to
+    // say std::pair<const K, V &> while begin()/end() are plain V pointers,
+    // so std::iterator_traits and std::ranges::range_value_t disagreed with
+    // the container's own typedefs.
+    using value_type = V;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    using reference = value_type;
-    using const_reference = const value_type;
+    using reference = V &;
+    using const_reference = const V &;
 
     using iterator = mapped_type *;
     using const_iterator = const mapped_type *;
@@ -42,20 +46,25 @@ public:
         std::fill(_data.get(), _data.get() + _size, init_value);
     }
 
+    // Taken by value, not by `IT &&`: as forwarding references these deduced
+    // IT = T & for named iterators (which no longer models
+    // random_access_iterator, silently removing the constructor) and produced
+    // "deduced conflicting types for IT" when the two arguments differed in
+    // value category, e.g. static_map(it, v.end()).
     template <std::random_access_iterator IT>
-    [[nodiscard]] constexpr static_map(IT && it_begin, IT && it_end)
+    [[nodiscard]] constexpr static_map(IT it_begin, IT it_end)
         : static_map(static_cast<size_type>(std::distance(it_begin, it_end))) {
         std::copy(it_begin, it_end, _data.get());
     }
     template <std::ranges::random_access_range R>
     [[nodiscard]] constexpr explicit static_map(R && r)
-        : static_map(r.begin(), r.end()) {}
+        : static_map(std::ranges::begin(r), std::ranges::end(r)) {}
     static_map(const static_map & other)
         : static_map(other.data(), other.data() + other.size()) {};
     [[nodiscard]] constexpr static_map(static_map &&) = default;
 
     static_map & operator=(const static_map & other) {
-        resize(other.size());
+        reset(other.size());
         std::copy(other.data(), other.data() + other.size(), _data.get());
         return *this;
     }
@@ -73,7 +82,11 @@ public:
     }
 
     [[nodiscard]] constexpr size_type size() const noexcept { return _size; }
-    constexpr void resize(const size_type n) {
+    // Named reset(), not resize(): this reallocates and leaves every element
+    // value-uninitialised. It does NOT preserve the existing contents the way
+    // std::vector::resize does, and callers relying on that name were silently
+    // losing their data.
+    constexpr void reset(const size_type n) {
         if(n == size()) return;
         _data = std::make_unique_for_overwrite<mapped_type[]>(n);
         _size = n;
@@ -95,7 +108,8 @@ public:
         return _data[static_cast<size_type>(i)];
     }
 
-    void fill(const mapped_type & v) noexcept {
+    void fill(const mapped_type & v) noexcept(
+        std::is_nothrow_copy_assignable_v<mapped_type>) {
         std::fill(_data.get(), _data.get() + size(), v);
     }
 

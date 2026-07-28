@@ -30,6 +30,9 @@
   --melon-khaki: #C8BA70;
   --melon-hero-title: #8FB8D8;
   --melon-nav-dim: hsla(var(--md-hue), 15%, 90%, 0.68);
+  /* text knocked out of the accent, e.g. buttons on hover. The shipped #fff
+     scores 2.11:1 on the lightened dark-mode green; the page color gives 7.9. */
+  --md-accent-bg-color: var(--md-default-bg-color);
 
   /* modern drops the page to 5% lightness, which flattens every surface
      against it. Lift the whole ladder ~6pt and keep code and footer above the
@@ -91,9 +94,25 @@
   background: #00000042;
 }
 
-/* outline buttons default to primary-colored text, unreadable on dark */
-[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
+/* Secondary buttons take primary-colored text, unreadable on a dark page in
+   classic. The :not() guard keeps this off the hover state below, which this
+   selector would otherwise outweigh. */
+[data-md-color-scheme="slate"]
+  .md-typeset
+  .md-button:not(.md-button--primary, :hover, :focus) {
   color: var(--md-typeset-a-color);
+}
+
+/* Classic swaps both buttons to the accent color on hover; modern only fades
+   them to 80% opacity. Restore the swap — both variants already transition
+   color and background-color at 125ms, so it animates as it did before. */
+.md-typeset .md-button:focus,
+.md-typeset .md-button:hover,
+.md-typeset .md-button--primary:focus,
+.md-typeset .md-button--primary:hover {
+  background-color: var(--md-accent-fg-color);
+  color: var(--md-accent-bg-color);
+  opacity: 1;
 }
 
 /* khaki as a discreet structural accent */

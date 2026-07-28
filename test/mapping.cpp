@@ -6,9 +6,13 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
+#include "melon/container/static_digraph.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/mapping.hpp"
+#include "melon/utility/static_digraph_builder.hpp"
 
 using namespace melon;
 
@@ -233,3 +237,69 @@ static_assert(std::same_as<views::mapping_all_t<const std::vector<int> &>,
                            mapping_ref_view<const std::vector<int>>>);
 static_assert(std::same_as<views::mapping_all_t<std::vector<int>>,
                            mapping_owning_view<std::vector<int>>>);
+
+// ########## regression: map_if const operator[] decay-copied ################
+
+// vertex_map_if / arc_map_if returned `auto` from the const subscript and
+// decltype(auto) from the mutable one, so every read through a const algorithm
+// object copied the mapped value (dijkstra reads its distance and predecessor
+// maps that way).
+static_assert(
+    std::same_as<decltype(std::declval<
+                          vertex_map_if<true, static_digraph, std::string> &>()
+                              [std::declval<const unsigned &>()]),
+                 std::string &>);
+static_assert(std::same_as<decltype(std::declval<const vertex_map_if<
+                                        true, static_digraph, std::string> &>()
+                                        [std::declval<const unsigned &>()]),
+                           const std::string &>);
+static_assert(std::same_as<decltype(std::declval<const arc_map_if<
+                                        true, static_digraph, std::string> &>()
+                                        [std::declval<const unsigned &>()]),
+                           const std::string &>);
+
+GTEST_TEST(map_if, const_subscript_returns_a_reference) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0u, 1u);
+    auto [graph] = builder.build();
+
+    vertex_map_if<true, static_digraph, std::string> map(graph);
+    map[0u] = "written through the mutable overload";
+
+    const auto & cmap = map;
+    ASSERT_EQ(cmap[0u], "written through the mutable overload");
+    // same object, not a copy
+    ASSERT_EQ(std::addressof(cmap[0u]), std::addressof(map[0u]));
+
+    // the disabled specialization is still an empty, freely constructible stub
+    static_assert(
+        std::is_empty_v<vertex_map_if<false, static_digraph, std::string>>);
+}
+
+// ############ regression: element_map noexcept vs std::variant ##############
+
+// std::get is noexcept for tuple/pair/array but throws bad_variant_access for
+// std::variant, so an unconditional noexcept on the accessor chain turned that
+// throw into std::terminate.
+namespace {
+using int_pair = std::pair<int, int>;
+using nested_pair = std::pair<std::pair<int, int>, int>;
+using int_variant = std::variant<int, double>;
+using variant_pair = std::pair<std::variant<int, double>, int>;
+}  // namespace
+
+static_assert(noexcept(
+    std::declval<const views::element_map<1> &>()[std::declval<int_pair &>()]));
+static_assert(noexcept(std::declval<const views::element_map<0, 1> &>()
+                           [std::declval<nested_pair &>()]));
+static_assert(
+    !noexcept(std::declval<
+              const views::element_map<0> &>()[std::declval<int_variant &>()]));
+static_assert(!noexcept(std::declval<const views::element_map<0, 0> &>()
+                            [std::declval<variant_pair &>()]));
+
+GTEST_TEST(element_map, variant_access_propagates_instead_of_terminating) {
+    int_variant v{3.5};  // holds the double alternative
+    views::element_map<0> first;
+    ASSERT_THROW((void)first[v], std::bad_variant_access);
+}

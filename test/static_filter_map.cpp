@@ -5,6 +5,7 @@
 
 #include "melon/container/static_digraph.hpp"
 #include "melon/container/static_map.hpp"
+#include "melon/detail/intrusive_view.hpp"
 #include "melon/mapping.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -238,9 +239,9 @@ GTEST_TEST(static_filter_map, filter_scan_stays_inside_the_buffer) {
         static_filter_map<std::size_t> map(num_bools, false);
         map[3] = true;
 
-        ASSERT_TRUE(EQ_RANGES(
-            map.filter(std::views::iota(std::size_t{0}, num_bools)),
-            {std::size_t{3}}));
+        ASSERT_TRUE(
+            EQ_RANGES(map.filter(std::views::iota(std::size_t{0}, num_bools)),
+                      {std::size_t{3}}));
 
         // no bits at all: the scan must still terminate without dereferencing
         // the one-past-the-end span
@@ -251,9 +252,9 @@ GTEST_TEST(static_filter_map, filter_scan_stays_inside_the_buffer) {
 
         // only the very last bit, reached by scanning every span
         map[num_bools - 1] = true;
-        ASSERT_TRUE(EQ_RANGES(
-            map.filter(std::views::iota(std::size_t{0}, num_bools)),
-            {num_bools - 1}));
+        ASSERT_TRUE(
+            EQ_RANGES(map.filter(std::views::iota(std::size_t{0}, num_bools)),
+                      {num_bools - 1}));
     }
 }
 
@@ -261,11 +262,10 @@ GTEST_TEST(static_filter_map, filter_matches_reference_over_sizes_and_ranges) {
     std::default_random_engine engine(20240728u);
     auto coin = std::bind(std::uniform_int_distribution<>(0, 3), engine);
 
-    for(const std::size_t size : {std::size_t{0}, std::size_t{1}, std::size_t{2},
-                                  std::size_t{63}, std::size_t{64},
-                                  std::size_t{65}, std::size_t{127},
-                                  std::size_t{128}, std::size_t{129},
-                                  std::size_t{192}}) {
+    for(const std::size_t size :
+        {std::size_t{0}, std::size_t{1}, std::size_t{2}, std::size_t{63},
+         std::size_t{64}, std::size_t{65}, std::size_t{127}, std::size_t{128},
+         std::size_t{129}, std::size_t{192}}) {
         static_filter_map<std::size_t> map(size, false);
         std::vector<bool> reference(size, false);
         for(std::size_t i = 0; i < size; ++i) {
@@ -274,18 +274,18 @@ GTEST_TEST(static_filter_map, filter_matches_reference_over_sizes_and_ranges) {
             reference[i] = b;
         }
 
-        for(const std::size_t lo : {std::size_t{0}, std::size_t{1},
-                                    std::size_t{63}, std::size_t{64},
-                                    std::size_t{65}, size / 2, size}) {
-            for(const std::size_t hi : {std::size_t{0}, std::size_t{1},
-                                        std::size_t{63}, std::size_t{64},
-                                        std::size_t{65}, size / 2, size}) {
+        for(const std::size_t lo :
+            {std::size_t{0}, std::size_t{1}, std::size_t{63}, std::size_t{64},
+             std::size_t{65}, size / 2, size}) {
+            for(const std::size_t hi :
+                {std::size_t{0}, std::size_t{1}, std::size_t{63},
+                 std::size_t{64}, std::size_t{65}, size / 2, size}) {
                 if(lo > hi) continue;
                 std::vector<std::size_t> expected;
                 for(std::size_t i = lo; i < std::min(hi, size); ++i)
                     if(reference[i]) expected.emplace_back(i);
-                ASSERT_TRUE(EQ_RANGES(map.filter(std::views::iota(lo, hi)),
-                                      expected))
+                ASSERT_TRUE(
+                    EQ_RANGES(map.filter(std::views::iota(lo, hi)), expected))
                     << "size=" << size << " lo=" << lo << " hi=" << hi;
             }
         }
@@ -342,10 +342,10 @@ GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
     ASSERT_FALSE(*post_dec);
     ASSERT_TRUE(*it);
 
-    ASSERT_TRUE(*(it + 3));          // operator+(iterator, n)
-    ASSERT_TRUE(*(3 + it));          // operator+(n, iterator)
-    ASSERT_TRUE(*((it + 5) - 2));    // operator-(iterator, n)
-    ASSERT_TRUE(it[3]);              // operator[](n)
+    ASSERT_TRUE(*(it + 3));        // operator+(iterator, n)
+    ASSERT_TRUE(*(3 + it));        // operator+(n, iterator)
+    ASSERT_TRUE(*((it + 5) - 2));  // operator-(iterator, n)
+    ASSERT_TRUE(it[3]);            // operator[](n)
     ASSERT_TRUE(*(cmap.begin() + 65));
     ASSERT_EQ((cmap.begin() + 65) - cmap.begin(), 65);
 
@@ -357,4 +357,41 @@ GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
     ASSERT_TRUE(*(3 + mit));
     ASSERT_TRUE(*((mit + 5) - 2));
     ASSERT_TRUE(mit[3]);
+}
+
+// ############ regression: filter() fast path for lvalue ranges ##############
+
+// The dispatch tested `std::same_as<R, iota_view<K, K>>` on the *deduced* type
+// of a forwarding reference, which is iota_view<K, K> & for an lvalue. Passing
+// a named range silently fell back to the generic filter/transform pipeline.
+namespace {
+template <typename T>
+struct is_intrusive_view : std::false_type {};
+template <typename I, typename A, typename B, typename C>
+struct is_intrusive_view<intrusive_view<I, A, B, C>> : std::true_type {};
+
+using filter_map = static_filter_map<int>;
+using iota_int = std::ranges::iota_view<int, int>;
+
+template <typename R>
+inline constexpr bool takes_bitscan_path =
+    is_intrusive_view<decltype(std::declval<const filter_map &>().filter(
+        std::declval<R>()))>::value;
+}  // namespace
+
+static_assert(takes_bitscan_path<iota_int &>);        // lvalue
+static_assert(takes_bitscan_path<const iota_int &>);  // const lvalue
+static_assert(takes_bitscan_path<iota_int &&>);       // rvalue
+// a range whose value type is not the key type still uses the generic path
+static_assert(!takes_bitscan_path<std::ranges::iota_view<long, long> &>);
+
+GTEST_TEST(static_filter_map, filter_lvalue_and_rvalue_agree) {
+    filter_map map(200, false);
+    const std::vector<int> expected = {0, 5, 63, 64, 65, 130, 199};
+    for(const int i : expected) map[static_cast<std::size_t>(i)] = true;
+
+    auto named_range = std::views::iota(0, 200);
+    ASSERT_TRUE(EQ_RANGES(map.filter(named_range), expected));
+    ASSERT_TRUE(EQ_RANGES(map.filter(std::as_const(named_range)), expected));
+    ASSERT_TRUE(EQ_RANGES(map.filter(std::views::iota(0, 200)), expected));
 }

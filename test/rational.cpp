@@ -102,7 +102,8 @@ GTEST_TEST(rational, make_rational_with_narrow_integer_types) {
 
     const std::int8_t c = 5, d = -10;
     auto r8 = make_rational(c, d);
-    static_assert(std::same_as<decltype(r8), rational<std::int8_t, std::int8_t>>);
+    static_assert(
+        std::same_as<decltype(r8), rational<std::int8_t, std::int8_t>>);
     ASSERT_EQ(r8.num(), -5);
     ASSERT_EQ(r8.den(), 10);
 }
@@ -127,4 +128,32 @@ GTEST_TEST(rational, make_rational_normalizes_sign_and_keeps_operand_types) {
     static_assert(std::same_as<decltype(mixed), rational<int, long>>);
     ASSERT_EQ(mixed.num(), 3);
     ASSERT_EQ(mixed.den(), 4L);
+}
+
+// ############### regression: normalize() through const ######################
+
+// _num/_den were `mutable` and normalize() was `const`, so a const rational
+// could be rewritten under its owner and two threads reading a shared const
+// rational raced -- num()/den() hand out const references into that state.
+namespace {
+template <typename R>
+concept normalizable = requires(R & r) { r.normalize(); };
+}  // namespace
+
+static_assert(normalizable<rational<int, int>>);
+static_assert(!normalizable<const rational<int, int>>);
+
+GTEST_TEST(rational, normalize_requires_a_mutable_object) {
+    rational r(6, 4);
+    r.normalize();
+    ASSERT_EQ(r.num(), 3);
+    ASSERT_EQ(r.den(), 2);
+
+    // reading a const rational leaves it untouched
+    const rational cr(6, 4);
+    ASSERT_EQ(cr.num(), 6);
+    ASSERT_EQ(cr.den(), 4);
+    ASSERT_TRUE(cr == rational(3, 2));  // comparison normalizes nothing
+    ASSERT_EQ(cr.num(), 6);
+    ASSERT_EQ(cr.den(), 4);
 }

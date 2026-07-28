@@ -1,3 +1,9 @@
+---
+# The H1 below is the hero wordmark; without this the tab reads "MELON - MELON".
+# An empty title makes the template fall through to the bare site_name.
+title: ""
+---
+
 <div class="melon-hero" markdown>
 
 ![MELON logo](assets/melon.png)

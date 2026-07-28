@@ -25,12 +25,20 @@ private:
     std::optional<Cond> _cond;
 
 public:
-    [[nodiscard]] constexpr intrusive_view(I begin, Deref && deref,
-                                           Incr && incr, Cond && cond)
-        : _begin(begin)
-        , _deref(std::forward<Deref>(deref))
-        , _incr(std::forward<Incr>(incr))
-        , _cond(std::forward<Cond>(cond)) {}
+    // Templated on the argument types rather than taking `Deref &&` etc.
+    // directly: those are class template parameters, so they form plain
+    // rvalue references and a named (lvalue) functor could not be passed at
+    // all. The deduction guide below decays them back to the stored types.
+    template <typename _Deref, typename _Incr, typename _Cond>
+        requires std::constructible_from<Deref, _Deref> &&
+                     std::constructible_from<Incr, _Incr> &&
+                     std::constructible_from<Cond, _Cond>
+    [[nodiscard]] constexpr intrusive_view(I begin, _Deref && deref,
+                                           _Incr && incr, _Cond && cond)
+        : _begin(std::move(begin))
+        , _deref(std::forward<_Deref>(deref))
+        , _incr(std::forward<_Incr>(incr))
+        , _cond(std::forward<_Cond>(cond)) {}
 
     [[nodiscard]] constexpr intrusive_view() = default;
     [[nodiscard]] constexpr intrusive_view(const intrusive_view &) = default;
@@ -38,7 +46,11 @@ public:
 
     // intrusive_view would not be a viewable_range without operator=
     // https://www.fluentcpp.com/2020/10/02/how-to-implement-operator-when-a-data-member-is-a-lambda/
-    constexpr intrusive_view & operator=(const intrusive_view & that) noexcept {
+    constexpr intrusive_view & operator=(const intrusive_view & that) noexcept(
+        std::is_nothrow_copy_assignable_v<I> &&
+        std::is_nothrow_copy_constructible_v<Deref> &&
+        std::is_nothrow_copy_constructible_v<Incr> &&
+        std::is_nothrow_copy_constructible_v<Cond>) {
         _begin = that._begin;
         _deref.reset();
         if(that._deref) _deref.emplace(*that._deref);
@@ -84,7 +96,11 @@ public:
         [[nodiscard]] constexpr iterator(const iterator &) = default;
         [[nodiscard]] constexpr iterator(iterator &&) = default;
 
-        constexpr iterator & operator=(const iterator & that) noexcept {
+        constexpr iterator & operator=(const iterator & that) noexcept(
+            std::is_nothrow_copy_assignable_v<I> &&
+            std::is_nothrow_copy_constructible_v<Deref> &&
+            std::is_nothrow_copy_constructible_v<Incr> &&
+            std::is_nothrow_copy_constructible_v<Cond>) {
             _index = that._index;
             _deref.reset();
             if(that._deref) _deref.emplace(*that._deref);
@@ -105,19 +121,33 @@ public:
             return *this;
         }
 
-        [[nodiscard]] constexpr friend bool operator==(const iterator & it,
-                                                       sentinel) noexcept {
-            return !it._cond.value()(it._index);
+        // These three invoke user-supplied functors, so their noexcept has to
+        // be conditional on the invocation: an unconditional one turned a
+        // throwing functor into std::terminate. They also dereference the
+        // optionals unchecked -- using an iterator built by the default
+        // constructor is undefined for every iterator, so the value() check
+        // bought nothing and made an honest noexcept impossible.
+        [[nodiscard]] constexpr friend bool
+        operator==(const iterator & it, sentinel) noexcept(
+            std::is_nothrow_invocable_v<const Cond &, const I &>) {
+            return !(*it._cond)(it._index);
         }
 
-        [[nodiscard]] constexpr reference operator*() const noexcept {
-            return _deref.value()(_index);
+        [[nodiscard]] constexpr reference operator*() const
+            noexcept(std::is_nothrow_invocable_v<const Deref &, const I &>) {
+            return (*_deref)(_index);
         }
-        constexpr void operator++(int) noexcept {
-            _index = _incr.value()(_index);
+        constexpr void operator++(int) noexcept(
+            std::is_nothrow_invocable_v<const Incr &, const I &> &&
+            std::is_nothrow_assignable_v<
+                I &, std::invoke_result_t<const Incr &, const I &>>) {
+            _index = (*_incr)(_index);
         }
-        constexpr iterator & operator++() noexcept {
-            _index = _incr.value()(_index);
+        constexpr iterator & operator++() noexcept(
+            std::is_nothrow_invocable_v<const Incr &, const I &> &&
+            std::is_nothrow_assignable_v<
+                I &, std::invoke_result_t<const Incr &, const I &>>) {
+            _index = (*_incr)(_index);
             return *this;
         }
     };
@@ -127,6 +157,13 @@ public:
     }
     [[nodiscard]] constexpr sentinel end() const { return sentinel(); }
 };
+
+// Note the reordering: the constructor takes (begin, deref, incr, cond) while
+// the class is parameterised <I, Incr, Deref, Cond>.
+template <typename I, typename _Deref, typename _Incr, typename _Cond>
+intrusive_view(I, _Deref &&, _Incr &&, _Cond &&)
+    -> intrusive_view<I, std::decay_t<_Incr>, std::decay_t<_Deref>,
+                      std::decay_t<_Cond>>;
 
 }  // namespace melon
 
