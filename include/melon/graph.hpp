@@ -1290,9 +1290,17 @@ concept __adl_create_vertex_map =
         } -> output_mapping_of<vertex_t<_Tp>, _ValueType>;
     };
 
+// Parameterised on _ValueType so that the public name can be a *variable*
+// template rather than a function template. A function template named
+// create_vertex_map that lives in namespace melon is reachable by ADL from
+// __adl_create_vertex_map for every graph type whose associated namespaces
+// include melon (any melon view, e.g. views::reverse), which makes the
+// concept depend on itself: "satisfaction of atomic constraint depends on
+// itself". Variable templates are not found by ADL, so the loop cannot close.
+template <typename _ValueType>
 struct _CreateVertexMap {
 private:
-    template <typename _ValueType, typename _Tp>
+    template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
             return noexcept(
@@ -1303,23 +1311,23 @@ private:
     }
 
 public:
-    template <typename _ValueType, typename _Tp>
+    template <typename _Tp>
         requires __member_create_vertex_map<_Tp, _ValueType> ||
                  __adl_create_vertex_map<_Tp, _ValueType>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
+        noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
             return __t.template create_vertex_map<_ValueType>();
         else
             return create_vertex_map<_ValueType>(__t);
     }
 
-    template <typename _ValueType, typename _Tp>
+    template <typename _Tp>
         requires __member_create_vertex_map<_Tp, _ValueType> ||
                  __adl_create_vertex_map<_Tp, _ValueType>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const _ValueType & __d) const
-        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
+        noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
             return __t.template create_vertex_map<_ValueType>(__d);
         else
@@ -1349,9 +1357,11 @@ concept __adl_create_arc_map =
         } -> output_mapping_of<arc_t<_Tp>, _ValueType>;
     };
 
+// Parameterised on _ValueType for the same reason as _CreateVertexMap above.
+template <typename _ValueType>
 struct _CreateArcMap {
 private:
-    template <typename _ValueType, typename _Tp>
+    template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_create_arc_map<_Tp, _ValueType>)
             return noexcept(
@@ -1361,23 +1371,23 @@ private:
     }
 
 public:
-    template <typename _ValueType, typename _Tp>
+    template <typename _Tp>
         requires __member_create_arc_map<_Tp, _ValueType> ||
                  __adl_create_arc_map<_Tp, _ValueType>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
+        noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_create_arc_map<_Tp, _ValueType>)
             return __t.template create_arc_map<_ValueType>();
         else
             return create_arc_map<_ValueType>(__t);
     }
 
-    template <typename _ValueType, typename _Tp>
+    template <typename _Tp>
         requires __member_create_arc_map<_Tp, _ValueType> ||
                  __adl_create_arc_map<_Tp, _ValueType>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const _ValueType & __d) const
-        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
+        noexcept(_S_noexcept<_Tp &>()) {
         if constexpr(__member_create_arc_map<_Tp, _ValueType>)
             return __t.template create_arc_map<_ValueType>(__d);
         else
@@ -1387,52 +1397,16 @@ public:
 }  // namespace __cust_access
 
 inline namespace __cust {
-template <typename _ValueType, typename _Tp>
-    requires requires(const _Tp & __t) {
-        __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(__t);
-    }
-inline constexpr auto create_vertex_map(const _Tp & __t) noexcept(
-    noexcept(__cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
-        std::declval<_Tp &>()))) {
-    return __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
-        __t);
-}
+// Variable templates, not function templates: `create_vertex_map<T>(g)` reads
+// the same at every call site, but the name is now invisible to ADL, so the
+// __adl_create_vertex_map probe inside the CPO can only ever find a *user's*
+// create_vertex_map. See the comment on _CreateVertexMap.
+template <typename _ValueType>
+inline constexpr __cust_access::_CreateVertexMap<_ValueType>
+    create_vertex_map{};
 
-template <typename _ValueType, typename _Tp>
-    requires requires(const _Tp & __t, const _ValueType & __d) {
-        __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(__t,
-                                                                          __d);
-    }
-inline constexpr auto
-create_vertex_map(const _Tp & __t, const _ValueType & __d) noexcept(
-    noexcept(__cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
-        std::declval<_Tp &>(), std::declval<_ValueType &>()))) {
-    return __cust_access::_CreateVertexMap{}.template operator()<_ValueType>(
-        __t, __d);
-}
-
-template <typename _ValueType, typename _Tp>
-    requires requires(const _Tp & __t) {
-        __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
-    }
-inline constexpr auto create_arc_map(const _Tp & __t) noexcept(
-    noexcept(__cust_access::_CreateArcMap{}.template operator()<_ValueType>(
-        std::declval<_Tp &>()))) {
-    return __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t);
-}
-
-template <typename _ValueType, typename _Tp>
-    requires requires(const _Tp & __t, const _ValueType & __d) {
-        __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t,
-                                                                       __d);
-    }
-inline constexpr auto
-create_arc_map(const _Tp & __t, const _ValueType & __d) noexcept(
-    noexcept(__cust_access::_CreateArcMap{}.template operator()<_ValueType>(
-        std::declval<_Tp &>(), std::declval<_ValueType &>()))) {
-    return __cust_access::_CreateArcMap{}.template operator()<_ValueType>(__t,
-                                                                          __d);
-}
+template <typename _ValueType>
+inline constexpr __cust_access::_CreateArcMap<_ValueType> create_arc_map{};
 }  // namespace __cust
 
 template <typename _Tp, typename _ValueType>

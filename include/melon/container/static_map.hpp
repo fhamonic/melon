@@ -102,7 +102,7 @@ public:
     [[nodiscard]] constexpr mapped_type * data() noexcept {
         return _data.get();
     }
-    [[nodiscard]] constexpr mapped_type * data() const noexcept {
+    [[nodiscard]] constexpr const mapped_type * data() const noexcept {
         return _data.get();
     }
 };

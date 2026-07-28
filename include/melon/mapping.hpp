@@ -47,12 +47,17 @@ template <typename _Map, typename _Key, typename _Value>
 concept output_mapping_of = output_mapping<_Map, _Key> &&
                             std::same_as<mapped_value_t<_Map, _Key>, _Value>;
 
+// `data()` only has to give read access to the contiguous block: a const map
+// hands out `const V *`, a mutable one `V *`. Requiring exactly `V *` here
+// would push containers into declaring a const-incorrect `data() const` just
+// to model the concept.
 template <typename _Map, typename _Key>
 concept contiguous_mapping =
     input_mapping<_Map, _Key> && std::integral<_Key> && requires(_Map & __m) {
         {
             __m.data()
-        } -> std::same_as<std::add_pointer_t<mapped_value_t<_Map, _Key>>>;
+        } -> std::convertible_to<std::add_pointer_t<
+              std::add_const_t<mapped_value_t<_Map, _Key>>>>;
     };
 
 template <typename _Map, typename _Key, typename _Value>
@@ -254,6 +259,16 @@ public:
     }
 };
 
+namespace __detail {
+
+// Declared here rather than next to __can_mapping_ref_view: the CTAD probe
+// needs mapping_owning_view to be complete.
+template <typename _Map>
+concept __can_mapping_owning_view =
+    requires { mapping_owning_view{std::declval<_Map>()}; };
+
+}  // namespace __detail
+
 namespace views {
 
 struct _MappingAll {
@@ -275,7 +290,14 @@ private:
     }
 
 public:
+    // Constrained so that `requires { mapping_all(m); }` and `mapping_all_t<M>`
+    // are usable in a requires-clause: without this the noexcept-specifier
+    // below is instantiated for every argument and hard-errors outside the
+    // immediate context instead of just removing the candidate.
     template <typename _Map>
+        requires __pass_through<_Map> ||
+                 __detail::__can_mapping_ref_view<_Map> ||
+                 __detail::__can_mapping_owning_view<_Map>
     [[nodiscard]] constexpr auto operator()(_Map && __m) const
         noexcept(_S_noexcept<_Map>()) {
         if constexpr(__pass_through<_Map>)
