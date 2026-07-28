@@ -11,6 +11,12 @@ build:
 package:
 	conan create . -u -b=missing -pr=${CONAN_PROFILE}
 
+doc:
+	zensical serve
+
+check-format:
+	find include test -name "*.hpp" -o -name "*.cpp" | xargs clang-format --dry-run -Werror
+	
 clean:
 	@rm -rf CMakeUserPresets.json
 	@rm -rf build

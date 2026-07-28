@@ -7,12 +7,25 @@ on:
     branches: ["main"]
 
 jobs:
+  clang-format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Same pinned version as the one the tree is formatted with; a different
+      # major version would flag different lines.
+      - name: Install clang-format
+        run: pipx install clang-format==18.1.8
+      - name: Check formatting
+        run: |
+          find include test -name "*.hpp" -o -name "*.cpp" \
+            | xargs clang-format --dry-run -Werror
+
   linux-gcc15-build:
     runs-on: ubuntu-latest
     container:
       image: ubuntu:25.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Update APT
         run: apt-get update && apt-get upgrade -y
       - name: Install GCC-15 an CMake
@@ -25,14 +38,14 @@ jobs:
       - name: Build and run unit tests
         run: |
           conan profile detect --name=default
-          make CONAN_PROFILE=.github/workflows/gcc15_c++26
+          make CONAN_PROFILE=.github/conan-profiles/gcc15_c++26
 
   linux-gcc14-build:
     runs-on: ubuntu-latest
     container:
       image: ubuntu:24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Update APT
         run: apt-get update && apt-get upgrade -y
       - name: Install GCC-14 and CMake
@@ -45,7 +58,52 @@ jobs:
       - name: Build and run unit tests
         run: |
           conan profile detect --name=default
-          make CONAN_PROFILE=.github/workflows/gcc14_c++23
+          make CONAN_PROFILE=.github/conan-profiles/gcc14_c++23
+
+  linux-clang18-build:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install Clang-18, libstdc++-14 and CMake
+        run: apt-get install -y clang-18 libstdc++-14-dev cmake
+      - name: Install Conan 2.0
+        run: |
+          apt-get install -y pipx
+          pipx install conan
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Build and run unit tests
+        run: |
+          conan profile detect --name=default
+          make CONAN_PROFILE=.github/conan-profiles/clang18_c++23
+
+  # The regular jobs run plain Release; this one reruns the suite under
+  # AddressSanitizer + UndefinedBehaviorSanitizer. It goes through the pure
+  # CMake workflow, which also exercises the FetchContent GTest fallback.
+  linux-gcc15-sanitize:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:25.04
+    env:
+      CC: gcc-15
+      CXX: g++-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install GCC-15 and CMake
+        run: apt-get install -y gcc-15 g++-15 cmake
+      - name: Configure with ASan and UBSan
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DMELON_SANITIZE=address,undefined
+      - name: Build
+        run: cmake --build build -j
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
 
   cmake-submodule-test:
     runs-on: ubuntu-latest
@@ -56,7 +114,7 @@ jobs:
         run: apt-get update && apt-get upgrade -y
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           path: consumer/external/melon
       - name: Create a consumer project using melon as a submodule
@@ -116,10 +174,10 @@ jobs:
   windows-mingw15-build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Install Conan 2.0
         run: pip install conan
       - name: Autodetect a default conan profile
         run: conan profile detect --name=default
       - name: Build and run unit tests
-        run: make CONAN_PROFILE=.github/workflows/mingw15_c++26
+        run: make CONAN_PROFILE=.github/conan-profiles/mingw15_c++26

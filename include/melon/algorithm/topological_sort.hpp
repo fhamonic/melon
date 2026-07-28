@@ -1,8 +1,8 @@
-#ifndef MELON_ALGORITHM_TOPOLOGICAL_SORT_HPP
-#define MELON_ALGORITHM_TOPOLOGICAL_SORT_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -170,5 +170,3 @@ topological_sort(_Traits, _Graph &&)
     -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_TOPOLOGICAL_SORT_HPP

@@ -1,0 +1,191 @@
+/* MELON brand palette (sampled from the logo):
+   MELON_blue_dark  #024A80   MELON_blue      #065F98
+   MELON_blue_light #7298B8   MELON_green     #50A03E
+   MELON_green_dark #335F2F   MELON_khaki     #C8BA70 */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #024A80;
+  --md-primary-fg-color--light: #7298B8;
+  --md-primary-fg-color--dark: #01355C;
+  --md-accent-fg-color: #3C7B34; /* darkened green for contrast on light */
+  --md-accent-fg-color--transparent: #3c7b341a;
+  --md-typeset-a-color: #065F98;
+  --melon-khaki: #8A7C41; /* darkened for contrast on light */
+  --melon-hero-title: #024A80;
+  /* the recessed nav tier. Material's --md-default-fg-color--light (55%) is
+     meant for body-adjacent prose, and reads washed out on 0.7rem nav text. */
+  --melon-nav-dim: #000000b0;
+}
+
+[data-md-color-scheme="slate"] {
+  /* shift the dark background hue towards the brand blue */
+  --md-hue: 210;
+  --md-primary-fg-color: #024A80;
+  --md-primary-fg-color--light: #7298B8;
+  --md-primary-fg-color--dark: #01355C;
+  /* lightened tints of MELON_green / MELON_blue to keep contrast on dark */
+  --md-accent-fg-color: #7BC466;
+  --md-accent-fg-color--transparent: #7bc4661a;
+  --md-typeset-a-color: #8FB8D8;
+  --melon-khaki: #C8BA70;
+  --melon-hero-title: #8FB8D8;
+  --melon-nav-dim: hsla(var(--md-hue), 15%, 90%, 0.68);
+
+  /* modern drops the page to 5% lightness, which flattens every surface
+     against it. Lift the whole ladder ~6pt and keep code and footer above the
+     page so they still read as distinct surfaces. */
+  --md-default-bg-color: hsla(var(--md-hue), 15%, 11%, 1);
+  --md-default-bg-color--light: hsla(var(--md-hue), 15%, 11%, 0.54);
+  --md-default-bg-color--lighter: hsla(var(--md-hue), 15%, 11%, 0.26);
+  --md-default-bg-color--lightest: hsla(var(--md-hue), 15%, 11%, 0.07);
+  --md-code-bg-color: hsla(var(--md-hue), 20%, 16%, 1);
+  --md-code-bg-color--light: hsla(var(--md-hue), 20%, 16%, 0.9);
+  --md-code-bg-color--lighter: hsla(var(--md-hue), 20%, 16%, 0.54);
+  --md-footer-bg-color: hsla(var(--md-hue), 15%, 16%, 0.87);
+  --md-footer-bg-color--dark: hsla(var(--md-hue), 15%, 14%, 1);
+}
+
+/* Brand banner.
+   The modern variant paints its chrome with --md-default-bg-color--light over
+   --md-default-fg-color, so it reads as page surface and none of the primary
+   colors reach it (modern uses --md-primary-fg-color for .md-button--primary
+   and nothing else). Repoint header and tabs at the primary pair. */
+.md-header,
+.md-tabs {
+  background-color: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+}
+/* modern insets a hairline between tabs and page, dark-on-blue here */
+.md-tabs {
+  box-shadow: none;
+}
+/* the active-tab underline is --md-default-fg-color: invisible on blue */
+.md-tabs__item--active {
+  border-bottom-color: currentcolor;
+}
+/* inactive tabs ship at 70% opacity, too faint to read as navigation */
+.md-tabs__link {
+  opacity: 0.82;
+}
+
+/* The search pill is painted from the default (page surface) palette in the
+   modern variant, so on a banner that is blue in both schemes it flips over:
+   near-black glyphs on a darkened pill in light, light grey on a lightened
+   pill in dark. The classic variant already assumes a primary-colored header
+   and styles it scheme-independently — these are its values. */
+.md-search__button {
+  background-color: #00000042;
+  color: var(--md-primary-bg-color);
+}
+.md-search__button:focus,
+.md-search__button:hover {
+  background-color: #ffffff1f;
+  color: var(--md-primary-bg-color);
+}
+/* the magnifier is a mask, tinted through background-color */
+.md-search__button::before {
+  background-color: var(--md-primary-bg-color);
+}
+/* the Ctrl+K / ⌘K chip; its text inherits the button color */
+.md-search__button::after {
+  background: #00000042;
+}
+
+/* outline buttons default to primary-colored text, unreadable on dark */
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) {
+  color: var(--md-typeset-a-color);
+}
+
+/* khaki as a discreet structural accent */
+.md-typeset table:not([class]) th {
+  border-bottom: 0.12rem solid var(--melon-khaki);
+}
+.md-typeset blockquote {
+  border-left-color: var(--melon-khaki);
+}
+
+/* Navigation hierarchy.
+   Both theme variants give h2/h3 table-of-contents entries the same weight and
+   color — only a small indent separates them. Step the levels apart instead.
+
+   Ancestors are wrapped in :where() so these rules carry almost no
+   specificity, and the ":not(--active, :hover, :focus)" guard keeps them off
+   the states the theme styles itself. Both variants therefore keep their own
+   active and hover treatment (classic: blue text; modern: an accent pill). */
+
+/* left sidebar — section header.
+   Only visible in the classic variant: with navigation.tabs the modern
+   variant hides it, since the active tab already names the section. */
+.md-nav--primary .md-nav__item--section > .md-nav__link[for] {
+  color: var(--md-default-fg-color);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-bottom: 0.3rem;
+  border-bottom: 0.05rem solid var(--melon-khaki);
+}
+/* left sidebar — pages within a section recede */
+:where(.md-nav--primary .md-nav__item--section > .md-nav)
+  .md-nav__link:not(.md-nav__link--active, :hover, :focus) {
+  color: var(--melon-nav-dim);
+}
+
+/* right sidebar — "On this page" header */
+:where(.md-sidebar--secondary .md-nav--secondary) > .md-nav__title {
+  color: var(--md-default-fg-color);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* right sidebar — h2 entries lead */
+:where(.md-sidebar--secondary .md-nav--secondary)
+  > :where(.md-nav__list)
+  > :where(.md-nav__item)
+  > .md-nav__link {
+  font-weight: 600;
+}
+:where(.md-sidebar--secondary .md-nav--secondary)
+  > :where(.md-nav__list)
+  > :where(.md-nav__item)
+  > .md-nav__link:not(.md-nav__link--active, :hover, :focus) {
+  color: var(--md-default-fg-color);
+}
+/* right sidebar — h3 and deeper recede behind a guide line */
+:where(.md-sidebar--secondary .md-nav--secondary) .md-nav > .md-nav__list {
+  margin-left: 0.4rem;
+  padding-left: 0.4rem;
+  border-left: 0.05rem solid var(--md-default-fg-color--lighter);
+}
+:where(.md-sidebar--secondary .md-nav--secondary .md-nav)
+  .md-nav__link:not(.md-nav__link--active, :hover, :focus) {
+  color: var(--melon-nav-dim);
+  font-weight: 400;
+}
+
+/* landing page hero */
+.melon-hero {
+  text-align: center;
+  margin: 0.5rem 0 2rem;
+}
+.melon-hero img {
+  width: min(13rem, 50vw);
+  margin-bottom: 0.5rem;
+}
+.melon-hero h1 {
+  margin: 0 0 0.4rem;
+  color: var(--melon-hero-title);
+  letter-spacing: 0.12em;
+}
+.melon-hero p {
+  max-width: 34rem;
+  margin: 0.6rem auto 1.2rem;
+}
+.melon-hero hr {
+  width: 4rem;
+  margin: 1.2rem auto 0;
+  border: none;
+  border-top: 0.2rem solid var(--melon-khaki);
+}
+.melon-hero .md-button {
+  margin: 0.25rem 0.35rem;
+}

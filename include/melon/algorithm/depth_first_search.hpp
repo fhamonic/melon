@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_depth_first_search_HPP
-#define MELON_ALGORITHM_depth_first_search_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -185,5 +184,3 @@ depth_first_search(_Traits, _Graph &&, const vertex_t<_Graph> &)
     -> depth_first_search<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_depth_first_search_HPP

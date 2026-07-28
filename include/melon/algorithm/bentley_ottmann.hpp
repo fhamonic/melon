@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_BENTLEY_OTTMANN_HPP
-#define MELON_ALGORITHM_BENTLEY_OTTMANN_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -132,10 +131,10 @@ private:
     };
 
     using segments_tree =
-        typename _Traits::segments_tree<segment_entry, segment_cmp>;
+        typename _Traits::template segments_tree<segment_entry, segment_cmp>;
     enum event_type { starting, ending, coincident };
     using events = std::vector<std::pair<segment_id_type, event_type>>;
-    using events_tree = typename _Traits::events_tree<events>;
+    using events_tree = typename _Traits::template events_tree<events>;
 
 private:
     [[no_unique_address]] _SegmentMap _segment_map;
@@ -158,7 +157,9 @@ public:
         , _segments_tree(segment_cmp(std::cref(_current_event_point)))
         , _tmp_tree(segment_cmp(std::cref(_tmp_event_point))) {
         for(auto && s : segments_ids_range) {
-            const auto & [p1, p2] = segment_map[s];
+            // read through the wrapped member, not the raw parameter: the
+            // latter need not be subscriptable (a callable, typically).
+            const auto & [p1, p2] = _segment_map[s];
             if(_event_cmp(p1, p2)) {
                 push_segment_endpoint(p1, s, event_type::starting);
                 push_segment_endpoint(p2, s, event_type::ending);
@@ -327,16 +328,19 @@ public:
 };
 
 template <typename _SegmentIdRange>
-bentley_ottmann(_SegmentIdRange &&) -> bentley_ottmann<
-    default_bentley_ottmann_traits<std::ranges::range_value_t<_SegmentIdRange>>,
-    std::ranges::range_value_t<_SegmentIdRange>, views::identity_map>;
+bentley_ottmann(_SegmentIdRange &&)
+    -> bentley_ottmann<default_bentley_ottmann_traits<
+                           std::ranges::range_value_t<_SegmentIdRange>>,
+                       std::ranges::range_value_t<_SegmentIdRange>,
+                       views::identity_map>;
 
 template <typename _SegmentIdRange, typename _SegmentMap>
-bentley_ottmann(_SegmentIdRange &&, _SegmentMap &&) -> bentley_ottmann<
-    default_bentley_ottmann_traits<mapped_value_t<
-        _SegmentMap, std::ranges::range_value_t<_SegmentIdRange>>>,
-    std::ranges::range_value_t<_SegmentIdRange>,
-    views::mapping_all_t<_SegmentMap>>;
+bentley_ottmann(_SegmentIdRange &&, _SegmentMap &&)
+    -> bentley_ottmann<default_bentley_ottmann_traits<mapped_value_t<
+                           views::mapping_all_t<_SegmentMap>,
+                           std::ranges::range_value_t<_SegmentIdRange>>>,
+                       std::ranges::range_value_t<_SegmentIdRange>,
+                       views::mapping_all_t<_SegmentMap>>;
 
 template <typename _SegmentIdRange, typename _Traits>
 bentley_ottmann(_Traits, _SegmentIdRange &&)
@@ -349,5 +353,3 @@ bentley_ottmann(_Traits, _SegmentIdRange &&, _SegmentMap &&)
                        views::mapping_all_t<_SegmentMap>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_BENTLEY_OTTMANN_HPP

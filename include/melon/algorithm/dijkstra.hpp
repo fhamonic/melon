@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_DIJKSTA_HPP
-#define MELON_ALGORITHM_DIJKSTA_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -247,22 +246,24 @@ public:
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = dijkstra_default_traits<
-              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
-dijkstra(_Graph &&, _LengthMap &&)
-    -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
-                _Traits>;
+              _Graph,
+              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
+dijkstra(_Graph &&,
+         _LengthMap &&) -> dijkstra<views::graph_all_t<_Graph>,
+                                    views::mapping_all_t<_LengthMap>, _Traits>;
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = dijkstra_default_traits<
-              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
+              _Graph,
+              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
 dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
     -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
                 _Traits>;
 
 template <typename _Graph, typename _LengthMap, typename _Traits>
-dijkstra(_Traits, _Graph &&, _LengthMap &&)
-    -> dijkstra<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>,
-                _Traits>;
+dijkstra(_Traits, _Graph &&,
+         _LengthMap &&) -> dijkstra<views::graph_all_t<_Graph>,
+                                    views::mapping_all_t<_LengthMap>, _Traits>;
 
 template <typename _Graph, typename _LengthMap, typename _Traits>
 dijkstra(_Traits, _Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
@@ -270,5 +271,3 @@ dijkstra(_Traits, _Graph &&, _LengthMap &&, const vertex_t<_Graph> &)
                 _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_DIJKSTA_HPP

@@ -1,5 +1,4 @@
-#ifndef MELON_BIOBJECTIVE_DIJKSTRA_HPP
-#define MELON_BIOBJECTIVE_DIJKSTRA_HPP
+#pragma once
 
 #include <set>
 #include <utility>
@@ -188,8 +187,8 @@ public:
 
 template <typename _Graph, typename _BLM, typename _RLM,
           typename _Traits = biobjective_dijkstra_default_traits<
-              _Graph, mapped_value_t<_BLM, arc_t<_Graph>>,
-              mapped_value_t<_RLM, arc_t<_Graph>>>>
+              _Graph, mapped_value_t<views::mapping_all_t<_BLM>, arc_t<_Graph>>,
+              mapped_value_t<views::mapping_all_t<_RLM>, arc_t<_Graph>>>>
 biobjective_dijkstra(_Graph &&, _BLM &&, _RLM &&)
     -> biobjective_dijkstra<views::graph_all_t<_Graph>,
                             views::mapping_all_t<_BLM>,
@@ -202,5 +201,3 @@ biobjective_dijkstra(_Traits, _Graph &&, _BLM &&, _RLM &&)
                             views::mapping_all_t<_RLM>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_BIOBJECTIVE_DIJKSTRA_HPP

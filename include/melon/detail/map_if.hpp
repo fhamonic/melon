@@ -1,5 +1,4 @@
-#ifndef MELON_DETAIL_MAP_IF_HPP
-#define MELON_DETAIL_MAP_IF_HPP
+#pragma once
 
 #include <type_traits>
 
@@ -56,5 +55,3 @@ struct arc_map_if<true, _Graph, _Type, _DiscriminatingT> {
 };
 
 }  // namespace melon
-
-#endif  // MELON_DETAIL_MAP_IF_HPP

@@ -1,5 +1,4 @@
-#ifndef MELON_DETAIL_PREFETCH_HPP
-#define MELON_DETAIL_PREFETCH_HPP
+#pragma once
 
 #include <concepts>
 #include <ranges>
@@ -21,12 +20,12 @@ constexpr void prefetch_range(const R & range) {
 template <std::ranges::range _Keys,
           mapping<std::ranges::range_value_t<_Keys>> _ValueMap>
 constexpr void prefetch_mapped_values(const _Keys & __keys,
-                                      const _ValueMap & __map) {  
+                                      const _ValueMap & __map) {
     if constexpr(requires {
-                    std::ranges::begin(__keys);
-                    std::ranges::end(__keys);
+                     std::ranges::begin(__keys);
+                     std::ranges::end(__keys);
                  } && contiguous_mapping<_ValueMap,
-                                           std::ranges::range_value_t<_Keys>>) {          
+                                         std::ranges::range_value_t<_Keys>>) {
 #if defined(__GNUC__)
         if(std::ranges::begin(__keys) != std::ranges::end(__keys)) {
             __builtin_prefetch(__map.data() + *std::ranges::begin(__keys));
@@ -36,5 +35,3 @@ constexpr void prefetch_mapped_values(const _Keys & __keys,
 }
 
 }  // namespace melon
-
-#endif  // MELON_DETAIL_PREFETCH_HPP

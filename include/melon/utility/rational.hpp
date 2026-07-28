@@ -1,5 +1,4 @@
-#ifndef RATIONAL_HPP
-#define RATIONAL_HPP
+#pragma once
 
 #include <cassert>
 #include <concepts>
@@ -25,9 +24,7 @@ public:
     constexpr rational(NumT n)
         requires std::constructible_from<DenT, int>
         : _num(n), _den(1) {}
-    constexpr rational(NumT n, DenT d) : _num(n), _den(d) {
-        assert(_den >= 0);
-    }
+    constexpr rational(NumT n, DenT d) : _num(n), _den(d) { assert(_den >= 0); }
 
     template <typename N, typename D>
         requires(std::constructible_from<NumT, N> &&
@@ -114,5 +111,3 @@ template <typename T = int>
 using integer = rational<T, const_value<int, 1>>;
 
 }  // namespace melon
-
-#endif  // RATIONAL_HPP

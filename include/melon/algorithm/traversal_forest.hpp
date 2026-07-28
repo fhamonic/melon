@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_TRAVERSAL_FOREST_HPP
-#define MELON_ALGORITHM_TRAVERSAL_FOREST_HPP
+#pragma once
 
 #include <cassert>
 #include <ranges>
@@ -93,10 +92,8 @@ traversal_forest(_Graph &&)
     -> traversal_forest<views::graph_all_t<_Graph>, vertices_range_t<_Graph>>;
 
 template <typename _Graph, typename _Sources>
-traversal_forest(_Graph &&, _Sources &&)
-    -> traversal_forest<views::graph_all_t<_Graph>,
-                        std::views::all_t<_Sources>>;
+traversal_forest(_Graph &&,
+                 _Sources &&) -> traversal_forest<views::graph_all_t<_Graph>,
+                                                  std::views::all_t<_Sources>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_TRAVERSAL_FOREST_HPP

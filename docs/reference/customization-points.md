@@ -1,0 +1,107 @@
+# Customization points
+
+Every accessor in melon — `melon::vertices`, `melon::out_arcs`, `melon::arc_target`, … — is a **customization point object** (CPO): a constexpr function object in `namespace melon`, not an ordinary function. Three consequences:
+
+1. **Two ways to provide one.** A CPO accepts a member function (`g.out_arcs(v)`) or a free function found by ADL (`out_arcs(g, v)`). The member is preferred. You never specialize anything inside `namespace melon`.
+2. **They cannot be hijacked by ADL at the call site.** `vertices(g)` inside a `using namespace melon;` scope resolves to the CPO, which then does the lookup itself.
+3. **Several of them fall back.** When a graph does not provide a function directly, the CPO synthesizes it from what the graph *does* provide — which is why a structure with three members is already a `graph`.
+
+## The full table
+
+`✓` = must be provided directly (member or ADL) if you want it. Everything else lists what it is derived from when absent.
+
+### Vertices and arcs
+
+| CPO | Fallback when not provided |
+| --- | --- |
+| `vertices(g)` | — (primitive) |
+| `num_vertices(g)` | `std::ranges::size(vertices(g))` when that range is sized |
+| `arcs(g)` | join of `out_arcs` over all vertices, or of `in_arcs` — see [below](#choosing-between-fallbacks) |
+| `num_arcs(g)` | `std::ranges::size(arcs(g))` when that range is sized |
+| `arcs_entries(g)` | `arcs` + `arc_source` + `arc_target`, or a join of the out- or in-incidences |
+
+### Incidence and adjacency
+
+| CPO | Fallback when not provided |
+| --- | --- |
+| `out_arcs(g, v)` | — |
+| `in_arcs(g, v)` | — |
+| `arc_source(g, a)` | — |
+| `arc_target(g, a)` | — |
+| `out_degree(g, v)` | `std::ranges::size(out_arcs(g, v))` when sized |
+| `in_degree(g, v)` | `std::ranges::size(in_arcs(g, v))` when sized |
+| `out_neighbors(g, v)` | `out_arcs(g, v)` transformed by `arc_target` |
+| `in_neighbors(g, v)` | `in_arcs(g, v)` transformed by `arc_source` |
+| `arc_sources_map(g)` | `views::map` over `arc_source` |
+| `arc_targets_map(g)` | `views::map` over `arc_target` |
+
+### Data
+
+| CPO | Fallback |
+| --- | --- |
+| `create_vertex_map<T>(g)` / `create_vertex_map<T>(g, d)` | — |
+| `create_arc_map<T>(g)` / `create_arc_map<T>(g, d)` | — |
+
+Both overloads must be provided, and the result must model `output_mapping_of<vertex_t<G>, T>` (respectively `arc_t<G>`).
+
+### Mutation
+
+None of these has a fallback; providing one is what makes the corresponding concept true.
+
+| CPO | Concept |
+| --- | --- |
+| `create_vertex(g)` | `has_vertex_creation` |
+| `remove_vertex(g, v)`, `is_valid_vertex(g, v)` | `has_vertex_removal` |
+| `create_arc(g, u, v)` | `has_arc_creation` |
+| `remove_arc(g, a)`, `is_valid_arc(g, a)` | `has_arc_removal` |
+| `change_arc_source(g, a, s)` | `has_change_arc_source` |
+| `change_arc_target(g, a, t)` | `has_change_arc_target` |
+
+### Undirected
+
+| CPO | Fallback |
+| --- | --- |
+| `edges(g)` | — |
+| `num_edges(g)` | `std::ranges::size(edges(g))` when sized |
+| `edge_endpoints(g, e)` | — |
+| `incidence(g, v)` | — |
+| `degree(g, v)` | `std::ranges::size(incidence(g, v))` when sized |
+| `create_edge_map<T>(g)` / `create_edge_map<T>(g, d)` | — |
+
+## Choosing between fallbacks
+
+`arcs` and `arcs_entries` may have several routes available at once, and the CPO picks by **range category**, preferring the stronger one. The internal `_range_rank` ranks contiguous over random-access over bidirectional over forward over input.
+
+For `arcs_entries` the priority is:
+
+1. a member or ADL `arcs_entries` — always wins;
+2. listing `arcs` and pairing each with `arc_source`/`arc_target`, when the `arcs` range ranks at least as high as the incidence ranges;
+3. joining the out-incidences, when they rank above the in-incidences;
+4. joining the in-incidences otherwise.
+
+For `arcs`, when both incidence directions are available, whichever range ranks higher is joined.
+
+The practical reading: a structure that stores an explicit arc list keeps its random-access arc iteration, and one that stores adjacency lists gets a correct forward-only arc range rather than nothing. If you can produce entries more directly than either route, define `arcs_entries` and the choice is skipped.
+
+## `noexcept` propagation
+
+Each CPO computes its own `noexcept` from the expression it will actually evaluate. A `noexcept` member accessor yields a `noexcept` CPO call; the synthesized fallbacks that build range adaptors are conservatively not `noexcept`. Nothing is asserted about your accessors — mark them `noexcept` when they are, and it propagates.
+
+## Writing an adapter
+
+```cpp
+namespace their_lib {
+struct their_graph { ... };
+
+inline auto vertices(const their_graph & g) noexcept { ... }
+inline auto out_arcs(const their_graph & g, unsigned int v) noexcept { ... }
+inline unsigned int arc_target(const their_graph & g, unsigned int a) noexcept { ... }
+
+template <typename T> auto create_vertex_map(const their_graph & g) { ... }
+template <typename T> auto create_vertex_map(const their_graph & g, const T & d) { ... }
+}  // namespace their_lib
+```
+
+Nothing is added to `namespace melon`; ADL from the argument type finds them. The map factories are templates called with an explicit template argument — `create_vertex_map<T>(g)` — which ADL supports because a function template of that name is visible in `melon`.
+
+See [Bringing your own graph](../graphs/custom-graphs.md) for complete, compiling examples and the rules the ranges must respect — including the one trap: `graph_ref_view`, which every algorithm wraps its argument in, forwards the accessors listed above but **not** `arcs_entries`, so a type whose only route to `arcs_entries` is its own member will satisfy `graph` on its own and fail once wrapped.

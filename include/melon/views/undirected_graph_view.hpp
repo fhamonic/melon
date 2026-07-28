@@ -1,5 +1,4 @@
-#ifndef MELON_UNDIRECTED_GRAPH_VIEW_HPP
-#define MELON_UNDIRECTED_GRAPH_VIEW_HPP
+#pragma once
 
 #include <algorithm>
 #include <ranges>
@@ -65,7 +64,7 @@ public:
         return melon::edges(*_undirected_graph);
     }
 
-    [[nodiscard]] constexpr vertex edge_endpoints(
+    [[nodiscard]] constexpr std::pair<vertex, vertex> edge_endpoints(
         const edge & e) const noexcept {
         return melon::edge_endpoints(*_undirected_graph, e);
     }
@@ -161,7 +160,7 @@ public:
         return melon::edges(_undirected_graph);
     }
 
-    [[nodiscard]] constexpr vertex edge_endpoints(
+    [[nodiscard]] constexpr std::pair<vertex, vertex> edge_endpoints(
         const edge & e) const noexcept {
         return melon::edge_endpoints(_undirected_graph, e);
     }
@@ -251,5 +250,3 @@ using undirected_graph_all_t =
 
 }  // namespace views
 }  // namespace melon
-
-#endif  // MELON_UNDIRECTED_GRAPH_VIEW_HPP

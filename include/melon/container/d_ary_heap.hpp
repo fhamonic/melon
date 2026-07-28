@@ -1,5 +1,4 @@
-#ifndef MELON_D_ARY_HEAP_HPP
-#define MELON_D_ARY_HEAP_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -323,10 +322,12 @@ public:
         assert(
             base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
         base_class::_entry_priority_map[e] = p;
-        base_class::adjust_heap(_heap_index_map[k], std::move(e));
+        // Unlike pop(), every slot of the array is still live here, so the
+        // sifting range covers the whole heap.
+        base_class::adjust_heap(
+            _heap_index_map[k],
+            base_class::_heap_array.size() * sizeof(value_type), std::move(e));
     }
 };
 
 }  // namespace melon
-
-#endif  // MELON_D_ARY_HEAP_HPP

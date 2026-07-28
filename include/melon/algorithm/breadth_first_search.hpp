@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_BFS_HPP
-#define MELON_ALGORITHM_BFS_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -344,5 +343,3 @@ breadth_first_search(_Traits, _Graph &&, const vertex_t<_Graph> &)
     -> breadth_first_search<views::graph_all_t<_Graph>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_BFS_HPP

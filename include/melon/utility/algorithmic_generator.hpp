@@ -1,8 +1,8 @@
-#ifndef MELON_UTILITY_ALGORITHM_GENERATOR_HPP
-#define MELON_UTILITY_ALGORITHM_GENERATOR_HPP
+#pragma once
 
 #include <concepts>
 #include <iterator>
+#include <ranges>
 #include <type_traits>
 
 namespace melon {
@@ -54,17 +54,17 @@ public:
         // return it.algorithm.get().finished();
         return it.algorithm->finished();
     }
-    value_type operator*() const noexcept { 
+    value_type operator*() const noexcept {
         // return algorithm.get().current();
         return algorithm->current();
-     }
+    }
 };
 
 template <typename T>
 class algorithm_view_interface : public std::ranges::view_interface<T> {
 public:
     [[nodiscard]] constexpr auto begin() noexcept {
-        return algorithm_iterator(*static_cast<T*>(this));
+        return algorithm_iterator(*static_cast<T *>(this));
     }
     [[nodiscard]] constexpr auto end() noexcept {
         return std::default_sentinel;
@@ -72,5 +72,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_UTILITY_ALGORITHM_GENERATOR_HPP

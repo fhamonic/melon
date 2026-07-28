@@ -1,6 +1,3 @@
-cmake_minimum_required(VERSION 3.13)
-project(MelonUnitTests CXX)
- 
 # ################### Modules ####################
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
@@ -8,7 +5,6 @@ include(CompilerWarnings)
 
 # ################### Packages ###################
 find_package(GTest)
-# find_package(mp++ REQUIRED)
 if(NOT GTest_FOUND)
   if(MELON_FROM_CONAN)
     message(
@@ -27,21 +23,11 @@ endif()
 
 include(GoogleTest)
 
-# ################### Library ####################
-if(NOT TARGET melon)
-  add_library(melon INTERFACE)
-  target_include_directories(
-      melon INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/../include>
-                      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-endif()
-# target_link_libraries(melon INTERFACE mp++::mp++)
-
-set_project_warnings(melon)
-
 # ################# TEST target ##################
 add_executable(
   melon_test
   main.cpp
+  all.cpp
   cpo.cpp
   static_digraph.cpp
   static_forward_digraph.cpp
@@ -80,22 +66,65 @@ add_executable(
   traversal_forest.cpp
   concat_view_fallback.cpp
   biobjective_dijkstra.cpp
+  rational.cpp
+  experimental.cpp
+  undirected_graph.cpp
+  undirected_graph_view.cpp
+  mapping.cpp
+  semiring.cpp
+  priority_queue.cpp
+  graphviz_printer.cpp
+  algorithmic_generator.cpp
+  geometry.cpp
 )
+target_include_directories(melon_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(melon_test GTest::gtest)
-target_link_libraries(melon_test melon)
+target_link_libraries(melon_test melon::melon)
+
+set_project_warnings(melon_test)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(melon_test PRIVATE -fconcepts-diagnostics-depth=20)
+endif()
+
+# ################# Sanitizers ###################
+set(MELON_SANITIZE
+    ""
+    CACHE STRING
+          "Sanitizers to build the tests with, e.g. \"address\" or
+           \"address,undefined\" (GCC/Clang only)")
+if(MELON_SANITIZE)
+  target_compile_options(melon_test PRIVATE -fsanitize=${MELON_SANITIZE})
+  target_link_options(melon_test PRIVATE -fsanitize=${MELON_SANITIZE})
+endif()
+
 gtest_discover_tests(melon_test)
 
-target_compile_options(melon_test INTERFACE -fconcepts-diagnostics-depth=20)
+# ########## Header self-containment check ###########
+# One translation unit per public header, generated at configure time: each
+# header must compile on its own, with nothing included before it. This is what
+# catches a header that only ever worked because some other one happened to be
+# included first.
+file(
+  GLOB_RECURSE MELON_PUBLIC_HEADERS
+  RELATIVE ${PROJECT_SOURCE_DIR}/include
+  CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/include/melon/*.hpp)
 
-execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
-                OUTPUT_VARIABLE LIBASAN_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
+# The two unfinished experimental headers do not compile yet; they are held
+# back from the install rules too, see their file-level comments.
+list(REMOVE_ITEM MELON_PUBLIC_HEADERS melon/experimental/scapegoat_tree.hpp
+     melon/experimental/doubly_connected_digraph.hpp)
 
-message("cxx : ${CMAKE_CXX_COMPILER}")
-message("libasan : ${LIBASAN_PATH}")
+set(MELON_HEADER_CHECK_SOURCES "")
+foreach(header ${MELON_PUBLIC_HEADERS})
+  string(REGEX REPLACE "[/.]" "_" header_slug ${header})
+  set(header_check_source
+      ${CMAKE_CURRENT_BINARY_DIR}/header_check/${header_slug}.cpp)
+  file(GENERATE OUTPUT ${header_check_source}
+       CONTENT "#include \"${header}\"\n")
+  list(APPEND MELON_HEADER_CHECK_SOURCES ${header_check_source})
+endforeach()
 
-if(NOT "${LIBASAN_PATH}" STREQUAL "libasan.so")
-  target_compile_options(melon_test PRIVATE -fsanitize=address)
-  target_link_options(melon_test PRIVATE -fsanitize=address -lpthread)
-  target_link_libraries(melon_test "${LIBASAN_PATH}")
-endif()
+add_library(melon_header_check OBJECT ${MELON_HEADER_CHECK_SOURCES})
+target_link_libraries(melon_header_check melon::melon)
+set_project_warnings(melon_header_check)
+add_dependencies(melon_test melon_header_check)

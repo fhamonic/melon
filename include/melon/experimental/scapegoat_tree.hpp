@@ -1,17 +1,24 @@
-#ifndef MELON_SCAPEGOAT_TREE_HPP
-#define MELON_SCAPEGOAT_TREE_HPP
+#pragma once
+
+// UNFINISHED — not shipped in the melon package, and excluded from the
+// install rules. The header parses, but `insert()` does not compile once
+// instantiated (it writes through const references and uses node members
+// that do not exist), and the scapegoat rebuild/rebalance step is missing
+// entirely. Finish those before adding this to the install set and to
+// test/experimental.cpp.
 
 #include <algorithm>
 #include <cassert>
 #include <concepts>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <ranges>
 #include <vector>
 
 #include "melon/mapping.hpp"
 
-namespace melon {
+namespace melon::experimental {
 
 template <float ALPHA, typename _Entry,
           typename _KeyComparator = std::less<_Entry>,
@@ -21,7 +28,7 @@ template <float ALPHA, typename _Entry,
                                     mapped_value_t<_EntryKeyMap, _Entry>>
 class scapegoat_tree {
 public:
-    using key_type = mapped_value_t<_EntryPriorityMap, _Entry>;
+    using key_type = mapped_value_t<_EntryKeyMap, _Entry>;
     // using mapped_type = V;
     using value_type = _Entry;
     // using size_type = std::size_t;
@@ -155,8 +162,11 @@ public:
             _nodes[us.right_child].parent = u;
         } else {
             if(ns.parent == INVALID_NODE) _root = INVALID_NODE;
-            if(_nodes[ns.parent].left_child == n) {_nodes[ns.parent].left_child = INVALID_NODE;}
-            else {_nodes[ns.parent].right_child = INVALID_NODE;}
+            if(_nodes[ns.parent].left_child == n) {
+                _nodes[ns.parent].left_child = INVALID_NODE;
+            } else {
+                _nodes[ns.parent].right_child = INVALID_NODE;
+            }
         }
         delete_node(n);
     }
@@ -205,6 +215,4 @@ public:
     }
 };
 
-}  // namespace melon
-
-#endif  // MELON_SCAPEGOAT_TREE_HPP
+}  // namespace melon::experimental

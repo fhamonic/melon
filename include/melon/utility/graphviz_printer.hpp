@@ -1,11 +1,16 @@
-#ifndef MELON_UTILITY_GRAPHVIZ_PRINTER_HPP
-#define MELON_UTILITY_GRAPHVIZ_PRINTER_HPP
+#pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <format>
+#include <functional>
 #include <iterator>
+#include <limits>
 #include <optional>
+#include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -79,13 +84,13 @@ public:
 
     graphviz_printer<G> & set_vertex_pos(const vertex & v, const point2d & p) {
         if(!_vertex_pos_map.has_value())
-            _vertex_pos_map.emplace(create_vertex_map<std::string>(
-                _graph.get(), point2d{0.0, 0.0}));
+            _vertex_pos_map.emplace(
+                create_vertex_map<point2d>(_graph.get(), point2d{0.0, 0.0}));
         _vertex_pos_map.value()[v] = p;
         return *this;
     }
 
-    template <input_mapping<arc> PM>
+    template <input_mapping<vertex> PM>
         requires std::convertible_to<mapped_value_t<PM, vertex>, point2d>
     graphviz_printer<G> & set_vertex_pos_map(const PM & pos_map) {
         _vertex_pos_map.emplace(create_vertex_map<point2d>(_graph.get()));
@@ -121,7 +126,10 @@ public:
     }
 
     graphviz_printer<G> & set_arc_label(const arc & a, const std::string l) {
-        _arc_label_map[a] = l;
+        if(!_arc_label_map.has_value())
+            _arc_label_map.emplace(
+                create_arc_map<std::string>(_graph.get(), ""));
+        _arc_label_map.value()[a] = l;
         return *this;
     }
 
@@ -168,7 +176,7 @@ public:
     void print(OS && output) const {
         double min_x, max_x, min_y, max_y;
         min_x = min_y = std::numeric_limits<double>::max();
-        max_x = max_y = std::numeric_limits<double>::min();
+        max_x = max_y = std::numeric_limits<double>::lowest();
         double scale;
         if(_vertex_pos_map.has_value()) {
             for(auto && u : vertices(_graph.get())) {
@@ -228,7 +236,7 @@ public:
                                _vertex_label_map.value()[u]);
             }
             if(_vertex_pos_map.has_value()) {
-                std::format_to(output, " pos=\"{},{}\"]\n",
+                std::format_to(output, " pos=\"{},{}\"",
                                scale_x(_vertex_pos_map.value()[u].first),
                                scale_y(_vertex_pos_map.value()[u].second));
             }
@@ -260,5 +268,3 @@ public:
     }
 };
 }  // namespace melon
-
-#endif  // MELON_UTILITY_GRAPHVIZ_PRINTER_HPP

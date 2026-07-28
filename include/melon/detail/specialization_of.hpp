@@ -1,5 +1,4 @@
-#ifndef MELON_SPECIALIZATION_OF_HPP
-#define MELON_SPECIALIZATION_OF_HPP
+#pragma once
 
 #include <concepts>
 #include <ranges>
@@ -31,5 +30,3 @@ inline constexpr int _range_rank() {
 }  // namespace __detail
 
 }  // namespace melon
-
-#endif  // MELON_SPECIALIZATION_OF_HPP

@@ -1,11 +1,11 @@
-#ifndef MELON_VIEWS_UNDIRECT_HPP
-#define MELON_VIEWS_UNDIRECT_HPP
+#pragma once
 
 #include <algorithm>
 #include <ranges>
 
 #include "melon/detail/concat_view.hpp"
 #include "melon/graph.hpp"
+#include "melon/undirected_graph.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace melon {
@@ -111,5 +111,3 @@ undirect(_G &&) -> undirect<views::graph_all_t<_G>>;
 
 }  // namespace views
 }  // namespace melon
-
-#endif  // MELON_VIEWS_UNDIRECT_HPP

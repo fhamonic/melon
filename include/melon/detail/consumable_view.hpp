@@ -1,5 +1,4 @@
-#ifndef MELON_DETAIL_consumable_view_HPP
-#define MELON_DETAIL_consumable_view_HPP
+#pragma once
 
 #include <ranges>
 #include <type_traits>
@@ -90,7 +89,8 @@ public:
     }
     constexpr auto end() { return std::ranges::end(_range); }
 
-    // constexpr std::size_t size() const { return std::ranges::end(_range) - _it; }
+    // constexpr std::size_t size() const { return std::ranges::end(_range) -
+    // _it; }
 };
 
 template <std::ranges::borrowed_range R>
@@ -136,5 +136,3 @@ using consumable_view_t =
     std::decay_t<decltype(consumable_view(std::declval<R>()))>;
 
 }  // namespace melon
-
-#endif  // MELON_DETAIL_consumable_view_HPP

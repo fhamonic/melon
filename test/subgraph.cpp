@@ -183,9 +183,8 @@ GTEST_TEST(induces_subgraph_views, test) {
 
     auto [fgraph, length_map] = builder.build();
     auto graph = views::induced_subgraph(
-        fgraph,
-        detail::views::concat(std::views::iota(0u, 2u),
-                              std::views::iota(4u, 6u)));
+        fgraph, detail::views::concat(std::views::iota(0u, 2u),
+                                      std::views::iota(4u, 6u)));
 
     auto alg = dijkstra(graph, length_map);
 

@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_KRUSKAL_HPP
-#define MELON_ALGORITHM_KRUSKAL_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -78,10 +77,8 @@ public:
 };
 
 template <typename _UGraph, typename _CostMap>
-kruskal(_UGraph &&, _CostMap &&)
-    -> kruskal<views::undirected_graph_all_t<_UGraph>,
-               views::mapping_all_t<_CostMap>>;
+kruskal(_UGraph &&,
+        _CostMap &&) -> kruskal<views::undirected_graph_all_t<_UGraph>,
+                                views::mapping_all_t<_CostMap>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_KRUSKAL_HPP

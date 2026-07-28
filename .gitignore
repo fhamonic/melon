@@ -1,8 +1,12 @@
 .vscode
+.cache
 /build
 CMakeUserPresets.json
 *.log
 *.lp
+
+# zensical build output (docs/ holds the sources)
+/site
 
 Makefile
 MakeW64.bat

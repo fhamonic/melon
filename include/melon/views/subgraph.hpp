@@ -1,5 +1,4 @@
-#ifndef MELON_VIEWS_SUBGRAPH_HPP
-#define MELON_VIEWS_SUBGRAPH_HPP
+#pragma once
 
 #include <algorithm>
 #include <ranges>
@@ -285,5 +284,3 @@ induced_subgraph(_G &&, _VR &&)
 
 }  // namespace views
 }  // namespace melon
-
-#endif  // MELON_VIEWS_SUBGRAPH_HPP

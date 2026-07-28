@@ -1,5 +1,4 @@
-#ifndef MELON_GRAPH_HPP
-#define MELON_GRAPH_HPP
+#pragma once
 
 #include <concepts>
 #include <ranges>
@@ -255,7 +254,7 @@ public:
             return __join_incidence(__t, _InArcs{});
         else {
             if constexpr(__detail::_range_rank<out_arcs_range_t<_Tp>>() >
-               __detail::_range_rank<in_arcs_range_t<_Tp>>())
+                         __detail::_range_rank<in_arcs_range_t<_Tp>>())
                 return __join_incidence(__t, _OutArcs{});
             else
                 return __join_incidence(__t, _InArcs{});
@@ -771,8 +770,9 @@ template <typename _Tp>
 concept has_vertices = requires(const _Tp & __t) { melon::vertices(__t); };
 
 template <typename _Tp>
-concept has_num_vertices =
-    has_vertices<_Tp> && requires(const _Tp & __t) { melon::num_vertices(__t); };
+concept has_num_vertices = has_vertices<_Tp> && requires(const _Tp & __t) {
+    melon::num_vertices(__t);
+};
 
 template <typename _Tp>
 concept has_arcs = requires(const _Tp & __t) { melon::arcs(__t); };
@@ -1459,5 +1459,3 @@ concept has_arc_map =
 }  // namespace melon
 
 #include "views/graph_view.hpp"
-
-#endif  // MELON_GRAPH_HPP

@@ -1,5 +1,4 @@
-#ifndef MELON_STATIC_MAP_HPP
-#define MELON_STATIC_MAP_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -109,5 +108,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_STATIC_MAP_HPP

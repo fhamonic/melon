@@ -23,8 +23,8 @@ GTEST_TEST(concat_view, single) {
 }
 
 GTEST_TEST(concat_view, vectors) {
-    std::vector<int> r1 = {1,3,4};
+    std::vector<int> r1 = {1, 3, 4};
     std::vector<int> r2 = {2, 6};
-    auto v = detail::views::concat(r1,r2);
-    ASSERT_TRUE(EQ_RANGES(v, {1,3,4,2,6}));
+    auto v = detail::views::concat(r1, r2);
+    ASSERT_TRUE(EQ_RANGES(v, {1, 3, 4, 2, 6}));
 }

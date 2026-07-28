@@ -1,5 +1,4 @@
-#ifndef MELON_STATIC_FORWARD_DIGRAPH_HPP
-#define MELON_STATIC_FORWARD_DIGRAPH_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -78,7 +77,7 @@ public:
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < num_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
-                                   : _arc_target.data() + num_arcs()));
+                                    : _arc_target.data() + num_arcs()));
     }
 
     template <typename T>
@@ -102,5 +101,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_STATIC_FORWARD_DIGRAPH_HPP

@@ -138,8 +138,9 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
             heap.push(std::make_pair(i, datas[i]));
         }
 
-        std::ranges::sort(zip_view,
-                          [](auto p1, auto p2) { return std::get<0>(p1) > std::get<0>(p2); });
+        std::ranges::sort(zip_view, [](auto p1, auto p2) {
+            return std::get<0>(p1) > std::get<0>(p2);
+        });
         for(std::size_t i = 0; i < size; ++i) {
             ASSERT_FALSE(heap.empty());
             ASSERT_EQ(heap.top(), std::make_pair(permuted_id[i], datas[i]));

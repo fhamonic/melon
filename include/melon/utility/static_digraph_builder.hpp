@@ -1,5 +1,4 @@
-#ifndef MELON_STATIC_DIGRAPH_BUILDER_HPP
-#define MELON_STATIC_DIGRAPH_BUILDER_HPP
+#pragma once
 
 #include <algorithm>
 #include <numeric>
@@ -50,7 +49,7 @@ public:
         auto arcs_zipped_view = std::apply(
             [this](auto &&... property_map) {
                 return std::views::zip(_arc_sources, _arc_targets,
-                                         property_map...);
+                                       property_map...);
             },
             _arc_property_maps);
         std::ranges::sort(arcs_zipped_view, [](const auto & a, const auto & b) {
@@ -70,5 +69,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_STATIC_DIGRAPH_BUILDER_HPP
