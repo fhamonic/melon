@@ -1,5 +1,10 @@
 #pragma once
 
+// Deliberately before the system includes: libstdc++ < 14 does not ship
+// <format> at all, so the check has to run first or the compiler stops on a
+// bare "file not found" instead of saying what melon actually needs.
+#include "melon/detail/stdlib_check.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -12,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/stdlib_check.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
