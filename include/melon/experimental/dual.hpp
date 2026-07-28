@@ -1,12 +1,11 @@
-#ifndef MELON_VIEWS_DUAL_HPP
-#define MELON_VIEWS_DUAL_HPP
+#pragma once
 
 #include <algorithm>
 #include <ranges>
 
-#include "melon/planar_map.hpp"
+#include "melon/experimental/planar_map.hpp"
 
-namespace melon {
+namespace melon::experimental {
 namespace views {
 
 template <planar_map P>
@@ -28,9 +27,9 @@ public:
     constexpr dual & operator=(dual &&) = default;
 
     [[nodiscard]] constexpr auto num_vertices() const
-        requires requires(P g) { melon::num_faces(g); }
+        requires requires(P g) { melon::experimental::num_faces(g); }
     {
-        return melon::num_faces(_planar_map.get());
+        return melon::experimental::num_faces(_planar_map.get());
     }
     [[nodiscard]] constexpr auto num_arcs() const noexcept
         requires requires(P g) { melon::num_arcs(g); }
@@ -44,7 +43,7 @@ public:
     }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
-        return melon::faces(_planar_map.get());
+        return melon::experimental::faces(_planar_map.get());
     }
     [[nodiscard]] constexpr auto arcs() const noexcept {
         return melon::arcs(_planar_map.get());
@@ -54,31 +53,33 @@ public:
     }
 
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
-        return melon::bounding_arcs(_planar_map.get(), u);
+        return melon::experimental::bounding_arcs(_planar_map.get(), u);
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
-        return std::transform(melon::bounding_arcs(_planar_map.get(), u),
-                              [this](auto && a) {
-                                  return melon::arc_twin(_planar_map.get(), a);
-                              });
+        return std::transform(
+            melon::experimental::bounding_arcs(_planar_map.get(), u),
+            [this](auto && a) {
+                return melon::experimental::arc_twin(_planar_map.get(), a);
+            });
     }
 
     [[nodiscard]] constexpr vertex arc_source(arc a) const noexcept
         requires has_arc_face<P>
     {
-        return melon::arc_face(_planar_map.get(),
-                               melon::arc_twin(_planar_map.get(), a));
+        return melon::experimental::arc_face(
+            _planar_map.get(),
+            melon::experimental::arc_twin(_planar_map.get(), a));
     }
     [[nodiscard]] constexpr vertex arc_target(arc a) const noexcept
         requires has_arc_face<P>
     {
-        return melon::arc_face(_planar_map.get(), a);
+        return melon::experimental::arc_face(_planar_map.get(), a);
     }
 
     [[nodiscard]] constexpr arc arc_twin(arc a) const noexcept
         requires has_arc_twin<P>
     {
-        return melon::arc_twin(_planar_map.get(), a);
+        return melon::experimental::arc_twin(_planar_map.get(), a);
     }
 
     [[nodiscard]] constexpr face arc_face(arc a) const noexcept
@@ -116,13 +117,14 @@ public:
     template <typename T>
         requires has_face_map<P>
     [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
-        return melon::create_face_map<T>(_planar_map.get());
+        return melon::experimental::create_face_map<T>(_planar_map.get());
     }
     template <typename T>
         requires has_face_map<P>
     [[nodiscard]] constexpr auto create_vertex_map(
         T default_value) const noexcept {
-        return melon::create_face_map<T>(_planar_map.get(), default_value);
+        return melon::experimental::create_face_map<T>(_planar_map.get(),
+                                                       default_value);
     }
 
     template <typename T>
@@ -151,6 +153,4 @@ public:
 };
 
 }  // namespace views
-}  // namespace melon
-
-#endif  // MELON_VIEWS_DUAL_HPP
+}  // namespace melon::experimental

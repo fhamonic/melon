@@ -9,7 +9,6 @@
 #include "melon/graph.hpp"
 #include "melon/views/graph_view.hpp"
 
-
 using G = melon::static_digraph;
 
 GTEST_TEST(graph_view, test) {

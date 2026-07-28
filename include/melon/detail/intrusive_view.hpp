@@ -1,5 +1,4 @@
-#ifndef MELON_DETAIL_INTRUSIVE_VIEW_HPP
-#define MELON_DETAIL_INTRUSIVE_VIEW_HPP
+#pragma once
 
 #include <functional>
 #include <iterator>
@@ -136,7 +135,6 @@ inline constexpr bool std::ranges::enable_borrowed_range<
     melon::intrusive_view<I, Incr, Deref, Cond>> = true;
 
 template <typename I, typename Incr, typename Deref, typename Cond>
-inline constexpr bool std::ranges::enable_view<
-    melon::intrusive_view<I, Incr, Deref, Cond>> = true;
-
-#endif  // MELON_DETAIL_INTRUSIVE_VIEW_HPP
+inline constexpr bool
+    std::ranges::enable_view<melon::intrusive_view<I, Incr, Deref, Cond>> =
+        true;

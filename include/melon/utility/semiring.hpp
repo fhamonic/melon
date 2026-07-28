@@ -1,7 +1,9 @@
-#ifndef MELON_UTILITY_SEMIRING_HPP
-#define MELON_UTILITY_SEMIRING_HPP
+#pragma once
 
+#include <algorithm>
 #include <concepts>
+#include <functional>
+#include <limits>
 
 namespace melon {
 
@@ -43,7 +45,9 @@ template <typename T>
 struct max_capacity_path_semiring {
     using value_type = T;
     struct plus_t {
-        T operator()(const T & a, const T & b) const { return std::min(a, b); }
+        constexpr T operator()(const T & a, const T & b) const {
+            return std::min(a, b);
+        }
     };
     using less_t = typename std::greater<T>;
     static constexpr T zero = std::numeric_limits<T>::max();
@@ -57,7 +61,7 @@ struct minimum_spanning_tree_semiring {
     // Not an actual semiring but corresponds to the Prim algorithm
     using value_type = T;
     struct plus_t {
-        T operator()(const T &, const T & b) { return b; }
+        constexpr T operator()(const T &, const T & b) const { return b; }
     };
     using less_t = typename std::less<T>;
     static constexpr T zero = static_cast<T>(0);
@@ -67,5 +71,3 @@ struct minimum_spanning_tree_semiring {
 };
 
 }  // namespace melon
-
-#endif  // MELON_UTILITY_SEMIRING_HPP

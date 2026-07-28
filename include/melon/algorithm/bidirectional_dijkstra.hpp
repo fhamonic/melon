@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_BIDIRECTIONAL_DIJKSTA_HPP
-#define MELON_ALGORITHM_BIDIRECTIONAL_DIJKSTA_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -339,14 +338,16 @@ public:
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = bidirectional_dijkstra_default_traits<
-              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
+              _Graph,
+              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
 bidirectional_dijkstra(_Graph &&, _LengthMap &&)
     -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
                               views::mapping_all_t<_LengthMap>, _Traits>;
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = bidirectional_dijkstra_default_traits<
-              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
+              _Graph,
+              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
 bidirectional_dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
                        const vertex_t<_Graph> &)
     -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
@@ -364,5 +365,3 @@ bidirectional_dijkstra(_Traits, _Graph &&, _LengthMap &&,
                               views::mapping_all_t<_LengthMap>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_BIDIRECTIONAL_DIJKSTA_HPP

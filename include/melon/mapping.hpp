@@ -1,12 +1,11 @@
-#ifndef MELON_mapping_HPP
-#define MELON_mapping_HPP
+#pragma once
 
 #include <concepts>
+#include <cstddef>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 #include <utility>
-
-#include "melon/detail/specialization_of.hpp"
 
 namespace melon {
 
@@ -41,7 +40,7 @@ concept output_mapping =
         {
             map[key] = value
         } -> std::same_as<
-            std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
+              std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
     };
 
 template <typename _Map, typename _Key, typename _Value>
@@ -71,43 +70,133 @@ template <typename _Map, typename _Key>
 concept mapping_view =
     mapping<_Map, _Key> && std::movable<_Map> && enable_mapping_view<_Map>;
 
+namespace __detail {
+
+// Single point of dispatch between the three storage protocols a mapping
+// can expose. Constness and value category of `__m` are the caller's: each
+// requires-clause tests exactly the expression the branch evaluates.
+template <typename _Map, typename _Key>
+constexpr decltype(auto) __mapping_subscript(_Map & __m, _Key && __k) {
+    if constexpr(requires { __m[std::forward<_Key>(__k)]; })
+        return __m[std::forward<_Key>(__k)];
+    else if constexpr(requires { __m(std::forward<_Key>(__k)); })
+        return __m(std::forward<_Key>(__k));
+    else if constexpr(requires { __m.at(std::forward<_Key>(__k)); })
+        return __m.at(std::forward<_Key>(__k));
+    else
+        static_assert(false,
+                      "melon: this type cannot be used as a mapping with "
+                      "this key; it must provide operator[](key), "
+                      "operator()(key) or at(key).");
+}
+
+// std::ranges-style movable-box: makes a non-assignable _Map (typically a
+// capturing lambda) assignable through destroy + reconstruct, so that the
+// views owning one stay std::movable. The reconstruct path is only enabled
+// when the move cannot throw, so a failed assignment can never leave the
+// box destroyed.
+template <typename _Tp>
+    requires std::move_constructible<_Tp> && std::is_object_v<_Tp>
+class __movable_box {
+private:
+    [[no_unique_address]] _Tp _value;
+
+public:
+    constexpr __movable_box()
+        requires std::default_initializable<_Tp>
+    = default;
+    constexpr __movable_box(_Tp && __t) noexcept(
+        std::is_nothrow_move_constructible_v<_Tp>)
+        : _value(std::move(__t)) {}
+    constexpr __movable_box(const _Tp & __t)
+        requires std::copy_constructible<_Tp>
+        : _value(__t) {}
+
+    constexpr __movable_box(const __movable_box &) = default;
+    constexpr __movable_box(__movable_box &&) = default;
+
+    constexpr __movable_box & operator=(__movable_box && __o) noexcept(
+        std::movable<_Tp> ? std::is_nothrow_move_assignable_v<_Tp> : true)
+        requires std::movable<_Tp> || std::is_nothrow_move_constructible_v<_Tp>
+    {
+        if constexpr(std::movable<_Tp>) {
+            _value = std::move(__o._value);
+        } else {
+            if(this != std::addressof(__o)) {
+                std::destroy_at(std::addressof(_value));
+                std::construct_at(std::addressof(_value),
+                                  std::move(__o._value));
+            }
+        }
+        return *this;
+    }
+    constexpr __movable_box & operator=(const __movable_box & __o) noexcept(
+        std::copyable<_Tp> ? std::is_nothrow_copy_assignable_v<_Tp> : false)
+        requires std::copyable<_Tp> ||
+                 (std::copy_constructible<_Tp> &&
+                  std::is_nothrow_move_constructible_v<_Tp>)
+    {
+        if constexpr(std::copyable<_Tp>) {
+            _value = __o._value;
+        } else {
+            if(this != std::addressof(__o)) {
+                _Tp __tmp(__o._value);
+                std::destroy_at(std::addressof(_value));
+                std::construct_at(std::addressof(_value), std::move(__tmp));
+            }
+        }
+        return *this;
+    }
+
+    constexpr _Tp & operator*() & noexcept { return _value; }
+    constexpr const _Tp & operator*() const & noexcept { return _value; }
+    constexpr _Tp && operator*() && noexcept { return std::move(_value); }
+};
+
+}  // namespace __detail
+
 template <typename _Map>
+    requires std::is_object_v<_Map>
+class mapping_ref_view;
+
+namespace __detail {
+
+template <typename _Map>
+concept __can_mapping_ref_view =
+    requires { mapping_ref_view{std::declval<_Map>()}; };
+
+}  // namespace __detail
+
+// Reference view: shallow const, like std::ranges::ref_view — constness of
+// the access is carried by _Map itself (mapping_ref_view<const M> reads
+// const, mapping_ref_view<M> reads mutable, through a const view object).
+template <typename _Map>
+    requires std::is_object_v<_Map>
 class mapping_ref_view : public mapping_view_base {
 private:
     _Map * _map;
 
+    static void __bindable_test(_Map &);
+    static void __bindable_test(_Map &&) = delete;
+
 public:
     template <typename _Tp>
-        requires(!__detail::__specialization_of<_Tp, mapping_ref_view>)
-    [[nodiscard]] constexpr explicit mapping_ref_view(_Tp && __m)
-        : _map(std::addressof(static_cast<_Map &>(std::forward<_Tp>(__m)))) {}
+        requires(!std::same_as<std::remove_cvref_t<_Tp>, mapping_ref_view>) &&
+                std::convertible_to<_Tp, _Map &> &&
+                requires { __bindable_test(std::declval<_Tp>()); }
+    constexpr mapping_ref_view(_Tp && __t) noexcept(
+        noexcept(static_cast<_Map &>(std::declval<_Tp>())))
+        : _map(std::addressof(static_cast<_Map &>(std::forward<_Tp>(__t)))) {}
 
-    constexpr _Map & base() const { return *_map; }
-
-    template <typename _Key>
-    constexpr auto operator[](_Key && __k) const {
-        if constexpr(requires(std::add_const_t<_Map> & __m) { __m[__k]; })
-            return _map->operator[](__k);
-        else if constexpr(requires(std::add_const_t<_Map> & __m) { __m(__k); })
-            return _map->operator()(__k);
-        else if constexpr(requires(std::add_const_t<_Map> & __m) {
-                              __m.at(__k);
-                          })
-            return _map->at(__k);
-    }
+    constexpr _Map & base() const noexcept { return *_map; }
 
     template <typename _Key>
-    constexpr decltype(auto) operator[](_Key && __k) {
-        if constexpr(requires(_Map & __m) { __m[__k]; })
-            return _map->operator[](__k);
-        else if constexpr(requires(_Map & __m) { __m(__k); })
-            return _map->operator()(__k);
-        else if constexpr(requires(_Map & __m) { __m.at(__k); })
-            return _map->at(__k);
+    [[nodiscard]] constexpr decltype(auto) operator[](_Key && __k) const {
+        return __detail::__mapping_subscript(*_map, std::forward<_Key>(__k));
     }
 
-    constexpr auto data() const
-        requires std::is_pointer_v<decltype(std::declval<_Map>().data())>
+    [[nodiscard]] constexpr auto data() const
+        requires std::is_pointer_v<decltype(std::declval<_Map &>().data())>
     {
         return _map->data();
     }
@@ -116,113 +205,97 @@ public:
 template <typename _Map>
 mapping_ref_view(_Map &) -> mapping_ref_view<_Map>;
 
+// Owning view: deep const, like std::ranges::owning_view. Constructible
+// from rvalues only; storage goes through __movable_box so a view owning a
+// capturing lambda remains std::movable.
 template <typename _Map>
-// requires std::movable<_Map> // TODO fix this for lambdas
-    requires std::move_constructible<_Map>
+    requires std::move_constructible<_Map> && std::is_object_v<_Map>
 class mapping_owning_view : public mapping_view_base {
 private:
-    _Map _map;
+    [[no_unique_address]] __detail::__movable_box<_Map> _map;
 
 public:
+    constexpr mapping_owning_view()
+        requires std::default_initializable<_Map>
+    = default;
     constexpr mapping_owning_view(_Map && __m) noexcept(
         std::is_nothrow_move_constructible_v<_Map>)
         : _map(std::move(__m)) {}
 
-    [[nodiscard]] mapping_owning_view()
-        requires std::default_initializable<_Map>
-    = default;
-    [[nodiscard]] constexpr mapping_owning_view(const mapping_owning_view &) =
-        default;
-    [[nodiscard]] constexpr mapping_owning_view(mapping_owning_view &&) =
-        default;
-
+    constexpr mapping_owning_view(const mapping_owning_view &) = default;
+    constexpr mapping_owning_view(mapping_owning_view &&) = default;
     constexpr mapping_owning_view & operator=(const mapping_owning_view &) =
         default;
-    // constexpr mapping_owning_view & operator=(mapping_owning_view &&) =
-    // default;
+    constexpr mapping_owning_view & operator=(mapping_owning_view &&) = default;
 
-    constexpr _Map && base() && noexcept { return std::move(_map); }
-
-    template <typename _Key>
-    constexpr auto operator[](_Key && __k) const {
-        if constexpr(requires(std::add_const_t<_Map> & __m) { __m[__k]; })
-            return _map.operator[](__k);
-        else if constexpr(requires(std::add_const_t<_Map> & __m) { __m(__k); })
-            return _map.operator()(__k);
-        else if constexpr(requires(std::add_const_t<_Map> & __m) {
-                              __m.at(__k);
-                          })
-            return _map.at(__k);
-    }
+    constexpr _Map & base() & noexcept { return *_map; }
+    constexpr const _Map & base() const & noexcept { return *_map; }
+    constexpr _Map && base() && noexcept { return *std::move(_map); }
 
     template <typename _Key>
-    constexpr decltype(auto) operator[](_Key && __k) {
-        if constexpr(requires(_Map & __m) { __m[__k]; })
-            return _map.operator[](__k);
-        else if constexpr(requires(_Map & __m) { __m(__k); })
-            return _map.operator()(__k);
-        else if constexpr(requires(_Map & __m) { __m.at(__k); })
-            return _map.at(__k);
+    [[nodiscard]] constexpr decltype(auto) operator[](_Key && __k) {
+        return __detail::__mapping_subscript(*_map, std::forward<_Key>(__k));
+    }
+    template <typename _Key>
+    [[nodiscard]] constexpr decltype(auto) operator[](_Key && __k) const {
+        return __detail::__mapping_subscript(*_map, std::forward<_Key>(__k));
     }
 
-    constexpr auto data() const
-        requires std::is_pointer_v<decltype(std::declval<_Map>().data())>
+    [[nodiscard]] constexpr auto data()
+        requires std::is_pointer_v<decltype(std::declval<_Map &>().data())>
     {
-        return _map.data();
+        return (*_map).data();
+    }
+    [[nodiscard]] constexpr auto data() const
+        requires std::is_pointer_v<
+            decltype(std::declval<const _Map &>().data())>
+    {
+        return (*_map).data();
     }
 };
 
 namespace views {
-namespace __cust_access {
-namespace __detail {
-template <typename _Map>
-concept __can_mapping_ref_view =
-    requires { mapping_ref_view{std::declval<_Map>()}; };
 
-template <typename _Map>
-concept __can_mapping_owning_view =
-    requires { mapping_owning_view{std::declval<_Map>()}; };
-}  // namespace __detail
-
-struct _MapAll {
+struct _MappingAll {
+private:
     template <typename _Map>
-    static constexpr bool _S_noexcept() {
-        if constexpr(std::movable<_Map> &&
-                     enable_mapping_view<std::decay_t<_Map>>)
+    static constexpr bool __pass_through =
+        std::movable<std::decay_t<_Map>> &&
+        enable_mapping_view<std::decay_t<_Map>> &&
+        std::constructible_from<std::decay_t<_Map>, _Map>;
+
+    template <typename _Map>
+    static consteval bool _S_noexcept() {
+        if constexpr(__pass_through<_Map>)
             return std::is_nothrow_constructible_v<std::decay_t<_Map>, _Map>;
         else if constexpr(__detail::__can_mapping_ref_view<_Map>)
-            return true;
+            return noexcept(mapping_ref_view{std::declval<_Map>()});
         else
             return noexcept(mapping_owning_view{std::declval<_Map>()});
     }
 
+public:
     template <typename _Map>
-    constexpr auto operator() [[nodiscard]] (_Map && __m) const
+    [[nodiscard]] constexpr auto operator()(_Map && __m) const
         noexcept(_S_noexcept<_Map>()) {
-        if constexpr(std::movable<_Map> &&
-                     enable_mapping_view<std::decay_t<_Map>>)
-            return std::forward<_Map>(__m);
+        if constexpr(__pass_through<_Map>)
+            return std::decay_t<_Map>(std::forward<_Map>(__m));
         else if constexpr(__detail::__can_mapping_ref_view<_Map>)
             return mapping_ref_view{std::forward<_Map>(__m)};
         else
             return mapping_owning_view{std::forward<_Map>(__m)};
     }
 };
-}  // namespace __cust_access
 
-inline namespace __cust {
-inline constexpr __cust_access::_MapAll mapping_all{};
-}  // namespace __cust
+inline constexpr _MappingAll mapping_all{};
 
 template <typename _Map>
 using mapping_all_t = decltype(mapping_all(std::declval<_Map>()));
-}  // namespace views
-
-namespace views {
 
 template <typename F>
-constexpr auto map(F && f) {
-    return mapping_owning_view{std::forward<F>(f)};
+[[nodiscard]] constexpr auto map(F && f) {
+    return mapping_owning_view<std::decay_t<F>>(
+        std::decay_t<F>(std::forward<F>(f)));
 }
 
 struct true_map : public mapping_view_base {
@@ -238,8 +311,9 @@ struct false_map : public mapping_view_base {
 };
 
 struct identity_map : public mapping_view_base {
-    template <class T>
-    [[nodiscard]] constexpr auto operator[](T && e) const noexcept {
+    template <typename T>
+    [[nodiscard]] constexpr auto operator[](T && e) const
+        noexcept(std::is_nothrow_constructible_v<std::decay_t<T>, T>) {
         return std::forward<T>(e);
     }
 };
@@ -262,8 +336,7 @@ public:
         return get_chain<I...>(std::forward<T>(e));
     }
 };
+
 }  // namespace views
 
 }  // namespace melon
-
-#endif  // MELON_mapping_HPP

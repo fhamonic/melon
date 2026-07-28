@@ -1,5 +1,4 @@
-#ifndef MELON_COMPETING_DIJKSTRAS_HPP
-#define MELON_COMPETING_DIJKSTRAS_HPP
+#pragma once
 
 #include <concepts>
 #include <utility>
@@ -213,9 +212,10 @@ public:
     }
 };
 
-template <typename _Graph, typename _BLM, typename _RLM,
-          typename _Traits = competing_dijkstras_default_traits<
-              _Graph, mapped_value_t<_BLM, arc_t<_Graph>>>>
+template <
+    typename _Graph, typename _BLM, typename _RLM,
+    typename _Traits = competing_dijkstras_default_traits<
+        _Graph, mapped_value_t<views::mapping_all_t<_BLM>, arc_t<_Graph>>>>
 competing_dijkstras(_Graph &&, _BLM &&, _RLM &&)
     -> competing_dijkstras<views::graph_all_t<_Graph>,
                            views::mapping_all_t<_BLM>,
@@ -228,5 +228,3 @@ competing_dijkstras(_Traits, _Graph &&, _BLM &&, _RLM &&)
                            views::mapping_all_t<_RLM>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_COMPETING_DIJKSTRAS_HPP

@@ -1,5 +1,4 @@
-#ifndef MELON_GRAPH_VIEW_HPP
-#define MELON_GRAPH_VIEW_HPP
+#pragma once
 
 #include <algorithm>
 #include <ranges>
@@ -303,5 +302,3 @@ using graph_all_t = decltype(graph_all(std::declval<_Graph>()));
 
 }  // namespace views
 }  // namespace melon
-
-#endif  // MELON_GRAPH_VIEW_HPP

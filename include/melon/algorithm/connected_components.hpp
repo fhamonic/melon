@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_CONNECTED_COMPONENTS_HPP
-#define MELON_ALGORITHM_CONNECTED_COMPONENTS_HPP
+#pragma once
 
 #include <cassert>
 #include <ranges>
@@ -144,5 +143,3 @@ constexpr auto weakly_connected_components(_Graph && g) {
 }
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_CONNECTED_COMPONENTS_HPP

@@ -1,8 +1,8 @@
-#ifndef MELON_ALGORITHM_STRONGLY_CONNECTED_COMPONENTS_HPP
-#define MELON_ALGORITHM_STRONGLY_CONNECTED_COMPONENTS_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 #include <ranges>
 #include <stack>
 #include <type_traits>
@@ -183,5 +183,3 @@ strongly_connected_components(_Graph &&)
     -> strongly_connected_components<views::graph_all_t<_Graph>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_STRONGLY_CONNECTED_COMPONENTS_HPP

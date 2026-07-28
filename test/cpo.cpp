@@ -23,7 +23,6 @@ constexpr auto create_vertex_map(const G & g, const V & d) {
 
 #include "melon/graph.hpp"
 
-
 GTEST_TEST(CPO, test) {
     static_assert(melon::graph<G>);
     static_assert(melon::has_num_vertices<G>);
@@ -40,8 +39,8 @@ GTEST_TEST(CPO, test) {
     static_assert(!melon::has_arc_map<G>);
 
     static_assert(std::ranges::contiguous_range<G>);
-    static_assert(std::ranges::contiguous_range<
-                  decltype(std::views::all(std::declval<G>()))>);
+    static_assert(std::ranges::contiguous_range<decltype(std::views::all(
+                      std::declval<G>()))>);
 
     G vec = {{1, 2}, {2}, {0, 1}};
     for(auto && v : melon::vertices(vec)) {

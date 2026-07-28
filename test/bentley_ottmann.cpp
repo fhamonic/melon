@@ -208,9 +208,9 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
             int(std::get<1>(i).den()), intersecting_segments);
 #else
         std::cout << "(" << int(std::get<0>(i).num()) << "/"
-                    << int(std::get<0>(i).den()) << ", "
-                    << int(std::get<1>(i).num()) << "/"
-                    << int(std::get<1>(i).den()) << ") : {";
+                  << int(std::get<0>(i).den()) << ", "
+                  << int(std::get<1>(i).num()) << "/"
+                  << int(std::get<1>(i).den()) << ") : {";
         bool first = true;
         for(auto id : intersecting_segments) {
             if(!first) std::cout << ", ";

@@ -1,5 +1,4 @@
-#ifndef MELON_VIEWS_COMPLETE_DIGRAPH_HPP
-#define MELON_VIEWS_COMPLETE_DIGRAPH_HPP
+#pragma once
 
 #include <concepts>
 #include <ranges>
@@ -158,5 +157,3 @@ public:
 
 }  // namespace views
 }  // namespace melon
-
-#endif  // MELON_VIEWS_COMPLETE_DIGRAPH_HPP

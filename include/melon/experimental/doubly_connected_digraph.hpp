@@ -1,5 +1,11 @@
-#ifndef MELON_DOUBLY_CONNECTED_DIGRAPH_HPP
-#define MELON_DOUBLY_CONNECTED_DIGRAPH_HPP
+#pragma once
+
+// UNFINISHED — not shipped in the melon package, and excluded from the
+// install rules. The migration to a doubly-connected representation was
+// left half-done: `vertex_struct` still has no `first_in_arc` member
+// although the code reads it, and the `_vertices_filter` member it uses is
+// never declared. Finish those before adding this to the install set and to
+// test/experimental.cpp.
 
 #include <algorithm>
 #include <cassert>
@@ -12,7 +18,7 @@
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/mapping.hpp"
 
-namespace melon {
+namespace melon::experimental {
 
 class doubly_connected_digraph {
 public:
@@ -429,6 +435,4 @@ public:
     }
 };
 
-}  // namespace melon
-
-#endif  // MELON_DOUBLY_CONNECTED_DIGRAPH_HPP
+}  // namespace melon::experimental

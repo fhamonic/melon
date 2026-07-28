@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_KNAPSACK_BNB_HPP
-#define MELON_ALGORITHM_KNAPSACK_BNB_HPP
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -209,11 +208,9 @@ public:
 };
 
 template <typename _ItemRange, typename _ValueMap, typename _CostMap>
-knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
-    -> knapsack_bnb<std::views::all_t<_ItemRange>,
-                    views::mapping_all_t<_ValueMap>,
-                    views::mapping_all_t<_CostMap>>;
+knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&,
+             auto &&) -> knapsack_bnb<std::views::all_t<_ItemRange>,
+                                      views::mapping_all_t<_ValueMap>,
+                                      views::mapping_all_t<_CostMap>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_KNAPSACK_BNB_HPP

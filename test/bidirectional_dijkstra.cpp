@@ -2,8 +2,8 @@
 #include <gtest/gtest.h>
 
 #include "melon/algorithm/bidirectional_dijkstra.hpp"
-#include "melon/utility/static_digraph_builder.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/utility/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
 

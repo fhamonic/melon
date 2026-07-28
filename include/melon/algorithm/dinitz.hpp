@@ -1,8 +1,8 @@
-#ifndef MELON_ALGORITHM_DINITZ_HPP
-#define MELON_ALGORITHM_DINITZ_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 #include <ranges>
 #include <vector>
 
@@ -199,5 +199,3 @@ dinitz(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
     -> dinitz<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_DINITZ_HPP

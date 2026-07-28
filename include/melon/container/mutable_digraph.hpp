@@ -1,5 +1,4 @@
-#ifndef MELON_MUTABLE_DIGRAPH_HPP
-#define MELON_MUTABLE_DIGRAPH_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -373,5 +372,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_MUTABLE_DIGRAPH_HPP

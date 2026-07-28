@@ -1,5 +1,4 @@
-#ifndef MELON_STATIC_FILTER_MAP_HPP
-#define MELON_STATIC_FILTER_MAP_HPP
+#pragma once
 
 #include <algorithm>
 #include <bit>
@@ -376,5 +375,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_STATIC_FILTER_MAP_HPP

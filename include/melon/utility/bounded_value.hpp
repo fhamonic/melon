@@ -1,5 +1,4 @@
-#ifndef MELON_BOUNDED_VALUE_HPP
-#define MELON_BOUNDED_VALUE_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -330,5 +329,3 @@ template <typename T, T V, typename PS = default_promotion_strategy>
 using const_value = bounded_value<T, V, V, PS>;
 
 }  // namespace melon
-
-#endif  // MELON_BOUNDED_VALUE_HPP

@@ -1,5 +1,4 @@
-#ifndef MELON_DISJOINT_SETS_HPP
-#define MELON_DISJOINT_SETS_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -64,7 +63,8 @@ public:
     [[nodiscard]] constexpr component_type find(const key_type & k) noexcept {
         component_type c = _component_map[k];
         while(_parent_map[c] != c) {
-             std::tie(c, _parent_map[c]) = std::tie(_parent_map[c], _parent_map[_parent_map[c]]);
+            std::tie(c, _parent_map[c]) =
+                std::tie(_parent_map[c], _parent_map[_parent_map[c]]);
         }
         return c;
     }
@@ -87,5 +87,3 @@ public:
 };  // class disjoint_sets
 
 }  // namespace melon
-
-#endif  // MELON_DISJOINT_SETS_HPP

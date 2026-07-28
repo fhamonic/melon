@@ -1,5 +1,4 @@
-#ifndef MELON_VIEWS_REVERSE_HPP
-#define MELON_VIEWS_REVERSE_HPP
+#pragma once
 
 #include <algorithm>
 #include <ranges>
@@ -125,5 +124,3 @@ reverse(_G &&) -> reverse<views::graph_all_t<_G>>;
 
 }  // namespace views
 }  // namespace melon
-
-#endif  // MELON_VIEWS_REVERSE_HPP

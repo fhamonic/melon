@@ -1,5 +1,4 @@
-#ifndef MELON_UTILITY_ALIAS_METHOD_SAMPLER_HPP
-#define MELON_UTILITY_ALIAS_METHOD_SAMPLER_HPP
+#pragma once
 
 #include <algorithm>
 #include <concepts>
@@ -125,17 +124,17 @@ public:
 
 template <typename _Range, typename _ProbMap,
           typename _Traits = alias_method_sampler_default_traits>
-alias_method_sampler(_Range &&, _ProbMap &&) -> alias_method_sampler<
-    std::views::all_t<_Range>,
-    std::invoke_result_t<_ProbMap, std::ranges::range_value_t<_Range>>,
-    _Traits>;
+alias_method_sampler(_Range &&, _ProbMap &&)
+    -> alias_method_sampler<
+        std::views::all_t<_Range>,
+        std::invoke_result_t<_ProbMap, std::ranges::range_value_t<_Range>>,
+        _Traits>;
 
 template <typename _Range, typename _ProbMap, typename _Traits>
-alias_method_sampler(_Traits, _Range &&, _ProbMap &&) -> alias_method_sampler<
-    std::views::all_t<_Range>,
-    std::invoke_result_t<_ProbMap, std::ranges::range_value_t<_Range>>,
-    _Traits>;
+alias_method_sampler(_Traits, _Range &&, _ProbMap &&)
+    -> alias_method_sampler<
+        std::views::all_t<_Range>,
+        std::invoke_result_t<_ProbMap, std::ranges::range_value_t<_Range>>,
+        _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_UTILITY_ALIAS_METHOD_SAMPLER_HPP

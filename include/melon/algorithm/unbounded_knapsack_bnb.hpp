@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_KNAPSACK_BNB_HPP
-#define MELON_ALGORITHM_KNAPSACK_BNB_HPP
+#pragma once
 
 #include <algorithm>
 #include <chrono>
@@ -232,5 +231,3 @@ unbounded_knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
                               views::mapping_all_t<_CostMap>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_KNAPSACK_BNB_HPP

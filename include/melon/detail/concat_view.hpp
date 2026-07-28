@@ -1,5 +1,4 @@
-#ifndef MELON_DETAIL_CONCAT_VIEW_HPP
-#define MELON_DETAIL_CONCAT_VIEW_HPP
+#pragma once
 
 #include <concepts>
 #include <iterator>
@@ -142,10 +141,6 @@ public:
     constexpr auto end() noexcept { return std::default_sentinel; }
 };
 
-template <std::ranges::viewable_range R1, std::ranges::viewable_range R2>
-concat_view(std::views::all_t<R1>, std::views::all_t<R2>)
-    -> concat_view<std::views::all_t<R1>, std::views::all_t<R2> >;
-
 struct concat_fn {
     template <std::ranges::viewable_range R1, std::ranges::viewable_range R2>
         requires concat_view_compatible<std::views::all_t<R1>,
@@ -161,5 +156,3 @@ inline constexpr concat_fn concat{};
 #endif
 
 }  // namespace melon::detail::views
-
-#endif  // MELON_DETAIL_CONCAT_VIEW_HPP

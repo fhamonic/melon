@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_EDMONDS_KARP_HPP
-#define MELON_ALGORITHM_EDMONDS_KARP_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -182,5 +181,3 @@ edmonds_karp(_Graph &&, _CapacityMap &&, const vertex_t<_Graph> &,
                     views::mapping_all_t<_CapacityMap>>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_EDMONDS_KARP_HPP

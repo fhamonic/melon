@@ -1,5 +1,4 @@
-#ifndef MELON_UNDIRECTED_GRAPH_HPP
-#define MELON_UNDIRECTED_GRAPH_HPP
+#pragma once
 
 #include <concepts>
 #include <ranges>
@@ -275,8 +274,10 @@ concept has_incidence =
                         vertex_t<_Tp>>;
 
 template <typename _Tp>
-concept has_degree =
-    undirected_graph<_Tp> && requires(const _Tp & __t) { melon::degree(__t); };
+concept has_degree = undirected_graph<_Tp> &&
+                     requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
+                         melon::degree(__t, __v);
+                     };
 
 namespace __cust_access {
 template <typename _Tp, typename _ValueType>
@@ -376,5 +377,3 @@ concept has_edge_map =
 }  // namespace melon
 
 #include "views/undirected_graph_view.hpp"
-
-#endif  // MELON_UNDIRECTED_GRAPH_HPP

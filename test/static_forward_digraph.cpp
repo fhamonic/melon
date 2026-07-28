@@ -1,8 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
-#include "melon/graph.hpp"
 #include "melon/container/static_forward_digraph.hpp"
+#include "melon/graph.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -22,11 +22,11 @@ GTEST_TEST(static_forward_digraph, empty_constructor) {
     ASSERT_TRUE(EMPTY(arcs(graph)));
     ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(is_valid_vertex(graph,0));
-    ASSERT_FALSE(is_valid_arc(graph,0));
+    ASSERT_FALSE(is_valid_vertex(graph, 0));
+    ASSERT_FALSE(is_valid_arc(graph, 0));
 
-    EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)arc_target(graph,0), "");
+    EXPECT_DEATH((void)out_arcs(graph, 0), "");
+    EXPECT_DEATH((void)arc_target(graph, 0), "");
 }
 
 GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
@@ -40,12 +40,12 @@ GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
     ASSERT_TRUE(EMPTY(arcs(graph)));
     ASSERT_TRUE(EMPTY(arcs_entries(graph)));
 
-    ASSERT_FALSE(is_valid_vertex(graph,0));
-    ASSERT_FALSE(is_valid_arc(graph,0));
+    ASSERT_FALSE(is_valid_vertex(graph, 0));
+    ASSERT_FALSE(is_valid_arc(graph, 0));
 
-    EXPECT_DEATH((void)out_arcs(graph,0), "");
-    EXPECT_DEATH((void)arc_target(graph,0), "");
-    EXPECT_DEATH((void)out_neighbors(graph,0), "");
+    EXPECT_DEATH((void)out_arcs(graph, 0), "");
+    EXPECT_DEATH((void)arc_target(graph, 0), "");
+    EXPECT_DEATH((void)out_neighbors(graph, 0), "");
 }
 
 GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
@@ -64,17 +64,17 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_RANGES(vertices(graph), {0, 1, 2}));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), {0, 1, 2, 3, 4}));
 
-    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
-    ASSERT_FALSE(is_valid_vertex(graph,
-        vertex_t<static_forward_digraph>(num_vertices(graph))));
+    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph, u));
+    ASSERT_FALSE(is_valid_vertex(
+        graph, vertex_t<static_forward_digraph>(num_vertices(graph))));
 
-    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph,a));
+    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph, a));
     ASSERT_FALSE(
-        is_valid_arc(graph,arc_t<static_forward_digraph>(num_arcs(graph))));
+        is_valid_arc(graph, arc_t<static_forward_digraph>(num_arcs(graph))));
 
-    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph,0), {1, 2}));
-    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph,1), {2}));
-    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph,2), {0, 1}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 0), {1, 2}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 1), {2}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 2), {0, 1}));
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
 
     // for(arc_t<static_forward_digraph> a : arcs(graph)) {
@@ -83,8 +83,9 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
 }
 
 GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
-    std::vector<std::pair<arc_t<static_forward_digraph>,std::pair<vertex_t<static_forward_digraph>,
-                          vertex_t<static_forward_digraph>>>>
+    std::vector<std::pair<arc_t<static_forward_digraph>,
+                          std::pair<vertex_t<static_forward_digraph>,
+                                    vertex_t<static_forward_digraph>>>>
         arc_pairs({{0, {1, 2}},
                    {1, {1, 6}},
                    {2, {1, 7}},
@@ -104,22 +105,22 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
     ASSERT_TRUE(EQ_RANGES(vertices(graph), {0, 1, 2, 3, 4, 5, 6, 7}));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), {0, 1, 2, 3, 4, 5, 6, 7, 8}));
 
-    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph,u));
-    ASSERT_FALSE(is_valid_vertex(graph,
-        vertex_t<static_forward_digraph>(num_vertices(graph))));
+    for(auto u : vertices(graph)) ASSERT_TRUE(is_valid_vertex(graph, u));
+    ASSERT_FALSE(is_valid_vertex(
+        graph, vertex_t<static_forward_digraph>(num_vertices(graph))));
 
-    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph,a));
+    for(auto a : arcs(graph)) ASSERT_TRUE(is_valid_arc(graph, a));
     ASSERT_FALSE(
-        is_valid_arc(graph,arc_t<static_forward_digraph>(num_arcs(graph))));
+        is_valid_arc(graph, arc_t<static_forward_digraph>(num_arcs(graph))));
 
     ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,0),
+        EQ_RANGES(out_neighbors(graph, 0),
                   std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
-    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph,1), {2, 6, 7}));
-    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph,2), {3, 4}));
-    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph,6), {5}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 1), {2, 6, 7}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 2), {3, 4}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 6), {5}));
     ASSERT_TRUE(
-        EQ_RANGES(out_neighbors(graph,7),
+        EQ_RANGES(out_neighbors(graph, 7),
                   std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
 
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));

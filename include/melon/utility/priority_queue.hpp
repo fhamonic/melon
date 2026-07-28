@@ -1,5 +1,4 @@
-#ifndef MELON_UTILITY_PRIORITY_QUEUE_HPP
-#define MELON_UTILITY_PRIORITY_QUEUE_HPP
+#pragma once
 
 #include <concepts>
 #include <ranges>
@@ -29,5 +28,3 @@ concept updatable_priority_queue = priority_queue<Q> &&
 // clang-format on
 
 }  // namespace melon
-
-#endif  // MELON_UTILITY_PRIORITY_QUEUE_HPP

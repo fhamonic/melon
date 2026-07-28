@@ -1,0 +1,12 @@
+[settings]
+os=Linux
+arch=x86_64
+build_type=Release
+compiler=clang
+compiler.cppstd=23
+compiler.version=18
+compiler.libcxx=libstdc++11
+
+[buildenv]
+CC=clang-18
+CXX=clang++-18

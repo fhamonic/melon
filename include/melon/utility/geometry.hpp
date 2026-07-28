@@ -1,5 +1,4 @@
-#ifndef GEOMETRIC_SYSTEMS_HPP
-#define GEOMETRIC_SYSTEMS_HPP
+#pragma once
 
 #include <tuple>
 #include <utility>
@@ -169,5 +168,3 @@ struct cartesian {
     }
 };
 }  // namespace melon
-
-#endif  // GEOMETRIC_SYSTEMS_HPP

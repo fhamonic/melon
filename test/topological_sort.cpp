@@ -46,7 +46,7 @@ GTEST_TEST(topological_sort, test) {
 
     topological_sort alg(graph);
 
-     ASSERT_FALSE(alg.finished());
+    ASSERT_FALSE(alg.finished());
     ASSERT_EQ(alg.current(), 4u);
     alg.advance();
     ASSERT_FALSE(alg.finished());

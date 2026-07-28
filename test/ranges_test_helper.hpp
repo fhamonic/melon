@@ -79,9 +79,10 @@ testing::AssertionResult EQ_RANGES(R1 && r1, R2 && r2) {
 template <typename R, typename T>
     requires std::convertible_to<T, std::ranges::range_value_t<R>>
 testing::AssertionResult EQ_RANGES(R && r1, std::initializer_list<T> l) {
-    auto r2 = std::ranges::to<std::vector<std::ranges::range_value_t<R>>>(std::views::transform(l, [](const auto & e) {
-        return static_cast<std::ranges::range_value_t<R>>(e);
-    }));
+    auto r2 = std::ranges::to<std::vector<std::ranges::range_value_t<R>>>(
+        std::views::transform(l, [](const auto & e) {
+            return static_cast<std::ranges::range_value_t<R>>(e);
+        }));
     return EQ_RANGES(r1, r2);
 }
 
@@ -119,9 +120,10 @@ testing::AssertionResult EQ_MULTISETS(R1 && r1, R2 && r2) {
 template <typename R, typename T>
     requires std::convertible_to<T, std::ranges::range_value_t<R>>
 testing::AssertionResult EQ_MULTISETS(R && r1, std::initializer_list<T> l) {
-    auto r2 = std::ranges::to<std::vector<std::ranges::range_value_t<R>>>(std::views::transform(l, [](const auto & e) {
-        return static_cast<std::ranges::range_value_t<R>>(e);
-    }));
+    auto r2 = std::ranges::to<std::vector<std::ranges::range_value_t<R>>>(
+        std::views::transform(l, [](const auto & e) {
+            return static_cast<std::ranges::range_value_t<R>>(e);
+        }));
     return EQ_MULTISETS(r1, r2);
 }
 

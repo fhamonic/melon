@@ -18,9 +18,8 @@ GTEST_TEST(undirect_views, static_graph) {
         arc_pairs(
             {{0, {0, 1}}, {1, {0, 2}}, {2, {1, 2}}, {3, {2, 0}}, {4, {2, 1}}});
 
-    static_digraph graph(
-        3, std::views::keys(std::views::values(arc_pairs)),
-        std::views::values(std::views::values(arc_pairs)));
+    static_digraph graph(3, std::views::keys(std::views::values(arc_pairs)),
+                         std::views::values(std::views::values(arc_pairs)));
 
     auto ugraph = views::undirect(graph);
 

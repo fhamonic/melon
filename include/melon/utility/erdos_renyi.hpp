@@ -1,5 +1,4 @@
-#ifndef MELON_UTILITY_ERDOS_RENYI_HPP
-#define MELON_UTILITY_ERDOS_RENYI_HPP
+#pragma once
 
 #include <random>
 
@@ -10,8 +9,7 @@
 namespace melon {
 
 template <typename G>
-G erdos_renyi(const std::size_t num_vertices,
-                           const double expected_density) {
+G erdos_renyi(const std::size_t num_vertices, const double expected_density) {
     using vertex = vertex_t<G>;
 
     static std::uniform_real_distribution<double> distr{0.0, 1.0};
@@ -31,5 +29,3 @@ G erdos_renyi(const std::size_t num_vertices,
 };
 
 }  // namespace melon
-
-#endif  // MELON_UTILITY_ERDOS_RENYI_HPP

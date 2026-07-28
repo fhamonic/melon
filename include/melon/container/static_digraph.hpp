@@ -1,5 +1,4 @@
-#ifndef MELON_STATIC_DIGRAPH_HPP
-#define MELON_STATIC_DIGRAPH_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -69,7 +68,7 @@ public:
         return std::span(
             _in_arcs.data() + _in_arc_begin[u],
             (u + 1 < num_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
-                                   : _in_arcs.data() + num_arcs()));
+                                    : _in_arcs.data() + num_arcs()));
     }
 
     [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
@@ -93,7 +92,7 @@ public:
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
             (u + 1 < num_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
-                                   : _arc_target.data() + num_arcs()));
+                                    : _arc_target.data() + num_arcs()));
     }
 
     template <typename T>
@@ -150,5 +149,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_STATIC_DIGRAPH_HPP

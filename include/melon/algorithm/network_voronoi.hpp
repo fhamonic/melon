@@ -1,5 +1,4 @@
-#ifndef MELON_ALGORITHM_NETWORK_VORONOI_HPP
-#define MELON_ALGORITHM_NETWORK_VORONOI_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -175,7 +174,8 @@ public:
 
 template <typename _Graph, typename _LengthMap,
           typename _Traits = network_voronoi_default_traits<
-              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
+              _Graph,
+              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
 network_voronoi(_Graph &&, _LengthMap &&)
     -> network_voronoi<views::graph_all_t<_Graph>,
                        views::mapping_all_t<_LengthMap>, _Traits>;
@@ -187,7 +187,8 @@ network_voronoi(_Traits, _Graph &&, _LengthMap &&)
 
 template <typename _Graph, typename _LengthMap, typename _Kernels,
           typename _Traits = network_voronoi_default_traits<
-              _Graph, mapped_value_t<_LengthMap, arc_t<_Graph>>>>
+              _Graph,
+              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
 network_voronoi(_Graph &&, _LengthMap &&, _Kernels &&)
     -> network_voronoi<views::graph_all_t<_Graph>,
                        views::mapping_all_t<_LengthMap>, _Traits>;
@@ -199,5 +200,3 @@ network_voronoi(_Traits, _Graph &&, _LengthMap &&, _Kernels &&)
                        views::mapping_all_t<_LengthMap>, _Traits>;
 
 }  // namespace melon
-
-#endif  // MELON_ALGORITHM_NETWORK_VORONOI_HPP

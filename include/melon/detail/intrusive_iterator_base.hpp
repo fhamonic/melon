@@ -1,5 +1,4 @@
-#ifndef MELON_INTRUSIVE_ITERATOR_HPP
-#define MELON_INTRUSIVE_ITERATOR_HPP
+#pragma once
 
 #include <cassert>
 #include <iterator>
@@ -44,5 +43,3 @@ public:
 };
 
 }  // namespace melon
-
-#endif  // MELON_INTRUSIVE_ITERATOR_HPP

@@ -13,7 +13,8 @@ GTEST_TEST(intrusive_range, test) {
     std::vector<int> values = {1, 2, 6, 3, 7};
 
     auto r = intrusive_view(
-        std::size_t{0u}, [&values](const std::size_t i) -> int & { return values[i]; },
+        std::size_t{0u},
+        [&values](const std::size_t i) -> int & { return values[i]; },
         [](const std::size_t i) -> std::size_t { return i + 1; },
         [n = values.size()](const std::size_t i) -> std::size_t {
             return i < n;
@@ -45,7 +46,7 @@ GTEST_TEST(intrusive_range, test) {
                 { *in } -> std::same_as<std::iter_reference_t<I>>;
                 {
                     std::ranges::iter_move(in)
-                    } -> std::same_as<std::iter_rvalue_reference_t<I>>;
+                } -> std::same_as<std::iter_rvalue_reference_t<I>>;
             });
             static_assert(std::indirectly_readable<I>);
             static_assert(std::input_iterator<I>);
@@ -58,10 +59,8 @@ GTEST_TEST(intrusive_range, test) {
     static_assert(std::movable<R>);
     static_assert(std::ranges::viewable_range<R>);
 
-
     // static_assert(std::forward_iterator<I>);
     // static_assert(std::ranges::forward_range<R>);
-
 
     ASSERT_FALSE(it == end);
     ASSERT_EQ(*it, 1);
