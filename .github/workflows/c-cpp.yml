@@ -171,6 +171,223 @@ jobs:
           cmake --build consumer/build
           ./consumer/build/melon_consumer
 
+  # The submodule job above covers add_subdirectory; this one covers the other
+  # non-Conan path: `cmake --install` into a prefix, then an out-of-tree
+  # consumer that finds the installed package with find_package(melon CONFIG).
+  # It is what proves melonConfig.cmake, the exported melon::melon target and
+  # the installed header layout actually work together.
+  linux-cmake-install:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:25.04
+    env:
+      CC: gcc-15
+      CXX: g++-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install GCC-15 and CMake
+        run: apt-get install -y gcc-15 g++-15 cmake
+      # MELON_BUILD_TESTS defaults to PROJECT_IS_TOP_LEVEL, so it must be
+      # turned off explicitly here: installing does not need the test suite,
+      # and leaving it on would FetchContent-download GTest for nothing.
+      - name: Install melon into a prefix
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMELON_BUILD_TESTS=OFF \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/prefix"
+          cmake --install build
+      - name: Check the installed layout
+        run: |
+          test -f "$GITHUB_WORKSPACE/prefix/include/melon/version.hpp"
+          test -f "$GITHUB_WORKSPACE/prefix/include/melon/all.hpp"
+          test -f "$GITHUB_WORKSPACE/prefix/lib/cmake/melon/melonConfig.cmake"
+          test -f "$GITHUB_WORKSPACE/prefix/lib/cmake/melon/melonConfigVersion.cmake"
+          test -f "$GITHUB_WORKSPACE/prefix/lib/cmake/melon/melonTargets.cmake"
+          test -f "$GITHUB_WORKSPACE/prefix/share/licenses/melon/LICENSE"
+          # The two unfinished experimental headers must not ship.
+          test ! -e "$GITHUB_WORKSPACE/prefix/include/melon/experimental/scapegoat_tree.hpp"
+          test ! -e "$GITHUB_WORKSPACE/prefix/include/melon/experimental/doubly_connected_digraph.hpp"
+      - name: Create an out-of-tree consumer using find_package(melon)
+        run: |
+          mkdir -p consumer
+          cat > consumer/CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.24)
+          project(MelonInstallConsumer LANGUAGES CXX)
+          find_package(melon 1.0 CONFIG REQUIRED)
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE melon::melon)
+          EOF
+          cat > consumer/main.cpp << 'EOF'
+          #include <iostream>
+
+          #include "melon/algorithm/dijkstra.hpp"
+          #include "melon/container/static_digraph.hpp"
+          #include "melon/utility/static_digraph_builder.hpp"
+          #include "melon/version.hpp"
+
+          static_assert(MELON_VERSION_MAJOR == 1);
+
+          int main() {
+              using namespace melon;
+
+              static_digraph_builder<static_digraph, int> builder(6);
+              builder.add_arc(0, 1, 7)
+                  .add_arc(0, 2, 9)
+                  .add_arc(0, 5, 14)
+                  .add_arc(1, 2, 10)
+                  .add_arc(1, 3, 15)
+                  .add_arc(2, 3, 12)
+                  .add_arc(2, 5, 2)
+                  .add_arc(3, 4, 6)
+                  .add_arc(4, 5, 9);
+              auto [graph, length_map] = builder.build();
+
+              for(const auto & [v, dist] : dijkstra(graph, length_map, 0u)) {
+                  std::cout << "vertex " << v << " at distance " << dist
+                            << '\n';
+              }
+              return 0;
+          }
+          EOF
+      - name: Build the consumer against the installed package
+        run: |
+          cmake -S consumer -B consumer/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/prefix"
+          cmake --build consumer/build -j
+      # Dijkstra from vertex 0 settles the vertices in order of distance, so
+      # the whole output is checked rather than a single line: that also
+      # catches a regression in the traversal order.
+      - name: Run the consumer and check its output
+        run: |
+          cat > expected.txt << 'EOF'
+          vertex 0 at distance 0
+          vertex 1 at distance 7
+          vertex 2 at distance 9
+          vertex 5 at distance 11
+          vertex 3 at distance 21
+          vertex 4 at distance 27
+          EOF
+          ./consumer/build/app | tee output.txt
+          diff -u expected.txt output.txt
+
+  # The other jobs run `conan build`, which never exercises the packaging half
+  # of the recipe. This one runs `conan create` -- exporting, building, running
+  # the suite and assembling the package -- then consumes the created package
+  # from a separate project, which is the only way package() and package_info()
+  # get checked.
+  linux-conan-create:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:25.04
+    env:
+      CC: gcc-15
+      CXX: g++-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update APT
+        run: apt-get update && apt-get upgrade -y
+      - name: Install GCC-15 and CMake
+        run: apt-get install -y gcc-15 g++-15 cmake
+      - name: Install Conan 2.0
+        run: |
+          apt-get install -y pipx
+          pipx install conan
+          echo "/github/home/.local/bin" >> $GITHUB_PATH
+      - name: Create the package
+        run: |
+          conan profile detect --name=default
+          conan create . -u -b=missing -pr=.github/conan-profiles/gcc15_c++26
+      - name: Create a consumer project requiring the created package
+        run: |
+          mkdir -p consumer
+          # Version range rather than a pinned 1.0.0, so the job keeps working
+          # across patch bumps of version.hpp.
+          cat > consumer/conanfile.txt << 'EOF'
+          [requires]
+          melon/[>=1.0 <2]
+
+          [generators]
+          CMakeDeps
+          CMakeToolchain
+          EOF
+          cat > consumer/CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.24)
+          project(MelonConanConsumer LANGUAGES CXX)
+          find_package(melon CONFIG REQUIRED)
+          add_executable(app main.cpp)
+          target_link_libraries(app PRIVATE melon::melon)
+          EOF
+          cat > consumer/main.cpp << 'EOF'
+          #include <iostream>
+
+          #include "melon/algorithm/dijkstra.hpp"
+          #include "melon/container/static_digraph.hpp"
+          #include "melon/utility/static_digraph_builder.hpp"
+          #include "melon/version.hpp"
+
+          static_assert(MELON_VERSION_MAJOR == 1);
+
+          // The recipe's package() carries its own exclude list, separate from
+          // the install() rules in CMakeLists.txt. Checking it here, against
+          // the real include path of the created package, is what keeps the
+          // two lists from drifting apart.
+          #if __has_include("melon/experimental/scapegoat_tree.hpp")
+          #error "scapegoat_tree.hpp is unfinished and must not be packaged"
+          #endif
+          #if __has_include("melon/experimental/doubly_connected_digraph.hpp")
+          #error "doubly_connected_digraph.hpp is unfinished and must not be packaged"
+          #endif
+          #if !__has_include("melon/experimental/planar_map.hpp")
+          #error "planar_map.hpp is expected to ship"
+          #endif
+
+          int main() {
+              using namespace melon;
+
+              static_digraph_builder<static_digraph, int> builder(6);
+              builder.add_arc(0, 1, 7)
+                  .add_arc(0, 2, 9)
+                  .add_arc(0, 5, 14)
+                  .add_arc(1, 2, 10)
+                  .add_arc(1, 3, 15)
+                  .add_arc(2, 3, 12)
+                  .add_arc(2, 5, 2)
+                  .add_arc(3, 4, 6)
+                  .add_arc(4, 5, 9);
+              auto [graph, length_map] = builder.build();
+
+              for(const auto & [v, dist] : dijkstra(graph, length_map, 0u)) {
+                  std::cout << "vertex " << v << " at distance " << dist
+                            << '\n';
+              }
+              return 0;
+          }
+          EOF
+      - name: Build the consumer against the created package
+        run: |
+          conan install consumer -pr=.github/conan-profiles/gcc15_c++26 \
+            -of=consumer/deps -b=missing
+          cmake -S consumer -B consumer/build \
+            -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/consumer/deps/conan_toolchain.cmake" \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build consumer/build -j
+      - name: Run the consumer and check its output
+        run: |
+          cat > expected.txt << 'EOF'
+          vertex 0 at distance 0
+          vertex 1 at distance 7
+          vertex 2 at distance 9
+          vertex 5 at distance 11
+          vertex 3 at distance 21
+          vertex 4 at distance 27
+          EOF
+          ./consumer/build/app | tee output.txt
+          diff -u expected.txt output.txt
+
   windows-mingw15-build:
     runs-on: windows-latest
     steps:

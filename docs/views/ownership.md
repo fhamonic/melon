@@ -49,14 +49,14 @@ The last line is why views compose without stacking wrappers: a type that alread
 This is what every algorithm and every view does with its graph argument, which is why they all take it by forwarding reference:
 
 ```cpp
-template <typename _G, typename _M>
-constexpr dijkstra(_G && g, _M && l)
-    : _graph(views::graph_all(std::forward<_G>(g)))
-    , _length_map(views::mapping_all(std::forward<_M>(l)))
+template <typename G, typename M>
+constexpr dijkstra(G && g, M && l)
+    : _graph(views::graph_all(std::forward<G>(g)))
+    , _length_map(views::mapping_all(std::forward<M>(l)))
     ...
 ```
 
-and why their deduction guides are written in terms of `views::graph_all_t<_Graph>`.
+and why their deduction guides are written in terms of `views::graph_all_t<Graph>`.
 
 ### Marking your own type as a view
 
@@ -111,7 +111,7 @@ auto length_map = views::mapping_all(lengths);
 
 ## Constness
 
-`graph_ref_view<const G>` is a distinct type from `graph_ref_view<G>`, and the const one only forwards const-callable accessors — which is all of them, since every graph concept is written against `const _Tp &`. Passing a `const` graph is therefore free of surprises.
+`graph_ref_view<const G>` is a distinct type from `graph_ref_view<G>`, and the const one only forwards const-callable accessors — which is all of them, since every graph concept is written against `const T &`. Passing a `const` graph is therefore free of surprises.
 
 The mapping side is where constness bites: an algorithm that writes through a mapping needs `output_mapping`, and a `mapping_ref_view<const std::vector<double>>` is read-only. That is a compile error at the constructor, naming the concept.
 

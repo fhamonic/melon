@@ -71,18 +71,18 @@ Anything satisfying them can be substituted into an algorithm through its [trait
 ### `d_ary_heap`
 
 ```cpp
-template <std::size_t D, typename _Entry,
-          typename _PriorityComparator = std::greater<_Entry>,
-          input_mapping<_Entry> _EntryPriorityMap = views::identity_map>
+template <std::size_t D, typename Entry,
+          typename PriorityComparator = std::greater<Entry>,
+          input_mapping<Entry> EntryPriorityMap = views::identity_map>
 class d_ary_heap;
 ```
 
 | Parameter | Meaning |
 | --- | --- |
 | `D` | children per node — 2 is a binary heap, 4 tends to win on large workloads |
-| `_Entry` | the element type stored |
-| `_PriorityComparator` | strict weak order on priorities; the element that compares *before* all others is on top |
-| `_EntryPriorityMap` | how to get an entry's priority; the default is the entry itself |
+| `Entry` | the element type stored |
+| `PriorityComparator` | strict weak order on priorities; the element that compares *before* all others is on top |
+| `EntryPriorityMap` | how to get an entry's priority; the default is the entry itself |
 
 ```cpp
 d_ary_heap<2, int> max_heap;                     // std::greater  -> largest on top
@@ -97,19 +97,19 @@ Watch the direction: with the default `std::greater` the maximum is on top. Dijk
 ### `updatable_d_ary_heap`
 
 ```cpp
-template <std::size_t D, typename _Entry,
-          typename _PriorityComparator = std::greater<_Entry>,
-          typename _IndicesMap = mapping_owning_view<std::unordered_map<_Entry, std::size_t>>,
-          input_mapping<_Entry> _EntryPriorityMap = views::identity_map,
-          input_mapping<_Entry> _EntryIdMap = views::identity_map>
+template <std::size_t D, typename Entry,
+          typename PriorityComparator = std::greater<Entry>,
+          typename IndicesMap = mapping_owning_view<std::unordered_map<Entry, std::size_t>>,
+          input_mapping<Entry> EntryPriorityMap = views::identity_map,
+          input_mapping<Entry> EntryIdMap = views::identity_map>
 class updatable_d_ary_heap;
 ```
 
 Adds `contains(id)`, `priority(id)`, `promote(id, p)` and `demote(id, p)`, by tracking where each entry lives. The three extra parameters say how:
 
-- `_IndicesMap` maps an entry's identifier to its index in the heap array. The default is a hash map; for integral identifiers, pass a `static_map` and the lookup becomes an array access — this is exactly what `dijkstra_default_traits` does with `vertex_map_t<_Graph, std::size_t>`.
-- `_EntryPriorityMap` extracts the priority from an entry.
-- `_EntryIdMap` extracts the identifier from an entry.
+- `IndicesMap` maps an entry's identifier to its index in the heap array. The default is a hash map; for integral identifiers, pass a `static_map` and the lookup becomes an array access — this is exactly what `dijkstra_default_traits` does with `vertex_map_t<Graph, std::size_t>`.
+- `EntryPriorityMap` extracts the priority from an entry.
+- `EntryIdMap` extracts the identifier from an entry.
 
 For a `std::pair<vertex, distance>` entry, the last two are `views::element_map<1>` and `views::element_map<0>`:
 

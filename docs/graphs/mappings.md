@@ -5,25 +5,25 @@ A **mapping** is melon's abstraction for "data indexed by something" — lengths
 ## The base concept
 
 ```cpp
-template <typename _Map, typename _Key>
-concept mapping = requires(_Map m, _Key k) { m[k]; };
+template <typename Map, typename Key>
+concept mapping = requires(Map m, Key k) { m[k]; };
 ```
 
 That is all: `mapping` is to `operator[]` what `std::ranges::range` is to `begin`/`end` — a syntactic entry point that says nothing yet about the value type. The associated aliases extract it:
 
 ```cpp
-template <typename _Map, typename _Key>
-    requires mapping<_Map, _Key>
-using mapped_reference_t = decltype(std::declval<_Map>()[std::declval<_Key>()]);
+template <typename Map, typename Key>
+    requires mapping<Map, Key>
+using mapped_reference_t = decltype(std::declval<Map>()[std::declval<Key>()]);
 
-template <typename _Map, typename _Key>
-    requires mapping<_Map, _Key>
+template <typename Map, typename Key>
+    requires mapping<Map, Key>
 using mapped_const_reference_t =
-    decltype(std::declval<std::add_const_t<_Map>>()[std::declval<_Key>()]);
+    decltype(std::declval<std::add_const_t<Map>>()[std::declval<Key>()]);
 
-template <typename _Map, typename _Key>
-    requires mapping<_Map, _Key>
-using mapped_value_t = std::decay_t<mapped_const_reference_t<_Map, _Key>>;
+template <typename Map, typename Key>
+    requires mapping<Map, Key>
+using mapped_value_t = std::decay_t<mapped_const_reference_t<Map, Key>>;
 ```
 
 `mapped_reference_t` is what a mutable access yields, `mapped_const_reference_t` what a const access yields, and `mapped_value_t` the decayed value behind it.
@@ -31,30 +31,30 @@ using mapped_value_t = std::decay_t<mapped_const_reference_t<_Map, _Key>>;
 ## Reading, writing, prefetching
 
 ```cpp
-template <typename _Map, typename _Key>
+template <typename Map, typename Key>
 concept input_mapping =
-    mapping<_Map, _Key> && !std::same_as<mapped_value_t<_Map, _Key>, void>;
+    mapping<Map, Key> && !std::same_as<mapped_value_t<Map, Key>, void>;
 ```
 
 `input_mapping` adds the requirement that there is actually a value associated with the key — and, through `mapped_value_t`, that the map is readable **through a const access**. That second consequence is easy to miss and is covered [below](#stdmap-does-not-satisfy-input_mapping).
 
 ```cpp
-template <typename _Map, typename _Key>
+template <typename Map, typename Key>
 concept output_mapping =
-    input_mapping<_Map, _Key> &&
-    requires(_Map map, _Key key, mapped_value_t<_Map, _Key> value) {
+    input_mapping<Map, Key> &&
+    requires(Map map, Key key, mapped_value_t<Map, Key> value) {
         { map[key] = value }
-            -> std::same_as<std::add_lvalue_reference_t<mapped_reference_t<_Map, _Key>>>;
+            -> std::same_as<std::add_lvalue_reference_t<mapped_reference_t<Map, Key>>>;
     };
 ```
 
 `output_mapping` adds assignment. A mapping that does not satisfy it is read-only. The shape of the requirement — checking the *type of the assignment expression* rather than requiring a plain `T&` — is what lets proxy references qualify, so `std::vector<bool>` is a perfectly good output mapping alongside `std::vector<double>` and your own type.
 
 ```cpp
-template <typename _Map, typename _Key>
+template <typename Map, typename Key>
 concept contiguous_mapping =
-    input_mapping<_Map, _Key> && std::integral<_Key> && requires(_Map & __m) {
-        { __m.data() } -> std::same_as<std::add_pointer_t<mapped_value_t<_Map, _Key>>>;
+    input_mapping<Map, Key> && std::integral<Key> && requires(Map & m) {
+        { m.data() } -> std::same_as<std::add_pointer_t<mapped_value_t<Map, Key>>>;
     };
 ```
 
@@ -65,12 +65,12 @@ concept contiguous_mapping =
 `input_mapping_of`, `output_mapping_of` and `contiguous_mapping_of` add one requirement: the mapped value is *exactly* the given type.
 
 ```cpp
-template <typename _Map, typename _Key, typename _Value>
+template <typename Map, typename Key, typename Value>
 concept input_mapping_of =
-    mapping<_Map, _Key> && std::same_as<mapped_value_t<_Map, _Key>, _Value>;
+    mapping<Map, Key> && std::same_as<mapped_value_t<Map, Key>, Value>;
 ```
 
-Use them when the value type is fixed by the problem rather than deduced from the map — `output_mapping_of<F, arc_t<G>, bool>` for an arc filter, for instance. Algorithms that infer their arithmetic from the map, such as Dijkstra, take the unrefined `input_mapping<_LengthMap, arc_t<_Graph>>` and let the length type follow.
+Use them when the value type is fixed by the problem rather than deduced from the map — `output_mapping_of<F, arc_t<G>, bool>` for an arc filter, for instance. Algorithms that infer their arithmetic from the map, such as Dijkstra, take the unrefined `input_mapping<LengthMap, arc_t<Graph>>` and let the length type follow.
 
 ## What qualifies
 

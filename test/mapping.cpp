@@ -57,7 +57,7 @@ static_assert(mapping_view<views::element_map<0>, std::pair<int, int>>);
 
 // ############################## ref view ################################
 
-// Shallow const, like std::ranges::ref_view: constness rides on _Map, so a
+// Shallow const, like std::ranges::ref_view: constness rides on Map, so a
 // const view over a mutable map still writes through.
 static_assert(output_mapping_of<const mapping_ref_view<std::vector<int>>,
                                 std::size_t, int>);
@@ -209,10 +209,10 @@ GTEST_TEST(canned_maps, element_map_projects_tuple_elements) {
 
 // ############### regression: mapping_all is SFINAE-friendly ##################
 
-// _MappingAll::operator() used to be unconstrained, so its noexcept-specifier
-// was instantiated for every argument and hard-errored outside the immediate
-// context. `requires { mapping_all(x); }` blew up instead of yielding false,
-// which made mapping_all_t unusable in a constraint.
+// mapping_all_fn::operator() used to be unconstrained, so its
+// noexcept-specifier was instantiated for every argument and hard-errored
+// outside the immediate context. `requires { mapping_all(x); }` blew up instead
+// of yielding false, which made mapping_all_t unusable in a constraint.
 namespace {
 struct not_a_mapping {
     not_a_mapping(const not_a_mapping &) = delete;

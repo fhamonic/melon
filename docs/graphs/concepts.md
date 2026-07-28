@@ -15,9 +15,9 @@ The mathematical structure melon abstracts is therefore the **directed multigrap
 ## `graph`
 
 ```cpp
-template <typename _Tp>
-concept graph = has_vertices<_Tp> && has_arcs<_Tp> &&
-                requires(const _Tp & __t) { melon::arcs_entries(__t); };
+template <typename T>
+concept graph = has_vertices<T> && has_arcs<T> &&
+                requires(const T & t) { melon::arcs_entries(t); };
 ```
 
 An instance `g` of a graph type `G` must provide:
@@ -33,8 +33,8 @@ Only `vertices` is truly primitive: [`arcs` and `arcs_entries` are synthesized](
 Two optional refinements report sizes:
 
 ```cpp
-template <typename _Tp> concept has_num_vertices = ...;  // melon::num_vertices(g)
-template <typename _Tp> concept has_num_arcs = ...;      // melon::num_arcs(g)
+template <typename T> concept has_num_vertices = ...;  // melon::num_vertices(g)
+template <typename T> concept has_num_arcs = ...;      // melon::num_arcs(g)
 ```
 
 Both are satisfied for free when the corresponding range is a `sized_range`.
@@ -44,36 +44,36 @@ Both are satisfied for free when the corresponding range is a `sized_range`.
 An arc is *incident* to a vertex `v` when `v` is one of its endpoints. Iterating the outgoing arcs of a vertex is the classical lookup operation, and it is expressed by:
 
 ```cpp
-template <typename _Tp>
+template <typename T>
 concept has_out_arcs =
-    graph<_Tp> &&
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        melon::out_arcs(__t, __v);
+    graph<T> &&
+    requires(const T & t, const vertex_t<T> & v) {
+        melon::out_arcs(t, v);
     } &&
-    std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<_Tp>>,
-                        arc_t<_Tp>>;
+    std::convertible_to<std::ranges::range_value_t<out_arcs_range_t<T>>,
+                        arc_t<T>>;
 ```
 
 Listing arcs is rarely enough on its own: a traversal also needs where an arc leads.
 
 ```cpp
-template <typename _Tp>
+template <typename T>
 concept has_arc_target =
-    graph<_Tp> && requires(const _Tp & __t, const arc_t<_Tp> & __a) {
-                      melon::arc_target(__t, __a);
+    graph<T> && requires(const T & t, const arc_t<T> & a) {
+                      melon::arc_target(t, a);
                   };
 ```
 
 Since the two are almost always needed together, they are grouped:
 
 ```cpp
-template <typename _Tp>
+template <typename T>
 concept outward_incidence_graph =
-    graph<_Tp> && has_out_arcs<_Tp> && has_arc_target<_Tp>;
+    graph<T> && has_out_arcs<T> && has_arc_target<T>;
 
-template <typename _Tp>
+template <typename T>
 concept inward_incidence_graph =
-    graph<_Tp> && has_in_arcs<_Tp> && has_arc_source<_Tp>;
+    graph<T> && has_in_arcs<T> && has_arc_source<T>;
 ```
 
 They stay separately available because the four capabilities are genuinely independent: a graph may satisfy `outward_incidence_graph` and `has_arc_source` without storing in-arcs — that is exactly `static_digraph` if you drop its reverse index — and an algorithm should require only what it uses.
@@ -85,10 +85,10 @@ They stay separately available because the four capabilities are genuinely indep
 Two vertices are *adjacent* when an arc connects them. Iterating neighbors directly, without naming the arcs, is the other classical lookup:
 
 ```cpp
-template <typename _Tp>
+template <typename T>
 concept outward_adjacency_graph =
-    graph<_Tp> && requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                      melon::out_neighbors(__t, __v);
+    graph<T> && requires(const T & t, const vertex_t<T> & v) {
+                      melon::out_neighbors(t, v);
                   };
 ```
 
@@ -116,7 +116,7 @@ vertex_map_t<G, int> vertex_map = create_vertex_map<int>(g, 0);
 
     `has_vertex_map<G>` and `has_arc_map<G>` default their value type to
     `std::size_t`, so an algorithm needing scratch indices can write
-    `requires has_vertex_map<_Graph>` and mean it.
+    `requires has_vertex_map<Graph>` and mean it.
 
 This design choice has several advantages:
 

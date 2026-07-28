@@ -6,21 +6,21 @@
 #include "melon/utility/rational.hpp"
 
 namespace melon {
-template <typename _Tp>
-concept cartesian_point = requires(const _Tp & __t) {
-    { std::get<0>(__t) };
-    { std::get<1>(__t) };
+template <typename T>
+concept cartesian_point = requires(const T & t) {
+    { std::get<0>(t) };
+    { std::get<1>(t) };
 };
-template <typename _Tp>
-concept cartesian_segment = requires(const _Tp & __t) {
-    { std::get<0>(__t) } -> cartesian_point;
-    { std::get<1>(__t) } -> cartesian_point;
+template <typename T>
+concept cartesian_segment = requires(const T & t) {
+    { std::get<0>(t) } -> cartesian_point;
+    { std::get<1>(t) } -> cartesian_point;
 };
-template <typename _Tp>
-concept cartesian_line = requires(const _Tp & __t) {
-    { std::get<0>(__t) };
-    { std::get<1>(__t) };
-    { std::get<2>(__t) };
+template <typename T>
+concept cartesian_line = requires(const T & t) {
+    { std::get<0>(t) };
+    { std::get<1>(t) };
+    { std::get<2>(t) };
 };
 
 struct cartesian {

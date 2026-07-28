@@ -124,9 +124,9 @@ To make a type usable by Boost.Graph you specialize `graph_traits` and provide t
 An algorithm's requirements are visible in its signature and enforced at the call site:
 
 ```cpp
-template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> _LengthMap,
-          dijkstra_trait _Traits>
-    requires has_vertex_map<_Graph>
+template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> LengthMap,
+          dijkstra_trait Traits>
+    requires has_vertex_map<Graph>
 class dijkstra;
 ```
 

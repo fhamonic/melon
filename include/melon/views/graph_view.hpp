@@ -9,12 +9,11 @@ namespace melon {
 
 struct graph_view_base {};
 
-template <typename _Tp>
-inline constexpr bool enable_graph_view =
-    std::derived_from<_Tp, graph_view_base>;
+template <typename T>
+inline constexpr bool enable_graph_view = std::derived_from<T, graph_view_base>;
 
-template <typename _Tp>
-concept graph_view = graph<_Tp> && std::movable<_Tp> && enable_graph_view<_Tp>;
+template <typename T>
+concept graph_view = graph<T> && std::movable<T> && enable_graph_view<T>;
 
 template <graph G>
     requires std::is_object_v<G>
@@ -26,10 +25,10 @@ private:
     G * _graph;
 
 public:
-    template <typename _Tp>
-        requires(!__detail::__specialization_of<_Tp, graph_ref_view>)
-    [[nodiscard]] constexpr explicit graph_ref_view(_Tp && g)
-        : _graph(std::addressof(static_cast<G &>(std::forward<_Tp>(g)))) {}
+    template <typename T>
+        requires(!detail::specialization_of<T, graph_ref_view>)
+    [[nodiscard]] constexpr explicit graph_ref_view(T && g)
+        : _graph(std::addressof(static_cast<G &>(std::forward<T>(g)))) {}
 
     [[nodiscard]] constexpr graph_ref_view(const graph_ref_view &) = default;
     [[nodiscard]] constexpr graph_ref_view(graph_ref_view &&) = default;
@@ -130,8 +129,8 @@ public:
     }
 };
 
-template <typename _Graph>
-graph_ref_view(_Graph &) -> graph_ref_view<_Graph>;
+template <typename Graph>
+graph_ref_view(Graph &) -> graph_ref_view<Graph>;
 
 template <graph G>
     requires std::move_constructible<G>
@@ -257,48 +256,47 @@ public:
 };
 
 namespace views {
-namespace __cust_access {
-namespace __detail {
-template <typename _Graph>
-concept __can_graph_ref_view =
-    requires { graph_ref_view{std::declval<_Graph>()}; };
+namespace cpo {
+namespace detail {
+template <typename Graph>
+concept can_graph_ref_view =
+    requires { graph_ref_view{std::declval<Graph>()}; };
 
-template <typename _Graph>
-concept __can_graph_owning_view =
-    requires { graph_owning_view{std::declval<_Graph>()}; };
-}  // namespace __detail
+template <typename Graph>
+concept can_graph_owning_view =
+    requires { graph_owning_view{std::declval<Graph>()}; };
+}  // namespace detail
 
-struct _GraphAll {
-    template <typename _Graph>
-    static constexpr bool _S_noexcept() {
-        if constexpr(graph_view<std::decay_t<_Graph>>)
-            return std::is_nothrow_constructible_v<std::decay_t<_Graph>,
-                                                   _Graph>;
-        else if constexpr(__detail::__can_graph_ref_view<_Graph>)
+struct graph_all_fn {
+    template <typename Graph>
+    static constexpr bool is_noexcept() {
+        if constexpr(graph_view<std::decay_t<Graph>>)
+            return std::is_nothrow_constructible_v<std::decay_t<Graph>, Graph>;
+        else if constexpr(detail::can_graph_ref_view<Graph>)
             return true;
         else
-            return noexcept(graph_owning_view{std::declval<_Graph>()});
+            return noexcept(graph_owning_view{std::declval<Graph>()});
     }
 
-    template <graph _Graph>
-    constexpr auto operator() [[nodiscard]] (_Graph && __g) const
-        noexcept(_S_noexcept<_Graph>()) {
-        if constexpr(graph_view<std::decay_t<_Graph>>)
-            return std::forward<_Graph>(__g);
-        else if constexpr(__detail::__can_graph_ref_view<_Graph>)
-            return graph_ref_view{std::forward<_Graph>(__g)};
+    template <graph Graph>
+    constexpr auto operator() [[nodiscard]] (Graph && g) const
+        noexcept(is_noexcept<Graph>()) {
+        if constexpr(graph_view<std::decay_t<Graph>>)
+            return std::forward<Graph>(g);
+        else if constexpr(detail::can_graph_ref_view<Graph>)
+            return graph_ref_view{std::forward<Graph>(g)};
         else
-            return graph_owning_view{std::forward<_Graph>(__g)};
+            return graph_owning_view{std::forward<Graph>(g)};
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_GraphAll graph_all{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::graph_all_fn graph_all{};
+}  // namespace cust
 
-template <graph _Graph>
-using graph_all_t = decltype(graph_all(std::declval<_Graph>()));
+template <graph Graph>
+using graph_all_t = decltype(graph_all(std::declval<Graph>()));
 
 }  // namespace views
 }  // namespace melon

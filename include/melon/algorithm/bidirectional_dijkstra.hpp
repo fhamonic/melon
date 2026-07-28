@@ -23,36 +23,35 @@
 namespace melon {
 
 // clang-format off
-template <typename _Traits>
-concept bidirectional_dijkstra_trait = semiring<typename _Traits::semiring> &&
-    updatable_priority_queue<typename _Traits::heap> && requires() {
-    { _Traits::store_path } -> std::convertible_to<bool>;
+template <typename Traits>
+concept bidirectional_dijkstra_trait = semiring<typename Traits::semiring> &&
+    updatable_priority_queue<typename Traits::heap> && requires() {
+    { Traits::store_path } -> std::convertible_to<bool>;
 };
 // clang-format on
 
-template <typename _Graph, typename _ValueType>
+template <typename Graph, typename ValueType>
 struct bidirectional_dijkstra_default_traits {
-    using semiring = shortest_path_semiring<_ValueType>;
+    using semiring = shortest_path_semiring<ValueType>;
     using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, _ValueType>,
+        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, ValueType>,
                              typename semiring::less_t,
-                             vertex_map_t<_Graph, std::size_t>,
+                             vertex_map_t<Graph, std::size_t>,
                              views::element_map<1>, views::element_map<0>>;
 
     static constexpr bool store_path = true;
 };
 
-template <outward_incidence_graph _Graph,
-          input_mapping<arc_t<_Graph>> _LengthMap,
-          bidirectional_dijkstra_trait _Traits>
-    requires inward_incidence_graph<_Graph> && has_vertex_map<_Graph>
+template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> LengthMap,
+          bidirectional_dijkstra_trait Traits>
+    requires inward_incidence_graph<Graph> && has_vertex_map<Graph>
 class bidirectional_dijkstra {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
-    using length_type = mapped_value_t<_LengthMap, vertex>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
+    using length_type = mapped_value_t<LengthMap, vertex>;
 
-    using heap = _Traits::heap;
+    using heap = Traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
     static_assert(std::is_same_v<typename heap::value_type,
@@ -62,23 +61,23 @@ private:
     using optional_arc = std::optional<arc>;
     struct no_forward_pred_arcs_map {};
     using forward_pred_arcs_map =
-        vertex_map_if<_Traits::store_path, _Graph, optional_arc,
+        vertex_map_if<Traits::store_path, Graph, optional_arc,
                       no_forward_pred_arcs_map>;
     struct no_reverse_pred_arcs_map {};
     using reverse_pred_arcs_map =
-        vertex_map_if<_Traits::store_path, _Graph, optional_arc,
+        vertex_map_if<Traits::store_path, Graph, optional_arc,
                       no_reverse_pred_arcs_map>;
     struct no_optional_midpoint {};
     using optional_midpoint =
-        std::conditional_t<_Traits::store_path, std::optional<vertex>,
+        std::conditional_t<Traits::store_path, std::optional<vertex>,
                            no_optional_midpoint>;
 
 private:
-    _Graph _graph;
-    _LengthMap _length_map;
+    Graph _graph;
+    LengthMap _length_map;
     heap _forward_heap;
     heap _reverse_heap;
-    vertex_map_t<_Graph, std::pair<vertex_status, vertex_status>>
+    vertex_map_t<Graph, std::pair<vertex_status, vertex_status>>
         _vertex_status_map;
 
     [[no_unique_address]] forward_pred_arcs_map _forward_pred_arcs_map;
@@ -86,13 +85,13 @@ private:
     [[no_unique_address]] optional_midpoint _midpoint;
 
 public:
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr bidirectional_dijkstra(_G && g, _M && l)
-        : _graph(views::graph_all(std::forward<_G>(g)))
-        , _length_map(views::mapping_all(std::forward<_M>(l)))
-        , _forward_heap(typename _Traits::semiring::less_t(),
+    template <typename G, typename M>
+    [[nodiscard]] constexpr bidirectional_dijkstra(G && g, M && l)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _length_map(views::mapping_all(std::forward<M>(l)))
+        , _forward_heap(typename Traits::semiring::less_t(),
                         create_vertex_map<std::size_t>(_graph))
-        , _reverse_heap(typename _Traits::semiring::less_t(),
+        , _reverse_heap(typename Traits::semiring::less_t(),
                         create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(_graph.template create_vertex_map<
                              std::pair<vertex_status, vertex_status>>(
@@ -100,11 +99,11 @@ public:
         , _forward_pred_arcs_map(_graph)
         , _reverse_pred_arcs_map(_graph) {}
 
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr bidirectional_dijkstra(_G && g, _M && l,
+    template <typename G, typename M>
+    [[nodiscard]] constexpr bidirectional_dijkstra(G && g, M && l,
                                                    const vertex & s,
                                                    const vertex & t)
-        : bidirectional_dijkstra(std::forward<_G>(g), std::forward<_M>(l)) {
+        : bidirectional_dijkstra(std::forward<G>(g), std::forward<M>(l)) {
         add_source(s);
         add_target(t);
     }
@@ -118,33 +117,33 @@ public:
     }
     bidirectional_dijkstra & add_source(
         const vertex & s,
-        const length_type dist = _Traits::semiring::zero) noexcept {
+        const length_type dist = Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s].first == PRE_HEAP);
         _forward_heap.push(std::make_pair(s, dist));
         _vertex_status_map[s].first = IN_HEAP;
-        if constexpr(_Traits::store_path) _forward_pred_arcs_map[s].reset();
+        if constexpr(Traits::store_path) _forward_pred_arcs_map[s].reset();
         return *this;
     }
     bidirectional_dijkstra & add_target(
         const vertex & t,
-        const length_type dist = _Traits::semiring::zero) noexcept {
+        const length_type dist = Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[t].second == PRE_HEAP);
         _reverse_heap.push(std::make_pair(t, dist));
         _vertex_status_map[t].second = IN_HEAP;
-        if constexpr(_Traits::store_path) _reverse_pred_arcs_map[t].reset();
+        if constexpr(Traits::store_path) _reverse_pred_arcs_map[t].reset();
         return *this;
     }
 
 public:
     constexpr length_type run() noexcept {
-        length_type st_dist = _Traits::semiring::infty;
+        length_type st_dist = Traits::semiring::infty;
         while(!_forward_heap.empty() && !_reverse_heap.empty()) {
             const auto && [u1, u1_dist] = _forward_heap.top();
             const auto && [u2, u2_dist] = _reverse_heap.top();
-            if(_Traits::semiring::less(
-                   st_dist, _Traits::semiring::plus(u1_dist, u2_dist)))
+            if(Traits::semiring::less(st_dist,
+                                      Traits::semiring::plus(u1_dist, u2_dist)))
                 break;
-            if(_Traits::semiring::less(u1_dist, u2_dist)) {
+            if(Traits::semiring::less(u1_dist, u2_dist)) {
                 const auto & out_arcs_range = out_arcs(_graph, u1);
                 prefetch_range(out_arcs_range);
                 prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
@@ -157,36 +156,36 @@ public:
                         _vertex_status_map[w];
                     if(w_forward_status == IN_HEAP) {
                         const length_type new_w_dist =
-                            _Traits::semiring::plus(u1_dist, _length_map[a]);
-                        if(_Traits::semiring::less(new_w_dist,
-                                                   _forward_heap.priority(w))) {
+                            Traits::semiring::plus(u1_dist, _length_map[a]);
+                        if(Traits::semiring::less(new_w_dist,
+                                                  _forward_heap.priority(w))) {
                             _forward_heap.promote(w, new_w_dist);
                             if(w_reverse_status == IN_HEAP) {
                                 const length_type new_st_dist =
                                     new_w_dist + _reverse_heap.priority(w);
-                                if(_Traits::semiring::less(new_st_dist,
-                                                           st_dist)) {
+                                if(Traits::semiring::less(new_st_dist,
+                                                          st_dist)) {
                                     st_dist = new_st_dist;
                                     _midpoint.emplace(w);
                                 }
                             }
-                            if constexpr(_Traits::store_path)
+                            if constexpr(Traits::store_path)
                                 _forward_pred_arcs_map[w].emplace(a);
                         }
                     } else if(w_forward_status == PRE_HEAP) {
                         const length_type new_w_dist =
-                            _Traits::semiring::plus(u1_dist, _length_map[a]);
+                            Traits::semiring::plus(u1_dist, _length_map[a]);
                         _forward_heap.push(std::make_pair(w, new_w_dist));
                         _vertex_status_map[w].first = IN_HEAP;
                         if(w_reverse_status == IN_HEAP) {
                             const length_type new_st_dist =
                                 new_w_dist + _reverse_heap.priority(w);
-                            if(_Traits::semiring::less(new_st_dist, st_dist)) {
+                            if(Traits::semiring::less(new_st_dist, st_dist)) {
                                 st_dist = new_st_dist;
                                 _midpoint.emplace(w);
                             }
                         }
-                        if constexpr(_Traits::store_path)
+                        if constexpr(Traits::store_path)
                             _forward_pred_arcs_map[w].emplace(a);
                     }
                 }
@@ -203,36 +202,36 @@ public:
                         _vertex_status_map[w];
                     if(w_reverse_status == IN_HEAP) {
                         const length_type new_w_dist =
-                            _Traits::semiring::plus(u2_dist, _length_map[a]);
-                        if(_Traits::semiring::less(new_w_dist,
-                                                   _reverse_heap.priority(w))) {
+                            Traits::semiring::plus(u2_dist, _length_map[a]);
+                        if(Traits::semiring::less(new_w_dist,
+                                                  _reverse_heap.priority(w))) {
                             _reverse_heap.promote(w, new_w_dist);
                             if(w_forward_status == IN_HEAP) {
                                 const length_type new_st_dist =
                                     new_w_dist + _forward_heap.priority(w);
-                                if(_Traits::semiring::less(new_st_dist,
-                                                           st_dist)) {
+                                if(Traits::semiring::less(new_st_dist,
+                                                          st_dist)) {
                                     st_dist = new_st_dist;
                                     _midpoint.emplace(w);
                                 }
                             }
-                            if constexpr(_Traits::store_path)
+                            if constexpr(Traits::store_path)
                                 _reverse_pred_arcs_map[w].emplace(a);
                         }
                     } else if(w_reverse_status == PRE_HEAP) {
                         const length_type new_w_dist =
-                            _Traits::semiring::plus(u2_dist, _length_map[a]);
+                            Traits::semiring::plus(u2_dist, _length_map[a]);
                         _reverse_heap.push(std::make_pair(w, new_w_dist));
                         _vertex_status_map[w].second = IN_HEAP;
                         if(w_forward_status == IN_HEAP) {
                             const length_type new_st_dist =
                                 new_w_dist + _forward_heap.priority(w);
-                            if(_Traits::semiring::less(new_st_dist, st_dist)) {
+                            if(Traits::semiring::less(new_st_dist, st_dist)) {
                                 st_dist = new_st_dist;
                                 _midpoint.emplace(w);
                             }
                         }
-                        if constexpr(_Traits::store_path)
+                        if constexpr(Traits::store_path)
                             _reverse_pred_arcs_map[w].emplace(a);
                     }
                 }
@@ -242,19 +241,19 @@ public:
     }
 
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(_Traits::store_path)
+        requires(Traits::store_path)
     {
         assert(_vertex_status_map[u].first != PRE_HEAP);
         return _forward_pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr arc succ_arc(const vertex & u) const noexcept
-        requires(_Traits::store_path)
+        requires(Traits::store_path)
     {
         assert(_vertex_status_map[u].second != PRE_HEAP);
         return _reverse_pred_arcs_map[u].value();
     }
     [[nodiscard]] constexpr bool path_found() const noexcept
-        requires(_Traits::store_path)
+        requires(Traits::store_path)
     {
         return _midpoint.has_value();
     }
@@ -321,7 +320,7 @@ private:
 
 public:
     [[nodiscard]] constexpr auto path() const noexcept
-        requires(_Traits::store_path)
+        requires(Traits::store_path)
     {
         assert(path_found());
         return detail::views::concat(
@@ -336,32 +335,32 @@ public:
     }
 };
 
-template <typename _Graph, typename _LengthMap,
-          typename _Traits = bidirectional_dijkstra_default_traits<
-              _Graph,
-              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
-bidirectional_dijkstra(_Graph &&, _LengthMap &&)
-    -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
-                              views::mapping_all_t<_LengthMap>, _Traits>;
+template <
+    typename Graph, typename LengthMap,
+    typename Traits = bidirectional_dijkstra_default_traits<
+        Graph, mapped_value_t<views::mapping_all_t<LengthMap>, arc_t<Graph>>>>
+bidirectional_dijkstra(Graph &&, LengthMap &&)
+    -> bidirectional_dijkstra<views::graph_all_t<Graph>,
+                              views::mapping_all_t<LengthMap>, Traits>;
 
-template <typename _Graph, typename _LengthMap,
-          typename _Traits = bidirectional_dijkstra_default_traits<
-              _Graph,
-              mapped_value_t<views::mapping_all_t<_LengthMap>, arc_t<_Graph>>>>
-bidirectional_dijkstra(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
-                       const vertex_t<_Graph> &)
-    -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
-                              views::mapping_all_t<_LengthMap>, _Traits>;
+template <
+    typename Graph, typename LengthMap,
+    typename Traits = bidirectional_dijkstra_default_traits<
+        Graph, mapped_value_t<views::mapping_all_t<LengthMap>, arc_t<Graph>>>>
+bidirectional_dijkstra(Graph &&, LengthMap &&, const vertex_t<Graph> &,
+                       const vertex_t<Graph> &)
+    -> bidirectional_dijkstra<views::graph_all_t<Graph>,
+                              views::mapping_all_t<LengthMap>, Traits>;
 
-template <typename _Graph, typename _LengthMap, typename _Traits>
-bidirectional_dijkstra(_Traits, _Graph &&, _LengthMap &&)
-    -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
-                              views::mapping_all_t<_LengthMap>, _Traits>;
+template <typename Graph, typename LengthMap, typename Traits>
+bidirectional_dijkstra(Traits, Graph &&, LengthMap &&)
+    -> bidirectional_dijkstra<views::graph_all_t<Graph>,
+                              views::mapping_all_t<LengthMap>, Traits>;
 
-template <typename _Graph, typename _LengthMap, typename _Traits>
-bidirectional_dijkstra(_Traits, _Graph &&, _LengthMap &&,
-                       const vertex_t<_Graph> &, const vertex_t<_Graph> &)
-    -> bidirectional_dijkstra<views::graph_all_t<_Graph>,
-                              views::mapping_all_t<_LengthMap>, _Traits>;
+template <typename Graph, typename LengthMap, typename Traits>
+bidirectional_dijkstra(Traits, Graph &&, LengthMap &&, const vertex_t<Graph> &,
+                       const vertex_t<Graph> &)
+    -> bidirectional_dijkstra<views::graph_all_t<Graph>,
+                              views::mapping_all_t<LengthMap>, Traits>;
 
 }  // namespace melon

@@ -49,6 +49,13 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/melon
         PATTERN "scapegoat_tree.hpp" EXCLUDE
         PATTERN "doubly_connected_digraph.hpp" EXCLUDE)
 
+# Distribution packagers expect the license next to the headers; the Conan
+# recipe ships its own copy under licenses/. Hardcoded "melon" rather than
+# ${PROJECT_NAME}, which is capitalised, to match include/melon and
+# lib/cmake/melon.
+install(FILES ${PROJECT_SOURCE_DIR}/LICENSE
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/licenses/melon)
+
 install(
     EXPORT melonTargets
     NAMESPACE melon::

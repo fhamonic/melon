@@ -22,51 +22,51 @@ struct depth_first_search_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <outward_adjacency_graph _Graph,
-          typename _Traits = depth_first_search_default_traits>
-    requires has_vertex_map<_Graph>
+template <outward_adjacency_graph Graph,
+          typename Traits = depth_first_search_default_traits>
+    requires has_vertex_map<Graph>
 class depth_first_search
-    : public algorithm_view_interface<depth_first_search<_Graph, _Traits>> {
+    : public algorithm_view_interface<depth_first_search<Graph, Traits>> {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
 
-    static_assert(!_Traits::store_pred_arcs || outward_incidence_graph<_Graph>,
+    static_assert(!Traits::store_pred_arcs || outward_incidence_graph<Graph>,
                   "storing predecessor arcs requires outward_incidence_graph.");
 
     using stack_range =
-        std::conditional_t<_Traits::store_pred_arcs, out_arcs_range_t<_Graph>,
-                           out_neighbors_range_t<_Graph>>;
+        std::conditional_t<Traits::store_pred_arcs, out_arcs_range_t<Graph>,
+                           out_neighbors_range_t<Graph>>;
 
 private:
-    _Graph _graph;
+    Graph _graph;
     std::vector<std::pair<vertex, consumable_view<stack_range>>> _stack;
-    vertex_map_t<_Graph, bool> _reached_map;
+    vertex_map_t<Graph, bool> _reached_map;
 
-    [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
+    [[no_unique_address]] vertex_map_if<Traits::store_pred_vertices, Graph,
                                         vertex> _pred_vertices_map;
-    [[no_unique_address]] vertex_map_if<_Traits::store_pred_arcs, _Graph, arc>
+    [[no_unique_address]] vertex_map_if<Traits::store_pred_arcs, Graph, arc>
         _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph, int>
+    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph, int>
         _dist_map;
 
 public:
-    template <typename _G>
-    [[nodiscard]] constexpr explicit depth_first_search(_G && g)
-        : _graph(views::graph_all(std::forward<_G>(g)))
+    template <typename G>
+    [[nodiscard]] constexpr explicit depth_first_search(G && g)
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _stack()
         , _reached_map(create_vertex_map<bool>(_graph, false))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _dist_map(_graph) {
-        if constexpr(has_num_vertices<_Graph>) {
+        if constexpr(has_num_vertices<Graph>) {
             _stack.reserve(num_vertices(_graph));
         }
     }
 
-    template <typename _G>
-    [[nodiscard]] constexpr depth_first_search(_G && g, const vertex & s)
-        : depth_first_search(std::forward<_G>(g)) {
+    template <typename G>
+    [[nodiscard]] constexpr depth_first_search(G && g, const vertex & s)
+        : depth_first_search(std::forward<G>(g)) {
         add_source(s);
     }
 
@@ -85,13 +85,13 @@ public:
     }
     constexpr depth_first_search & add_source(const vertex & s) noexcept {
         assert(!_reached_map[s]);
-        if constexpr(_Traits::store_pred_arcs)
+        if constexpr(Traits::store_pred_arcs)
             _stack.emplace_back(s, out_arcs(_graph, s));
         else
             _stack.emplace_back(s, out_neighbors(_graph, s));
         _reached_map[s] = true;
-        if constexpr(_Traits::store_pred_vertices) _pred_vertices_map[s] = s;
-        if constexpr(_Traits::store_distances) _dist_map[s] = 0;
+        if constexpr(Traits::store_pred_vertices) _pred_vertices_map[s] = s;
+        if constexpr(Traits::store_distances) _dist_map[s] = 0;
         return *this;
     }
 
@@ -107,7 +107,7 @@ public:
     constexpr void advance() noexcept {
         assert(!finished());
         do {
-            if constexpr(_Traits::store_pred_arcs) {
+            if constexpr(Traits::store_pred_arcs) {
                 for(auto & remaining_arcs = _stack.back().second;
                     !remaining_arcs.empty(); remaining_arcs.advance()) {
                     auto a = remaining_arcs.current();
@@ -115,9 +115,9 @@ public:
                     if(_reached_map[w]) continue;
                     _reached_map[w] = true;
                     _pred_arcs_map[w] = a;
-                    if constexpr(_Traits::store_pred_vertices)
+                    if constexpr(Traits::store_pred_vertices)
                         _pred_vertices_map[w] = _stack.back().first;
-                    if constexpr(_Traits::store_distances)
+                    if constexpr(Traits::store_distances)
                         _dist_map[w] = _dist_map[_stack.back().first] + 1;
                     _stack.emplace_back(w, out_arcs(_graph, w));
                     remaining_arcs.advance();
@@ -130,9 +130,9 @@ public:
                     auto w = remaining_neighbors.current();
                     if(_reached_map[w]) continue;
                     _reached_map[w] = true;
-                    if constexpr(_Traits::store_pred_vertices)
+                    if constexpr(Traits::store_pred_vertices)
                         _pred_vertices_map[w] = _stack.back().first;
-                    if constexpr(_Traits::store_distances)
+                    if constexpr(Traits::store_distances)
                         _dist_map[w] = _dist_map[_stack.back().first] + 1;
                     _stack.emplace_back(w, out_neighbors(_graph, w));
                     remaining_neighbors.advance();
@@ -154,33 +154,33 @@ public:
         return views::mapping_all(_reached_map);
     }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(_Traits::store_pred_vertices)
+        requires(Traits::store_pred_vertices)
     {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(_Traits::store_pred_arcs)
+        requires(Traits::store_pred_arcs)
     {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
 };
 
-template <typename _Graph, typename _Traits = depth_first_search_default_traits>
-depth_first_search(_Graph &&)
-    -> depth_first_search<views::graph_all_t<_Graph>, _Traits>;
+template <typename Graph, typename Traits = depth_first_search_default_traits>
+depth_first_search(Graph &&)
+    -> depth_first_search<views::graph_all_t<Graph>, Traits>;
 
-template <typename _Graph, typename _Traits = depth_first_search_default_traits>
-depth_first_search(_Graph &&, const vertex_t<_Graph> &)
-    -> depth_first_search<views::graph_all_t<_Graph>, _Traits>;
+template <typename Graph, typename Traits = depth_first_search_default_traits>
+depth_first_search(Graph &&, const vertex_t<Graph> &)
+    -> depth_first_search<views::graph_all_t<Graph>, Traits>;
 
-template <typename _Graph, typename _Traits>
-depth_first_search(_Traits, _Graph &&)
-    -> depth_first_search<views::graph_all_t<_Graph>, _Traits>;
+template <typename Graph, typename Traits>
+depth_first_search(Traits, Graph &&)
+    -> depth_first_search<views::graph_all_t<Graph>, Traits>;
 
-template <typename _Graph, typename _Traits>
-depth_first_search(_Traits, _Graph &&, const vertex_t<_Graph> &)
-    -> depth_first_search<views::graph_all_t<_Graph>, _Traits>;
+template <typename Graph, typename Traits>
+depth_first_search(Traits, Graph &&, const vertex_t<Graph> &)
+    -> depth_first_search<views::graph_all_t<Graph>, Traits>;
 
 }  // namespace melon

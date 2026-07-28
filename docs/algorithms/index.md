@@ -87,7 +87,7 @@ edmonds_karp flow(graph, capacity_map, source, target);
 kruskal tree(ugraph, cost_map);
 ```
 
-The graph and the mappings go through [`views::graph_all` and `views::mapping_all`](../views/ownership.md), so an lvalue is referenced and an rvalue is owned. That is why the deduction guides are written in terms of `views::graph_all_t<_Graph>` and why passing a temporary graph is safe.
+The graph and the mappings go through [`views::graph_all` and `views::mapping_all`](../views/ownership.md), so an lvalue is referenced and an rvalue is owned. That is why the deduction guides are written in terms of `views::graph_all_t<Graph>` and why passing a temporary graph is safe.
 
 Sources are usually optional constructor arguments, and can always be added afterwards:
 
@@ -125,7 +125,7 @@ Two things follow from the design.
 
 **Unused storage costs nothing.** The optional maps are declared with `[[no_unique_address]]` and become empty types when their flag is `false`, so the default Dijkstra carries exactly one status map and one heap.
 
-**Unavailable accessors do not exist.** `dist()` and `path_to()` carry a `requires(_Traits::store_distances)` / `requires(_Traits::store_paths)` clause. Calling them on a default-configured algorithm is a compile error naming the flag, not an assertion at runtime.
+**Unavailable accessors do not exist.** `dist()` and `path_to()` carry a `requires(Traits::store_distances)` / `requires(Traits::store_paths)` clause. Calling them on a default-configured algorithm is a compile error naming the flag, not an assertion at runtime.
 
 The flags available per algorithm are listed on each algorithm's page. The data-structure slots — the heap type, the semiring, the index map — are described under [Shortest paths](shortest-paths.md#traits).
 

@@ -111,7 +111,7 @@ Everything lives in `namespace melon`. Prior releases nested it inside an umbrel
 
 Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): every header is frozen API for the whole 1.x series, with two explicit exceptions that carry **no stability guarantee** and may change or disappear in any release:
 
-- `melon/detail/` — implementation details, as well as any symbol in a `detail` / `__detail` namespace or prefixed with `__`;
+- `melon/detail/` — implementation details, as well as any symbol in a `detail` / `detail` namespace or prefixed with `__`;
 - `melon/experimental/` — work-in-progress data structures. These live in `namespace melon::experimental`, so nothing reaches the stable `melon` namespace by accident.
 
 Until 1.0.0 is tagged, treat the whole API as unstable and pin a commit.

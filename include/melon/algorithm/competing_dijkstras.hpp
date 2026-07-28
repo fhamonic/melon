@@ -14,18 +14,18 @@
 namespace melon {
 
 // clang-format off
-template <typename _Traits>
-concept competing_dijkstras_trait = semiring<typename _Traits::semiring> &&
-    updatable_priority_queue<typename _Traits::heap> && requires(typename _Traits::entry & e) {
+template <typename Traits>
+concept competing_dijkstras_trait = semiring<typename Traits::semiring> &&
+    updatable_priority_queue<typename Traits::heap> && requires(typename Traits::entry & e) {
     e.first;
     { e.second } -> std::convertible_to<bool>;
-} && std::strict_weak_order<typename _Traits::entry_cmp, typename _Traits::entry, typename _Traits::entry>;
+} && std::strict_weak_order<typename Traits::entry_cmp, typename Traits::entry, typename Traits::entry>;
 // clang-format on
 
-template <outward_incidence_graph _Graph, typename _ValueType>
+template <outward_incidence_graph Graph, typename ValueType>
 struct competing_dijkstras_default_traits {
-    using semiring = shortest_path_semiring<_ValueType>;
-    using entry = std::pair<_ValueType, bool>;
+    using semiring = shortest_path_semiring<ValueType>;
+    using entry = std::pair<ValueType, bool>;
     struct entry_cmp {
         [[nodiscard]] constexpr bool operator()(const entry & e1,
                                                 const entry & e2) const {
@@ -36,70 +36,77 @@ struct competing_dijkstras_default_traits {
         }
     };
     using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
-                             vertex_map_t<_Graph, std::size_t>,
+        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
+                             vertex_map_t<Graph, std::size_t>,
                              views::element_map<1>, views::element_map<0>>;
 };
 
-template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> BLM,
-          input_mapping<arc_t<_Graph>> RLM,
-          competing_dijkstras_trait _Traits =
-              competing_dijkstras_default_traits<
-                  _Graph, mapped_value_t<BLM, arc_t<_Graph>>>>
-    requires std::is_same_v<mapped_value_t<BLM, arc_t<_Graph>>,
-                            mapped_value_t<RLM, arc_t<_Graph>>>
-class competing_dijkstras
-    : public algorithm_view_interface<
-          competing_dijkstras<_Graph, BLM, RLM, _Traits>> {
+// Two Dijkstras racing on the same graph with different length maps: blue
+// sources spread using the blue map, red sources using the red one, and each
+// vertex is claimed by whichever colour reaches it first -- blue wins ties.
+// Iterating yields only the vertices blue claims, in order of increasing blue
+// distance, and stops as soon as no blue candidate is left; red vertices are
+// traversed, so that they can block blue, but never produced. Same
+// non-negativity requirement as melon::dijkstra, on both maps.
+// O((m + n) log n) with the default binary heap.
+template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> BLM,
+          input_mapping<arc_t<Graph>> RLM,
+          competing_dijkstras_trait Traits = competing_dijkstras_default_traits<
+              Graph, mapped_value_t<BLM, arc_t<Graph>>>>
+    requires std::is_same_v<mapped_value_t<BLM, arc_t<Graph>>,
+                            mapped_value_t<RLM, arc_t<Graph>>>
+class competing_dijkstras : public algorithm_view_interface<
+                                competing_dijkstras<Graph, BLM, RLM, Traits>> {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
-    using length_type = mapped_value_t<BLM, arc_t<_Graph>>;
-    using entry_t = typename _Traits::entry;
-    using entry_cmp = typename _Traits::entry_cmp;
-    using heap = typename _Traits::heap;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
+    using length_type = mapped_value_t<BLM, arc_t<Graph>>;
+    using entry_t = typename Traits::entry;
+    using entry_cmp = typename Traits::entry_cmp;
+    using heap = typename Traits::heap;
 
     static_assert(
-        std::is_same_v<typename _Traits::heap::value_type,
+        std::is_same_v<typename Traits::heap::value_type,
                        std::pair<vertex, std::pair<length_type, bool>>>,
         "competing_dijkstras requires matching value_type with heap.");
 
 private:
-    _Graph _graph;
+    Graph _graph;
     BLM _blue_length_map;
     RLM _red_length_map;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
-    vertex_map_t<_Graph, vertex_status> _vertex_status_map;
+    vertex_map_t<Graph, vertex_status> _vertex_status_map;
     heap _heap;
     std::size_t _num_blue_candidates;
     [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
-    template <typename _G, typename _BLM, typename _RLM>
-    competing_dijkstras(_G && g, _BLM && l1, _RLM && l2)
-        : _graph(views::graph_all(std::forward<_G>(g)))
-        , _blue_length_map(views::mapping_all(std::forward<_BLM>(l1)))
-        , _red_length_map(views::mapping_all(std::forward<_RLM>(l2)))
+    template <typename G, typename BlueMap, typename RedMap>
+    competing_dijkstras(G && g, BlueMap && l1, RedMap && l2)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _blue_length_map(views::mapping_all(std::forward<BlueMap>(l1)))
+        , _red_length_map(views::mapping_all(std::forward<RedMap>(l2)))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
         , _num_blue_candidates(0) {}
 
-    template <typename... _Args>
-    [[nodiscard]] constexpr competing_dijkstras(_Traits, _Args &&... args)
-        : competing_dijkstras(std::forward<_Args>(args)...) {}
+    template <typename... Args>
+    [[nodiscard]] constexpr competing_dijkstras(Traits, Args &&... args)
+        : competing_dijkstras(std::forward<Args>(args)...) {}
 
-    template <typename _BLM>
+    template <typename BlueMap>
     competing_dijkstras & set_blue_length_map(
-        _BLM && blue_length_map) noexcept {
+        BlueMap && blue_length_map) noexcept {
         _blue_length_map =
-            views::mapping_all(std::forward<_BLM>(blue_length_map));
+            views::mapping_all(std::forward<BlueMap>(blue_length_map));
         return *this;
     }
 
-    template <typename _RLM>
-    competing_dijkstras & set_red_length_map(_RLM && red_length_map) noexcept {
+    template <typename RedMap>
+    competing_dijkstras & set_red_length_map(
+        RedMap && red_length_map) noexcept {
         _red_length_map =
-            views::mapping_all(std::forward<_RLM>(red_length_map));
+            views::mapping_all(std::forward<RedMap>(red_length_map));
         return *this;
     }
 
@@ -112,7 +119,7 @@ public:
 
     competing_dijkstras & add_blue_source(
         const vertex & s,
-        const length_type dist_v = _Traits::semiring::zero) noexcept {
+        const length_type dist_v = Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, true}));
         ++_num_blue_candidates;
@@ -121,7 +128,7 @@ public:
     }
     competing_dijkstras & add_red_source(
         const vertex & s,
-        const length_type dist_v = _Traits::semiring::zero) noexcept {
+        const length_type dist_v = Traits::semiring::zero) noexcept {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, false}));
         _vertex_status_map[s] = IN_HEAP;
@@ -188,15 +195,15 @@ public:
                 for(const arc & a : out_arcs_range) {
                     const vertex & w = arc_target(_graph, a);
                     relax_blue_vertex(
-                        w, _Traits::semiring::plus(t_dist.first,
-                                                   _blue_length_map[a]));
+                        w, Traits::semiring::plus(t_dist.first,
+                                                  _blue_length_map[a]));
                 }
             } else {
                 prefetch_mapped_values(out_arcs_range, _red_length_map);
                 _heap.pop();
                 for(const arc a : out_arcs_range) {
                     const vertex & w = arc_target(_graph, a);
-                    relax_red_vertex(w, _Traits::semiring::plus(
+                    relax_red_vertex(w, Traits::semiring::plus(
                                             t_dist.first, _red_length_map[a]));
                 }
             }
@@ -212,19 +219,16 @@ public:
     }
 };
 
-template <
-    typename _Graph, typename _BLM, typename _RLM,
-    typename _Traits = competing_dijkstras_default_traits<
-        _Graph, mapped_value_t<views::mapping_all_t<_BLM>, arc_t<_Graph>>>>
-competing_dijkstras(_Graph &&, _BLM &&, _RLM &&)
-    -> competing_dijkstras<views::graph_all_t<_Graph>,
-                           views::mapping_all_t<_BLM>,
-                           views::mapping_all_t<_RLM>, _Traits>;
+template <typename Graph, typename BLM, typename RLM,
+          typename Traits = competing_dijkstras_default_traits<
+              Graph, mapped_value_t<views::mapping_all_t<BLM>, arc_t<Graph>>>>
+competing_dijkstras(Graph &&, BLM &&, RLM &&)
+    -> competing_dijkstras<views::graph_all_t<Graph>, views::mapping_all_t<BLM>,
+                           views::mapping_all_t<RLM>, Traits>;
 
-template <typename _Graph, typename _BLM, typename _RLM, typename _Traits>
-competing_dijkstras(_Traits, _Graph &&, _BLM &&, _RLM &&)
-    -> competing_dijkstras<views::graph_all_t<_Graph>,
-                           views::mapping_all_t<_BLM>,
-                           views::mapping_all_t<_RLM>, _Traits>;
+template <typename Graph, typename BLM, typename RLM, typename Traits>
+competing_dijkstras(Traits, Graph &&, BLM &&, RLM &&)
+    -> competing_dijkstras<views::graph_all_t<Graph>, views::mapping_all_t<BLM>,
+                           views::mapping_all_t<RLM>, Traits>;
 
 }  // namespace melon

@@ -20,17 +20,17 @@
 
 namespace melon::experimental {
 
-template <float ALPHA, typename _Entry,
-          typename _KeyComparator = std::less<_Entry>,
-          input_mapping<_Entry> _EntryKeyMap = views::identity_map>
-    requires std::strict_weak_order<_KeyComparator,
-                                    mapped_value_t<_EntryKeyMap, _Entry>,
-                                    mapped_value_t<_EntryKeyMap, _Entry>>
+template <float ALPHA, typename Entry,
+          typename KeyComparator = std::less<Entry>,
+          input_mapping<Entry> EntryKeyMap = views::identity_map>
+    requires std::strict_weak_order<KeyComparator,
+                                    mapped_value_t<EntryKeyMap, Entry>,
+                                    mapped_value_t<EntryKeyMap, Entry>>
 class scapegoat_tree {
 public:
-    using key_type = mapped_value_t<_EntryKeyMap, _Entry>;
+    using key_type = mapped_value_t<EntryKeyMap, Entry>;
     // using mapped_type = V;
-    using value_type = _Entry;
+    using value_type = Entry;
     // using size_type = std::size_t;
     // using difference_type = std::ptrdiff_t;
 
@@ -47,7 +47,7 @@ private:
         node_idx_type left_child;
         node_idx_type right_child;
         node_idx_type parent;
-        _Entry entry;
+        Entry entry;
     };
 
 private:
@@ -58,8 +58,8 @@ private:
     node_idx_type _root;
     std::size_t _num_nodes;
 
-    [[no_unique_address]] _KeyComparator _key_cmp;
-    [[no_unique_address]] _EntryKeyMap _entry_key_map;
+    [[no_unique_address]] KeyComparator _key_cmp;
+    [[no_unique_address]] EntryKeyMap _entry_key_map;
 
 private:
     template <typename T>
@@ -95,7 +95,7 @@ private:
         }
         ns.right_child = _first_free_node;
         _first_free_node = n;
-        if constexpr(requires { ns.entry.~_Entry(); }) ns.entry.~_Entry();
+        if constexpr(requires { ns.entry.~Entry(); }) ns.entry.~Entry();
         --_num_nodes;
     }
 

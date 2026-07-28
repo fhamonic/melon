@@ -259,7 +259,7 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
 
 // promote()/demote() rewrite the priority inside an entry via
 // `_entry_priority_map[e] = p`. With views::identity_map -- the default
-// _EntryPriorityMap -- operator[] returns a prvalue, so the write landed on a
+// EntryPriorityMap -- operator[] returns a prvalue, so the write landed on a
 // temporary and was discarded: the heap silently kept the old priority and was
 // never re-ordered. The operations are now constrained on a priority map that
 // yields a reference into the entry.

@@ -14,85 +14,94 @@
 namespace melon {
 
 // clang-format on
-template <typename _Traits>
-concept biobjective_dijkstra_trait =
-    semiring<typename _Traits::blue_semiring> &&
-    semiring<typename _Traits::red_semiring> &&
-    priority_queue<typename _Traits::heap> &&
-    requires(typename _Traits::label & e) {
-        { e.first };
-        { e.second };
-    };
+template <typename Traits>
+concept biobjective_dijkstra_trait = semiring<typename Traits::blue_semiring> &&
+                                     semiring<typename Traits::red_semiring> &&
+                                     priority_queue<typename Traits::heap> &&
+                                     requires(typename Traits::label & e) {
+                                         { e.first };
+                                         { e.second };
+                                     };
 // clang-format on
 
-template <outward_incidence_graph _Graph, typename _BlueValueType,
-          typename _RedValueType>
+template <outward_incidence_graph Graph, typename BlueValueType,
+          typename RedValueType>
 struct biobjective_dijkstra_default_traits {
-    using blue_semiring = shortest_path_semiring<_BlueValueType>;
-    using red_semiring = shortest_path_semiring<_RedValueType>;
-    using label = std::pair<_BlueValueType, _RedValueType>;
+    using blue_semiring = shortest_path_semiring<BlueValueType>;
+    using red_semiring = shortest_path_semiring<RedValueType>;
+    using label = std::pair<BlueValueType, RedValueType>;
     using heap =
-        d_ary_heap<2, std::pair<vertex_t<_Graph>, label>,
+        d_ary_heap<2, std::pair<vertex_t<Graph>, label>,
                    typename blue_semiring::less_t, views::element_map<1, 0>>;
 };
 
-template <outward_incidence_graph _Graph, input_mapping<arc_t<_Graph>> BLM,
-          input_mapping<arc_t<_Graph>> RLM,
-          biobjective_dijkstra_trait _Traits =
+// Label-setting Pareto search over two independent costs: instead of one
+// distance per vertex it keeps the whole Pareto front of (blue, red) label
+// pairs, discarding dominated ones as they appear. Iterating yields the
+// non-dominated labels in order of increasing blue cost -- a vertex is
+// therefore produced once per label it keeps, not once overall -- and
+// pareto_front(v) exposes the front accumulated so far for a vertex. Same
+// non-negativity requirement as melon::dijkstra, on both maps.
+// Cost is output-sensitive: the number of Pareto-optimal labels can grow
+// exponentially with the size of the graph, so there is no polynomial bound.
+template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> BLM,
+          input_mapping<arc_t<Graph>> RLM,
+          biobjective_dijkstra_trait Traits =
               biobjective_dijkstra_default_traits<
-                  _Graph, mapped_value_t<BLM, arc_t<_Graph>>,
-                  mapped_value_t<RLM, arc_t<_Graph>>>>
+                  Graph, mapped_value_t<BLM, arc_t<Graph>>,
+                  mapped_value_t<RLM, arc_t<Graph>>>>
 class biobjective_dijkstra
     : public algorithm_view_interface<
-          biobjective_dijkstra<_Graph, BLM, RLM, _Traits>> {
+          biobjective_dijkstra<Graph, BLM, RLM, Traits>> {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
-    using blue_length_type = mapped_value_t<BLM, arc_t<_Graph>>;
-    using red_length_type = mapped_value_t<RLM, arc_t<_Graph>>;
-    using heap = _Traits::heap;
-    using label = _Traits::label;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
+    using blue_length_type = mapped_value_t<BLM, arc_t<Graph>>;
+    using red_length_type = mapped_value_t<RLM, arc_t<Graph>>;
+    using heap = Traits::heap;
+    using label = Traits::label;
 
 private:
-    _Graph _graph;
+    Graph _graph;
     BLM _blue_length_map;
     RLM _red_length_map;
 
     struct labels_cmp {
         [[nodiscard]] constexpr bool operator()(const label & l1,
                                                 const label & l2) const {
-            return _Traits::blue_semiring::less(l1.first, l2.first);
+            return Traits::blue_semiring::less(l1.first, l2.first);
         }
     };
-    vertex_map_t<_Graph, std::set<label, labels_cmp>> _pareto_front_map;
+    vertex_map_t<Graph, std::set<label, labels_cmp>> _pareto_front_map;
     heap _heap;
 
 public:
-    template <typename _G, typename _BLM, typename _RLM>
-    biobjective_dijkstra(_G && g, _BLM && l1, _RLM && l2)
-        : _graph(views::graph_all(std::forward<_G>(g)))
-        , _blue_length_map(views::mapping_all(std::forward<_BLM>(l1)))
-        , _red_length_map(views::mapping_all(std::forward<_RLM>(l2)))
+    template <typename G, typename BlueMap, typename RedMap>
+    biobjective_dijkstra(G && g, BlueMap && l1, RedMap && l2)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _blue_length_map(views::mapping_all(std::forward<BlueMap>(l1)))
+        , _red_length_map(views::mapping_all(std::forward<RedMap>(l2)))
         , _pareto_front_map(
               create_vertex_map<std::set<label, labels_cmp>>(_graph))
         , _heap() {}
 
-    template <typename... _Args>
-    [[nodiscard]] constexpr biobjective_dijkstra(_Traits, _Args &&... args)
-        : biobjective_dijkstra(std::forward<_Args>(args)...) {}
+    template <typename... Args>
+    [[nodiscard]] constexpr biobjective_dijkstra(Traits, Args &&... args)
+        : biobjective_dijkstra(std::forward<Args>(args)...) {}
 
-    template <typename _BLM>
+    template <typename BlueMap>
     biobjective_dijkstra & set_blue_length_map(
-        _BLM && blue_length_map) noexcept {
+        BlueMap && blue_length_map) noexcept {
         _blue_length_map =
-            views::mapping_all(std::forward<_BLM>(blue_length_map));
+            views::mapping_all(std::forward<BlueMap>(blue_length_map));
         return *this;
     }
 
-    template <typename _RLM>
-    biobjective_dijkstra & set_red_length_map(_RLM && red_length_map) noexcept {
+    template <typename RedMap>
+    biobjective_dijkstra & set_red_length_map(
+        RedMap && red_length_map) noexcept {
         _red_length_map =
-            views::mapping_all(std::forward<_RLM>(red_length_map));
+            views::mapping_all(std::forward<RedMap>(red_length_map));
         return *this;
     }
 
@@ -107,9 +116,9 @@ public:
         auto it = labels.upper_bound(l);
         if(it == labels.begin()) return false;
         const auto pred_it = std::prev(it);
-        if(_Traits::blue_semiring::less(pred_it->first, l.first))
-            return !_Traits::red_semiring::less(l.second, pred_it->second);
-        return _Traits::red_semiring::less(pred_it->second, l.second);
+        if(Traits::blue_semiring::less(pred_it->first, l.first))
+            return !Traits::red_semiring::less(l.second, pred_it->second);
+        return Traits::red_semiring::less(pred_it->second, l.second);
     }
 
     void relax(const vertex & v, const label & l) noexcept {
@@ -119,13 +128,13 @@ public:
 
         if(it != labels.begin()) {
             const auto pred_it = std::prev(it);
-            if(!_Traits::red_semiring::less(l.second, pred_it->second)) return;
-            if(!_Traits::blue_semiring::less(pred_it->first, l.first))
+            if(!Traits::red_semiring::less(l.second, pred_it->second)) return;
+            if(!Traits::blue_semiring::less(pred_it->first, l.first))
                 it = pred_it;
         }
 
         while(last_sub_it != labels.end() &&
-              !_Traits::red_semiring::less(last_sub_it->second, l.second))
+              !Traits::red_semiring::less(last_sub_it->second, l.second))
             ++last_sub_it;
 
         labels.insert(labels.erase(it, last_sub_it), l);
@@ -134,9 +143,9 @@ public:
 
     biobjective_dijkstra & add_source(
         const vertex & s,
-        const blue_length_type blue_length = _Traits::blue_semiring::zero,
+        const blue_length_type blue_length = Traits::blue_semiring::zero,
         const red_length_type red_length =
-            _Traits::red_semiring::zero) noexcept {
+            Traits::red_semiring::zero) noexcept {
         relax(s, std::make_pair(blue_length, red_length));
         return *this;
     }
@@ -167,9 +176,9 @@ public:
             for(const arc & a : out_arcs_range) {
                 const vertex & w = arc_target(_graph, a);
                 relax(w,
-                      std::make_pair(_Traits::blue_semiring::plus(
+                      std::make_pair(Traits::blue_semiring::plus(
                                          t_label.first, _blue_length_map[a]),
-                                     _Traits::red_semiring::plus(
+                                     Traits::red_semiring::plus(
                                          t_label.second, _red_length_map[a])));
             }
             return;
@@ -185,19 +194,19 @@ public:
     }
 };
 
-template <typename _Graph, typename _BLM, typename _RLM,
-          typename _Traits = biobjective_dijkstra_default_traits<
-              _Graph, mapped_value_t<views::mapping_all_t<_BLM>, arc_t<_Graph>>,
-              mapped_value_t<views::mapping_all_t<_RLM>, arc_t<_Graph>>>>
-biobjective_dijkstra(_Graph &&, _BLM &&, _RLM &&)
-    -> biobjective_dijkstra<views::graph_all_t<_Graph>,
-                            views::mapping_all_t<_BLM>,
-                            views::mapping_all_t<_RLM>, _Traits>;
+template <typename Graph, typename BLM, typename RLM,
+          typename Traits = biobjective_dijkstra_default_traits<
+              Graph, mapped_value_t<views::mapping_all_t<BLM>, arc_t<Graph>>,
+              mapped_value_t<views::mapping_all_t<RLM>, arc_t<Graph>>>>
+biobjective_dijkstra(Graph &&, BLM &&, RLM &&)
+    -> biobjective_dijkstra<views::graph_all_t<Graph>,
+                            views::mapping_all_t<BLM>,
+                            views::mapping_all_t<RLM>, Traits>;
 
-template <typename _Graph, typename _BLM, typename _RLM, typename _Traits>
-biobjective_dijkstra(_Traits, _Graph &&, _BLM &&, _RLM &&)
-    -> biobjective_dijkstra<views::graph_all_t<_Graph>,
-                            views::mapping_all_t<_BLM>,
-                            views::mapping_all_t<_RLM>, _Traits>;
+template <typename Graph, typename BLM, typename RLM, typename Traits>
+biobjective_dijkstra(Traits, Graph &&, BLM &&, RLM &&)
+    -> biobjective_dijkstra<views::graph_all_t<Graph>,
+                            views::mapping_all_t<BLM>,
+                            views::mapping_all_t<RLM>, Traits>;
 
 }  // namespace melon

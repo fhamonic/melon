@@ -5,11 +5,11 @@ melon treats the directed case as [primitive](concepts.md#why-a-directed-multigr
 ## `undirected_graph`
 
 ```cpp
-template <typename _Tp>
-concept undirected_graph = requires(const _Tp & __t) {
-    melon::vertices(__t);
-    melon::edges(__t);
-    melon::edge_endpoints(__t, std::declval<edge_t<_Tp>>());
+template <typename T>
+concept undirected_graph = requires(const T & t) {
+    melon::vertices(t);
+    melon::edges(t);
+    melon::edge_endpoints(t, std::declval<edge_t<T>>());
 };
 ```
 

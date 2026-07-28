@@ -9,369 +9,359 @@
 
 namespace melon {
 
-namespace __cust_access {
-template <typename _Tp>
-concept __member_edges = requires(const _Tp & __t) {
-    { __t.edges() } -> std::ranges::input_range;
+namespace cpo {
+template <typename T>
+concept has_member_edges = requires(const T & t) {
+    { t.edges() } -> std::ranges::input_range;
 };
 
-template <typename _Tp>
-concept __adl_edges = requires(const _Tp & __t) {
-    { edges(__t) } -> std::ranges::input_range;
+template <typename T>
+concept has_adl_edges = requires(const T & t) {
+    { edges(t) } -> std::ranges::input_range;
 };
 
-struct _Edges {
+struct edges_fn {
 private:
-    template <typename _Tp>
-    static constexpr bool _S_noexcept() {
-        if constexpr(__member_edges<_Tp>)
-            return noexcept(std::declval<_Tp &>().edges());
+    template <typename T>
+    static constexpr bool is_noexcept() {
+        if constexpr(has_member_edges<T>)
+            return noexcept(std::declval<T &>().edges());
         else
-            return noexcept(edges(std::declval<_Tp &>()));
+            return noexcept(edges(std::declval<T &>()));
     }
 
 public:
-    template <typename _Tp>
-        requires __member_edges<_Tp> || __adl_edges<_Tp>
-    constexpr decltype(auto) operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_edges<_Tp>)
-            return __t.edges();
-        else if constexpr(__adl_edges<_Tp>)
-            return edges(__t);
+    template <typename T>
+        requires has_member_edges<T> || has_adl_edges<T>
+    constexpr decltype(auto) operator() [[nodiscard]] (const T & t) const
+        noexcept(is_noexcept<T &>()) {
+        if constexpr(has_member_edges<T>)
+            return t.edges();
+        else if constexpr(has_adl_edges<T>)
+            return edges(t);
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_Edges edges{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::edges_fn edges{};
+}  // namespace cust
 
-template <typename _Tp>
-using edges_range_t = decltype(melon::edges(std::declval<_Tp &>()));
+template <typename T>
+using edges_range_t = decltype(melon::edges(std::declval<T &>()));
 
-template <typename _Tp>
-using edge_t = std::ranges::range_value_t<edges_range_t<_Tp>>;
+template <typename T>
+using edge_t = std::ranges::range_value_t<edges_range_t<T>>;
 
-namespace __cust_access {
-template <typename _Tp>
-concept __member_num_edges = requires(const _Tp & __t) {
-    { __t.num_edges() } -> std::integral;
+namespace cpo {
+template <typename T>
+concept has_member_num_edges = requires(const T & t) {
+    { t.num_edges() } -> std::integral;
 };
 
-template <typename _Tp>
-concept __adl_num_edges = requires(const _Tp & __t) {
-    { num_edges(__t) } -> std::integral;
+template <typename T>
+concept has_adl_num_edges = requires(const T & t) {
+    { num_edges(t) } -> std::integral;
 };
 
-struct _NumEdges {
+struct num_edges_fn {
 private:
-    template <typename _Tp>
-    static constexpr bool _S_noexcept() {
-        if constexpr(__member_num_edges<_Tp>)
-            return noexcept(std::declval<_Tp &>().num_edges());
-        else if constexpr(__adl_num_edges<_Tp>)
-            return noexcept(num_edges(std::declval<_Tp &>()));
+    template <typename T>
+    static constexpr bool is_noexcept() {
+        if constexpr(has_member_num_edges<T>)
+            return noexcept(std::declval<T &>().num_edges());
+        else if constexpr(has_adl_num_edges<T>)
+            return noexcept(num_edges(std::declval<T &>()));
         else
             return noexcept(
-                std::ranges::size(melon::edges(std::declval<_Tp &>())));
+                std::ranges::size(melon::edges(std::declval<T &>())));
     }
 
 public:
-    template <typename _Tp>
-        requires __member_num_edges<_Tp> || __adl_num_edges<_Tp> ||
-                 std::ranges::sized_range<edges_range_t<_Tp>>
-    constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_num_edges<_Tp>)
-            return __t.num_edges();
-        else if constexpr(__adl_num_edges<_Tp>)
-            return num_edges(__t);
+    template <typename T>
+        requires has_member_num_edges<T> || has_adl_num_edges<T> ||
+                 std::ranges::sized_range<edges_range_t<T>>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(is_noexcept<T &>()) {
+        if constexpr(has_member_num_edges<T>)
+            return t.num_edges();
+        else if constexpr(has_adl_num_edges<T>)
+            return num_edges(t);
         else
-            return std::ranges::size(melon::edges(__t));
+            return std::ranges::size(melon::edges(t));
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_NumEdges num_edges{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::num_edges_fn num_edges{};
+}  // namespace cust
 
-namespace __cust_access {
-template <typename _Tp>
-concept __member_edge_endpoints =
-    requires(const _Tp & __t, const edge_t<_Tp> & __e) {
-        {
-            __t.edge_endpoints(__e)
-        } -> std::convertible_to<std::pair<vertex_t<_Tp>, vertex_t<_Tp>>>;
-    };
+namespace cpo {
+template <typename T>
+concept has_member_edge_endpoints = requires(const T & t, const edge_t<T> & e) {
+    {
+        t.edge_endpoints(e)
+    } -> std::convertible_to<std::pair<vertex_t<T>, vertex_t<T>>>;
+};
 
-template <typename _Tp>
-concept __adl_edge_endpoints =
-    requires(const _Tp & __t, const edge_t<_Tp> & __e) {
-        {
-            edge_endpoints(__t, __e)
-        } -> std::convertible_to<std::pair<vertex_t<_Tp>, vertex_t<_Tp>>>;
-    };
+template <typename T>
+concept has_adl_edge_endpoints = requires(const T & t, const edge_t<T> & e) {
+    {
+        edge_endpoints(t, e)
+    } -> std::convertible_to<std::pair<vertex_t<T>, vertex_t<T>>>;
+};
 
-struct _EdgeEndpoints {
+struct edge_endpoints_fn {
 private:
-    template <typename _Tp>
-    static constexpr bool _S_noexcept() {
-        if constexpr(__member_edge_endpoints<_Tp>)
-            return noexcept(std::declval<_Tp &>().edge_endpoints(
-                std::declval<edge_t<_Tp> &>()));
+    template <typename T>
+    static constexpr bool is_noexcept() {
+        if constexpr(has_member_edge_endpoints<T>)
+            return noexcept(std::declval<T &>().edge_endpoints(
+                std::declval<edge_t<T> &>()));
         else
-            return noexcept(edge_endpoints(std::declval<_Tp &>(),
-                                           std::declval<edge_t<_Tp> &>()));
+            return noexcept(edge_endpoints(std::declval<T &>(),
+                                           std::declval<edge_t<T> &>()));
     }
 
 public:
-    template <typename _Tp>
-        requires __member_edge_endpoints<_Tp> || __adl_edge_endpoints<_Tp>
+    template <typename T>
+        requires has_member_edge_endpoints<T> || has_adl_edge_endpoints<T>
     constexpr auto operator()
-        [[nodiscard]] (const _Tp & __t, const edge_t<_Tp> & __a) const
-        noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_edge_endpoints<_Tp>)
-            return __t.edge_endpoints(__a);
+        [[nodiscard]] (const T & t, const edge_t<T> & a) const
+        noexcept(is_noexcept<T &>()) {
+        if constexpr(has_member_edge_endpoints<T>)
+            return t.edge_endpoints(a);
         else
-            return edge_endpoints(__t, __a);
+            return edge_endpoints(t, a);
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_EdgeEndpoints edge_endpoints{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::edge_endpoints_fn edge_endpoints{};
+}  // namespace cust
 
-namespace __cust_access {
-template <typename _Tp>
-concept __member_incidence =
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        { __t.incidence(__v) } -> std::ranges::input_range;
-    };
-
-template <typename _Tp>
-concept __adl_incidence = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-    { incidence(__t, __v) } -> std::ranges::input_range;
+namespace cpo {
+template <typename T>
+concept has_member_incidence = requires(const T & t, const vertex_t<T> & v) {
+    { t.incidence(v) } -> std::ranges::input_range;
 };
 
-struct _IncidentEdges {
+template <typename T>
+concept has_adl_incidence = requires(const T & t, const vertex_t<T> & v) {
+    { incidence(t, v) } -> std::ranges::input_range;
+};
+
+struct incident_edges_fn {
 private:
-    template <typename _Tp>
-    static constexpr bool _S_noexcept() {
-        if constexpr(__member_incidence<_Tp>)
-            return noexcept(std::declval<_Tp &>().incidence(
-                std::declval<vertex_t<_Tp> &>()));
+    template <typename T>
+    static constexpr bool is_noexcept() {
+        if constexpr(has_member_incidence<T>)
+            return noexcept(
+                std::declval<T &>().incidence(std::declval<vertex_t<T> &>()));
         else
-            return noexcept(incidence(std::declval<_Tp &>(),
-                                      std::declval<vertex_t<_Tp> &>()));
+            return noexcept(
+                incidence(std::declval<T &>(), std::declval<vertex_t<T> &>()));
     }
 
 public:
-    template <typename _Tp>
-        requires __member_incidence<_Tp> || __adl_incidence<_Tp>
+    template <typename T>
+        requires has_member_incidence<T> || has_adl_incidence<T>
     constexpr auto operator()
-        [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_incidence<_Tp>)
-            return __t.incidence(__v);
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(is_noexcept<T &>()) {
+        if constexpr(has_member_incidence<T>)
+            return t.incidence(v);
         else
-            return incidence(__t, __v);
+            return incidence(t, v);
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_IncidentEdges incidence{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::incident_edges_fn incidence{};
+}  // namespace cust
 
-template <typename _Tp>
+template <typename T>
 using incidence_range_t = decltype(melon::incidence(
-    std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+    std::declval<T &>(), std::declval<vertex_t<T> &>()));
 
-template <typename _Tp>
-using incidence_iterator_t = std::ranges::iterator_t<incidence_range_t<_Tp>>;
+template <typename T>
+using incidence_iterator_t = std::ranges::iterator_t<incidence_range_t<T>>;
 
-template <typename _Tp>
-using incidence_sentinel_t = std::ranges::sentinel_t<incidence_range_t<_Tp>>;
+template <typename T>
+using incidence_sentinel_t = std::ranges::sentinel_t<incidence_range_t<T>>;
 
-namespace __cust_access {
-template <typename _Tp>
-concept __member_degree = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-    { __t.degree(__v) } -> std::integral;
+namespace cpo {
+template <typename T>
+concept has_member_degree = requires(const T & t, const vertex_t<T> & v) {
+    { t.degree(v) } -> std::integral;
 };
 
-template <typename _Tp>
-concept __adl_degree = requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-    { degree(__t, __v) } -> std::integral;
+template <typename T>
+concept has_adl_degree = requires(const T & t, const vertex_t<T> & v) {
+    { degree(t, v) } -> std::integral;
 };
 
-template <typename _Tp>
-concept __has_sized_incidence =
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        { _IncidentEdges{}(__t, __v) } -> std::ranges::sized_range;
-    };
+template <typename T>
+concept has_sized_incidence = requires(const T & t, const vertex_t<T> & v) {
+    { incident_edges_fn{}(t, v) } -> std::ranges::sized_range;
+};
 
-struct _Degree {
+struct degree_fn {
 private:
-    template <typename _Tp>
-    static constexpr bool _S_noexcept() {
-        if constexpr(__member_degree<_Tp>)
+    template <typename T>
+    static constexpr bool is_noexcept() {
+        if constexpr(has_member_degree<T>)
             return noexcept(
-                std::declval<_Tp &>().degree(std::declval<vertex_t<_Tp> &>()));
-        else if constexpr(__adl_degree<_Tp>)
+                std::declval<T &>().degree(std::declval<vertex_t<T> &>()));
+        else if constexpr(has_adl_degree<T>)
             return noexcept(
-                degree(std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+                degree(std::declval<T &>(), std::declval<vertex_t<T> &>()));
         else
             return noexcept(std::ranges::size(melon::incidence(
-                std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>())));
+                std::declval<T &>(), std::declval<vertex_t<T> &>())));
     }
 
 public:
-    template <typename _Tp>
-        requires __member_degree<_Tp> || __adl_degree<_Tp> ||
-                 __has_sized_incidence<_Tp>
+    template <typename T>
+        requires has_member_degree<T> || has_adl_degree<T> ||
+                 has_sized_incidence<T>
     constexpr auto operator()
-        [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
-        if constexpr(__member_degree<_Tp>)
-            return __t.degree(__v);
-        else if constexpr(__adl_degree<_Tp>)
-            return degree(__t, __v);
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(is_noexcept<T &>()) {
+        if constexpr(has_member_degree<T>)
+            return t.degree(v);
+        else if constexpr(has_adl_degree<T>)
+            return degree(t, v);
         else
-            return std::ranges::size(melon::incidence(__t, __v));
+            return std::ranges::size(melon::incidence(t, v));
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_Degree degree{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::degree_fn degree{};
+}  // namespace cust
 
-template <typename _Tp>
-concept undirected_graph = requires(const _Tp & __t) {
-    melon::vertices(__t);
-    melon::edges(__t);
-    melon::edge_endpoints(__t, std::declval<edge_t<_Tp>>());
+template <typename T>
+concept undirected_graph = requires(const T & t) {
+    melon::vertices(t);
+    melon::edges(t);
+    melon::edge_endpoints(t, std::declval<edge_t<T>>());
 };
 
-template <typename _Tp>
-concept has_num_edges = undirected_graph<_Tp> &&
-                        requires(const _Tp & __t) { melon::num_edges(__t); };
+template <typename T>
+concept has_num_edges =
+    undirected_graph<T> && requires(const T & t) { melon::num_edges(t); };
 
-template <typename _Tp>
+template <typename T>
 concept has_incidence =
-    undirected_graph<_Tp> &&
-    requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-        melon::incidence(__t, __v);
-    } &&
+    undirected_graph<T> &&
+    requires(const T & t, const vertex_t<T> & v) { melon::incidence(t, v); } &&
     std::convertible_to<
-        typename std::ranges::range_value_t<incidence_range_t<_Tp>>::first_type,
-        edge_t<_Tp>> &&
-    std::convertible_to<typename std::ranges::range_value_t<
-                            incidence_range_t<_Tp>>::second_type,
-                        vertex_t<_Tp>>;
+        typename std::ranges::range_value_t<incidence_range_t<T>>::first_type,
+        edge_t<T>> &&
+    std::convertible_to<
+        typename std::ranges::range_value_t<incidence_range_t<T>>::second_type,
+        vertex_t<T>>;
 
-template <typename _Tp>
-concept has_degree = undirected_graph<_Tp> &&
-                     requires(const _Tp & __t, const vertex_t<_Tp> & __v) {
-                         melon::degree(__t, __v);
-                     };
+template <typename T>
+concept has_degree =
+    undirected_graph<T> &&
+    requires(const T & t, const vertex_t<T> & v) { melon::degree(t, v); };
 
-namespace __cust_access {
-template <typename _Tp, typename _ValueType>
-concept __member_create_edge_map =
-    requires(const _Tp & __t, const _ValueType & __d) {
+namespace cpo {
+template <typename T, typename ValueType>
+concept has_member_create_edge_map =
+    requires(const T & t, const ValueType & d) {
         {
-            __t.template create_edge_map<_ValueType>()
-        } -> output_mapping_of<edge_t<_Tp>, _ValueType>;
+            t.template create_edge_map<ValueType>()
+        } -> output_mapping_of<edge_t<T>, ValueType>;
         {
-            __t.template create_edge_map<_ValueType>(__d)
-        } -> output_mapping_of<edge_t<_Tp>, _ValueType>;
+            t.template create_edge_map<ValueType>(d)
+        } -> output_mapping_of<edge_t<T>, ValueType>;
     };
 
-template <typename _Tp, typename _ValueType>
-concept __adl_create_edge_map =
-    requires(const _Tp & __t, const _ValueType & __d) {
-        {
-            create_edge_map<_ValueType>(__t)
-        } -> output_mapping_of<edge_t<_Tp>, _ValueType>;
-        {
-            create_edge_map<_ValueType>(__t, __d)
-        } -> output_mapping_of<edge_t<_Tp>, _ValueType>;
-    };
+template <typename T, typename ValueType>
+concept has_adl_create_edge_map = requires(const T & t, const ValueType & d) {
+    {
+        create_edge_map<ValueType>(t)
+    } -> output_mapping_of<edge_t<T>, ValueType>;
+    {
+        create_edge_map<ValueType>(t, d)
+    } -> output_mapping_of<edge_t<T>, ValueType>;
+};
 
-struct _CreateEdgeMap {
+struct create_edge_map_fn {
 private:
-    template <typename _ValueType, typename _Tp>
-    static constexpr bool _S_noexcept() {
-        if constexpr(__member_create_edge_map<_Tp, _ValueType>)
+    template <typename ValueType, typename T>
+    static constexpr bool is_noexcept() {
+        if constexpr(has_member_create_edge_map<T, ValueType>)
             return noexcept(
-                std::declval<_Tp &>().template create_edge_map<_ValueType>());
+                std::declval<T &>().template create_edge_map<ValueType>());
         else
-            return noexcept(create_edge_map<_ValueType>(std::declval<_Tp &>()));
+            return noexcept(create_edge_map<ValueType>(std::declval<T &>()));
     }
 
 public:
-    template <typename _ValueType, typename _Tp>
-        requires __member_create_edge_map<_Tp, _ValueType> ||
-                 __adl_create_edge_map<_Tp, _ValueType>
-    constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
-        if constexpr(__member_create_edge_map<_Tp, _ValueType>)
-            return __t.template create_edge_map<_ValueType>();
+    template <typename ValueType, typename T>
+        requires has_member_create_edge_map<T, ValueType> ||
+                 has_adl_create_edge_map<T, ValueType>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(is_noexcept<ValueType, T &>()) {
+        if constexpr(has_member_create_edge_map<T, ValueType>)
+            return t.template create_edge_map<ValueType>();
         else
-            return create_edge_map<_ValueType>(__t);
+            return create_edge_map<ValueType>(t);
     }
 
-    template <typename _ValueType, typename _Tp>
-        requires __member_create_edge_map<_Tp, _ValueType> ||
-                 __adl_create_edge_map<_Tp, _ValueType>
+    template <typename ValueType, typename T>
+        requires has_member_create_edge_map<T, ValueType> ||
+                 has_adl_create_edge_map<T, ValueType>
     constexpr auto operator()
-        [[nodiscard]] (const _Tp & __t, const _ValueType & __d) const
-        noexcept(_S_noexcept<_ValueType, _Tp &>()) {
-        if constexpr(__member_create_edge_map<_Tp, _ValueType>)
-            return __t.template create_edge_map<_ValueType>(__d);
+        [[nodiscard]] (const T & t, const ValueType & d) const
+        noexcept(is_noexcept<ValueType, T &>()) {
+        if constexpr(has_member_create_edge_map<T, ValueType>)
+            return t.template create_edge_map<ValueType>(d);
         else
-            return create_edge_map<_ValueType>(__t, __d);
+            return create_edge_map<ValueType>(t, d);
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-template <typename _ValueType, typename _Tp>
-    requires requires(const _Tp & __t) {
-        __cust_access::_CreateEdgeMap{}.template operator()<_ValueType>(__t);
+inline namespace cust {
+template <typename ValueType, typename T>
+    requires requires(const T & t) {
+        cpo::create_edge_map_fn{}.template operator()<ValueType>(t);
     }
-inline constexpr auto create_edge_map(const _Tp & __t) noexcept(
-    noexcept(__cust_access::_CreateEdgeMap{}.template operator()<_ValueType>(
-        std::declval<_Tp &>()))) {
-    return __cust_access::_CreateEdgeMap{}.template operator()<_ValueType>(__t);
+inline constexpr auto create_edge_map(const T & t) noexcept(
+    noexcept(cpo::create_edge_map_fn{}.template operator()<ValueType>(
+        std::declval<T &>()))) {
+    return cpo::create_edge_map_fn{}.template operator()<ValueType>(t);
 }
-template <typename _ValueType, typename _Tp>
-    requires requires(const _Tp & __t, const _ValueType & __d) {
-        __cust_access::_CreateEdgeMap{}.template operator()<_ValueType>(__t,
-                                                                        __d);
+template <typename ValueType, typename T>
+    requires requires(const T & t, const ValueType & d) {
+        cpo::create_edge_map_fn{}.template operator()<ValueType>(t, d);
     }
 inline constexpr auto
-create_edge_map(const _Tp & __t, const _ValueType & __d) noexcept(
-    noexcept(__cust_access::_CreateEdgeMap{}.template operator()<_ValueType>(
-        std::declval<_Tp &>(), std::declval<_ValueType &>()))) {
-    return __cust_access::_CreateEdgeMap{}.template operator()<_ValueType>(__t,
-                                                                           __d);
+create_edge_map(const T & t, const ValueType & d) noexcept(
+    noexcept(cpo::create_edge_map_fn{}.template operator()<ValueType>(
+        std::declval<T &>(), std::declval<ValueType &>()))) {
+    return cpo::create_edge_map_fn{}.template operator()<ValueType>(t, d);
 }
-}  // namespace __cust
+}  // namespace cust
 
-template <typename _Tp, typename _ValueType>
+template <typename T, typename ValueType>
 using edge_map_t =
-    decltype(melon::create_edge_map<_ValueType>(std::declval<_Tp &>()));
+    decltype(melon::create_edge_map<ValueType>(std::declval<T &>()));
 
-template <typename _Tp, typename _ValueType = std::size_t>
+template <typename T, typename ValueType = std::size_t>
 concept has_edge_map =
-    undirected_graph<_Tp> && requires(const _Tp & __t, const _ValueType & __d) {
-        melon::create_edge_map<_ValueType>(__t);
-        melon::create_edge_map<_ValueType>(__t, __d);
+    undirected_graph<T> && requires(const T & t, const ValueType & d) {
+        melon::create_edge_map<ValueType>(t);
+        melon::create_edge_map<ValueType>(t, d);
     };
 
 }  // namespace melon

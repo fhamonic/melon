@@ -29,16 +29,16 @@ public:
     // directly: those are class template parameters, so they form plain
     // rvalue references and a named (lvalue) functor could not be passed at
     // all. The deduction guide below decays them back to the stored types.
-    template <typename _Deref, typename _Incr, typename _Cond>
-        requires std::constructible_from<Deref, _Deref> &&
-                     std::constructible_from<Incr, _Incr> &&
-                     std::constructible_from<Cond, _Cond>
-    [[nodiscard]] constexpr intrusive_view(I begin, _Deref && deref,
-                                           _Incr && incr, _Cond && cond)
+    template <typename DerefArg, typename IncrArg, typename CondArg>
+        requires std::constructible_from<Deref, DerefArg> &&
+                     std::constructible_from<Incr, IncrArg> &&
+                     std::constructible_from<Cond, CondArg>
+    [[nodiscard]] constexpr intrusive_view(I begin, DerefArg && deref,
+                                           IncrArg && incr, CondArg && cond)
         : _begin(std::move(begin))
-        , _deref(std::forward<_Deref>(deref))
-        , _incr(std::forward<_Incr>(incr))
-        , _cond(std::forward<_Cond>(cond)) {}
+        , _deref(std::forward<DerefArg>(deref))
+        , _incr(std::forward<IncrArg>(incr))
+        , _cond(std::forward<CondArg>(cond)) {}
 
     [[nodiscard]] constexpr intrusive_view() = default;
     [[nodiscard]] constexpr intrusive_view(const intrusive_view &) = default;
@@ -160,10 +160,10 @@ public:
 
 // Note the reordering: the constructor takes (begin, deref, incr, cond) while
 // the class is parameterised <I, Incr, Deref, Cond>.
-template <typename I, typename _Deref, typename _Incr, typename _Cond>
-intrusive_view(I, _Deref &&, _Incr &&, _Cond &&)
-    -> intrusive_view<I, std::decay_t<_Incr>, std::decay_t<_Deref>,
-                      std::decay_t<_Cond>>;
+template <typename I, typename Deref, typename Incr, typename Cond>
+intrusive_view(I, Deref &&, Incr &&, Cond &&)
+    -> intrusive_view<I, std::decay_t<Incr>, std::decay_t<Deref>,
+                      std::decay_t<Cond>>;
 
 }  // namespace melon
 
