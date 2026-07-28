@@ -19,7 +19,13 @@ namespace melon {
 struct depth_first_search_default_traits {
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
-    static constexpr bool store_distances = false;
+    // Depth in the DFS tree, not a graph distance: it counts the arcs from
+    // the source along the path DFS happened to take, so on the same graph it
+    // changes with the order the out-arcs come in. Deliberately not called
+    // store_distances -- breadth_first_search has a flag of that name whose
+    // dist() is a genuine shortest-hop distance, and the two are not
+    // interchangeable.
+    static constexpr bool store_depth = false;
 };
 
 template <outward_adjacency_graph Graph,
@@ -47,8 +53,8 @@ private:
                                         vertex> _pred_vertices_map;
     [[no_unique_address]] vertex_map_if<Traits::store_pred_arcs, Graph, arc>
         _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph, int>
-        _dist_map;
+    [[no_unique_address]] vertex_map_if<Traits::store_depth, Graph, int>
+        _depth_map;
 
 public:
     template <typename G>
@@ -58,7 +64,7 @@ public:
         , _reached_map(create_vertex_map<bool>(_graph, false))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
-        , _dist_map(_graph) {
+        , _depth_map(_graph) {
         if constexpr(has_num_vertices<Graph>) {
             _stack.reserve(num_vertices(_graph));
         }
@@ -69,6 +75,10 @@ public:
         : depth_first_search(std::forward<G>(g)) {
         add_source(s);
     }
+
+    template <typename... Args>
+    [[nodiscard]] constexpr depth_first_search(Traits, Args &&... args)
+        : depth_first_search(std::forward<Args>(args)...) {}
 
     [[nodiscard]] constexpr depth_first_search(const depth_first_search &) =
         default;
@@ -91,7 +101,7 @@ public:
             _stack.emplace_back(s, out_neighbors(_graph, s));
         _reached_map[s] = true;
         if constexpr(Traits::store_pred_vertices) _pred_vertices_map[s] = s;
-        if constexpr(Traits::store_distances) _dist_map[s] = 0;
+        if constexpr(Traits::store_depth) _depth_map[s] = 0;
         return *this;
     }
 
@@ -117,8 +127,8 @@ public:
                     _pred_arcs_map[w] = a;
                     if constexpr(Traits::store_pred_vertices)
                         _pred_vertices_map[w] = _stack.back().first;
-                    if constexpr(Traits::store_distances)
-                        _dist_map[w] = _dist_map[_stack.back().first] + 1;
+                    if constexpr(Traits::store_depth)
+                        _depth_map[w] = _depth_map[_stack.back().first] + 1;
                     _stack.emplace_back(w, out_arcs(_graph, w));
                     remaining_arcs.advance();
                     return;
@@ -132,8 +142,8 @@ public:
                     _reached_map[w] = true;
                     if constexpr(Traits::store_pred_vertices)
                         _pred_vertices_map[w] = _stack.back().first;
-                    if constexpr(Traits::store_distances)
-                        _dist_map[w] = _dist_map[_stack.back().first] + 1;
+                    if constexpr(Traits::store_depth)
+                        _depth_map[w] = _depth_map[_stack.back().first] + 1;
                     _stack.emplace_back(w, out_neighbors(_graph, w));
                     remaining_neighbors.advance();
                     return;
@@ -164,6 +174,16 @@ public:
     {
         assert(reached(u));
         return _pred_arcs_map[u];
+    }
+    // Number of arcs from the source to u along the DFS tree -- equivalently,
+    // the length of the pred_vertex chain up to the source. See store_depth:
+    // this is not a shortest-path distance, and two runs over the same graph
+    // can disagree if the out-arcs come in a different order.
+    [[nodiscard]] constexpr int depth(const vertex & u) const noexcept
+        requires(Traits::store_depth)
+    {
+        assert(reached(u));
+        return _depth_map[u];
     }
 };
 

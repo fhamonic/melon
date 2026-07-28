@@ -262,3 +262,52 @@ GTEST_TEST(breadth_first_search, all_traits) {
     }
     ASSERT_EQ(alg.dist(8u), 0);
 }
+
+// ################ traits: an intermediate flag combination ##################
+
+// The suite covers the two extremes -- all four flags off (the default) and
+// all four on -- which lets a mistake in the per-flag gating hide: any member
+// wrongly gated on a *different* flag still appears in the all-on run and
+// still disappears in the all-off one. This asks for exactly one flag.
+namespace {
+struct bfs_distances_only_traits : breadth_first_search_default_traits {
+    static constexpr bool store_distances = true;
+};
+
+template <typename A>
+concept has_dist =
+    requires(const A & a, const vertex_t<static_digraph> & u) { a.dist(u); };
+template <typename A>
+concept has_pred_vertex = requires(
+    const A & a, const vertex_t<static_digraph> & u) { a.pred_vertex(u); };
+template <typename A>
+concept has_traversal = requires(const A & a) { a.traversal_range(); };
+}  // namespace
+
+GTEST_TEST(breadth_first_search, store_distances_alone) {
+    static_digraph_builder<static_digraph> builder(6);
+    builder.add_arc(0, 1)
+        .add_arc(0, 2)
+        .add_arc(1, 3)
+        .add_arc(2, 3)
+        .add_arc(3, 4)
+        .add_arc(4, 5);
+    auto [graph] = builder.build();
+
+    auto alg = breadth_first_search(bfs_distances_only_traits{}, graph, 0u);
+
+    // exactly the one flag asked for, and nothing riding along with it
+    static_assert(has_dist<decltype(alg)>);
+    static_assert(!has_pred_vertex<decltype(alg)>);
+    static_assert(!has_traversal<decltype(alg)>);
+
+    alg.run();
+
+    // BFS distances are hop counts, not arc lengths
+    ASSERT_EQ(alg.dist(0u), 0);
+    ASSERT_EQ(alg.dist(1u), 1);
+    ASSERT_EQ(alg.dist(2u), 1);
+    ASSERT_EQ(alg.dist(3u), 2);
+    ASSERT_EQ(alg.dist(4u), 3);
+    ASSERT_EQ(alg.dist(5u), 4);
+}

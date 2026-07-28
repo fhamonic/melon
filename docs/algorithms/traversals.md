@@ -57,7 +57,24 @@ for(auto && v : depth_first_search(graph, 0u)) std::print(" {}", v);
 //  0 1 3 4 2 5
 ```
 
-Same requirements as BFS, and the same traits minus `store_traversal_range`. The traversal is iterative — an explicit stack of partially consumed incidence ranges — so depth costs heap memory, not call frames, and a path of a million vertices does not overflow the stack.
+Same requirements as BFS. The traversal is iterative — an explicit stack of partially consumed incidence ranges — so depth costs heap memory, not call frames, and a path of a million vertices does not overflow the stack.
+
+**Traits.**
+
+| Flag | Default | Effect |
+| --- | :-: | --- |
+| `store_pred_vertices` | `false` | enables `pred_vertex(v)` |
+| `store_pred_arcs` | `false` | enables `pred_arc(v)`; requires `outward_incidence_graph` |
+| `store_depth` | `false` | enables `depth(v)` — see the warning below |
+
+!!! warning "`depth(v)` is not a distance"
+
+    Where BFS's `dist(v)` is the true shortest-hop distance, DFS's `depth(v)`
+    counts the arcs from the source *along the route DFS took* — the length of
+    the `pred_vertex` chain. On the same graph it changes with the order the
+    out-arcs come in, and it is never smaller than the shortest-hop distance.
+    That is why the flag is `store_depth` and not `store_distances`: the two
+    are not interchangeable, so do not reach for DFS when you want distances.
 
 ## `topological_sort`
 
@@ -70,7 +87,7 @@ for(auto && v : topological_sort(graph)) std::print(" {}", v);
 
 Yields the vertices of a DAG in an order where every arc goes forward. Requires `outward_incidence_graph` and `has_vertex_map`; unlike the searches, it takes no source — it starts from every vertex with no incoming arc and discovers the rest by decrementing in-degrees.
 
-Traits are the same three flags as DFS. `dist(v)` here is the rank in the order.
+Traits are `store_pred_vertices`, `store_pred_arcs` and `store_rank`, the last enabling `rank(v)`: the number of arcs on the longest path from a source down to `v`, so that `rank(u) < rank(v)` for every arc `u -> v`. It is a level, not a position in the emitted sequence — vertices that no path orders relative to each other share a rank.
 
 !!! warning
 

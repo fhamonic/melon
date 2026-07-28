@@ -34,6 +34,9 @@ struct vertex_map_if<true, Graph, Type, DiscriminatingT> {
     constexpr decltype(auto) operator[](const vertex_t<Graph> & v) {
         return _map[v];
     }
+    // Present so that a guarded map can be re-initialised between runs the
+    // same way a plain vertex_map_t is; only instantiated where it is called.
+    constexpr void fill(const Type & v) { _map.fill(v); }
 };
 
 template <bool Cond, typename Graph, typename Type,
@@ -60,6 +63,8 @@ struct arc_map_if<true, Graph, Type, DiscriminatingT> {
     constexpr decltype(auto) operator[](const arc_t<Graph> & v) {
         return _map[v];
     }
+    // See vertex_map_if above.
+    constexpr void fill(const Type & v) { _map.fill(v); }
 };
 
 }  // namespace melon

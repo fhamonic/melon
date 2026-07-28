@@ -77,9 +77,7 @@ class MelonConan(ConanFile):
             "*.hpp",
             os.path.join(self.source_folder, "include"),
             os.path.join(self.package_folder, "include"),
-            # melon/experimental/ ships, but the two headers that are still
-            # unfinished (they do not compile) are held back; see their
-            # file-level comments.
+            # melon/experimental/ ships, but two headers are still unfinished
             excludes=(
                 "melon/experimental/scapegoat_tree.hpp",
                 "melon/experimental/doubly_connected_digraph.hpp",

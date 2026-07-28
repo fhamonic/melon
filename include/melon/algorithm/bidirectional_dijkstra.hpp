@@ -108,11 +108,25 @@ public:
         add_target(t);
     }
 
+    template <typename... Args>
+    [[nodiscard]] constexpr bidirectional_dijkstra(Traits, Args &&... args)
+        : bidirectional_dijkstra(std::forward<Args>(args)...) {}
+
+    [[nodiscard]] constexpr bidirectional_dijkstra(
+        const bidirectional_dijkstra &) = default;
+    [[nodiscard]] constexpr bidirectional_dijkstra(bidirectional_dijkstra &&) =
+        default;
+
+    constexpr bidirectional_dijkstra & operator=(
+        const bidirectional_dijkstra &) = default;
+    constexpr bidirectional_dijkstra & operator=(bidirectional_dijkstra &&) =
+        default;
+
     bidirectional_dijkstra & reset() noexcept {
         _forward_heap.clear();
         _reverse_heap.clear();
         _vertex_status_map.fill(std::make_pair(PRE_HEAP, PRE_HEAP));
-        _midpoint.reset();
+        if constexpr(Traits::store_path) _midpoint.reset();
         return *this;
     }
     bidirectional_dijkstra & add_source(
@@ -166,7 +180,8 @@ public:
                                 if(Traits::semiring::less(new_st_dist,
                                                           st_dist)) {
                                     st_dist = new_st_dist;
-                                    _midpoint.emplace(w);
+                                    if constexpr(Traits::store_path)
+                                        _midpoint.emplace(w);
                                 }
                             }
                             if constexpr(Traits::store_path)
@@ -182,7 +197,8 @@ public:
                                 new_w_dist + _reverse_heap.priority(w);
                             if(Traits::semiring::less(new_st_dist, st_dist)) {
                                 st_dist = new_st_dist;
-                                _midpoint.emplace(w);
+                                if constexpr(Traits::store_path)
+                                    _midpoint.emplace(w);
                             }
                         }
                         if constexpr(Traits::store_path)
@@ -212,7 +228,8 @@ public:
                                 if(Traits::semiring::less(new_st_dist,
                                                           st_dist)) {
                                     st_dist = new_st_dist;
-                                    _midpoint.emplace(w);
+                                    if constexpr(Traits::store_path)
+                                        _midpoint.emplace(w);
                                 }
                             }
                             if constexpr(Traits::store_path)
@@ -228,7 +245,8 @@ public:
                                 new_w_dist + _forward_heap.priority(w);
                             if(Traits::semiring::less(new_st_dist, st_dist)) {
                                 st_dist = new_st_dist;
-                                _midpoint.emplace(w);
+                                if constexpr(Traits::store_path)
+                                    _midpoint.emplace(w);
                             }
                         }
                         if constexpr(Traits::store_path)

@@ -205,3 +205,111 @@ GTEST_TEST(dijkstra, current_dist_without_store_distances) {
     ASSERT_FALSE(algo.visited(1u));
     ASSERT_EQ(algo.current_dist(1u), 4);
 }
+
+// ################### traits: the store_distances = true half ################
+
+// Every dijkstra test above runs with store_distances = false -- the default,
+// and the only value the suite ever exercised -- so _distances_map, the
+// vertex_map_if that allocates it, the write in advance() and the dist()
+// accessor gated on it were all dead code as far as the tests were concerned.
+namespace {
+struct dijkstra_traits_distances
+    : dijkstra_default_traits<static_digraph, int> {
+    static constexpr bool store_distances = true;
+    static constexpr bool store_paths = false;
+};
+struct dijkstra_traits_distances_and_paths
+    : dijkstra_default_traits<static_digraph, int> {
+    static constexpr bool store_distances = true;
+    static constexpr bool store_paths = true;
+};
+
+template <typename A>
+concept has_dist =
+    requires(const A & a, const vertex_t<static_digraph> & u) { a.dist(u); };
+template <typename A>
+concept has_path_to =
+    requires(const A & a, const vertex_t<static_digraph> & u) { a.path_to(u); };
+}  // namespace
+
+static_assert(dijkstra_trait<dijkstra_traits_distances>);
+static_assert(dijkstra_trait<dijkstra_traits_distances_and_paths>);
+
+namespace {
+auto build_dijkstra_test_graph() {
+    static_digraph_builder<static_digraph, int, int> builder(6);
+    builder.add_arc(0, 1, 7, 1)
+        .add_arc(0, 2, 9, 2)
+        .add_arc(0, 5, 14, 3)
+        .add_arc(1, 0, 7, 3)
+        .add_arc(1, 2, 10, 4)
+        .add_arc(1, 3, 15, 5)
+        .add_arc(2, 0, 9, 6)
+        .add_arc(2, 1, 10, 7)
+        .add_arc(2, 3, 12, 8)
+        .add_arc(2, 5, 2, 9)
+        .add_arc(3, 1, 15, 10)
+        .add_arc(3, 2, 12, 11)
+        .add_arc(3, 4, 6, 12)
+        .add_arc(4, 3, 6, 13)
+        .add_arc(4, 5, 9, 14)
+        .add_arc(5, 0, 14, 15)
+        .add_arc(5, 2, 2, 16)
+        .add_arc(5, 4, 9, 17);
+    return builder.build();
+}
+}  // namespace
+
+GTEST_TEST(dijkstra, store_distances_true) {
+    auto [graph, length_map, id] = build_dijkstra_test_graph();
+
+    auto alg = dijkstra(dijkstra_traits_distances{}, graph, length_map);
+    alg.add_source(0u).run();
+
+    using with_dist = decltype(alg);
+    static_assert(has_dist<with_dist>);
+    // paths stay off, so their accessor must not come along for the ride
+    static_assert(!has_path_to<with_dist>);
+
+    // dist() reads _distances_map, written once per vertex as it is settled;
+    // same values the default-traits test observes through current()
+    ASSERT_EQ(alg.dist(0u), 0);
+    ASSERT_EQ(alg.dist(1u), 7);
+    ASSERT_EQ(alg.dist(2u), 9);
+    ASSERT_EQ(alg.dist(5u), 11);
+    ASSERT_EQ(alg.dist(4u), 20);
+    ASSERT_EQ(alg.dist(3u), 21);
+
+    // and it survives a reset + rerun from a different source
+    alg.reset();
+    alg.add_source(3u).run();
+    ASSERT_EQ(alg.dist(3u), 0);
+    ASSERT_EQ(alg.dist(4u), 6);
+    ASSERT_EQ(alg.dist(2u), 12);
+}
+
+GTEST_TEST(dijkstra, store_distances_and_paths_together) {
+    auto [graph, length_map, id] = build_dijkstra_test_graph();
+
+    auto alg =
+        dijkstra(dijkstra_traits_distances_and_paths{}, graph, length_map);
+    alg.add_source(0u).run();
+
+    using both = decltype(alg);
+    static_assert(has_dist<both>);
+    static_assert(has_path_to<both>);
+
+    // the two flags allocate separate maps; enabling both must not make
+    // either one read the other's storage
+    ASSERT_EQ(alg.dist(3u), 21);
+    ASSERT_TRUE(EQ_MULTISETS(
+        std::views::transform(alg.path_to(3u),
+                              [&id](const auto & a) { return id[a]; }),
+        {2, 8}));
+
+    ASSERT_EQ(alg.dist(4u), 20);
+    ASSERT_TRUE(EQ_MULTISETS(
+        std::views::transform(alg.path_to(4u),
+                              [&id](const auto & a) { return id[a]; }),
+        {2, 9, 17}));
+}

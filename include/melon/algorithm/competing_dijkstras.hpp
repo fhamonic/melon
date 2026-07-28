@@ -94,6 +94,15 @@ public:
     [[nodiscard]] constexpr competing_dijkstras(Traits, Args &&... args)
         : competing_dijkstras(std::forward<Args>(args)...) {}
 
+    [[nodiscard]] constexpr competing_dijkstras(const competing_dijkstras &) =
+        default;
+    [[nodiscard]] constexpr competing_dijkstras(competing_dijkstras &&) =
+        default;
+
+    constexpr competing_dijkstras & operator=(const competing_dijkstras &) =
+        default;
+    constexpr competing_dijkstras & operator=(competing_dijkstras &&) = default;
+
     template <typename BlueMap>
     competing_dijkstras & set_blue_length_map(
         BlueMap && blue_length_map) noexcept {

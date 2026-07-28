@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "melon/detail/specialization_of.hpp"
+#include "melon/detail/stdlib_check.hpp"
 
 #include "melon/mapping.hpp"
 

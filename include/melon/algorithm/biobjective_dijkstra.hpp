@@ -89,6 +89,16 @@ public:
     [[nodiscard]] constexpr biobjective_dijkstra(Traits, Args &&... args)
         : biobjective_dijkstra(std::forward<Args>(args)...) {}
 
+    [[nodiscard]] constexpr biobjective_dijkstra(const biobjective_dijkstra &) =
+        default;
+    [[nodiscard]] constexpr biobjective_dijkstra(biobjective_dijkstra &&) =
+        default;
+
+    constexpr biobjective_dijkstra & operator=(const biobjective_dijkstra &) =
+        default;
+    constexpr biobjective_dijkstra & operator=(biobjective_dijkstra &&) =
+        default;
+
     template <typename BlueMap>
     biobjective_dijkstra & set_blue_length_map(
         BlueMap && blue_length_map) noexcept {

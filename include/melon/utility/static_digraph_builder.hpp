@@ -5,6 +5,7 @@
 #include <ranges>
 #include <vector>
 
+#include "melon/detail/stdlib_check.hpp"
 #include "melon/graph.hpp"
 
 namespace melon {
