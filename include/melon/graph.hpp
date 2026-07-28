@@ -26,16 +26,16 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_vertices<_Tp>)
-            return noexcept(std::declval<_Tp &>().vertices());
+            return noexcept(std::declval<const _Tp &>().vertices());
         else
-            return noexcept(vertices(std::declval<_Tp &>()));
+            return noexcept(vertices(std::declval<const _Tp &>()));
     }
 
 public:
     template <typename _Tp>
         requires __member_vertices<_Tp> || __adl_vertices<_Tp>
     constexpr decltype(auto) operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_vertices<_Tp>)
             return __t.vertices();
         else if constexpr(__adl_vertices<_Tp>)
@@ -49,7 +49,7 @@ inline constexpr __cust_access::_Vertices vertices{};
 }  // namespace __cust
 
 template <typename _Tp>
-using vertices_range_t = decltype(melon::vertices(std::declval<_Tp &>()));
+using vertices_range_t = decltype(melon::vertices(std::declval<const _Tp &>()));
 
 template <typename _Tp>
 using vertex_t = std::ranges::range_value_t<vertices_range_t<_Tp>>;
@@ -70,12 +70,12 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_num_vertices<_Tp>)
-            return noexcept(std::declval<_Tp &>().num_vertices());
+            return noexcept(std::declval<const _Tp &>().num_vertices());
         else if constexpr(__adl_num_vertices<_Tp>)
-            return noexcept(num_vertices(std::declval<_Tp &>()));
+            return noexcept(num_vertices(std::declval<const _Tp &>()));
         else
-            return noexcept(
-                std::ranges::size(melon::vertices(std::declval<_Tp &>())));
+            return noexcept(std::ranges::size(
+                melon::vertices(std::declval<const _Tp &>())));
     }
 
 public:
@@ -83,7 +83,7 @@ public:
         requires __member_num_vertices<_Tp> || __adl_num_vertices<_Tp> ||
                  std::ranges::sized_range<vertices_range_t<_Tp>>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_num_vertices<_Tp>)
             return __t.num_vertices();
         else if constexpr(__adl_num_vertices<_Tp>)
@@ -115,11 +115,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_out_arcs<_Tp>)
-            return noexcept(std::declval<_Tp &>().out_arcs(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().out_arcs(
+                std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(out_arcs(std::declval<_Tp &>(),
-                                     std::declval<vertex_t<_Tp> &>()));
+            return noexcept(out_arcs(std::declval<const _Tp &>(),
+                                     std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -127,7 +127,7 @@ public:
         requires __member_out_arcs<_Tp> || __adl_out_arcs<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_out_arcs<_Tp>)
             return __t.out_arcs(__v);
         else
@@ -151,11 +151,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_in_arcs<_Tp>)
-            return noexcept(
-                std::declval<_Tp &>().in_arcs(std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().in_arcs(
+                std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(in_arcs(std::declval<_Tp &>(),
-                                    std::declval<vertex_t<_Tp> &>()));
+            return noexcept(in_arcs(std::declval<const _Tp &>(),
+                                    std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -163,7 +163,7 @@ public:
         requires __member_in_arcs<_Tp> || __adl_in_arcs<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_in_arcs<_Tp>)
             return __t.in_arcs(__v);
         else
@@ -179,7 +179,7 @@ inline constexpr __cust_access::_InArcs in_arcs{};
 
 template <typename _Tp>
 using out_arcs_range_t = decltype(melon::out_arcs(
-    std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+    std::declval<const _Tp &>(), std::declval<const vertex_t<_Tp> &>()));
 
 template <typename _Tp>
 using out_arcs_iterator_t = std::ranges::iterator_t<out_arcs_range_t<_Tp>>;
@@ -189,7 +189,7 @@ using out_arcs_sentinel_t = std::ranges::sentinel_t<out_arcs_range_t<_Tp>>;
 
 template <typename _Tp>
 using in_arcs_range_t = decltype(melon::in_arcs(
-    std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+    std::declval<const _Tp &>(), std::declval<const vertex_t<_Tp> &>()));
 
 template <typename _Tp>
 using in_arcs_iterator_t = std::ranges::iterator_t<in_arcs_range_t<_Tp>>;
@@ -213,10 +213,16 @@ template <typename _Tp, typename _Incidence>
         { _Incidence{}(__t, __v) } -> std::ranges::viewable_range;
     }
 inline constexpr auto __join_incidence
-    [[nodiscard]] (const _Tp & __t, _Incidence && __incidence) {
+    [[nodiscard]] (const _Tp & __t, _Incidence __incidence) {
+    // The graph is captured as a pointer and the incidence tag by value.
+    // Capturing either by reference captured a *reference parameter*, whose
+    // lifetime ends when this function returns, while the view produced here
+    // outlives it -- and the _Incidence temporary is gone by then too.
     return std::views::join(std::views::transform(
         melon::vertices(__t),
-        [&](const vertex_t<_Tp> & v) { return __incidence(__t, v); }));
+        [__g = std::addressof(__t), __incidence](const vertex_t<_Tp> & v) {
+            return __incidence(*__g, v);
+        }));
 }
 
 template <typename _Tp, typename _Incidence>
@@ -228,9 +234,9 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_arcs<_Tp>)
-            return noexcept(std::declval<_Tp &>().arcs());
+            return noexcept(std::declval<const _Tp &>().arcs());
         else if constexpr(__adl_arcs<_Tp>)
-            return noexcept(arcs(std::declval<_Tp &>()));
+            return noexcept(arcs(std::declval<const _Tp &>()));
         else
             return false;
     }
@@ -241,7 +247,7 @@ public:
                  __can_join_incidence<_Tp, _OutArcs> ||
                  __can_join_incidence<_Tp, _InArcs>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_arcs<_Tp>)
             return __t.arcs();
         else if constexpr(__adl_arcs<_Tp>)
@@ -268,7 +274,7 @@ inline constexpr __cust_access::_Arcs arcs{};
 }  // namespace __cust
 
 template <typename _Tp>
-using arcs_range_t = decltype(melon::arcs(std::declval<_Tp &>()));
+using arcs_range_t = decltype(melon::arcs(std::declval<const _Tp &>()));
 
 template <typename _Tp>
 using arc_t = std::ranges::range_value_t<arcs_range_t<_Tp>>;
@@ -297,14 +303,15 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_out_degree<_Tp>)
-            return noexcept(std::declval<_Tp &>().out_degree(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().out_degree(
+                std::declval<const vertex_t<_Tp> &>()));
         else if constexpr(__adl_out_degree<_Tp>)
-            return noexcept(out_degree(std::declval<_Tp &>(),
-                                       std::declval<vertex_t<_Tp> &>()));
+            return noexcept(out_degree(std::declval<const _Tp &>(),
+                                       std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(std::ranges::size(melon::out_arcs(
-                std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>())));
+            return noexcept(std::ranges::size(
+                melon::out_arcs(std::declval<const _Tp &>(),
+                                std::declval<const vertex_t<_Tp> &>())));
     }
 
 public:
@@ -313,7 +320,7 @@ public:
                  __has_sized_out_arcs<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_out_degree<_Tp>)
             return __t.out_degree(__v);
         else if constexpr(__adl_out_degree<_Tp>)
@@ -345,14 +352,15 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_in_degree<_Tp>)
-            return noexcept(std::declval<_Tp &>().in_degree(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().in_degree(
+                std::declval<const vertex_t<_Tp> &>()));
         else if constexpr(__adl_in_degree<_Tp>)
-            return noexcept(in_degree(std::declval<_Tp &>(),
-                                      std::declval<vertex_t<_Tp> &>()));
+            return noexcept(in_degree(std::declval<const _Tp &>(),
+                                      std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(std::ranges::size(melon::in_arcs(
-                std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>())));
+            return noexcept(std::ranges::size(
+                melon::in_arcs(std::declval<const _Tp &>(),
+                               std::declval<const vertex_t<_Tp> &>())));
     }
 
 public:
@@ -361,7 +369,7 @@ public:
                  __has_sized_in_arcs<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_in_degree<_Tp>)
             return __t.in_degree(__v);
         else if constexpr(__adl_in_degree<_Tp>)
@@ -393,11 +401,12 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_num_arcs<_Tp>)
-            return noexcept(std::declval<_Tp &>().num_arcs());
+            return noexcept(std::declval<const _Tp &>().num_arcs());
         else if constexpr(__adl_num_arcs<_Tp>)
-            return noexcept(num_arcs(std::declval<_Tp &>()));
+            return noexcept(num_arcs(std::declval<const _Tp &>()));
         else
-            return noexcept(std::ranges::size(_Arcs{}(std::declval<_Tp &>())));
+            return noexcept(
+                std::ranges::size(_Arcs{}(std::declval<const _Tp &>())));
     }
 
 public:
@@ -405,7 +414,7 @@ public:
         requires __member_num_arcs<_Tp> || __adl_num_arcs<_Tp> ||
                  std::ranges::sized_range<arcs_range_t<_Tp>>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_num_arcs<_Tp>)
             return __t.num_arcs();
         else if constexpr(__adl_num_arcs<_Tp>)
@@ -437,11 +446,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_arc_source<_Tp>)
-            return noexcept(
-                std::declval<_Tp &>().arc_source(std::declval<arc_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().arc_source(
+                std::declval<const arc_t<_Tp> &>()));
         else
-            return noexcept(arc_source(std::declval<_Tp &>(),
-                                       std::declval<arc_t<_Tp> &>()));
+            return noexcept(arc_source(std::declval<const _Tp &>(),
+                                       std::declval<const arc_t<_Tp> &>()));
     }
 
 public:
@@ -449,7 +458,7 @@ public:
         requires __member_arc_source<_Tp> || __adl_arc_source<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const arc_t<_Tp> & __a) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_arc_source<_Tp>)
             return __t.arc_source(__a);
         else
@@ -473,11 +482,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_arc_target<_Tp>)
-            return noexcept(
-                std::declval<_Tp &>().arc_target(std::declval<arc_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().arc_target(
+                std::declval<const arc_t<_Tp> &>()));
         else
-            return noexcept(arc_target(std::declval<_Tp &>(),
-                                       std::declval<arc_t<_Tp> &>()));
+            return noexcept(arc_target(std::declval<const _Tp &>(),
+                                       std::declval<const arc_t<_Tp> &>()));
     }
 
 public:
@@ -485,7 +494,7 @@ public:
         requires __member_arc_target<_Tp> || __adl_arc_target<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const arc_t<_Tp> & __a) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_arc_target<_Tp>)
             return __t.arc_target(__a);
         else
@@ -517,10 +526,11 @@ template <typename _Tp>
         _ArcTarget{}(__t, __a);
     }
 inline constexpr auto __list_arcs_entries [[nodiscard]] (const _Tp & __t) {
-    return std::views::transform(melon::arcs(__t), [&](const arc_t<_Tp> & a) {
-        return std::make_pair(
-            a, std::make_pair(_ArcSource{}(__t, a), _ArcTarget{}(__t, a)));
-    });
+    return std::views::transform(
+        melon::arcs(__t), [__g = std::addressof(__t)](const arc_t<_Tp> & a) {
+            return std::make_pair(a, std::make_pair(_ArcSource{}(*__g, a),
+                                                    _ArcTarget{}(*__g, a)));
+        });
 }
 
 template <typename _Tp>
@@ -535,11 +545,12 @@ template <typename _Tp>
     }
 inline constexpr auto __join_out_arcs_entries [[nodiscard]] (const _Tp & __t) {
     return std::views::join(std::views::transform(
-        melon::vertices(__t), [&__t](const vertex_t<_Tp> & s) {
+        melon::vertices(__t),
+        [__g = std::addressof(__t)](const vertex_t<_Tp> & s) {
             return std::views::transform(
-                melon::out_arcs(__t, s), [&__t, s](const arc_t<_Tp> & a) {
+                melon::out_arcs(*__g, s), [__g, s](const arc_t<_Tp> & a) {
                     return std::make_pair(
-                        a, std::make_pair(s, melon::arc_target(__t, a)));
+                        a, std::make_pair(s, melon::arc_target(*__g, a)));
                 });
         }));
 }
@@ -556,11 +567,12 @@ template <typename _Tp>
     }
 inline constexpr auto __join_in_arcs_entries [[nodiscard]] (const _Tp & __t) {
     return std::views::join(std::views::transform(
-        melon::vertices(__t), [&__t](const vertex_t<_Tp> & t) {
+        melon::vertices(__t),
+        [__g = std::addressof(__t)](const vertex_t<_Tp> & t) {
             return std::views::transform(
-                melon::in_arcs(__t, t), [&__t, t](const arc_t<_Tp> & a) {
+                melon::in_arcs(*__g, t), [__g, t](const arc_t<_Tp> & a) {
                     return std::make_pair(
-                        a, std::make_pair(melon::arc_source(__t, a), t));
+                        a, std::make_pair(melon::arc_source(*__g, a), t));
                 });
         }));
 }
@@ -574,9 +586,9 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_arcs_entries<_Tp>)
-            return noexcept(std::declval<_Tp &>().arcs_entries());
+            return noexcept(std::declval<const _Tp &>().arcs_entries());
         else if constexpr(__adl_arcs_entries<_Tp>)
-            return noexcept(arcs_entries(std::declval<_Tp &>()));
+            return noexcept(arcs_entries(std::declval<const _Tp &>()));
         else
             return false;
     }
@@ -588,7 +600,7 @@ public:
                  __can_join_out_arcs_entries<_Tp> ||
                  __can_join_in_arcs_entries<_Tp>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_arcs_entries<_Tp>)
             return __t.arcs_entries();
         else if constexpr(__adl_arcs_entries<_Tp>)
@@ -642,10 +654,14 @@ template <typename _Tp, typename _Incidence, typename _EndPoint>
     }
 inline constexpr auto __list_incidence_endpoints
     [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v,
-                   _Incidence && __incidence, _EndPoint && __end_point) {
+                   _Incidence __incidence, _EndPoint __end_point) {
+    // See __join_incidence: both tags are taken and captured by value, and the
+    // graph by address, so nothing in the returned view refers to a parameter.
     return std::views::transform(
         __incidence(__t, __v),
-        [&](const arc_t<_Tp> & a) { return __end_point(__t, a); });
+        [__g = std::addressof(__t), __end_point](const arc_t<_Tp> & a) {
+            return __end_point(*__g, a);
+        });
 }
 
 template <typename _Tp, typename _Incidence, typename _EndPoint>
@@ -677,11 +693,12 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_out_neighbors<_Tp>)
-            return noexcept(std::declval<_Tp &>().out_neighbors(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().out_neighbors(
+                std::declval<const vertex_t<_Tp> &>()));
         else if constexpr(__adl_out_neighbors<_Tp>)
-            return noexcept(out_neighbors(std::declval<_Tp &>(),
-                                          std::declval<vertex_t<_Tp> &>()));
+            return noexcept(
+                out_neighbors(std::declval<const _Tp &>(),
+                              std::declval<const vertex_t<_Tp> &>()));
         else
             return false;
     }
@@ -692,7 +709,7 @@ public:
                  __can_list_incidence_endpoints<_Tp, _OutArcs, _ArcTarget>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_out_neighbors<_Tp>)
             return __t.out_neighbors(__v);
         else if constexpr(__adl_out_neighbors<_Tp>)
@@ -726,11 +743,12 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_in_neighbors<_Tp>)
-            return noexcept(std::declval<_Tp &>().in_neighbors(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().in_neighbors(
+                std::declval<const vertex_t<_Tp> &>()));
         else if constexpr(__adl_in_neighbors<_Tp>)
-            return noexcept(in_neighbors(std::declval<_Tp &>(),
-                                         std::declval<vertex_t<_Tp> &>()));
+            return noexcept(
+                in_neighbors(std::declval<const _Tp &>(),
+                             std::declval<const vertex_t<_Tp> &>()));
         else
             return false;
     }
@@ -741,7 +759,7 @@ public:
                  __can_list_incidence_endpoints<_Tp, _InArcs, _ArcSource>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_in_neighbors<_Tp>)
             return __t.in_neighbors(__v);
         else if constexpr(__adl_in_neighbors<_Tp>)
@@ -760,11 +778,11 @@ inline constexpr __cust_access::_InNeighbors in_neighbors{};
 
 template <typename _Tp>
 using out_neighbors_range_t = decltype(melon::out_neighbors(
-    std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+    std::declval<const _Tp &>(), std::declval<const vertex_t<_Tp> &>()));
 
 template <typename _Tp>
 using in_neighbors_range_t = decltype(melon::in_neighbors(
-    std::declval<_Tp &>(), std::declval<vertex_t<_Tp> &>()));
+    std::declval<const _Tp &>(), std::declval<const vertex_t<_Tp> &>()));
 
 template <typename _Tp>
 concept has_vertices = requires(const _Tp & __t) { melon::vertices(__t); };
@@ -872,7 +890,7 @@ public:
     template <typename _Tp>
         requires __member_create_vertex<_Tp> || __adl_create_vertex<_Tp>
     constexpr auto operator() [[nodiscard]] (_Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_create_vertex<_Tp>)
             return __t.create_vertex();
         else
@@ -894,10 +912,10 @@ private:
     static constexpr bool _S_noexcept() {
         if constexpr(__member_remove_vertex<_Tp>)
             return noexcept(std::declval<_Tp &>().remove_vertex(
-                std::declval<vertex_t<_Tp> &>()));
+                std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(remove_vertex(std::declval<_Tp &>(),
-                                          std::declval<vertex_t<_Tp> &>()));
+            return noexcept(remove_vertex(
+                std::declval<_Tp &>(), std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -905,7 +923,7 @@ public:
         requires __member_remove_vertex<_Tp> || __adl_remove_vertex<_Tp>
     constexpr auto operator()
         [[nodiscard]] (_Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_remove_vertex<_Tp>)
             return __t.remove_vertex(__v);
         else
@@ -930,11 +948,12 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_is_valid_vertex<_Tp>)
-            return noexcept(std::declval<_Tp &>().is_valid_vertex(
-                std::declval<vertex_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().is_valid_vertex(
+                std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(is_valid_vertex(std::declval<_Tp &>(),
-                                            std::declval<vertex_t<_Tp> &>()));
+            return noexcept(
+                is_valid_vertex(std::declval<const _Tp &>(),
+                                std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -942,7 +961,7 @@ public:
         requires __member_is_valid_vertex<_Tp> || __adl_is_valid_vertex<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_is_valid_vertex<_Tp>)
             return __t.is_valid_vertex(__v);
         else
@@ -966,12 +985,12 @@ private:
     static constexpr bool _S_noexcept() {
         if constexpr(__member_create_arc<_Tp>)
             return noexcept(std::declval<_Tp &>().create_arc(
-                std::declval<vertex_t<_Tp> &>(),
-                std::declval<vertex_t<_Tp> &>()));
+                std::declval<const vertex_t<_Tp> &>(),
+                std::declval<const vertex_t<_Tp> &>()));
         else
             return noexcept(create_arc(std::declval<_Tp &>(),
-                                       std::declval<vertex_t<_Tp> &>(),
-                                       std::declval<vertex_t<_Tp> &>()));
+                                       std::declval<const vertex_t<_Tp> &>(),
+                                       std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -980,7 +999,7 @@ public:
     constexpr auto operator()
         [[nodiscard]] (_Tp & __t, const vertex_t<_Tp> & __u,
                        const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_create_arc<_Tp>)
             return __t.create_arc(__u, __v);
         else
@@ -1001,11 +1020,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_remove_arc<_Tp>)
-            return noexcept(
-                std::declval<_Tp &>().remove_arc(std::declval<arc_t<_Tp> &>()));
+            return noexcept(std::declval<_Tp &>().remove_arc(
+                std::declval<const arc_t<_Tp> &>()));
         else
             return noexcept(remove_arc(std::declval<_Tp &>(),
-                                       std::declval<arc_t<_Tp> &>()));
+                                       std::declval<const arc_t<_Tp> &>()));
     }
 
 public:
@@ -1013,7 +1032,7 @@ public:
         requires __member_remove_arc<_Tp> || __adl_remove_arc<_Tp>
     constexpr auto operator()
         [[nodiscard]] (_Tp & __t, const arc_t<_Tp> & __a) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_remove_arc<_Tp>)
             return __t.remove_arc(__a);
         else
@@ -1037,11 +1056,11 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_is_valid_arc<_Tp>)
-            return noexcept(std::declval<_Tp &>().is_valid_arc(
-                std::declval<arc_t<_Tp> &>()));
+            return noexcept(std::declval<const _Tp &>().is_valid_arc(
+                std::declval<const arc_t<_Tp> &>()));
         else
-            return noexcept(is_valid_arc(std::declval<_Tp &>(),
-                                         std::declval<arc_t<_Tp> &>()));
+            return noexcept(is_valid_arc(std::declval<const _Tp &>(),
+                                         std::declval<const arc_t<_Tp> &>()));
     }
 
 public:
@@ -1049,7 +1068,7 @@ public:
         requires __member_is_valid_arc<_Tp> || __adl_is_valid_arc<_Tp>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const arc_t<_Tp> & __a) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_is_valid_arc<_Tp>)
             return __t.is_valid_arc(__a);
         else
@@ -1075,11 +1094,12 @@ private:
     static constexpr bool _S_noexcept() {
         if constexpr(__member_change_arc_source<_Tp>)
             return noexcept(std::declval<_Tp &>().change_arc_source(
-                std::declval<arc_t<_Tp> &>(), std::declval<vertex_t<_Tp> &>()));
+                std::declval<const arc_t<_Tp> &>(),
+                std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(change_arc_source(std::declval<_Tp &>(),
-                                              std::declval<arc_t<_Tp> &>(),
-                                              std::declval<vertex_t<_Tp> &>()));
+            return noexcept(change_arc_source(
+                std::declval<_Tp &>(), std::declval<const arc_t<_Tp> &>(),
+                std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -1087,7 +1107,7 @@ public:
         requires __member_change_arc_source<_Tp> || __adl_change_arc_source<_Tp>
     constexpr auto operator() [[nodiscard]] (_Tp & __t, const arc_t<_Tp> & __a,
                                              const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_change_arc_source<_Tp>)
             return __t.change_arc_source(__a, __v);
         else
@@ -1113,11 +1133,12 @@ private:
     static constexpr bool _S_noexcept() {
         if constexpr(__member_change_arc_target<_Tp>)
             return noexcept(std::declval<_Tp &>().change_arc_target(
-                std::declval<arc_t<_Tp> &>(), std::declval<vertex_t<_Tp> &>()));
+                std::declval<const arc_t<_Tp> &>(),
+                std::declval<const vertex_t<_Tp> &>()));
         else
-            return noexcept(change_arc_target(std::declval<_Tp &>(),
-                                              std::declval<arc_t<_Tp> &>(),
-                                              std::declval<vertex_t<_Tp> &>()));
+            return noexcept(change_arc_target(
+                std::declval<_Tp &>(), std::declval<const arc_t<_Tp> &>(),
+                std::declval<const vertex_t<_Tp> &>()));
     }
 
 public:
@@ -1125,7 +1146,7 @@ public:
         requires __member_change_arc_target<_Tp> || __adl_change_arc_target<_Tp>
     constexpr auto operator() [[nodiscard]] (_Tp & __t, const arc_t<_Tp> & __a,
                                              const vertex_t<_Tp> & __v) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_change_arc_target<_Tp>)
             return __t.change_arc_target(__a, __v);
         else
@@ -1179,16 +1200,12 @@ concept has_change_arc_target =
 namespace __cust_access {
 template <typename _Tp>
 concept __member_arc_sources_map = requires(const _Tp & __t) {
-    { __t.arc_sources_map() };
-    // -> input_mapping<arc_t<_Tp>,
-    // vertex_t<_Tp>>;
+    { __t.arc_sources_map() } -> input_mapping_of<arc_t<_Tp>, vertex_t<_Tp>>;
 };
 
 template <typename _Tp>
 concept __adl_arc_sources_map = requires(const _Tp & __t) {
-    { arc_sources_map(__t) };
-    // -> input_mapping<arc_t<_Tp>,
-    // vertex_t<_Tp>>;
+    { arc_sources_map(__t) } -> input_mapping_of<arc_t<_Tp>, vertex_t<_Tp>>;
 };
 
 struct _ArcSourcesMap {
@@ -1196,12 +1213,13 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_arc_sources_map<_Tp>)
-            return noexcept(std::declval<_Tp &>().arc_sources_map());
+            return noexcept(std::declval<const _Tp &>().arc_sources_map());
         else if constexpr(__adl_arc_sources_map<_Tp>)
-            return noexcept(arc_sources_map(std::declval<_Tp &>()));
+            return noexcept(arc_sources_map(std::declval<const _Tp &>()));
         else
-            return noexcept(melon::arc_source(std::declval<_Tp &>(),
-                                              std::declval<arc_t<_Tp> &>()));
+            return noexcept(
+                melon::arc_source(std::declval<const _Tp &>(),
+                                  std::declval<const arc_t<_Tp> &>()));
     }
 
 public:
@@ -1209,15 +1227,16 @@ public:
         requires __member_arc_sources_map<_Tp> || __adl_arc_sources_map<_Tp> ||
                  has_arc_source<_Tp>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_arc_sources_map<_Tp>)
             return __t.arc_sources_map();
         else if constexpr(__adl_arc_sources_map<_Tp>)
             return arc_sources_map(__t);
         else
-            return views::map([&__t](const arc_t<_Tp> & a) {
-                return melon::arc_source(__t, a);
-            });
+            return views::map(
+                [__g = std::addressof(__t)](const arc_t<_Tp> & a) {
+                    return melon::arc_source(*__g, a);
+                });
     }
 };
 
@@ -1236,12 +1255,13 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_arc_targets_map<_Tp>)
-            return noexcept(std::declval<_Tp &>().arc_targets_map());
+            return noexcept(std::declval<const _Tp &>().arc_targets_map());
         else if constexpr(__adl_arc_targets_map<_Tp>)
-            return noexcept(arc_targets_map(std::declval<_Tp &>()));
+            return noexcept(arc_targets_map(std::declval<const _Tp &>()));
         else
-            return noexcept(melon::arc_target(std::declval<_Tp &>(),
-                                              std::declval<arc_t<_Tp> &>()));
+            return noexcept(
+                melon::arc_target(std::declval<const _Tp &>(),
+                                  std::declval<const arc_t<_Tp> &>()));
     }
 
 public:
@@ -1249,15 +1269,16 @@ public:
         requires __member_arc_targets_map<_Tp> || __adl_arc_targets_map<_Tp> ||
                  has_arc_target<_Tp>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_arc_targets_map<_Tp>)
             return __t.arc_targets_map();
         else if constexpr(__adl_arc_targets_map<_Tp>)
             return arc_targets_map(__t);
         else
-            return views::map([&__t](const arc_t<_Tp> & a) {
-                return melon::arc_target(__t, a);
-            });
+            return views::map(
+                [__g = std::addressof(__t)](const arc_t<_Tp> & a) {
+                    return melon::arc_target(*__g, a);
+                });
     }
 };
 }  // namespace __cust_access
@@ -1303,11 +1324,26 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
-            return noexcept(
-                std::declval<_Tp &>().template create_vertex_map<_ValueType>());
+            return noexcept(std::declval<const _Tp &>()
+                                .template create_vertex_map<_ValueType>());
         else
             return noexcept(
-                create_vertex_map<_ValueType>(std::declval<_Tp &>()));
+                create_vertex_map<_ValueType>(std::declval<const _Tp &>()));
+    }
+
+    // The default-value overload has to probe the call it actually makes:
+    // sharing _S_noexcept() with the 0-argument one claimed noexcept for a
+    // throwing create_vertex_map<V>(g, d).
+    template <typename _Tp>
+    static constexpr bool _S_noexcept_default() {
+        if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
+            return noexcept(std::declval<const _Tp &>()
+                                .template create_vertex_map<_ValueType>(
+                                    std::declval<const _ValueType &>()));
+        else
+            return noexcept(create_vertex_map<_ValueType>(
+                std::declval<const _Tp &>(),
+                std::declval<const _ValueType &>()));
     }
 
 public:
@@ -1315,7 +1351,7 @@ public:
         requires __member_create_vertex_map<_Tp, _ValueType> ||
                  __adl_create_vertex_map<_Tp, _ValueType>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
             return __t.template create_vertex_map<_ValueType>();
         else
@@ -1327,7 +1363,7 @@ public:
                  __adl_create_vertex_map<_Tp, _ValueType>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const _ValueType & __d) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept_default<_Tp>()) {
         if constexpr(__member_create_vertex_map<_Tp, _ValueType>)
             return __t.template create_vertex_map<_ValueType>(__d);
         else
@@ -1364,10 +1400,24 @@ private:
     template <typename _Tp>
     static constexpr bool _S_noexcept() {
         if constexpr(__member_create_arc_map<_Tp, _ValueType>)
-            return noexcept(
-                std::declval<_Tp &>().template create_arc_map<_ValueType>());
+            return noexcept(std::declval<const _Tp &>()
+                                .template create_arc_map<_ValueType>());
         else
-            return noexcept(create_arc_map<_ValueType>(std::declval<_Tp &>()));
+            return noexcept(
+                create_arc_map<_ValueType>(std::declval<const _Tp &>()));
+    }
+
+    // See _CreateVertexMap::_S_noexcept_default.
+    template <typename _Tp>
+    static constexpr bool _S_noexcept_default() {
+        if constexpr(__member_create_arc_map<_Tp, _ValueType>)
+            return noexcept(
+                std::declval<const _Tp &>().template create_arc_map<_ValueType>(
+                    std::declval<const _ValueType &>()));
+        else
+            return noexcept(
+                create_arc_map<_ValueType>(std::declval<const _Tp &>(),
+                                           std::declval<const _ValueType &>()));
     }
 
 public:
@@ -1375,7 +1425,7 @@ public:
         requires __member_create_arc_map<_Tp, _ValueType> ||
                  __adl_create_arc_map<_Tp, _ValueType>
     constexpr auto operator() [[nodiscard]] (const _Tp & __t) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept<_Tp>()) {
         if constexpr(__member_create_arc_map<_Tp, _ValueType>)
             return __t.template create_arc_map<_ValueType>();
         else
@@ -1387,7 +1437,7 @@ public:
                  __adl_create_arc_map<_Tp, _ValueType>
     constexpr auto operator()
         [[nodiscard]] (const _Tp & __t, const _ValueType & __d) const
-        noexcept(_S_noexcept<_Tp &>()) {
+        noexcept(_S_noexcept_default<_Tp>()) {
         if constexpr(__member_create_arc_map<_Tp, _ValueType>)
             return __t.template create_arc_map<_ValueType>(__d);
         else
@@ -1411,10 +1461,10 @@ inline constexpr __cust_access::_CreateArcMap<_ValueType> create_arc_map{};
 
 template <typename _Tp, typename _ValueType>
 using vertex_map_t =
-    decltype(melon::create_vertex_map<_ValueType>(std::declval<_Tp &>()));
+    decltype(melon::create_vertex_map<_ValueType>(std::declval<const _Tp &>()));
 template <typename _Tp, typename _ValueType>
 using arc_map_t =
-    decltype(melon::create_arc_map<_ValueType>(std::declval<_Tp &>()));
+    decltype(melon::create_arc_map<_ValueType>(std::declval<const _Tp &>()));
 
 template <typename _Tp, typename _ValueType = std::size_t>
 concept has_vertex_map =

@@ -283,7 +283,40 @@ slate block lifts the whole ladder:
 at 10% — a one-point difference, i.e. invisible. The goal is a consistent ~5-point step
 between the page and the surfaces sitting on it.
 
-### 3.6 Landing-page hero
+### 3.6 Buttons
+
+`classic` swaps both hero buttons to the accent color on hover
+(`background-color` / `color` → `--md-accent-fg-color` / `--md-accent-bg-color`);
+`modern` only fades them to `opacity: .8`. The classic behaviour is restored for both
+variants:
+
+```css
+.md-typeset .md-button:focus,
+.md-typeset .md-button:hover,
+.md-typeset .md-button--primary:focus,
+.md-typeset .md-button--primary:hover {
+  background-color: var(--md-accent-fg-color);
+  color: var(--md-accent-bg-color);
+  opacity: 1;                 /* cancels modern's fade */
+}
+```
+
+Both variants already declare `transition: color 125ms, background-color 125ms`, so the
+swap animates with no extra work.
+
+Two things this depends on:
+
+- **`--md-accent-bg-color` is overridden in the slate scheme.** Both variants ship `#fff`
+  in `:root`, which scores **2.11:1** against our lightened dark-mode green `#7BC466` —
+  unreadable. Pointing it at `--md-default-bg-color` gives 8.1:1. Light mode keeps white on
+  `#3C7B34` at 5.15:1. This is a latent bug in `classic` too, fixed here for both.
+- **The slate secondary-button rule carries a state guard.**
+  `[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary)` weighs
+  (0,4,0) and would outweigh the (0,3,0) hover rule, freezing the dark-mode secondary
+  button's text color on hover. Adding `:hover, :focus` to the `:not()` list is the same
+  convention as 3.4, applied to a base rule rather than an override.
+
+### 3.7 Landing-page hero
 
 `.melon-hero` styles the block at the top of `docs/index.md`, which is plain HTML with
 `markdown` passthrough:
@@ -307,6 +340,28 @@ between the page and the surfaces sitting on it.
 
 This depends on the `md_in_html` and `attr_list` markdown extensions, both enabled in
 `zensical.toml`.
+
+The file also opens with an empty front-matter title:
+
+```yaml
+---
+title: ""
+---
+```
+
+Without it the browser tab reads **"MELON - MELON"**. `base.html` special-cases the home
+page with `{% elif page.title and not page.is_homepage %}`, but `is_homepage` is not
+implemented anywhere in Zensical 0.0.50 — grep the package, there are no hits — so the
+guard never fires and the home page falls through to `<page title> - <site_name>` like any
+other. `page.title` comes from the hero's `# MELON` heading, hence the doubling.
+
+Emptying the title makes the template take its final branch and emit the bare `site_name`.
+Note that setting `title: Home` does **not** work: `page.title` is still taken from the H1,
+so the tab stays "MELON - MELON". Front matter is parsed natively — the `meta` markdown
+extension is not required and is not enabled.
+
+This affects the `<title>` only. The "Home" tab label comes from the `nav` table in
+`zensical.toml`, the `<h1>` still renders as the wordmark, and the sitemap is unchanged.
 
 ---
 

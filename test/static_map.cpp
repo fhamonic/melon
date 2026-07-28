@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include "melon/container/static_digraph.hpp"
+#include "melon/container/static_filter_map.hpp"
 #include "melon/container/static_map.hpp"
 #include "melon/mapping.hpp"
 
@@ -134,11 +135,29 @@ GTEST_TEST(static_map, for_each_write) {
         ++cpt;
     }
 }
-GTEST_TEST(static_map, resize) {
+// Renamed from resize(): it reallocates and does NOT preserve the contents the
+// way std::vector::resize does, so the old name silently lost callers' data.
+GTEST_TEST(static_map, reset) {
     static_map<std::size_t, int> map(20);
-    map.resize(10);
+    map.reset(10);
     ASSERT_EQ(map.size(), 10);
+
+    // reset() to the same size is a no-op and keeps the contents
+    static_map<std::size_t, int> kept(4, 7);
+    kept.reset(4);
+    ASSERT_EQ(kept.size(), 4);
+    for(std::size_t i = 0; i < kept.size(); ++i) ASSERT_EQ(kept[i], 7);
 }
+
+// The misleading name is gone from both containers.
+template <typename M>
+concept has_resize = requires(M & m) { m.resize(std::size_t{1}); };
+template <typename M>
+concept has_reset = requires(M & m) { m.reset(std::size_t{1}); };
+static_assert(!has_resize<static_map<std::size_t, int>>);
+static_assert(has_reset<static_map<std::size_t, int>>);
+static_assert(!has_resize<static_filter_map<std::size_t>>);
+static_assert(has_reset<static_filter_map<std::size_t>>);
 
 // ################## regression: data() const-correctness #####################
 
@@ -158,14 +177,80 @@ GTEST_TEST(static_map, data_is_const_correct) {
 }
 
 // The relaxed concept must still hold for the container itself and, crucially,
-// through a const-carrying mapping_ref_view -- that is the shape arc_targets_map
-// returns, and the prefetch fast path in dijkstra keys off it.
+// through a const-carrying mapping_ref_view -- that is the shape
+// arc_targets_map returns, and the prefetch fast path in dijkstra keys off it.
 static_assert(contiguous_mapping<static_map<std::size_t, int>, std::size_t>);
 static_assert(
     contiguous_mapping_of<static_map<std::size_t, int>, std::size_t, int>);
-static_assert(contiguous_mapping<
-              mapping_ref_view<const static_map<std::size_t, int>>,
-              std::size_t>);
 static_assert(
-    contiguous_mapping<mapping_ref_view<static_map<std::size_t, int>>,
+    contiguous_mapping<mapping_ref_view<const static_map<std::size_t, int>>,
                        std::size_t>);
+static_assert(contiguous_mapping<mapping_ref_view<static_map<std::size_t, int>>,
+                                 std::size_t>);
+
+// ############# regression: iterator-pair constructor deduction ##############
+
+// The parameters were `IT && it_begin, IT && it_end`. Deducing IT from lvalues
+// gave IT = T &, which does not model random_access_iterator (so the
+// constructor silently vanished), and mixing value categories gave
+// "deduced conflicting types for parameter 'IT'".
+GTEST_TEST(static_map, iterator_pair_constructor_accepts_any_value_category) {
+    std::vector<int> v = {4, 5, 6};
+    auto b = v.begin();
+    auto e = v.end();
+
+    static_map<std::size_t, int> from_lvalues(b, e);
+    static_map<std::size_t, int> from_mixed(b, v.end());
+    static_map<std::size_t, int> from_rvalues(v.begin(), v.end());
+    static_map<std::size_t, int> from_range(v);
+    static_map<std::size_t, int> from_temporary_range(
+        std::vector<int>{4, 5, 6});
+
+    for(const auto * map : {&from_lvalues, &from_mixed, &from_rvalues,
+                            &from_range, &from_temporary_range}) {
+        ASSERT_EQ(map->size(), 3u);
+        ASSERT_TRUE(EQ_RANGES(*map, v));
+    }
+}
+
+// ################## regression: fill() noexcept honesty #####################
+
+namespace {
+struct throwing_assign {
+    throwing_assign() = default;
+    throwing_assign(const throwing_assign &) = default;
+    throwing_assign & operator=(const throwing_assign &) { return *this; }
+};
+}  // namespace
+
+static_assert(noexcept(std::declval<static_map<std::size_t, int> &>().fill(0)));
+static_assert(
+    !noexcept(std::declval<static_map<std::size_t, throwing_assign> &>().fill(
+        std::declval<const throwing_assign &>())));
+
+// ################### regression: typedef lies ###############################
+
+// value_type said std::pair<const K, V &> and reference said the same, while
+// begin()/end() are plain V pointers -- so the container's own typedefs
+// contradicted std::iterator_traits and std::ranges::range_value_t.
+namespace {
+using probe_map = static_map<std::size_t, int>;
+}  // namespace
+
+static_assert(std::same_as<probe_map::value_type, int>);
+static_assert(std::same_as<probe_map::reference, int &>);
+static_assert(std::same_as<probe_map::const_reference, const int &>);
+static_assert(
+    std::same_as<probe_map::value_type, std::ranges::range_value_t<probe_map>>);
+static_assert(std::same_as<probe_map::reference,
+                           std::ranges::range_reference_t<probe_map>>);
+static_assert(std::same_as<probe_map::const_reference,
+                           std::ranges::range_reference_t<const probe_map>>);
+static_assert(std::same_as<probe_map::value_type,
+                           std::iter_value_t<probe_map::iterator>>);
+static_assert(std::same_as<probe_map::reference,
+                           std::iter_reference_t<probe_map::iterator>>);
+static_assert(std::same_as<probe_map::const_reference,
+                           std::iter_reference_t<probe_map::const_iterator>>);
+static_assert(std::same_as<probe_map::difference_type,
+                           std::iter_difference_t<probe_map::iterator>>);

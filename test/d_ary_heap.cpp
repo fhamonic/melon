@@ -305,10 +305,8 @@ concept can_promote =
         h.promote(k, p);
     };
 template <typename H>
-concept can_demote =
-    requires(H h, typename H::id_type k, typename H::priority_type p) {
-        h.demote(k, p);
-    };
+concept can_demote = requires(H h, typename H::id_type k,
+                              typename H::priority_type p) { h.demote(k, p); };
 }  // namespace
 
 static_assert(can_promote<writable_heap>);
@@ -356,4 +354,69 @@ GTEST_TEST(updatable_d_ary_heap, demote_actually_reorders) {
     ASSERT_EQ(heap.priority(2u), 5);
     ASSERT_EQ(heap.top().first, 1u);
     ASSERT_EQ(heap.top().second, 20);
+}
+
+// ################## regression: noexcept honesty ############################
+
+// push() grows a std::vector and sifts through the user's comparator and
+// priority map; declaring it noexcept turned a bad_alloc (or a throwing
+// comparator) into std::terminate. clear() is genuinely noexcept now that it
+// uses vector::clear rather than resize(0).
+namespace {
+using plain_heap = d_ary_heap<2, int, std::greater<int>>;
+}  // namespace
+
+static_assert(!noexcept(std::declval<plain_heap &>().push(1)));
+static_assert(!noexcept(std::declval<plain_heap &>().pop()));
+static_assert(noexcept(std::declval<plain_heap &>().clear()));
+static_assert(noexcept(std::declval<const plain_heap &>().size()));
+static_assert(noexcept(std::declval<const plain_heap &>().empty()));
+static_assert(!noexcept(std::declval<writable_heap &>().promote(
+    std::declval<const std::size_t &>(), std::declval<const int &>())));
+static_assert(!noexcept(std::declval<writable_heap &>().demote(
+    std::declval<const std::size_t &>(), std::declval<const int &>())));
+
+// clear() must still actually empty the heap
+GTEST_TEST(d_ary_heap, clear_empties_the_heap) {
+    plain_heap heap;
+    heap.push(3);
+    heap.push(1);
+    heap.push(2);
+    ASSERT_EQ(heap.size(), 3u);
+    heap.clear();
+    ASSERT_TRUE(heap.empty());
+    ASSERT_EQ(heap.size(), 0u);
+    heap.push(7);
+    ASSERT_EQ(heap.top(), 7);
+}
+
+// ######## regression: greedy single-argument constructor ####################
+
+// d_ary_heap_base's `template <typename PC> d_ary_heap_base(PC &&)` was
+// unconstrained, so for a non-const lvalue of the heap type it beat the copy
+// constructor (exact match vs an added const) and tried to build a comparator
+// out of a heap.
+namespace {
+using heap_base = d_ary_heap_base<d_ary_heap<2, int, std::greater<int>>, 2, int,
+                                  std::greater<int>, views::identity_map>;
+}  // namespace
+
+static_assert(std::copy_constructible<heap_base>);
+static_assert(std::constructible_from<heap_base, std::greater<int>>);
+static_assert(std::constructible_from<heap_base, heap_base &>);
+static_assert(std::constructible_from<heap_base, const heap_base &>);
+
+GTEST_TEST(d_ary_heap, copying_a_mutable_lvalue_uses_the_copy_constructor) {
+    d_ary_heap<2, int, std::greater<int>> heap;
+    heap.push(1);
+    heap.push(9);
+    heap.push(5);
+
+    d_ary_heap<2, int, std::greater<int>> from_mutable_lvalue(heap);
+    ASSERT_EQ(from_mutable_lvalue.size(), 3u);
+    ASSERT_EQ(from_mutable_lvalue.top(), 9);
+
+    // and the comparator constructor is still reachable
+    heap_base with_comparator(std::greater<int>{});
+    ASSERT_TRUE(with_comparator.empty());
 }

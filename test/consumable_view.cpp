@@ -130,7 +130,8 @@ GTEST_TEST(consumable_view, assign_from_range_returns_self) {
     std::vector<unsigned int> v = {3u, 1u, 4u};
     std::vector<unsigned int> w = {9u, 2u};
 
-    using view_type = consumable_view<std::views::all_t<std::vector<unsigned int> &>>;
+    using view_type =
+        consumable_view<std::views::all_t<std::vector<unsigned int> &>>;
     view_type cv(v);
     cv.advance();
     ASSERT_EQ(cv.current(), 1u);

@@ -131,3 +131,31 @@ GTEST_TEST(algorithm_view_interface, drives_a_real_traversal) {
     for(const auto & v : alg) visited.push_back(v);
     ASSERT_TRUE(EQ_RANGES(visited, {0, 1, 2, 3}));
 }
+
+// ################### regression: iterator typedef lies ######################
+
+// operator* returns a prvalue and there is no operator->, but the typedefs
+// advertised `value_type const &` and `value_type *`, so std::iterator_traits
+// reported a reference and a pointer this iterator never produces.
+namespace {
+struct counting_generator {
+    int i = 0;
+    bool finished() const { return i >= 3; }
+    int current() const { return i; }
+    void advance() { ++i; }
+};
+using counting_iterator = algorithm_iterator<counting_generator>;
+}  // namespace
+
+static_assert(algorithmic_generator<counting_generator>);
+static_assert(std::same_as<counting_iterator::value_type, int>);
+static_assert(std::same_as<counting_iterator::reference, int>);
+static_assert(std::same_as<counting_iterator::pointer, void>);
+static_assert(
+    std::same_as<counting_iterator::reference,
+                 decltype(*std::declval<const counting_iterator &>())>);
+static_assert(std::same_as<std::iter_reference_t<counting_iterator>,
+                           counting_iterator::reference>);
+static_assert(std::same_as<std::iterator_traits<counting_iterator>::reference,
+                           std::iter_reference_t<counting_iterator>>);
+static_assert(std::input_iterator<counting_iterator>);

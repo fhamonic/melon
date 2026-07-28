@@ -255,7 +255,7 @@ public:
     static_filter_map(static_filter_map &&) = default;
 
     static_filter_map & operator=(const static_filter_map & other) {
-        resize(other.size());
+        reset(other.size());
         std::copy(other._data.get(), other._data.get() + num_spans(other._size),
                   _data.get());
         return *this;
@@ -274,7 +274,8 @@ public:
     }
 
     size_type size() const noexcept { return _size; }
-    void resize(size_type n) {
+    // See static_map::reset -- this discards the current contents.
+    void reset(size_type n) {
         if(n == _size) return;
         _data = std::make_unique_for_overwrite<span_type[]>(num_spans(n));
         _size = n;
@@ -301,14 +302,18 @@ public:
     }
 
     template <std::ranges::viewable_range R>
-    auto filter(R && r) const noexcept {
-        if constexpr(std::same_as<R, std::ranges::iota_view<K, K>>) {
+    auto filter(R && r) const {
+        // remove_cvref_t, not R: R is the deduced type of a forwarding
+        // reference, so it is iota_view<K, K> & for an lvalue and the
+        // bit-scanning fast path below was only ever reached for rvalues.
+        if constexpr(std::same_as<std::remove_cvref_t<R>,
+                                  std::ranges::iota_view<K, K>>) {
             // Clamp both bounds into [0, _size] so that every span pointer
             // formed below stays inside the allocation.
             const K end_key = std::clamp(
                 *std::ranges::end(r), static_cast<K>(0), static_cast<K>(_size));
-            const K begin_key = std::clamp(*std::ranges::begin(r),
-                                           static_cast<K>(0), end_key);
+            const K begin_key =
+                std::clamp(*std::ranges::begin(r), static_cast<K>(0), end_key);
             // Both keys are now in [0, _size], so indexing in the unsigned
             // span-index type is value-preserving.
             const size_type end_index = static_cast<size_type>(end_key);
@@ -386,7 +391,7 @@ public:
                 std::views::transform(
                     r, [](auto && i) { return static_cast<K>(i); }),
                 [this](const auto & k) {
-                    return operator[](static_cast<K>(k));
+                    return operator[](static_cast<size_type>(k));
                 });
         }
     }

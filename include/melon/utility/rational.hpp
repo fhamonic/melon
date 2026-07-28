@@ -13,8 +13,12 @@ namespace melon {
 template <typename NumT, typename DenT = const_value<int, 1>>
 struct rational {
 private:
-    [[no_unique_address]] mutable NumT _num;
-    [[no_unique_address]] mutable DenT _den;
+    // Not mutable: normalize() rewrites both, so with `mutable` + a const
+    // normalize() a const rational could be changed under the caller and two
+    // threads reading a shared const rational raced. num()/den() hand out
+    // const references straight into these.
+    [[no_unique_address]] NumT _num;
+    [[no_unique_address]] DenT _den;
 
 public:
     constexpr rational()
@@ -49,7 +53,7 @@ public:
     constexpr const NumT & num() const { return _num; }
     constexpr const DenT & den() const { return _den; }
 
-    constexpr void normalize() const {
+    constexpr void normalize() {
         const auto & g = std::gcd(_num, _den);
         _num /= g;
         _den /= g;

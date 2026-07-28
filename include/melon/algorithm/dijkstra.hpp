@@ -105,14 +105,15 @@ public:
     constexpr dijkstra & operator=(const dijkstra &) = default;
     constexpr dijkstra & operator=(dijkstra &&) = default;
 
-    constexpr dijkstra & reset() noexcept {
+    // None of the four below are noexcept: they push into the heap (which
+    // allocates) and run the user's length map, semiring and comparator.
+    constexpr dijkstra & reset() {
         _heap.clear();
         _vertex_status_map.fill(PRE_HEAP);
         return *this;
     }
     constexpr dijkstra & add_source(
-        const vertex & s,
-        const length_type & dist = _Traits::semiring::zero) noexcept {
+        const vertex & s, const length_type & dist = _Traits::semiring::zero) {
         assert(_vertex_status_map[s] != IN_HEAP);
         _heap.push(std::make_pair(s, dist));
         _vertex_status_map[s] = IN_HEAP;
@@ -127,12 +128,12 @@ public:
         return _heap.empty();
     }
 
-    [[nodiscard]] constexpr traversal_entry current() const noexcept {
+    [[nodiscard]] constexpr traversal_entry current() const {
         assert(!finished());
         return _heap.top();
     }
 
-    constexpr void advance() noexcept {
+    constexpr void advance() {
         assert(!finished());
         const auto [t, st_dist] = _heap.top();
         if constexpr(_Traits::store_distances) _distances_map[t] = st_dist;
@@ -169,7 +170,7 @@ public:
         }
     }
 
-    constexpr void run() noexcept {
+    constexpr void run() {
         while(!finished()) advance();
     }
 
@@ -194,10 +195,8 @@ public:
         else
             return _pred_vertices_map[u];
     }
-    [[nodiscard]] constexpr length_type current_dist(
-        const vertex & u) const noexcept
-        requires(_Traits::store_distances)
-    {
+    // Reads the heap, not _distances_map, so it does not need store_distances.
+    [[nodiscard]] constexpr length_type current_dist(const vertex & u) const {
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }

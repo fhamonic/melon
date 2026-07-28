@@ -95,8 +95,8 @@ std::vector<T> create_vertex_map(const graph_with_adl_maps &, const T & d) {
 }  // namespace adl_maps
 
 static_assert(melon::has_vertex_map<adl_maps::graph_with_adl_maps>);
-static_assert(
-    melon::has_vertex_map<melon::graph_ref_view<adl_maps::graph_with_adl_maps>>);
+static_assert(melon::has_vertex_map<
+              melon::graph_ref_view<adl_maps::graph_with_adl_maps>>);
 
 GTEST_TEST(graph_view, adl_create_vertex_map_still_dispatches) {
     adl_maps::graph_with_adl_maps g;
@@ -109,4 +109,89 @@ GTEST_TEST(graph_view, adl_create_vertex_map_still_dispatches) {
     auto view_map = melon::create_vertex_map<int>(view, 7);
     ASSERT_EQ(view_map.size(), 3u);
     ASSERT_EQ(view_map[1], 7);
+}
+
+// ####### regression: 2-arg create_*_map noexcept / arc_sources_map ##########
+
+namespace noexcept_probe {
+// 0-argument overloads are noexcept, the default-value ones are not
+struct graph_with_throwing_defaults {
+    auto vertices() const { return std::views::iota(0u, 3u); }
+    auto arcs() const { return std::views::iota(0u, 2u); }
+    unsigned arc_source(unsigned a) const { return a; }
+    unsigned arc_target(unsigned a) const { return a + 1; }
+    template <typename T>
+    auto create_vertex_map() const noexcept {
+        return std::vector<T>(3);
+    }
+    template <typename T>
+    auto create_vertex_map(const T & d) const {
+        return std::vector<T>(3, d);
+    }
+    template <typename T>
+    auto create_arc_map() const noexcept {
+        return std::vector<T>(2);
+    }
+    template <typename T>
+    auto create_arc_map(const T & d) const {
+        return std::vector<T>(2, d);
+    }
+};
+}  // namespace noexcept_probe
+
+// both CPO overloads used to share the 0-argument probe, so the default-value
+// call claimed noexcept while it could throw
+static_assert(noexcept(melon::create_vertex_map<int>(
+    std::declval<const noexcept_probe::graph_with_throwing_defaults &>())));
+static_assert(!noexcept(melon::create_vertex_map<int>(
+    std::declval<const noexcept_probe::graph_with_throwing_defaults &>(),
+    std::declval<const int &>())));
+static_assert(noexcept(melon::create_arc_map<int>(
+    std::declval<const noexcept_probe::graph_with_throwing_defaults &>())));
+static_assert(!noexcept(melon::create_arc_map<int>(
+    std::declval<const noexcept_probe::graph_with_throwing_defaults &>(),
+    std::declval<const int &>())));
+
+namespace bad_endpoint_maps {
+// arc_sources_map()'s return-type constraint had been commented out while its
+// arc_targets_map twin kept it, so a void-returning member was accepted and the
+// CPO handed back void.
+struct graph_with_void_maps {
+    auto vertices() const { return std::views::iota(0u, 3u); }
+    auto arcs() const { return std::views::iota(0u, 2u); }
+    unsigned arc_source(unsigned a) const { return a; }
+    unsigned arc_target(unsigned a) const { return a + 1; }
+    void arc_sources_map() const {}
+    void arc_targets_map() const {}
+};
+template <typename G>
+concept sources_map_is_usable =
+    requires(const G & g, unsigned a) { melon::arc_sources_map(g)[a]; };
+template <typename G>
+concept targets_map_is_usable =
+    requires(const G & g, unsigned a) { melon::arc_targets_map(g)[a]; };
+}  // namespace bad_endpoint_maps
+
+static_assert(melon::graph<bad_endpoint_maps::graph_with_void_maps>);
+// the bad members are rejected symmetrically, so both fall back
+static_assert(!melon::__cust_access::__member_arc_sources_map<
+              bad_endpoint_maps::graph_with_void_maps>);
+static_assert(!melon::__cust_access::__member_arc_targets_map<
+              bad_endpoint_maps::graph_with_void_maps>);
+static_assert(bad_endpoint_maps::sources_map_is_usable<
+              bad_endpoint_maps::graph_with_void_maps>);
+static_assert(bad_endpoint_maps::targets_map_is_usable<
+              bad_endpoint_maps::graph_with_void_maps>);
+// a graph with real endpoint maps still uses its own members
+static_assert(melon::__cust_access::__member_arc_sources_map<G>);
+static_assert(melon::__cust_access::__member_arc_targets_map<G>);
+
+GTEST_TEST(graph_view, void_endpoint_maps_fall_back_to_synthesised_ones) {
+    bad_endpoint_maps::graph_with_void_maps g;
+    auto sources = melon::arc_sources_map(g);
+    auto targets = melon::arc_targets_map(g);
+    for(const unsigned a : melon::arcs(g)) {
+        ASSERT_EQ(sources[a], melon::arc_source(g, a));
+        ASSERT_EQ(targets[a], melon::arc_target(g, a));
+    }
 }

@@ -56,8 +56,8 @@ concept contiguous_mapping =
     input_mapping<_Map, _Key> && std::integral<_Key> && requires(_Map & __m) {
         {
             __m.data()
-        } -> std::convertible_to<std::add_pointer_t<
-              std::add_const_t<mapped_value_t<_Map, _Key>>>>;
+        } -> std::convertible_to<
+              std::add_pointer_t<std::add_const_t<mapped_value_t<_Map, _Key>>>>;
     };
 
 template <typename _Map, typename _Key, typename _Value>
@@ -343,8 +343,23 @@ struct identity_map : public mapping_view_base {
 template <std::size_t... I>
 struct element_map : public mapping_view_base {
 private:
+    // std::get is noexcept for tuple/pair/array but *not* for std::variant,
+    // where it throws std::bad_variant_access. An unconditional noexcept on
+    // the chain below turned that throw into std::terminate.
+    template <typename T, std::size_t First, std::size_t... Rest>
+    static consteval bool __chain_is_nothrow() {
+        if constexpr(sizeof...(Rest) == 0) {
+            return noexcept(std::get<First>(std::declval<T>()));
+        } else {
+            return noexcept(std::get<First>(std::declval<T>())) &&
+                   __chain_is_nothrow<
+                       decltype(std::get<First>(std::declval<T>())), Rest...>();
+        }
+    }
+
     template <std::size_t First, std::size_t... Rest, typename T>
-    static constexpr decltype(auto) get_chain(T && e) noexcept {
+    static constexpr decltype(auto) get_chain(T && e) noexcept(
+        __chain_is_nothrow<T, First, Rest...>()) {
         if constexpr(sizeof...(Rest) == 0) {
             return std::get<First>(std::forward<T>(e));
         } else {
@@ -354,7 +369,8 @@ private:
 
 public:
     template <typename T>
-    [[nodiscard]] constexpr decltype(auto) operator[](T && e) const noexcept {
+    [[nodiscard]] constexpr decltype(auto) operator[](T && e) const
+        noexcept(__chain_is_nothrow<T, I...>()) {
         return get_chain<I...>(std::forward<T>(e));
     }
 };
