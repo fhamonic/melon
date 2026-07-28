@@ -9,14 +9,13 @@
 
 namespace melon {
 
-template <graph _Graph, std::ranges::range _Sources>
-    requires has_vertex_map<_Graph> &&
-             std::same_as<std::ranges::range_value_t<_Sources>,
-                          vertex_t<_Graph>>
+template <graph Graph, std::ranges::range Sources>
+    requires has_vertex_map<Graph> &&
+             std::same_as<std::ranges::range_value_t<Sources>, vertex_t<Graph>>
 class traversal_forest
-    : public algorithm_view_interface<traversal_forest<_Graph, _Sources>> {
+    : public algorithm_view_interface<traversal_forest<Graph, Sources>> {
 private:
-    using vertex = vertex_t<_Graph>;
+    using vertex = vertex_t<Graph>;
     struct bfs_traits {
         static constexpr bool store_pred_vertices = false;
         static constexpr bool store_pred_arcs = false;
@@ -25,23 +24,23 @@ private:
     };
 
 private:
-    _Graph _graph;
-    consumable_view<_Sources> _remaining_sources;
-    breadth_first_search<views::graph_all_t<_Graph>, bfs_traits> _bfs;
+    Graph _graph;
+    consumable_view<Sources> _remaining_sources;
+    breadth_first_search<views::graph_all_t<Graph>, bfs_traits> _bfs;
 
 public:
-    template <typename _G>
-    [[nodiscard]] constexpr explicit traversal_forest(_G && g) noexcept
-        : _graph(views::graph_all(std::forward<_G>(g)))
+    template <typename G>
+    [[nodiscard]] constexpr explicit traversal_forest(G && g) noexcept
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _remaining_sources(vertices(_graph))
         , _bfs(_graph) {
         advance();
     }
 
-    template <typename _G, typename _S>
-    [[nodiscard]] constexpr explicit traversal_forest(_G && g,
-                                                      _S && sources) noexcept
-        : _graph(views::graph_all(std::forward<_G>(g)))
+    template <typename G, typename S>
+    [[nodiscard]] constexpr explicit traversal_forest(G && g,
+                                                      S && sources) noexcept
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _remaining_sources(std::views::all(sources))
         , _bfs(_graph) {
         advance();
@@ -87,13 +86,12 @@ public:
     }
 };
 
-template <typename _Graph>
-traversal_forest(_Graph &&)
-    -> traversal_forest<views::graph_all_t<_Graph>, vertices_range_t<_Graph>>;
+template <typename Graph>
+traversal_forest(Graph &&)
+    -> traversal_forest<views::graph_all_t<Graph>, vertices_range_t<Graph>>;
 
-template <typename _Graph, typename _Sources>
-traversal_forest(_Graph &&,
-                 _Sources &&) -> traversal_forest<views::graph_all_t<_Graph>,
-                                                  std::views::all_t<_Sources>>;
+template <typename Graph, typename Sources>
+traversal_forest(Graph &&, Sources &&)
+    -> traversal_forest<views::graph_all_t<Graph>, std::views::all_t<Sources>>;
 
 }  // namespace melon

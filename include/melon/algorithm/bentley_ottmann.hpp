@@ -19,16 +19,16 @@
 namespace melon {
 
 // clang-format off
-template <typename _Traits>
+template <typename Traits>
 concept bentley_ottmann_traits = requires() {
-    { _Traits::report_endpoints } -> std::convertible_to<bool>;
+    { Traits::report_endpoints } -> std::convertible_to<bool>;
 };
 // clang-format on
 
-template <typename _Segment>
+template <typename Segment>
 struct default_bentley_ottmann_traits {
     using coordinate_system = cartesian;
-    using segment_type = _Segment;
+    using segment_type = Segment;
     using line_type = decltype(coordinate_system::segment_to_line(
         std::declval<segment_type>()));
     using intersection_type = decltype(coordinate_system::segments_intersection(
@@ -46,19 +46,19 @@ struct default_bentley_ottmann_traits {
     static constexpr bool report_endpoints = true;
 };
 
-template <bentley_ottmann_traits _Traits, typename _SegmentId,
-          input_mapping<_SegmentId> _SegmentMap = views::identity_map>
+template <bentley_ottmann_traits Traits, typename SegmentId,
+          input_mapping<SegmentId> SegmentMap = views::identity_map>
 class bentley_ottmann : public algorithm_view_interface<
-                            bentley_ottmann<_Traits, _SegmentId, _SegmentMap>> {
+                            bentley_ottmann<Traits, SegmentId, SegmentMap>> {
 private:
-    using segment_id_type = _SegmentId;
-    using coordinate_system = typename _Traits::coordinate_system;
-    using segment_type = typename _Traits::segment_type;
+    using segment_id_type = SegmentId;
+    using coordinate_system = typename Traits::coordinate_system;
+    using segment_type = typename Traits::segment_type;
     using endpoint_type =
         std::common_type_t<decltype(std::get<0>(std::declval<segment_type>()),
                                     std::get<1>(std::declval<segment_type>()))>;
-    using line_type = typename _Traits::line_type;
-    using intersection_type = typename _Traits::intersection_type;
+    using line_type = typename Traits::line_type;
+    using intersection_type = typename Traits::intersection_type;
     static constexpr auto compute_sweepline_intersection(
         const intersection_type & event_point, const line_type & line) {
         return std::make_tuple(
@@ -131,13 +131,13 @@ private:
     };
 
     using segments_tree =
-        typename _Traits::template segments_tree<segment_entry, segment_cmp>;
+        typename Traits::template segments_tree<segment_entry, segment_cmp>;
     enum event_type { starting, ending, coincident };
     using events = std::vector<std::pair<segment_id_type, event_type>>;
-    using events_tree = typename _Traits::template events_tree<events>;
+    using events_tree = typename Traits::template events_tree<events>;
 
 private:
-    [[no_unique_address]] _SegmentMap _segment_map;
+    [[no_unique_address]] SegmentMap _segment_map;
     [[no_unique_address]] event_cmp _event_cmp;
     segments_tree _segments_tree;
     segments_tree _tmp_tree;
@@ -149,11 +149,11 @@ private:
     std::vector<segment_id_type> _intersections;
 
 public:
-    template <std::ranges::range _SegmentIdRange,
-              typename _SM = views::identity_map>
-    bentley_ottmann(_SegmentIdRange && segments_ids_range,
-                    _SM && segment_map = {}) noexcept
-        : _segment_map(views::mapping_all(std::forward<_SM>(segment_map)))
+    template <std::ranges::range SegmentIdRange,
+              typename SM = views::identity_map>
+    bentley_ottmann(SegmentIdRange && segments_ids_range,
+                    SM && segment_map = {}) noexcept
+        : _segment_map(views::mapping_all(std::forward<SM>(segment_map)))
         , _segments_tree(segment_cmp(std::cref(_current_event_point)))
         , _tmp_tree(segment_cmp(std::cref(_tmp_event_point))) {
         for(auto && s : segments_ids_range) {
@@ -175,9 +175,9 @@ public:
         init();
     }
 
-    template <typename... _Args>
-    [[nodiscard]] constexpr bentley_ottmann(_Traits, _Args &&... args)
-        : bentley_ottmann(std::forward<_Args>(args)...) {}
+    template <typename... Args>
+    [[nodiscard]] constexpr bentley_ottmann(Traits, Args &&... args)
+        : bentley_ottmann(std::forward<Args>(args)...) {}
 
     [[nodiscard]] constexpr bentley_ottmann(const bentley_ottmann &) = default;
     [[nodiscard]] constexpr bentley_ottmann(bentley_ottmann &&) = default;
@@ -269,7 +269,7 @@ private:
                     _tmp_tree.find(segment_entry(s, _segment_map[s], i)));
                 continue;
             }
-            if constexpr(_Traits::report_endpoints) {
+            if constexpr(Traits::report_endpoints) {
                 _intersections.emplace_back(s);
             }
             if(et != event_type::starting) continue;
@@ -327,29 +327,29 @@ public:
     }
 };
 
-template <typename _SegmentIdRange>
-bentley_ottmann(_SegmentIdRange &&)
+template <typename SegmentIdRange>
+bentley_ottmann(SegmentIdRange &&)
     -> bentley_ottmann<default_bentley_ottmann_traits<
-                           std::ranges::range_value_t<_SegmentIdRange>>,
-                       std::ranges::range_value_t<_SegmentIdRange>,
+                           std::ranges::range_value_t<SegmentIdRange>>,
+                       std::ranges::range_value_t<SegmentIdRange>,
                        views::identity_map>;
 
-template <typename _SegmentIdRange, typename _SegmentMap>
-bentley_ottmann(_SegmentIdRange &&, _SegmentMap &&)
+template <typename SegmentIdRange, typename SegmentMap>
+bentley_ottmann(SegmentIdRange &&, SegmentMap &&)
     -> bentley_ottmann<default_bentley_ottmann_traits<mapped_value_t<
-                           views::mapping_all_t<_SegmentMap>,
-                           std::ranges::range_value_t<_SegmentIdRange>>>,
-                       std::ranges::range_value_t<_SegmentIdRange>,
-                       views::mapping_all_t<_SegmentMap>>;
+                           views::mapping_all_t<SegmentMap>,
+                           std::ranges::range_value_t<SegmentIdRange>>>,
+                       std::ranges::range_value_t<SegmentIdRange>,
+                       views::mapping_all_t<SegmentMap>>;
 
-template <typename _SegmentIdRange, typename _Traits>
-bentley_ottmann(_Traits, _SegmentIdRange &&)
-    -> bentley_ottmann<_Traits, std::ranges::range_value_t<_SegmentIdRange>,
+template <typename SegmentIdRange, typename Traits>
+bentley_ottmann(Traits, SegmentIdRange &&)
+    -> bentley_ottmann<Traits, std::ranges::range_value_t<SegmentIdRange>,
                        views::identity_map>;
 
-template <typename _SegmentIdRange, typename _SegmentMap, typename _Traits>
-bentley_ottmann(_Traits, _SegmentIdRange &&, _SegmentMap &&)
-    -> bentley_ottmann<_Traits, std::ranges::range_value_t<_SegmentIdRange>,
-                       views::mapping_all_t<_SegmentMap>>;
+template <typename SegmentIdRange, typename SegmentMap, typename Traits>
+bentley_ottmann(Traits, SegmentIdRange &&, SegmentMap &&)
+    -> bentley_ottmann<Traits, std::ranges::range_value_t<SegmentIdRange>,
+                       views::mapping_all_t<SegmentMap>>;
 
 }  // namespace melon

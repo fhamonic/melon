@@ -21,40 +21,40 @@ struct topological_sort_default_traits {
     static constexpr bool store_distances = false;
 };
 
-template <graph _Graph, typename _Traits = topological_sort_default_traits>
-    requires outward_incidence_graph<_Graph> && has_vertex_map<_Graph>
+template <graph Graph, typename Traits = topological_sort_default_traits>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class topological_sort
-    : public algorithm_view_interface<topological_sort<_Graph, _Traits>> {
+    : public algorithm_view_interface<topological_sort<Graph, Traits>> {
 public:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
 
     static_assert(
-        !(outward_adjacency_graph<_Graph> && _Traits::store_pred_arcs),
+        !(outward_adjacency_graph<Graph> && Traits::store_pred_arcs),
         "traversal on outward_adjacency_list cannot access predecessor arcs.");
 
-    using reached_map = vertex_map_t<_Graph, bool>;
-    using remaining_in_degree_map = vertex_map_t<_Graph, std::size_t>;
+    using reached_map = vertex_map_t<Graph, bool>;
+    using remaining_in_degree_map = vertex_map_t<Graph, std::size_t>;
 
 private:
-    _Graph _graph;
+    Graph _graph;
     std::vector<vertex> _queue;
     std::vector<vertex>::iterator _queue_current;
     reached_map _reached_map;
     remaining_in_degree_map _remaining_in_degree_map;
 
-    [[no_unique_address]] vertex_map_if<_Traits::store_pred_vertices, _Graph,
+    [[no_unique_address]] vertex_map_if<Traits::store_pred_vertices, Graph,
                                         vertex> _pred_vertices_map;
-    [[no_unique_address]] vertex_map_if<_Traits::store_pred_arcs, _Graph, arc>
+    [[no_unique_address]] vertex_map_if<Traits::store_pred_arcs, Graph, arc>
         _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<_Traits::store_distances, _Graph, int>
+    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph, int>
         _dist_map;
 
     constexpr void push_start_vertices() noexcept {
         _queue.resize(0);
         _queue_current = _queue.begin();
         _reached_map.fill(false);
-        if(has_in_degree<_Graph>) {
+        if(has_in_degree<Graph>) {
             for(auto && u : vertices(_graph)) {
                 _remaining_in_degree_map[u] = in_degree(_graph, u);
                 if(_remaining_in_degree_map[u] == 0) {
@@ -75,13 +75,13 @@ private:
                 }
             }
         }
-        if constexpr(_Traits::store_distances) _dist_map.fill(0);
+        if constexpr(Traits::store_distances) _dist_map.fill(0);
     }
 
 public:
-    template <typename _G>
-    [[nodiscard]] constexpr explicit topological_sort(_G && g)
-        : _graph(views::graph_all(std::forward<_G>(g)))
+    template <typename G>
+    [[nodiscard]] constexpr explicit topological_sort(G && g)
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()
         , _reached_map(create_vertex_map<bool>(g, false))
         , _remaining_in_degree_map(create_vertex_map<long unsigned int>(
@@ -125,10 +125,9 @@ public:
             const vertex & w = arc_target(_graph, a);
             if(--_remaining_in_degree_map[w] > 0) continue;
             _queue.push_back(w);
-            if constexpr(_Traits::store_pred_vertices)
-                _pred_vertices_map[w] = u;
-            if constexpr(_Traits::store_pred_arcs) _pred_arcs_map[w] = a;
-            if constexpr(_Traits::store_distances)
+            if constexpr(Traits::store_pred_vertices) _pred_vertices_map[w] = u;
+            if constexpr(Traits::store_pred_arcs) _pred_arcs_map[w] = a;
+            if constexpr(Traits::store_distances)
                 _dist_map[w] = _dist_map[u] + 1;
         }
     }
@@ -142,31 +141,31 @@ public:
     }
 
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
-        requires(_Traits::store_pred_vertices)
+        requires(Traits::store_pred_vertices)
     {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
-        requires(_Traits::store_pred_arcs)
+        requires(Traits::store_pred_arcs)
     {
         assert(reached(u));
         return _pred_arcs_map[u];
     }
     [[nodiscard]] constexpr int dist(const vertex & u) const noexcept
-        requires(_Traits::store_distances)
+        requires(Traits::store_distances)
     {
         assert(reached(u));
         return _dist_map[u];
     }
 };
 
-template <typename _Graph, typename _Traits = topological_sort_default_traits>
-topological_sort(_Graph &&)
-    -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
+template <typename Graph, typename Traits = topological_sort_default_traits>
+topological_sort(Graph &&)
+    -> topological_sort<views::graph_all_t<Graph>, Traits>;
 
-template <typename _Graph, typename _Traits>
-topological_sort(_Traits, _Graph &&)
-    -> topological_sort<views::graph_all_t<_Graph>, _Traits>;
+template <typename Graph, typename Traits>
+topological_sort(Traits, Graph &&)
+    -> topological_sort<views::graph_all_t<Graph>, Traits>;
 
 }  // namespace melon

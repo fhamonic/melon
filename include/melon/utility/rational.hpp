@@ -91,12 +91,12 @@ constexpr rational<T1, T2> make_rational(T1 a, T2 b) {
         return expr;                                                    \
     }                                                                   \
     template <typename T, typename N, typename D>                       \
-        requires(!__detail::__specialization_of<T, rational>)           \
+        requires(!detail::specialization_of<T, rational>)               \
     constexpr auto operator op(const T & a, const rational<N, D> & r) { \
         return rational(a) op r;                                        \
     }                                                                   \
     template <typename T, typename N, typename D>                       \
-        requires(!__detail::__specialization_of<T, rational>)           \
+        requires(!detail::specialization_of<T, rational>)               \
     constexpr auto operator op(const rational<N, D> & r, const T & a) { \
         return r op rational(a);                                        \
     }

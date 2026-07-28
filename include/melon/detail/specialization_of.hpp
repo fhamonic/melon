@@ -6,27 +6,27 @@
 
 namespace melon {
 
-namespace __detail {
-template <typename _Tp, template <typename...> typename _Primary>
-struct __is_specialization_of : std::false_type {};
+namespace detail {
+template <typename T, template <typename...> typename Primary>
+struct is_specialization_of : std::false_type {};
 
-template <template <typename...> typename _Primary, typename... _Args>
-struct __is_specialization_of<_Primary<_Args...>, _Primary> : std::true_type {};
+template <template <typename...> typename Primary, typename... Args>
+struct is_specialization_of<Primary<Args...>, Primary> : std::true_type {};
 
-template <typename _Tp, template <typename...> typename _Primary>
-concept __specialization_of = __is_specialization_of<_Tp, _Primary>::value;
+template <typename T, template <typename...> typename Primary>
+concept specialization_of = is_specialization_of<T, Primary>::value;
 
-template <typename _Tp>
+template <typename T>
 inline constexpr int _range_rank() {
-    if constexpr(__specialization_of<_Tp, std::ranges::iota_view>)
+    if constexpr(specialization_of<T, std::ranges::iota_view>)
         return 3;
-    else if constexpr(std::ranges::contiguous_range<_Tp>)
+    else if constexpr(std::ranges::contiguous_range<T>)
         return 2;
-    else if constexpr(std::ranges::viewable_range<_Tp>)
+    else if constexpr(std::ranges::viewable_range<T>)
         return 1;
     else
         return 0;
 };
-}  // namespace __detail
+}  // namespace detail
 
 }  // namespace melon

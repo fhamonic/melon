@@ -171,7 +171,7 @@ BFS runs, because it only requires adjacency. Dijkstra would not compile on this
 
 **Identifiers must be unique and stable.** No duplicates in `vertices(g)` or `arcs(g)`, and an identifier must keep meaning the same element for as long as the algorithm runs.
 
-**Accessors must be const-callable.** Every concept is written against `const _Tp &`. A non-const `out_arcs` is invisible to melon.
+**Accessors must be const-callable.** Every concept is written against `const T &`. A non-const `out_arcs` is invisible to melon.
 
 **Return by value or by reference, but not to a temporary.** `out_arcs(v)` returning a view over a member container is fine; returning a view over a local vector is a dangling range.
 

@@ -17,13 +17,13 @@
 
 namespace melon {
 
-template <outward_adjacency_graph _Graph>
-    requires has_vertex_map<_Graph>
+template <outward_adjacency_graph Graph>
+    requires has_vertex_map<Graph>
 class strongly_connected_components
-    : public algorithm_view_interface<strongly_connected_components<_Graph>> {
+    : public algorithm_view_interface<strongly_connected_components<Graph>> {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
 
     using component_num = unsigned int;
 
@@ -31,24 +31,24 @@ private:
         std::numeric_limits<component_num>::max();
 
 private:
-    _Graph _graph;
-    consumable_view<vertices_range_t<_Graph>> _remaining_vertices;
+    Graph _graph;
+    consumable_view<vertices_range_t<Graph>> _remaining_vertices;
     std::vector<
-        std::pair<vertex, consumable_view<out_neighbors_range_t<_Graph>>>>
+        std::pair<vertex, consumable_view<out_neighbors_range_t<Graph>>>>
         _dfs_stack;
     std::vector<vertex> _tarjan_stack;
     std::vector<vertex>::iterator _component_begin;
     component_num start_index;
     component_num index;
-    vertex_map_t<_Graph, bool> _in_tarjan_stack_map;
-    vertex_map_t<_Graph, component_num> _index_map;
-    vertex_map_t<_Graph, component_num> _lowlink_map;
+    vertex_map_t<Graph, bool> _in_tarjan_stack_map;
+    vertex_map_t<Graph, component_num> _index_map;
+    vertex_map_t<Graph, component_num> _lowlink_map;
 
 public:
-    template <typename _Tp>
+    template <typename T>
     [[nodiscard]] constexpr explicit strongly_connected_components(
-        _Tp && g) noexcept
-        : _graph(views::graph_all(std::forward<_Tp>(g)))
+        T && g) noexcept
+        : _graph(views::graph_all(std::forward<T>(g)))
         , _remaining_vertices(vertices(_graph))
         , _dfs_stack()
         , _tarjan_stack()
@@ -59,7 +59,7 @@ public:
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
         , _lowlink_map(
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT)) {
-        if constexpr(has_num_vertices<_Graph>) {
+        if constexpr(has_num_vertices<Graph>) {
             _dfs_stack.reserve(num_vertices(_graph));
             _tarjan_stack.reserve(num_vertices(_graph));
         }
@@ -178,8 +178,8 @@ public:
     }
 };
 
-template <typename _Graph>
-strongly_connected_components(_Graph &&)
-    -> strongly_connected_components<views::graph_all_t<_Graph>>;
+template <typename Graph>
+strongly_connected_components(Graph &&)
+    -> strongly_connected_components<views::graph_all_t<Graph>>;
 
 }  // namespace melon

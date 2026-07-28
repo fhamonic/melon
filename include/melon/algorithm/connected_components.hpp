@@ -11,31 +11,31 @@
 
 namespace melon {
 
-template <undirected_graph _UGraph>
-    requires has_incidence<_UGraph> && has_vertex_map<_UGraph>
+template <undirected_graph UGraph>
+    requires has_incidence<UGraph> && has_vertex_map<UGraph>
 class connected_components
-    : public algorithm_view_interface<connected_components<_UGraph>> {
+    : public algorithm_view_interface<connected_components<UGraph>> {
 private:
-    using vertex = vertex_t<_UGraph>;
+    using vertex = vertex_t<UGraph>;
     using cursor =
-        std::conditional_t<has_num_vertices<_UGraph>,
+        std::conditional_t<has_num_vertices<UGraph>,
                            typename std::vector<vertex>::iterator, int>;
 
 private:
-    _UGraph _graph;
-    consumable_view<vertices_range_t<_UGraph>> _remaining_vertices;
+    UGraph _graph;
+    consumable_view<vertices_range_t<UGraph>> _remaining_vertices;
     std::vector<vertex> _queue;
     cursor _queue_current;
-    vertex_map_t<_UGraph, bool> _reached_map;
+    vertex_map_t<UGraph, bool> _reached_map;
 
 public:
-    template <typename _UG>
-    [[nodiscard]] constexpr explicit connected_components(_UG && g) noexcept
-        : _graph(views::undirected_graph_all(std::forward<_UG>(g)))
+    template <typename UG>
+    [[nodiscard]] constexpr explicit connected_components(UG && g) noexcept
+        : _graph(views::undirected_graph_all(std::forward<UG>(g)))
         , _remaining_vertices(vertices(_graph))
         , _queue()
         , _reached_map(create_vertex_map<bool>(_graph, false)) {
-        if constexpr(has_num_vertices<_UGraph>) {
+        if constexpr(has_num_vertices<UGraph>) {
             _queue.reserve(num_vertices(_graph));
             _queue_current = _queue.begin();
         } else {
@@ -73,7 +73,7 @@ public:
 
 private:
     [[nodiscard]] constexpr bool _finished_component() const noexcept {
-        if constexpr(has_num_vertices<_UGraph>) {
+        if constexpr(has_num_vertices<UGraph>) {
             return _queue_current == _queue.end();
         } else {
             return _queue_current == _queue.size();
@@ -81,7 +81,7 @@ private:
     }
     [[nodiscard]] constexpr vertex & _current_vertex() noexcept {
         assert(!finished());
-        if constexpr(has_num_vertices<_UGraph>) {
+        if constexpr(has_num_vertices<UGraph>) {
             return *_queue_current;
         } else {
             return _queue[_queue_current];
@@ -89,7 +89,7 @@ private:
     }
     constexpr void _reset_current_vertex() noexcept {
         assert(!finished());
-        if constexpr(has_num_vertices<_UGraph>) {
+        if constexpr(has_num_vertices<UGraph>) {
             _queue_current = _queue.begin();
         } else {
             _queue_current = 0;
@@ -132,14 +132,14 @@ public:
     }
 };
 
-template <typename _UGraph>
-connected_components(_UGraph &&)
-    -> connected_components<views::undirected_graph_all_t<_UGraph>>;
+template <typename UGraph>
+connected_components(UGraph &&)
+    -> connected_components<views::undirected_graph_all_t<UGraph>>;
 
-template <graph _Graph>
-    requires outward_adjacency_graph<_Graph> && inward_adjacency_graph<_Graph>
-constexpr auto weakly_connected_components(_Graph && g) {
-    return connected_components(views::undirect(std::forward<_Graph>(g)));
+template <graph Graph>
+    requires outward_adjacency_graph<Graph> && inward_adjacency_graph<Graph>
+constexpr auto weakly_connected_components(Graph && g) {
+    return connected_components(views::undirect(std::forward<Graph>(g)));
 }
 
 }  // namespace melon

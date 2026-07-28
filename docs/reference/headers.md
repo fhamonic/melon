@@ -78,7 +78,7 @@ Everything lives in `namespace melon`, with views in `melon::views` and work in 
 
 **`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `prefetch.hpp`, `specialization_of.hpp`.
 
-The same applies to anything in a `detail` or `__detail` namespace, or prefixed with `__` — including `melon::__cust_access`, where the CPO function objects are defined.
+The same applies to anything in a `detail` or `detail` namespace, or prefixed with `__` — including `melon::cpo`, where the CPO function objects are defined.
 
 **`melon/experimental/`** — work in progress in `namespace melon::experimental`, with no stability guarantee:
 

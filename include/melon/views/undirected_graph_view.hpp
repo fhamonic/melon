@@ -10,13 +10,13 @@ namespace melon {
 
 struct undirected_graph_view_base {};
 
-template <typename _Tp>
+template <typename T>
 inline constexpr bool enable_undirected_graph_view =
-    std::derived_from<_Tp, undirected_graph_view_base>;
+    std::derived_from<T, undirected_graph_view_base>;
 
-template <typename _Tp>
-concept undirected_graph_view = undirected_graph<_Tp> && std::movable<_Tp> &&
-                                enable_undirected_graph_view<_Tp>;
+template <typename T>
+concept undirected_graph_view =
+    undirected_graph<T> && std::movable<T> && enable_undirected_graph_view<T>;
 
 template <undirected_graph G>
     requires std::is_object_v<G>
@@ -28,11 +28,11 @@ private:
     G * _undirected_graph;
 
 public:
-    template <typename _Tp>
-        requires(!__detail::__specialization_of<_Tp, undirected_graph_ref_view>)
-    [[nodiscard]] constexpr explicit undirected_graph_ref_view(_Tp && g)
+    template <typename T>
+        requires(!detail::specialization_of<T, undirected_graph_ref_view>)
+    [[nodiscard]] constexpr explicit undirected_graph_ref_view(T && g)
         : _undirected_graph(
-              std::addressof(static_cast<G &>(std::forward<_Tp>(g)))) {}
+              std::addressof(static_cast<G &>(std::forward<T>(g)))) {}
 
     [[nodiscard]] constexpr undirected_graph_ref_view(
         const undirected_graph_ref_view &) = default;
@@ -101,9 +101,9 @@ public:
     }
 };
 
-template <typename _UndirectedGraph>
-undirected_graph_ref_view(_UndirectedGraph &)
-    -> undirected_graph_ref_view<_UndirectedGraph>;
+template <typename UndirectedGraph>
+undirected_graph_ref_view(UndirectedGraph &)
+    -> undirected_graph_ref_view<UndirectedGraph>;
 
 template <undirected_graph G>
     requires std::move_constructible<G>
@@ -198,55 +198,53 @@ public:
 };
 
 namespace views {
-namespace __cust_access {
-namespace __detail {
-template <typename _UndirectedGraph>
-concept __can_undirected_graph_ref_view =
-    requires { undirected_graph_ref_view{std::declval<_UndirectedGraph>()}; };
+namespace cpo {
+namespace detail {
+template <typename UndirectedGraph>
+concept can_undirected_graph_ref_view =
+    requires { undirected_graph_ref_view{std::declval<UndirectedGraph>()}; };
 
-template <typename _UndirectedGraph>
-concept __can_undirected_graph_owning_view = requires {
-    undirected_graph_owning_view{std::declval<_UndirectedGraph>()};
-};
-}  // namespace __detail
+template <typename UndirectedGraph>
+concept can_undirected_graph_owning_view =
+    requires { undirected_graph_owning_view{std::declval<UndirectedGraph>()}; };
+}  // namespace detail
 
-struct _UndirectedGraphAll {
-    template <typename _UndirectedGraph>
-    static constexpr bool _S_noexcept() {
-        if constexpr(undirected_graph_view<std::decay_t<_UndirectedGraph>>)
+struct undirected_graph_all_fn {
+    template <typename UndirectedGraph>
+    static constexpr bool is_noexcept() {
+        if constexpr(undirected_graph_view<std::decay_t<UndirectedGraph>>)
             return std::is_nothrow_constructible_v<
-                std::decay_t<_UndirectedGraph>, _UndirectedGraph>;
-        else if constexpr(__detail::__can_undirected_graph_ref_view<
-                              _UndirectedGraph>)
+                std::decay_t<UndirectedGraph>, UndirectedGraph>;
+        else if constexpr(detail::can_undirected_graph_ref_view<
+                              UndirectedGraph>)
             return true;
         else
             return noexcept(
-                undirected_graph_owning_view{std::declval<_UndirectedGraph>()});
+                undirected_graph_owning_view{std::declval<UndirectedGraph>()});
     }
 
-    template <undirected_graph _UndirectedGraph>
-    constexpr auto operator() [[nodiscard]] (_UndirectedGraph && __g) const
-        noexcept(_S_noexcept<_UndirectedGraph>()) {
-        if constexpr(undirected_graph_view<std::decay_t<_UndirectedGraph>>)
-            return std::forward<_UndirectedGraph>(__g);
-        else if constexpr(__detail::__can_undirected_graph_ref_view<
-                              _UndirectedGraph>)
-            return undirected_graph_ref_view{
-                std::forward<_UndirectedGraph>(__g)};
+    template <undirected_graph UndirectedGraph>
+    constexpr auto operator() [[nodiscard]] (UndirectedGraph && g) const
+        noexcept(is_noexcept<UndirectedGraph>()) {
+        if constexpr(undirected_graph_view<std::decay_t<UndirectedGraph>>)
+            return std::forward<UndirectedGraph>(g);
+        else if constexpr(detail::can_undirected_graph_ref_view<
+                              UndirectedGraph>)
+            return undirected_graph_ref_view{std::forward<UndirectedGraph>(g)};
         else
             return undirected_graph_owning_view{
-                std::forward<_UndirectedGraph>(__g)};
+                std::forward<UndirectedGraph>(g)};
     }
 };
-}  // namespace __cust_access
+}  // namespace cpo
 
-inline namespace __cust {
-inline constexpr __cust_access::_UndirectedGraphAll undirected_graph_all{};
-}  // namespace __cust
+inline namespace cust {
+inline constexpr cpo::undirected_graph_all_fn undirected_graph_all{};
+}  // namespace cust
 
-template <undirected_graph _UndirectedGraph>
+template <undirected_graph UndirectedGraph>
 using undirected_graph_all_t =
-    decltype(undirected_graph_all(std::declval<_UndirectedGraph>()));
+    decltype(undirected_graph_all(std::declval<UndirectedGraph>()));
 
 }  // namespace views
 }  // namespace melon

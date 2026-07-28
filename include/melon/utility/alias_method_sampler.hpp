@@ -14,9 +14,9 @@
 namespace melon {
 
 // clang-format off
-template <typename _Traits>
+template <typename Traits>
 concept alias_method_sampler_trait = requires() {
-    { _Traits::heuristic_preprocessing } -> std::convertible_to<bool>;
+    { Traits::heuristic_preprocessing } -> std::convertible_to<bool>;
 };
 // clang-format on
 
@@ -24,23 +24,22 @@ struct alias_method_sampler_default_traits {
     static constexpr bool heuristic_preprocessing = false;
 };
 
-template <typename _ItemRange, typename _Prob,
-          alias_method_sampler_trait _Traits>
+template <typename ItemRange, typename Prob, alias_method_sampler_trait Traits>
 class alias_method_sampler {
 private:
     using index_type = int;
 
-    _ItemRange _items;
-    static_map<index_type, _Prob> _probs;
+    ItemRange _items;
+    static_map<index_type, Prob> _probs;
     static_map<index_type, index_type> _aliases;
     mutable std::uniform_int_distribution<index_type> _index_distribution;
-    mutable std::uniform_real_distribution<_Prob> _prob_distribution;
+    mutable std::uniform_real_distribution<Prob> _prob_distribution;
 
 public:
-    template <std::ranges::random_access_range _R,
-              std::invocable<std::ranges::range_value_t<_R>> _P>
-    [[nodiscard]] constexpr alias_method_sampler(_R && items, _P && prob_map)
-        : _items(std::views::all(std::forward<_R>(items)))
+    template <std::ranges::random_access_range R,
+              std::invocable<std::ranges::range_value_t<R>> P>
+    [[nodiscard]] constexpr alias_method_sampler(R && items, P && prob_map)
+        : _items(std::views::all(std::forward<R>(items)))
         , _probs(_items.size())
         , _aliases(_items.size())
         , _index_distribution(
@@ -56,7 +55,7 @@ public:
         auto underfull_end = underfull_buckets.get();
 
         for(auto && [i, item] : std::views::enumerate(_items)) {
-            const auto prob = prob_map(item) * static_cast<_Prob>(n);
+            const auto prob = prob_map(item) * static_cast<Prob>(n);
             _probs[static_cast<index_type>(i)] = prob;
             *overfull_end = *underfull_end = static_cast<index_type>(i);
             const bool is_underfull = (prob < 1.0);
@@ -67,7 +66,7 @@ public:
         auto overfull_it = overfull_buckets.get();
         auto underfull_it = underfull_buckets.get();
 
-        if constexpr(_Traits::heuristic_preprocessing) {
+        if constexpr(Traits::heuristic_preprocessing) {
             std::make_heap(
                 overfull_it, overfull_end,
                 [this](auto && i, auto && j) { return _probs[i] < _probs[j]; });
@@ -99,9 +98,9 @@ public:
     }
 
 public:
-    template <typename... _Args>
-    [[nodiscard]] constexpr alias_method_sampler(_Traits, _Args &&... args)
-        : alias_method_sampler(std::forward<_Args>(args)...) {}
+    template <typename... Args>
+    [[nodiscard]] constexpr alias_method_sampler(Traits, Args &&... args)
+        : alias_method_sampler(std::forward<Args>(args)...) {}
 
     [[nodiscard]] constexpr alias_method_sampler(const alias_method_sampler &) =
         default;
@@ -122,19 +121,19 @@ public:
     }
 };
 
-template <typename _Range, typename _ProbMap,
-          typename _Traits = alias_method_sampler_default_traits>
-alias_method_sampler(_Range &&, _ProbMap &&)
+template <typename Range, typename ProbMap,
+          typename Traits = alias_method_sampler_default_traits>
+alias_method_sampler(Range &&, ProbMap &&)
     -> alias_method_sampler<
-        std::views::all_t<_Range>,
-        std::invoke_result_t<_ProbMap, std::ranges::range_value_t<_Range>>,
-        _Traits>;
+        std::views::all_t<Range>,
+        std::invoke_result_t<ProbMap, std::ranges::range_value_t<Range>>,
+        Traits>;
 
-template <typename _Range, typename _ProbMap, typename _Traits>
-alias_method_sampler(_Traits, _Range &&, _ProbMap &&)
+template <typename Range, typename ProbMap, typename Traits>
+alias_method_sampler(Traits, Range &&, ProbMap &&)
     -> alias_method_sampler<
-        std::views::all_t<_Range>,
-        std::invoke_result_t<_ProbMap, std::ranges::range_value_t<_Range>>,
-        _Traits>;
+        std::views::all_t<Range>,
+        std::invoke_result_t<ProbMap, std::ranges::range_value_t<Range>>,
+        Traits>;
 
 }  // namespace melon

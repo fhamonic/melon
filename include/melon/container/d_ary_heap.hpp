@@ -18,29 +18,29 @@ namespace melon {
 // a diagnostic, leaving the heap silently un-reordered. output_mapping is not
 // enough to express this: assigning to a class prvalue is well-formed and even
 // yields an lvalue, so identity_map satisfies it.
-template <typename _Map, typename _Entry>
+template <typename Map, typename Entry>
 concept mutable_entry_priority_map =
-    input_mapping<_Map, _Entry> && requires(_Map & __m, _Entry & __e) {
-        requires std::is_lvalue_reference_v<decltype(__m[__e])>;
-        requires !std::is_const_v<std::remove_reference_t<decltype(__m[__e])>>;
+    input_mapping<Map, Entry> && requires(Map & m, Entry & e) {
+        requires std::is_lvalue_reference_v<decltype(m[e])>;
+        requires !std::is_const_v<std::remove_reference_t<decltype(m[e])>>;
     };
 
-template <typename _Derived, std::size_t D, typename _Entry,
-          typename _PriorityComparator = std::greater<_Entry>,
-          input_mapping<_Entry> _EntryPriorityMap = views::identity_map>
-    requires std::strict_weak_order<_PriorityComparator,
-                                    mapped_value_t<_EntryPriorityMap, _Entry>,
-                                    mapped_value_t<_EntryPriorityMap, _Entry>>
+template <typename Derived, std::size_t D, typename Entry,
+          typename PriorityComparator = std::greater<Entry>,
+          input_mapping<Entry> EntryPriorityMap = views::identity_map>
+    requires std::strict_weak_order<PriorityComparator,
+                                    mapped_value_t<EntryPriorityMap, Entry>,
+                                    mapped_value_t<EntryPriorityMap, Entry>>
 class d_ary_heap_base {
 public:
-    using value_type = _Entry;
+    using value_type = Entry;
     using size_type = std::size_t;
-    using priority_type = mapped_value_t<_EntryPriorityMap, _Entry>;
+    using priority_type = mapped_value_t<EntryPriorityMap, Entry>;
 
 protected:
     std::vector<value_type> _heap_array;
-    [[no_unique_address]] _PriorityComparator _priority_cmp;
-    [[no_unique_address]] _EntryPriorityMap _entry_priority_map;
+    [[no_unique_address]] PriorityComparator _priority_cmp;
+    [[no_unique_address]] EntryPriorityMap _entry_priority_map;
 
 public:
     [[nodiscard]] constexpr d_ary_heap_base()
@@ -53,7 +53,7 @@ public:
     // build a comparator out of it.
     template <typename PC>
         requires(!std::same_as<std::remove_cvref_t<PC>, d_ary_heap_base>) &&
-                    std::constructible_from<_PriorityComparator, PC>
+                    std::constructible_from<PriorityComparator, PC>
     [[nodiscard]] constexpr d_ary_heap_base(PC && priority_cmp)
         : _heap_array()
         , _priority_cmp(std::forward<PC>(priority_cmp))
@@ -168,7 +168,7 @@ protected:
             reinterpret_cast<const std::byte *>(_heap_array.data()) + i));
     }
     void heap_move(const size_type i, value_type && p) {
-        static_cast<_Derived *>(this)->heap_move(i, std::move(p));
+        static_cast<Derived *>(this)->heap_move(i, std::move(p));
     }
     void heap_push(size_type hole_index, value_type && p) {
         while(hole_index > 0) {
@@ -239,16 +239,16 @@ public:
     }
 };
 
-template <std::size_t D, typename _Entry,
-          typename _PriorityComparator = std::greater<_Entry>,
-          input_mapping<_Entry> _EntryPriorityMap = views::identity_map>
+template <std::size_t D, typename Entry,
+          typename PriorityComparator = std::greater<Entry>,
+          input_mapping<Entry> EntryPriorityMap = views::identity_map>
 class d_ary_heap
     : public d_ary_heap_base<
-          d_ary_heap<D, _Entry, _PriorityComparator, _EntryPriorityMap>, D,
-          _Entry, _PriorityComparator, _EntryPriorityMap> {
+          d_ary_heap<D, Entry, PriorityComparator, EntryPriorityMap>, D, Entry,
+          PriorityComparator, EntryPriorityMap> {
 private:
-    using base_class = d_ary_heap_base<d_ary_heap, D, _Entry,
-                                       _PriorityComparator, _EntryPriorityMap>;
+    using base_class = d_ary_heap_base<d_ary_heap, D, Entry, PriorityComparator,
+                                       EntryPriorityMap>;
 
 public:
     using typename base_class::size_type;
@@ -270,35 +270,35 @@ private:
     friend base_class;
 };
 
-template <std::size_t D, typename _Entry,
-          typename _PriorityComparator = std::greater<_Entry>,
-          typename _IndicesMap =
-              mapping_owning_view<std::unordered_map<_Entry, std::size_t>>,
-          input_mapping<_Entry> _EntryPriorityMap = views::identity_map,
-          input_mapping<_Entry> _EntryIdMap = views::identity_map>
-    requires std::strict_weak_order<
-                 _PriorityComparator, mapped_value_t<_EntryPriorityMap, _Entry>,
-                 mapped_value_t<_EntryPriorityMap, _Entry>> &&
-             output_mapping<_IndicesMap, mapped_value_t<_EntryIdMap, _Entry>>
+template <std::size_t D, typename Entry,
+          typename PriorityComparator = std::greater<Entry>,
+          typename IndicesMap =
+              mapping_owning_view<std::unordered_map<Entry, std::size_t>>,
+          input_mapping<Entry> EntryPriorityMap = views::identity_map,
+          input_mapping<Entry> EntryIdMap = views::identity_map>
+    requires std::strict_weak_order<PriorityComparator,
+                                    mapped_value_t<EntryPriorityMap, Entry>,
+                                    mapped_value_t<EntryPriorityMap, Entry>> &&
+             output_mapping<IndicesMap, mapped_value_t<EntryIdMap, Entry>>
 class updatable_d_ary_heap
     : public d_ary_heap_base<
-          updatable_d_ary_heap<D, _Entry, _PriorityComparator, _IndicesMap,
-                               _EntryPriorityMap, _EntryIdMap>,
-          D, _Entry, _PriorityComparator, _EntryPriorityMap> {
+          updatable_d_ary_heap<D, Entry, PriorityComparator, IndicesMap,
+                               EntryPriorityMap, EntryIdMap>,
+          D, Entry, PriorityComparator, EntryPriorityMap> {
 private:
-    using base_class = d_ary_heap_base<updatable_d_ary_heap, D, _Entry,
-                                       _PriorityComparator, _EntryPriorityMap>;
+    using base_class = d_ary_heap_base<updatable_d_ary_heap, D, Entry,
+                                       PriorityComparator, EntryPriorityMap>;
 
 public:
     using typename base_class::priority_type;
     using typename base_class::size_type;
     using typename base_class::value_type;
 
-    using id_type = mapped_value_t<_EntryIdMap, _Entry>;
+    using id_type = mapped_value_t<EntryIdMap, Entry>;
 
 private:
-    [[no_unique_address]] _EntryIdMap _entry_id_map;
-    [[no_unique_address]] _IndicesMap _heap_index_map;
+    [[no_unique_address]] EntryIdMap _entry_id_map;
+    [[no_unique_address]] IndicesMap _heap_index_map;
 
 public:
     updatable_d_ary_heap() : base_class() {}
@@ -332,7 +332,7 @@ public:
         return _entry_id_map[base_class::_heap_array[i]] == k;
     }
     void promote(const id_type & k, const priority_type & p)
-        requires mutable_entry_priority_map<_EntryPriorityMap, _Entry>
+        requires mutable_entry_priority_map<EntryPriorityMap, Entry>
     {
         value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
         assert(
@@ -341,7 +341,7 @@ public:
         base_class::heap_push(_heap_index_map[k], std::move(e));
     }
     void demote(const id_type & k, const priority_type & p)
-        requires mutable_entry_priority_map<_EntryPriorityMap, _Entry>
+        requires mutable_entry_priority_map<EntryPriorityMap, Entry>
     {
         value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
         assert(

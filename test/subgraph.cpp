@@ -56,9 +56,8 @@ GTEST_TEST(subgraph_views, static_graph) {
     }
 }
 
-template <typename _G>
-using trivial_subgraph_t =
-    decltype(views::subgraph(std::declval<_G>(), {}, {}));
+template <typename G>
+using trivial_subgraph_t = decltype(views::subgraph(std::declval<G>(), {}, {}));
 
 GTEST_TEST(subgraph_views, graph_view) {
     using G = static_digraph;

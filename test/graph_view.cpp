@@ -40,7 +40,7 @@ GTEST_TEST(graph_view, test) {
 // ############ regression: has_vertex_map on a wrapped graph ##################
 
 // melon::create_vertex_map used to be a *function* template in namespace melon,
-// so the __adl_create_vertex_map probe inside the CPO found it by ADL for any
+// so the has_adl_create_vertex_map probe inside the CPO found it by ADL for any
 // graph whose associated namespaces include melon -- i.e. every melon view.
 // Asking has_vertex_map<> about a view wrapping a graph that has no vertex map
 // then made the constraint depend on itself:
@@ -174,17 +174,17 @@ concept targets_map_is_usable =
 
 static_assert(melon::graph<bad_endpoint_maps::graph_with_void_maps>);
 // the bad members are rejected symmetrically, so both fall back
-static_assert(!melon::__cust_access::__member_arc_sources_map<
+static_assert(!melon::cpo::has_member_arc_sources_map<
               bad_endpoint_maps::graph_with_void_maps>);
-static_assert(!melon::__cust_access::__member_arc_targets_map<
+static_assert(!melon::cpo::has_member_arc_targets_map<
               bad_endpoint_maps::graph_with_void_maps>);
 static_assert(bad_endpoint_maps::sources_map_is_usable<
               bad_endpoint_maps::graph_with_void_maps>);
 static_assert(bad_endpoint_maps::targets_map_is_usable<
               bad_endpoint_maps::graph_with_void_maps>);
 // a graph with real endpoint maps still uses its own members
-static_assert(melon::__cust_access::__member_arc_sources_map<G>);
-static_assert(melon::__cust_access::__member_arc_targets_map<G>);
+static_assert(melon::cpo::has_member_arc_sources_map<G>);
+static_assert(melon::cpo::has_member_arc_targets_map<G>);
 
 GTEST_TEST(graph_view, void_endpoint_maps_fall_back_to_synthesised_ones) {
     bad_endpoint_maps::graph_with_void_maps g;

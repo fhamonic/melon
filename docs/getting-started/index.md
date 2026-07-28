@@ -9,17 +9,17 @@ melon is an attempt to get the genericity of the first and the speed and ergonom
 melon has no `Graph` class that algorithms take. It has a hierarchy of [concepts](../graphs/concepts.md), rooted at `graph`, that describe what a graph type must *do*:
 
 ```cpp
-template <typename _Tp>
-concept graph = has_vertices<_Tp> && has_arcs<_Tp> &&
-                requires(const _Tp & __t) { melon::arcs_entries(__t); };
+template <typename T>
+concept graph = has_vertices<T> && has_arcs<T> &&
+                requires(const T & t) { melon::arcs_entries(t); };
 ```
 
 and refined by capability concepts — `outward_incidence_graph`, `inward_adjacency_graph`, `has_arc_source`, `has_vertex_map<G, T>`, `has_arc_creation`, and so on. Every algorithm states exactly the capabilities it needs in its template signature:
 
 ```cpp
-template <outward_incidence_graph _Graph,
-          input_mapping<arc_t<_Graph>> _LengthMap, dijkstra_trait _Traits>
-    requires has_vertex_map<_Graph>
+template <outward_incidence_graph Graph,
+          input_mapping<arc_t<Graph>> LengthMap, dijkstra_trait Traits>
+    requires has_vertex_map<Graph>
 class dijkstra;
 ```
 

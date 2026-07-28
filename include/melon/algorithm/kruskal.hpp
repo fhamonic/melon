@@ -14,25 +14,25 @@
 
 namespace melon {
 
-template <undirected_graph _UGraph, input_mapping<edge_t<_UGraph>> _CostMap>
-    requires has_vertex_map<_UGraph>
-class kruskal : public algorithm_view_interface<kruskal<_UGraph, _CostMap>> {
+template <undirected_graph UGraph, input_mapping<edge_t<UGraph>> CostMap>
+    requires has_vertex_map<UGraph>
+class kruskal : public algorithm_view_interface<kruskal<UGraph, CostMap>> {
 private:
-    using vertex = vertex_t<_UGraph>;
-    using edge = edge_t<_UGraph>;
+    using vertex = vertex_t<UGraph>;
+    using edge = edge_t<UGraph>;
 
 private:
-    _UGraph _ugraph;
-    _CostMap _cost_map;
+    UGraph _ugraph;
+    CostMap _cost_map;
     std::vector<edge> _sorted_edges;
     std::vector<edge>::iterator _cursor;
-    disjoint_sets<vertex, vertex_map_t<_UGraph, unsigned int>> _components_sets;
+    disjoint_sets<vertex, vertex_map_t<UGraph, unsigned int>> _components_sets;
 
 public:
-    template <typename _UG, typename _M>
-    [[nodiscard]] constexpr explicit kruskal(_UG && g, _M && c)
-        : _ugraph(views::undirected_graph_all(std::forward<_UG>(g)))
-        , _cost_map(views::mapping_all(std::forward<_M>(c)))
+    template <typename UG, typename M>
+    [[nodiscard]] constexpr explicit kruskal(UG && g, M && c)
+        : _ugraph(views::undirected_graph_all(std::forward<UG>(g)))
+        , _cost_map(views::mapping_all(std::forward<M>(c)))
         , _components_sets(create_vertex_map<unsigned int>(_ugraph)) {
         reset();
     }
@@ -44,7 +44,7 @@ public:
     constexpr kruskal & operator=(kruskal &&) = default;
 
     constexpr void reset() noexcept {
-        if constexpr(has_num_edges<_UGraph>) {
+        if constexpr(has_num_edges<UGraph>) {
             _sorted_edges.reserve(num_edges(_ugraph));
         }
         std::ranges::copy(edges(_ugraph), std::back_inserter(_sorted_edges));
@@ -76,9 +76,8 @@ public:
     }
 };
 
-template <typename _UGraph, typename _CostMap>
-kruskal(_UGraph &&,
-        _CostMap &&) -> kruskal<views::undirected_graph_all_t<_UGraph>,
-                                views::mapping_all_t<_CostMap>>;
+template <typename UGraph, typename CostMap>
+kruskal(UGraph &&, CostMap &&) -> kruskal<views::undirected_graph_all_t<UGraph>,
+                                          views::mapping_all_t<CostMap>>;
 
 }  // namespace melon

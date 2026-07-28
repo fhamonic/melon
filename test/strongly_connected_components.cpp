@@ -11,14 +11,11 @@
 using namespace melon;
 
 GTEST_TEST(strongly_connected_components, graph1_test) {
-    static_assert(views::__cust_access::__detail::__can_graph_ref_view<
-                  const static_digraph &>);
     static_assert(
-        views::__cust_access::__detail::__can_graph_ref_view<static_digraph &>);
-    static_assert(!views::__cust_access::__detail::__can_graph_ref_view<
-                  static_digraph &&>);
-    static_assert(
-        !views::__cust_access::__detail::__can_graph_ref_view<static_digraph>);
+        views::cpo::detail::can_graph_ref_view<const static_digraph &>);
+    static_assert(views::cpo::detail::can_graph_ref_view<static_digraph &>);
+    static_assert(!views::cpo::detail::can_graph_ref_view<static_digraph &&>);
+    static_assert(!views::cpo::detail::can_graph_ref_view<static_digraph>);
 
     static_digraph_builder<static_digraph> builder(8);
 

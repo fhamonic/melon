@@ -17,18 +17,18 @@ constexpr void prefetch_range(const R & range) {
     }
 }
 
-template <std::ranges::range _Keys,
-          mapping<std::ranges::range_value_t<_Keys>> _ValueMap>
-constexpr void prefetch_mapped_values(const _Keys & __keys,
-                                      const _ValueMap & __map) {
+template <std::ranges::range Keys,
+          mapping<std::ranges::range_value_t<Keys>> ValueMap>
+constexpr void prefetch_mapped_values(const Keys & keys,
+                                      const ValueMap & value_map) {
     if constexpr(requires {
-                     std::ranges::begin(__keys);
-                     std::ranges::end(__keys);
-                 } && contiguous_mapping<_ValueMap,
-                                         std::ranges::range_value_t<_Keys>>) {
+                     std::ranges::begin(keys);
+                     std::ranges::end(keys);
+                 } && contiguous_mapping<ValueMap,
+                                         std::ranges::range_value_t<Keys>>) {
 #if defined(__GNUC__)
-        if(std::ranges::begin(__keys) != std::ranges::end(__keys)) {
-            __builtin_prefetch(__map.data() + *std::ranges::begin(__keys));
+        if(std::ranges::begin(keys) != std::ranges::end(keys)) {
+            __builtin_prefetch(value_map.data() + *std::ranges::begin(keys));
         }
 #endif
     }

@@ -7,6 +7,12 @@
 
 namespace melon {
 
+// `zero` and `infty` are the algebraic identities of the semiring, not the
+// numbers 0 and infinity: `zero` is the neutral element of `plus` -- the value
+// of an empty path -- and `infty` its absorbing element -- the value of a path
+// that does not exist. `less` orders values from best to worst, so it is not
+// always `std::less`. Whenever `plus` is not addition these take values that
+// read as inverted; each struct below says which.
 // clang-format off
 template <typename S>
 concept semiring = requires(typename S::value_type v) {
@@ -30,6 +36,9 @@ struct shortest_path_semiring {
     static constexpr less_t less{};
 };
 
+// Path value is the product of the arc reliabilities in [0, 1], maximised:
+// hence zero == 1, an empty path being perfectly reliable, infty == 0, an
+// absent path being hopeless, and less == greater, larger being better.
 template <typename T>
 struct most_reliable_path_semiring {
     using value_type = T;
@@ -41,6 +50,9 @@ struct most_reliable_path_semiring {
     static constexpr less_t less{};
 };
 
+// Path value is the smallest capacity along it, maximised: hence zero == the
+// largest representable value, an empty path constraining nothing, infty == 0,
+// and less == greater, larger being better.
 template <typename T>
 struct max_capacity_path_semiring {
     using value_type = T;

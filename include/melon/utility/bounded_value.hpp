@@ -45,11 +45,11 @@ using common_number_type = std::conditional_t<non_narrowing<A, B>, B, A>;
 }  // namespace detail
 
 // clang-format off
-template <typename _Traits, typename T>
+template <typename Traits, typename T>
 concept promotion_strategy = requires(const T & v) {
-    { _Traits::plus_overflows(v, v) } -> std::convertible_to<bool>;
-    { _Traits::substract_overflows(v, v) } -> std::convertible_to<bool>;
-    { _Traits::multiply_overflows(v, v) } -> std::convertible_to<bool>;
+    { Traits::plus_overflows(v, v) } -> std::convertible_to<bool>;
+    { Traits::substract_overflows(v, v) } -> std::convertible_to<bool>;
+    { Traits::multiply_overflows(v, v) } -> std::convertible_to<bool>;
 };
 // clang-format on
 
@@ -121,65 +121,65 @@ struct default_promotion_strategy {
     };
 };
 
-template <typename T, T _MIN, T _MAX, promotion_strategy<T> _PS>
+template <typename T, T Min, T Max, promotion_strategy<T> PS>
 class bounded_value;
 
 struct bounded_value_base_base {};
 
-template <typename _CRTP, typename T, T _MIN, T _MAX, typename _PS>
+template <typename CRTP, typename T, T Min, T Max, typename PS>
 class bounded_value_base : public bounded_value_base_base {
 public:
     using value_type = T;
-    using promotion_strategy_t = _PS;
+    using promotion_strategy_t = PS;
 
     constexpr value_type value() const {
-        return reinterpret_cast<const _CRTP &>(*this).value();
+        return reinterpret_cast<const CRTP &>(*this).value();
     }
     constexpr operator T() const { return value(); }
 
     constexpr auto operator-() const {
-        return bounded_value<T, -_MAX, -_MIN, _PS>(-value());
+        return bounded_value<T, -Max, -Min, PS>(-value());
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator<(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
-        if constexpr(_MAX < OMIN) return true;
-        if constexpr(_MIN >= OMAX) return false;
+        if constexpr(Max < OMIN) return true;
+        if constexpr(Min >= OMAX) return false;
         return value() < o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator<=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
-        if constexpr(_MAX <= OMIN) return true;
-        if constexpr(_MIN > OMAX) return false;
+        if constexpr(Max <= OMIN) return true;
+        if constexpr(Min > OMAX) return false;
         return value() <= o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator>(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
-        if constexpr(_MAX <= OMIN) return false;
-        if constexpr(_MIN > OMAX) return true;
+        if constexpr(Max <= OMIN) return false;
+        if constexpr(Min > OMAX) return true;
         return value() > o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator>=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
-        if constexpr(_MAX < OMIN) return false;
-        if constexpr(_MIN >= OMAX) return true;
+        if constexpr(Max < OMIN) return false;
+        if constexpr(Min >= OMAX) return true;
         return value() >= o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator==(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
-        if constexpr(_MAX < OMIN) return false;
-        if constexpr(_MIN > OMAX) return false;
+        if constexpr(Max < OMIN) return false;
+        if constexpr(Min > OMAX) return false;
         return value() == o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator!=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
-        if constexpr(_MAX < OMIN) return true;
-        if constexpr(_MIN > OMAX) return true;
+        if constexpr(Max < OMIN) return true;
+        if constexpr(Min > OMAX) return true;
         return value() != o.value();
     }
 };
@@ -236,46 +236,45 @@ constexpr auto operator*(const bounded_value<T1, MIN1, MAX1, PS1> & a,
         PS1>(return_value_type{a.value()} * return_value_type{b.value()});
 }
 
-template <typename T, T _MIN = std::numeric_limits<T>::min(),
-          T _MAX = std::numeric_limits<T>::max(),
-          promotion_strategy<T> _PS = default_promotion_strategy>
-class bounded_value
-    : public bounded_value_base<bounded_value<T, _MIN, _MAX, _PS>, T, _MIN,
-                                _MAX, _PS> {
+template <typename T, T Min = std::numeric_limits<T>::min(),
+          T Max = std::numeric_limits<T>::max(),
+          promotion_strategy<T> PS = default_promotion_strategy>
+class bounded_value : public bounded_value_base<bounded_value<T, Min, Max, PS>,
+                                                T, Min, Max, PS> {
 public:
     using value_type = T;
-    using promotion_strategy_t = _PS;
+    using promotion_strategy_t = PS;
 
 private:
     value_type _value;
 
 public:
-    constexpr bounded_value() : _value(_MIN) {}
+    constexpr bounded_value() : _value(Min) {}
 
     template <std::convertible_to<T> V>
         requires(!std::derived_from<V, bounded_value_base_base>)
     constexpr bounded_value(V v) : _value(static_cast<T>(v)) {
-        assert(_MIN <= v && v <= _MAX);
+        assert(Min <= v && v <= Max);
     }
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-        requires(OMIN >= _MIN && OMAX <= _MAX)
+        requires(OMIN >= Min && OMAX <= Max)
     constexpr bounded_value(bounded_value<OT, OMIN, OMAX, OPS> && o)
         : _value(std::move(o.value())) {}
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-        requires(OMIN >= _MIN && OMAX <= _MAX)
+        requires(OMIN >= Min && OMAX <= Max)
     constexpr bounded_value(const bounded_value<OT, OMIN, OMAX, OPS> & o)
         : _value(o.value()) {}
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-        requires(OMIN >= _MIN && OMAX <= _MAX)
+        requires(OMIN >= Min && OMAX <= Max)
     constexpr bounded_value & operator=(
         bounded_value<OT, OMIN, OMAX, OPS> && o) {
         _value = std::move(o.value());
         return *this;
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-        requires(OMIN >= _MIN && OMAX <= _MAX)
+        requires(OMIN >= Min && OMAX <= Max)
     constexpr bounded_value & operator=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) {
         _value = o.value();
@@ -283,27 +282,27 @@ public:
     }
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-        requires(OMIN <= _MIN && OMAX >= _MAX)
+        requires(OMIN <= Min && OMAX >= Max)
     explicit constexpr operator bounded_value<OT, OMIN, OMAX, OPS>() {
         return bounded_value<OT, OMIN, OMAX, OPS>(_value);
     }
 
-    static constexpr value_type min() { return _MIN; }
-    static constexpr value_type max() { return _MAX; }
+    static constexpr value_type min() { return Min; }
+    static constexpr value_type max() { return Max; }
     constexpr value_type value() const { return _value; }
 
     template <T NMIN, T NMAX>
     constexpr auto bound() const {
-        return bounded_value<T, NMIN, NMAX, _PS>(*this);
+        return bounded_value<T, NMIN, NMAX, PS>(*this);
     }
 };
 
-template <typename T, T V, typename _PS>
-class bounded_value<T, V, V, _PS>
-    : public bounded_value_base<bounded_value<T, V, V, _PS>, T, V, V, _PS> {
+template <typename T, T V, typename PS>
+class bounded_value<T, V, V, PS>
+    : public bounded_value_base<bounded_value<T, V, V, PS>, T, V, V, PS> {
 public:
     using value_type = T;
-    using promotion_strategy_t = _PS;
+    using promotion_strategy_t = PS;
 
     constexpr bounded_value(T v) {}
     constexpr bounded_value() = default;

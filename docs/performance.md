@@ -31,7 +31,7 @@ Both helpers are guarded by `if constexpr` on contiguity: on a non-contiguous ma
 
 ### Array lookups instead of hash lookups
 
-An updatable heap needs to know where each element currently sits. The generic default is a hash map; `dijkstra_default_traits` instead uses `vertex_map_t<_Graph, std::size_t>`, so for melon's containers the lookup is an array index. The same substitution is available for [`disjoint_sets`](containers/data-structures.md#disjoint_sets) and any other structure taking an index map.
+An updatable heap needs to know where each element currently sits. The generic default is a hash map; `dijkstra_default_traits` instead uses `vertex_map_t<Graph, std::size_t>`, so for melon's containers the lookup is an array index. The same substitution is available for [`disjoint_sets`](containers/data-structures.md#disjoint_sets) and any other structure taking an index map.
 
 ### You do not pay for what you do not ask for
 

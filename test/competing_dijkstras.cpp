@@ -209,10 +209,10 @@ auto compute_useless_fiber_map(const G & g,
     return fiber_map;
 }
 
-template <outward_incidence_graph _Graph, typename _ValueType>
+template <outward_incidence_graph Graph, typename ValueType>
 struct useless_competing_dijkstras_traits {
-    using semiring = shortest_path_semiring<_ValueType>;
-    using entry = std::pair<_ValueType, bool>;
+    using semiring = shortest_path_semiring<ValueType>;
+    using entry = std::pair<ValueType, bool>;
     static bool compare_entries(const entry & e1, const entry & e2) {
         if(e1.first == e2.first) {
             return e2.second && !e1.second;
@@ -226,8 +226,8 @@ struct useless_competing_dijkstras_traits {
         }
     };
     using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<_Graph>, entry>, entry_cmp,
-                             vertex_map_t<_Graph, std::size_t>,
+        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
+                             vertex_map_t<Graph, std::size_t>,
                              views::element_map<1>, views::element_map<0>>;
 
     static constexpr bool store_distances = false;

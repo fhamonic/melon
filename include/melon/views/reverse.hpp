@@ -9,18 +9,18 @@
 namespace melon {
 namespace views {
 
-template <graph _Graph>
+template <graph Graph>
 class reverse : public graph_view_base {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
 
-    _Graph _graph;
+    Graph _graph;
 
 public:
-    template <typename _G>
-    [[nodiscard]] constexpr explicit reverse(_G && g)
-        : _graph(views::graph_all(std::forward<_G>(g))) {}
+    template <typename G>
+    [[nodiscard]] constexpr explicit reverse(G && g)
+        : _graph(views::graph_all(std::forward<G>(g))) {}
 
     [[nodiscard]] constexpr reverse(const reverse &) = default;
     [[nodiscard]] constexpr reverse(reverse &&) = default;
@@ -29,12 +29,12 @@ public:
     constexpr reverse & operator=(reverse &&) = default;
 
     [[nodiscard]] constexpr decltype(auto) num_vertices() const
-        requires requires(_Graph g) { melon::num_vertices(g); }
+        requires requires(Graph g) { melon::num_vertices(g); }
     {
         return melon::num_vertices(_graph);
     }
     [[nodiscard]] constexpr decltype(auto) num_arcs() const noexcept
-        requires requires(_Graph g) { melon::num_arcs(g); }
+        requires requires(Graph g) { melon::num_arcs(g); }
     {
         return melon::num_arcs(_graph);
     }
@@ -47,80 +47,80 @@ public:
     }
 
     [[nodiscard]] constexpr vertex arc_source(arc a) const noexcept
-        requires has_arc_target<_Graph>
+        requires has_arc_target<Graph>
     {
         return melon::arc_target(_graph, a);
     }
     [[nodiscard]] constexpr vertex arc_target(arc a) const noexcept
-        requires has_arc_source<_Graph>
+        requires has_arc_source<Graph>
     {
         return melon::arc_source(_graph, a);
     }
 
     [[nodiscard]] constexpr decltype(auto) sources_map() const noexcept
-        requires has_arc_target<_Graph>
+        requires has_arc_target<Graph>
     {
         return melon::arc_targets_map(_graph);
     }
     [[nodiscard]] constexpr decltype(auto) targets_map() const noexcept
-        requires has_arc_source<_Graph>
+        requires has_arc_source<Graph>
     {
         return melon::arc_sources_map(_graph);
     }
 
     [[nodiscard]] constexpr decltype(auto) out_arcs(
         const vertex u) const noexcept
-        requires has_in_arcs<_Graph>
+        requires has_in_arcs<Graph>
     {
         return melon::in_arcs(_graph, u);
     }
     [[nodiscard]] constexpr decltype(auto) in_arcs(
         const vertex u) const noexcept
-        requires has_out_arcs<_Graph>
+        requires has_out_arcs<Graph>
     {
         return melon::out_arcs(_graph, u);
     }
 
     [[nodiscard]] constexpr decltype(auto) out_neighbors(
         const vertex u) const noexcept
-        requires inward_adjacency_graph<_Graph>
+        requires inward_adjacency_graph<Graph>
     {
         return melon::in_neighbors(_graph, u);
     }
     [[nodiscard]] constexpr decltype(auto) in_neighbors(
         const vertex u) const noexcept
-        requires outward_adjacency_graph<_Graph>
+        requires outward_adjacency_graph<Graph>
     {
         return melon::out_neighbors(_graph, u);
     }
 
     template <typename T>
-        requires has_vertex_map<_Graph>
+        requires has_vertex_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept {
         return melon::create_vertex_map<T>(_graph);
     }
     template <typename T>
-        requires has_vertex_map<_Graph>
+        requires has_vertex_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         T default_value) const noexcept {
         return melon::create_vertex_map<T>(_graph, default_value);
     }
 
     template <typename T>
-        requires has_arc_map<_Graph>
+        requires has_arc_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_arc_map() const noexcept {
         return melon::create_arc_map<T>(_graph);
     }
     template <typename T>
-        requires has_arc_map<_Graph>
+        requires has_arc_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_arc_map(
         T default_value) const noexcept {
         return melon::create_arc_map<T>(_graph, default_value);
     }
 };
 
-template <typename _G>
-reverse(_G &&) -> reverse<views::graph_all_t<_G>>;
+template <typename G>
+reverse(G &&) -> reverse<views::graph_all_t<G>>;
 
 }  // namespace views
 }  // namespace melon

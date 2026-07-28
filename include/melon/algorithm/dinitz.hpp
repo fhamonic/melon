@@ -12,52 +12,51 @@
 
 namespace melon {
 
-template <graph _Graph, input_mapping<arc_t<_Graph>> _CapacityMap>
-    requires outward_incidence_graph<_Graph> &&
-             inward_incidence_graph<_Graph> && has_vertex_map<_Graph> &&
-             has_arc_map<_Graph>
+template <graph Graph, input_mapping<arc_t<Graph>> CapacityMap>
+    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
+             has_vertex_map<Graph> && has_arc_map<Graph>
 class dinitz {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
-    using value_t = mapped_value_t<_CapacityMap, arc_t<_Graph>>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
+    using value_t = mapped_value_t<CapacityMap, arc_t<Graph>>;
 
 private:
-    _Graph _graph;
-    _CapacityMap _capacity_map;
+    Graph _graph;
+    CapacityMap _capacity_map;
     vertex _s;
     vertex _t;
-    arc_map_t<_Graph, value_t> _carried_flow_map;
+    arc_map_t<Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
-    vertex_map_t<_Graph, std::size_t> _vertex_rank_map;
-    vertex_map_t<_Graph, consumable_view_t<out_arcs_range_t<_Graph>>>
+    vertex_map_t<Graph, std::size_t> _vertex_rank_map;
+    vertex_map_t<Graph, consumable_view_t<out_arcs_range_t<Graph>>>
         _remaining_out_arcs;
-    vertex_map_t<_Graph, consumable_view_t<in_arcs_range_t<_Graph>>>
+    vertex_map_t<Graph, consumable_view_t<in_arcs_range_t<Graph>>>
         _remaining_in_arcs;
 
 public:
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr dinitz(_G && g, _M && c)
-        : _graph(views::graph_all(std::forward<_G>(g)))
-        , _capacity_map(views::mapping_all(std::forward<_M>(c)))
+    template <typename G, typename M>
+    [[nodiscard]] constexpr dinitz(G && g, M && c)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _capacity_map(views::mapping_all(std::forward<M>(c)))
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
         , _remaining_out_arcs(
-              create_vertex_map<consumable_view_t<out_arcs_range_t<_Graph>>>(
+              create_vertex_map<consumable_view_t<out_arcs_range_t<Graph>>>(
                   _graph))
         , _remaining_in_arcs(
-              create_vertex_map<consumable_view_t<in_arcs_range_t<_Graph>>>(
+              create_vertex_map<consumable_view_t<in_arcs_range_t<Graph>>>(
                   _graph)) {
-        if constexpr(has_num_vertices<_Graph>) {
+        if constexpr(has_num_vertices<Graph>) {
             _bfs_queue.reserve(num_vertices(_graph));
         }
         reset();
     }
 
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr dinitz(_G && g, _M && c, const vertex & s,
+    template <typename G, typename M>
+    [[nodiscard]] constexpr dinitz(G && g, M && c, const vertex & s,
                                    const vertex & t)
-        : dinitz(std::forward<_G>(g), std::forward<_M>(c)) {
+        : dinitz(std::forward<G>(g), std::forward<M>(c)) {
         set_source(s);
         set_target(t);
     }
@@ -168,18 +167,18 @@ public:
     }
 
     constexpr auto minimum_cut() noexcept {
-        if constexpr(std::ranges::viewable_range<out_arcs_range_t<_Graph>>) {
+        if constexpr(std::ranges::viewable_range<out_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(
-                _bfs_queue, [this](const vertex_t<_Graph> & v) {
+                _bfs_queue, [this](const vertex_t<Graph> & v) {
                     return std::views::filter(
-                        in_arcs(_graph, v), [this](const arc_t<_Graph> & a) {
+                        in_arcs(_graph, v), [this](const arc_t<Graph> & a) {
                             return _vertex_rank_map[arc_source(_graph, a)] ==
                                    std::numeric_limits<std::size_t>::max();
                         });
                 }));
         } else {
             return std::views::filter(
-                arcs(_graph), [this](const arc_t<_Graph> & a) {
+                arcs(_graph), [this](const arc_t<Graph> & a) {
                     return _vertex_rank_map[arc_source(_graph, a)] ==
                                std::numeric_limits<std::size_t>::max() &&
                            _vertex_rank_map[arc_target(_graph, a)] !=
@@ -189,13 +188,12 @@ public:
     }
 };
 
-template <typename _Graph, typename _LengthMap>
-dinitz(_Graph &&, _LengthMap &&)
-    -> dinitz<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>>;
+template <typename Graph, typename LengthMap>
+dinitz(Graph &&, LengthMap &&)
+    -> dinitz<views::graph_all_t<Graph>, views::mapping_all_t<LengthMap>>;
 
-template <typename _Graph, typename _LengthMap>
-dinitz(_Graph &&, _LengthMap &&, const vertex_t<_Graph> &,
-       const vertex_t<_Graph> &)
-    -> dinitz<views::graph_all_t<_Graph>, views::mapping_all_t<_LengthMap>>;
+template <typename Graph, typename LengthMap>
+dinitz(Graph &&, LengthMap &&, const vertex_t<Graph> &, const vertex_t<Graph> &)
+    -> dinitz<views::graph_all_t<Graph>, views::mapping_all_t<LengthMap>>;
 
 }  // namespace melon

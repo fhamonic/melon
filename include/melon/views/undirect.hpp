@@ -11,19 +11,19 @@
 namespace melon {
 namespace views {
 
-template <graph _Graph>
-    requires outward_incidence_graph<_Graph> && inward_incidence_graph<_Graph>
+template <graph Graph>
+    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
 class undirect : public undirected_graph_view_base {
 private:
-    using vertex = vertex_t<_Graph>;
-    using edge = arc_t<_Graph>;
+    using vertex = vertex_t<Graph>;
+    using edge = arc_t<Graph>;
 
-    _Graph _graph;
+    Graph _graph;
 
 public:
-    template <typename _G>
-    [[nodiscard]] constexpr explicit undirect(_G && g)
-        : _graph(views::graph_all(std::forward<_G>(g))) {}
+    template <typename G>
+    [[nodiscard]] constexpr explicit undirect(G && g)
+        : _graph(views::graph_all(std::forward<G>(g))) {}
 
     [[nodiscard]] constexpr undirect(const undirect &) = default;
     [[nodiscard]] constexpr undirect(undirect &&) = default;
@@ -32,12 +32,12 @@ public:
     constexpr undirect & operator=(undirect &&) = default;
 
     [[nodiscard]] constexpr decltype(auto) num_vertices() const
-        requires requires(_Graph g) { melon::num_vertices(g); }
+        requires requires(Graph g) { melon::num_vertices(g); }
     {
         return melon::num_vertices(_graph);
     }
     [[nodiscard]] constexpr decltype(auto) num_edges() const noexcept
-        requires requires(_Graph g) { melon::num_arcs(g); }
+        requires requires(Graph g) { melon::num_arcs(g); }
     {
         return melon::num_arcs(_graph);
     }
@@ -51,15 +51,14 @@ public:
 
     [[nodiscard]] constexpr std::pair<vertex, vertex> edge_endpoints(
         const edge & e) const noexcept
-        requires has_arc_target<_Graph> && has_arc_source<_Graph>
+        requires has_arc_target<Graph> && has_arc_source<Graph>
     {
         return {melon::arc_source(_graph, e), melon::arc_target(_graph, e)};
     }
 
     [[nodiscard]] constexpr decltype(auto) incidence(
         const vertex & u) const noexcept
-        requires outward_incidence_graph<_Graph> &&
-                 inward_incidence_graph<_Graph>
+        requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
     {
         return detail::views::concat(
             std::views::transform(melon::out_arcs(_graph, u),
@@ -74,40 +73,39 @@ public:
 
     [[nodiscard]] constexpr decltype(auto) adjacency(
         const vertex & u) const noexcept
-        requires outward_adjacency_graph<_Graph> &&
-                 inward_adjacency_graph<_Graph>
+        requires outward_adjacency_graph<Graph> && inward_adjacency_graph<Graph>
     {
         return detail::views::concat(melon::out_neighbors(_graph, u),
                                      melon::in_neighbors(_graph, u));
     }
 
     template <typename T>
-        requires has_vertex_map<_Graph>
+        requires has_vertex_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept {
         return melon::create_vertex_map<T>(_graph);
     }
     template <typename T>
-        requires has_vertex_map<_Graph>
+        requires has_vertex_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         T default_value) const noexcept {
         return melon::create_vertex_map<T>(_graph, default_value);
     }
 
     template <typename T>
-        requires has_arc_map<_Graph>
+        requires has_arc_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_edge_map() const noexcept {
         return melon::create_arc_map<T>(_graph);
     }
     template <typename T>
-        requires has_arc_map<_Graph>
+        requires has_arc_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_edge_map(
         T default_value) const noexcept {
         return melon::create_arc_map<T>(_graph, default_value);
     }
 };
 
-template <typename _G>
-undirect(_G &&) -> undirect<views::graph_all_t<_G>>;
+template <typename G>
+undirect(G &&) -> undirect<views::graph_all_t<G>>;
 
 }  // namespace views
 }  // namespace melon

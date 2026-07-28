@@ -5,20 +5,20 @@
 
 namespace melon {
 
-template <typename _Iterator, typename _Sentinel>
+template <typename Iterator, typename Sentinel>
 class consumable_iterator {
 public:
     using iterator_category = std::input_iterator_tag;
-    using value_type = std::iter_value_t<_Iterator>;
-    using reference = std::iter_reference_t<_Iterator>;
+    using value_type = std::iter_value_t<Iterator>;
+    using reference = std::iter_reference_t<Iterator>;
     using pointer = void;
-    using difference_type = std::iter_difference_t<_Iterator>;
+    using difference_type = std::iter_difference_t<Iterator>;
 
 private:
-    _Iterator * _it;
+    Iterator * _it;
 
 public:
-    explicit consumable_iterator(_Iterator & it) : _it(&it) {}
+    explicit consumable_iterator(Iterator & it) : _it(&it) {}
 
     consumable_iterator() = default;
     consumable_iterator(consumable_iterator &&) = default;
@@ -42,14 +42,14 @@ public:
     [[nodiscard]] constexpr friend bool operator==(
         const consumable_iterator & it1,
         const consumable_iterator & it2) noexcept
-        requires std::equality_comparable<_Iterator>
+        requires std::equality_comparable<Iterator>
     {
         return (*it1._it) == (*it2._it);
     }
 
     [[nodiscard]] constexpr friend bool operator==(
         const consumable_iterator & iterator,
-        const _Sentinel & sentinel) noexcept {
+        const Sentinel & sentinel) noexcept {
         return (*iterator._it) == sentinel;
     }
 };
@@ -61,9 +61,9 @@ private:
     std::ranges::iterator_t<R> _it;
 
 public:
-    template <typename _R>
-    explicit consumable_view(_R && r)
-        : _range(std::views::all(std::forward<_R>(r)))
+    template <typename Rng>
+    explicit consumable_view(Rng && r)
+        : _range(std::views::all(std::forward<Rng>(r)))
         , _it(std::ranges::begin(_range)) {}
 
     consumable_view() = default;
@@ -101,8 +101,8 @@ private:
     [[no_unique_address]] std::ranges::sentinel_t<R> _sentinel;
 
 public:
-    template <typename _R>
-    consumable_view(_R && r)
+    template <typename Rng>
+    consumable_view(Rng && r)
         : _it(std::ranges::begin(r)), _sentinel(std::ranges::end(r)) {}
 
     consumable_view() = default;

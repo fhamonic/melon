@@ -14,25 +14,25 @@
 
 namespace melon {
 
-template <std::ranges::range _ItemRange,
-          input_mapping<std::ranges::range_value_t<_ItemRange>> _ValueMap,
-          input_mapping<std::ranges::range_value_t<_ItemRange>> _CostMap>
+template <std::ranges::range ItemRange,
+          input_mapping<std::ranges::range_value_t<ItemRange>> ValueMap,
+          input_mapping<std::ranges::range_value_t<ItemRange>> CostMap>
     requires std::is_arithmetic_v<mapped_value_t<
-                 _ValueMap, std::ranges::range_value_t<_ItemRange>>> &&
-             std::is_arithmetic_v<mapped_value_t<
-                 _CostMap, std::ranges::range_value_t<_ItemRange>>>
+                 ValueMap, std::ranges::range_value_t<ItemRange>>> &&
+             std::is_arithmetic_v<
+                 mapped_value_t<CostMap, std::ranges::range_value_t<ItemRange>>>
 class unbounded_knapsack_bnb {
 private:
-    using Item = std::ranges::range_value_t<_ItemRange>;
-    using Value = mapped_value_t<_ValueMap, Item>;
-    using Cost = mapped_value_t<_CostMap, Item>;
+    using Item = std::ranges::range_value_t<ItemRange>;
+    using Value = mapped_value_t<ValueMap, Item>;
+    using Cost = mapped_value_t<CostMap, Item>;
 
-    _ItemRange _items_range;
-    _ValueMap _value_map;
-    _CostMap _cost_map;
+    ItemRange _items_range;
+    ValueMap _value_map;
+    CostMap _cost_map;
 
     Cost _budget;
-    std::vector<std::ranges::iterator_t<const _ItemRange>> _permuted_items;
+    std::vector<std::ranges::iterator_t<const ItemRange>> _permuted_items;
     std::vector<std::pair<Value, Cost>> _value_cost_pairs;
     std::vector<std::pair<typename decltype(_value_cost_pairs)::const_iterator,
                           std::size_t>>
@@ -119,12 +119,12 @@ private:
     }
 
 public:
-    template <typename _IR, typename _VM, typename _CM, typename _B>
-    unbounded_knapsack_bnb(_IR && items_range, _VM && value_map,
-                           _CM && cost_map, const _B budget) noexcept
-        : _items_range(std::views::all(std::forward<_IR>(items_range)))
-        , _value_map(views::mapping_all(std::forward<_VM>(value_map)))
-        , _cost_map(views::mapping_all(std::forward<_CM>(cost_map)))
+    template <typename IR, typename VM, typename CM, typename B>
+    unbounded_knapsack_bnb(IR && items_range, VM && value_map, CM && cost_map,
+                           const B budget) noexcept
+        : _items_range(std::views::all(std::forward<IR>(items_range)))
+        , _value_map(views::mapping_all(std::forward<VM>(value_map)))
+        , _cost_map(views::mapping_all(std::forward<CM>(cost_map)))
         , _budget(budget) {
         reset();
     }
@@ -151,7 +151,7 @@ public:
     unbounded_knapsack_bnb & reset() noexcept {
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
-        if constexpr(std::ranges::sized_range<_ItemRange>) {
+        if constexpr(std::ranges::sized_range<ItemRange>) {
             auto num_items = std::ranges::size(_items_range);
             _permuted_items.reserve(num_items);
             _value_cost_pairs.reserve(num_items);
@@ -184,9 +184,9 @@ public:
         return *this;
     }
 
-    template <typename _Rep, typename _Period>
+    template <typename Rep, typename Period>
     bool run_with_timeout(
-        const std::chrono::duration<_Rep, _Period> & timeout) noexcept {
+        const std::chrono::duration<Rep, Period> & timeout) noexcept {
         std::jthread t([this](std::stop_token stoken) {
             return iterative_bnb_timeout(stoken);
         });
@@ -224,10 +224,10 @@ public:
     }
 };
 
-template <typename _ItemRange, typename _ValueMap, typename _CostMap>
-unbounded_knapsack_bnb(_ItemRange &&, _ValueMap &&, _CostMap &&, auto &&)
-    -> unbounded_knapsack_bnb<std::views::all_t<_ItemRange>,
-                              views::mapping_all_t<_ValueMap>,
-                              views::mapping_all_t<_CostMap>>;
+template <typename ItemRange, typename ValueMap, typename CostMap>
+unbounded_knapsack_bnb(ItemRange &&, ValueMap &&, CostMap &&, auto &&)
+    -> unbounded_knapsack_bnb<std::views::all_t<ItemRange>,
+                              views::mapping_all_t<ValueMap>,
+                              views::mapping_all_t<CostMap>>;
 
 }  // namespace melon

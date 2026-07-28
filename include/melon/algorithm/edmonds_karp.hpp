@@ -11,44 +11,43 @@
 
 namespace melon {
 
-template <graph _Graph, input_mapping<arc_t<_Graph>> _CapacityMap>
-    requires outward_incidence_graph<_Graph> &&
-             inward_incidence_graph<_Graph> && has_vertex_map<_Graph> &&
-             has_arc_map<_Graph>
+template <graph Graph, input_mapping<arc_t<Graph>> CapacityMap>
+    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
+             has_vertex_map<Graph> && has_arc_map<Graph>
 class edmonds_karp {
 private:
-    using vertex = vertex_t<_Graph>;
-    using arc = arc_t<_Graph>;
-    using value_t = mapped_value_t<_CapacityMap, arc_t<_Graph>>;
+    using vertex = vertex_t<Graph>;
+    using arc = arc_t<Graph>;
+    using value_t = mapped_value_t<CapacityMap, arc_t<Graph>>;
 
 private:
-    _Graph _graph;
-    _CapacityMap _capacity_map;
+    Graph _graph;
+    CapacityMap _capacity_map;
     vertex _s;
     vertex _t;
-    arc_map_t<_Graph, value_t> _carried_flow_map;
+    arc_map_t<Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
-    vertex_map_t<_Graph, bool> _bfs_reached_map;
-    vertex_map_t<_Graph, arc> _bfs_pred_arc;
+    vertex_map_t<Graph, bool> _bfs_reached_map;
+    vertex_map_t<Graph, arc> _bfs_pred_arc;
 
 public:
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr edmonds_karp(_G && g, _M && c)
-        : _graph(views::graph_all(std::forward<_G>(g)))
-        , _capacity_map(views::mapping_all(std::forward<_M>(c)))
+    template <typename G, typename M>
+    [[nodiscard]] constexpr edmonds_karp(G && g, M && c)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _capacity_map(views::mapping_all(std::forward<M>(c)))
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _bfs_reached_map(create_vertex_map<bool>(_graph))
         , _bfs_pred_arc(create_vertex_map<arc>(_graph)) {
-        if constexpr(has_num_vertices<_Graph>) {
+        if constexpr(has_num_vertices<Graph>) {
             _bfs_queue.reserve(num_vertices(_graph));
         }
         reset();
     }
 
-    template <typename _G, typename _M>
-    [[nodiscard]] constexpr edmonds_karp(_G && g, _M && c, const vertex & s,
+    template <typename G, typename M>
+    [[nodiscard]] constexpr edmonds_karp(G && g, M && c, const vertex & s,
                                          const vertex & t)
-        : edmonds_karp(std::forward<_G>(g), std::forward<_M>(c)) {
+        : edmonds_karp(std::forward<G>(g), std::forward<M>(c)) {
         set_source(s);
         set_target(t);
     }
@@ -151,17 +150,17 @@ public:
         return sum;
     }
     constexpr auto minimum_cut() noexcept {
-        if constexpr(std::ranges::viewable_range<out_arcs_range_t<_Graph>>) {
+        if constexpr(std::ranges::viewable_range<out_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(
-                _bfs_queue, [this](const vertex_t<_Graph> & v) {
+                _bfs_queue, [this](const vertex_t<Graph> & v) {
                     return std::views::filter(
-                        out_arcs(_graph, v), [this](const arc_t<_Graph> & a) {
+                        out_arcs(_graph, v), [this](const arc_t<Graph> & a) {
                             return !_bfs_reached_map[arc_target(_graph, a)];
                         });
                 }));
         } else {
             return std::views::filter(
-                arcs(_graph), [this](const arc_t<_Graph> & a) {
+                arcs(_graph), [this](const arc_t<Graph> & a) {
                     return _bfs_reached_map[arc_source(_graph, a)] &&
                            !_bfs_reached_map[arc_target(_graph, a)];
                 });
@@ -169,15 +168,15 @@ public:
     }
 };
 
-template <typename _Graph, typename _CapacityMap>
-edmonds_karp(_Graph &&, _CapacityMap &&)
-    -> edmonds_karp<views::graph_all_t<_Graph>,
-                    views::mapping_all_t<_CapacityMap>>;
+template <typename Graph, typename CapacityMap>
+edmonds_karp(Graph &&,
+             CapacityMap &&) -> edmonds_karp<views::graph_all_t<Graph>,
+                                             views::mapping_all_t<CapacityMap>>;
 
-template <typename _Graph, typename _CapacityMap>
-edmonds_karp(_Graph &&, _CapacityMap &&, const vertex_t<_Graph> &,
-             const vertex_t<_Graph> &)
-    -> edmonds_karp<views::graph_all_t<_Graph>,
-                    views::mapping_all_t<_CapacityMap>>;
+template <typename Graph, typename CapacityMap>
+edmonds_karp(Graph &&, CapacityMap &&, const vertex_t<Graph> &,
+             const vertex_t<Graph> &)
+    -> edmonds_karp<views::graph_all_t<Graph>,
+                    views::mapping_all_t<CapacityMap>>;
 
 }  // namespace melon

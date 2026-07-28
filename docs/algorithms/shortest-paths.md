@@ -95,7 +95,7 @@ Writing your own is four members and two types; anything satisfying the `semirin
 | `store_distances` | `false` | keep a distance per settled vertex |
 | `store_paths` | `false` | keep a predecessor arc per reached vertex |
 
-The default heap is worth reading once: its index map is a `vertex_map_t<_Graph, std::size_t>`, so for melon's containers the "where is this vertex in the heap" lookup is an array access rather than a hash. A 4-ary heap is often faster on large sparse graphs — change the first template argument and nothing else.
+The default heap is worth reading once: its index map is a `vertex_map_t<Graph, std::size_t>`, so for melon's containers the "where is this vertex in the heap" lookup is an array access rather than a hash. A 4-ary heap is often faster on large sparse graphs — change the first template argument and nothing else.
 
 `store_paths` also costs a *vertex* map when the graph has no `arc_source` (there is no other way back from an arc to its tail), and only an arc-per-vertex map when it does. Both are selected automatically.
 
