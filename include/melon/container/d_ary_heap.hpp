@@ -11,6 +11,20 @@
 
 namespace melon {
 
+// promote()/demote() rewrite the priority stored *inside* an entry, so the
+// entry-priority map has to hand back a reference into that entry. A map
+// returning a prvalue (views::identity_map, or any map yielding a copy or a
+// detached proxy) would make the write land on a temporary and vanish without
+// a diagnostic, leaving the heap silently un-reordered. output_mapping is not
+// enough to express this: assigning to a class prvalue is well-formed and even
+// yields an lvalue, so identity_map satisfies it.
+template <typename _Map, typename _Entry>
+concept mutable_entry_priority_map =
+    input_mapping<_Map, _Entry> && requires(_Map & __m, _Entry & __e) {
+        requires std::is_lvalue_reference_v<decltype(__m[__e])>;
+        requires !std::is_const_v<std::remove_reference_t<decltype(__m[__e])>>;
+    };
+
 template <typename _Derived, std::size_t D, typename _Entry,
           typename _PriorityComparator = std::greater<_Entry>,
           input_mapping<_Entry> _EntryPriorityMap = views::identity_map>
@@ -309,15 +323,18 @@ public:
         if(i >= base_class::_heap_array.size()) return false;
         return _entry_id_map[base_class::_heap_array[i]] == k;
     }
-    constexpr void promote(const id_type & k,
-                           const priority_type & p) noexcept {
+    constexpr void promote(const id_type & k, const priority_type & p) noexcept
+        requires mutable_entry_priority_map<_EntryPriorityMap, _Entry>
+    {
         value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
         assert(
             !base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
         base_class::_entry_priority_map[e] = p;
         base_class::heap_push(_heap_index_map[k], std::move(e));
     }
-    void demote(const id_type & k, const priority_type & p) noexcept {
+    void demote(const id_type & k, const priority_type & p) noexcept
+        requires mutable_entry_priority_map<_EntryPriorityMap, _Entry>
+    {
         value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
         assert(
             base_class::_priority_cmp(base_class::_entry_priority_map[e], p));

@@ -139,3 +139,33 @@ GTEST_TEST(static_map, resize) {
     map.resize(10);
     ASSERT_EQ(map.size(), 10);
 }
+
+// ################## regression: data() const-correctness #####################
+
+// data() const used to return a non-const mapped_type*, so a const static_map
+// handed out a mutable window onto its own storage. It was shaped that way to
+// satisfy contiguous_mapping, which demanded exactly `V *`; the concept was
+// relaxed to accept `const V *` instead.
+GTEST_TEST(static_map, data_is_const_correct) {
+    static_map<std::size_t, int> map(3, 7);
+    static_assert(std::is_same_v<decltype(map.data()), int *>);
+    static_assert(
+        std::is_same_v<decltype(std::as_const(map).data()), const int *>);
+
+    map.data()[0] = 999;
+    ASSERT_EQ(std::as_const(map).data()[0], 999);
+    ASSERT_EQ(std::as_const(map)[0], 999);
+}
+
+// The relaxed concept must still hold for the container itself and, crucially,
+// through a const-carrying mapping_ref_view -- that is the shape arc_targets_map
+// returns, and the prefetch fast path in dijkstra keys off it.
+static_assert(contiguous_mapping<static_map<std::size_t, int>, std::size_t>);
+static_assert(
+    contiguous_mapping_of<static_map<std::size_t, int>, std::size_t, int>);
+static_assert(contiguous_mapping<
+              mapping_ref_view<const static_map<std::size_t, int>>,
+              std::size_t>);
+static_assert(
+    contiguous_mapping<mapping_ref_view<static_map<std::size_t, int>>,
+                       std::size_t>);

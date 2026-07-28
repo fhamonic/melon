@@ -86,3 +86,45 @@ GTEST_TEST(rational, bounded_value_components) {
     ASSERT_TRUE(r == rational(1, 3));
     ASSERT_TRUE(r + r == rational(2, 3));
 }
+
+// ############ regression: make_rational return type deduction ################
+
+// `-a` / `-b` are integer promoted, so the sign-flipping branch deduced
+// rational<int, int> while the other two deduced rational<short, short>:
+// "inconsistent deduction for auto return type", i.e. make_rational did not
+// compile at all for any type narrower than int.
+GTEST_TEST(rational, make_rational_with_narrow_integer_types) {
+    const short a = 3, b = -4;
+    auto r = make_rational(a, b);
+    static_assert(std::same_as<decltype(r), rational<short, short>>);
+    ASSERT_EQ(r.num(), -3);
+    ASSERT_EQ(r.den(), 4);
+
+    const std::int8_t c = 5, d = -10;
+    auto r8 = make_rational(c, d);
+    static_assert(std::same_as<decltype(r8), rational<std::int8_t, std::int8_t>>);
+    ASSERT_EQ(r8.num(), -5);
+    ASSERT_EQ(r8.den(), 10);
+}
+
+GTEST_TEST(rational, make_rational_normalizes_sign_and_keeps_operand_types) {
+    auto neg = make_rational(3, -4);
+    static_assert(std::same_as<decltype(neg), rational<int, int>>);
+    ASSERT_EQ(neg.num(), -3);
+    ASSERT_EQ(neg.den(), 4);
+
+    auto pos = make_rational(6, 4);
+    ASSERT_EQ(pos.num(), 6);
+    ASSERT_EQ(pos.den(), 4);
+
+    // a zero denominator is kept as the 1/0 sentinel rather than normalized
+    auto inf = make_rational(5, 0);
+    ASSERT_EQ(inf.num(), 1);
+    ASSERT_EQ(inf.den(), 0);
+
+    // mixed operand types keep their own numerator / denominator types
+    auto mixed = make_rational(3, 4L);
+    static_assert(std::same_as<decltype(mixed), rational<int, long>>);
+    ASSERT_EQ(mixed.num(), 3);
+    ASSERT_EQ(mixed.den(), 4L);
+}

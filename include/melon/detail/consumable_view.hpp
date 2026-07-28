@@ -76,6 +76,7 @@ public:
     constexpr consumable_view & operator=(R & r) {
         _range = r;
         _it = std::ranges::begin(_range);
+        return *this;
     }
 
     bool empty() { return _it == std::ranges::end(_range); }
@@ -112,8 +113,9 @@ public:
     constexpr consumable_view & operator=(consumable_view &&) = default;
 
     constexpr consumable_view & operator=(R & r) {
-        _it = r.begin();
-        _sentinel = r.end();
+        _it = std::ranges::begin(r);
+        _sentinel = std::ranges::end(r);
+        return *this;
     }
 
     bool empty() { return _it == _sentinel; }

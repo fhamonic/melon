@@ -151,7 +151,7 @@ public:
             return *static_cast<I *>(this);
         }
         constexpr I operator++(int) noexcept {
-            iterator tmp = *static_cast<I *>(this);
+            I tmp = *static_cast<I *>(this);
             _bump_up();
             return tmp;
         }
@@ -160,7 +160,7 @@ public:
             return *static_cast<I *>(this);
         }
         constexpr I operator--(int) noexcept {
-            iterator tmp = *static_cast<I *>(this);
+            I tmp = *static_cast<I *>(this);
             _bump_down();
             return tmp;
         }
@@ -175,7 +175,7 @@ public:
         }
 
         friend constexpr I operator+(const I & x, difference_type n) {
-            iterator tmp = x;
+            I tmp = x;
             tmp += n;
             return tmp;
         }
@@ -183,7 +183,7 @@ public:
             return x + n;
         }
         friend constexpr I operator-(const I & x, difference_type n) {
-            iterator tmp = x;
+            I tmp = x;
             tmp -= n;
             return tmp;
         }
@@ -303,8 +303,16 @@ public:
     template <std::ranges::viewable_range R>
     auto filter(R && r) const noexcept {
         if constexpr(std::same_as<R, std::ranges::iota_view<K, K>>) {
-            K begin_index = std::max(static_cast<K>(0), *std::ranges::begin(r));
-            K end_index = std::min(static_cast<K>(_size), *std::ranges::end(r));
+            // Clamp both bounds into [0, _size] so that every span pointer
+            // formed below stays inside the allocation.
+            const K end_key = std::clamp(
+                *std::ranges::end(r), static_cast<K>(0), static_cast<K>(_size));
+            const K begin_key = std::clamp(*std::ranges::begin(r),
+                                           static_cast<K>(0), end_key);
+            // Both keys are now in [0, _size], so indexing in the unsigned
+            // span-index type is value-preserving.
+            const size_type end_index = static_cast<size_type>(end_key);
+            const size_type begin_index = static_cast<size_type>(begin_key);
 
             //*
             const_iterator begin_it(_data.get() + begin_index / N,
@@ -312,7 +320,14 @@ public:
             const const_iterator end_it(_data.get() + end_index / N,
                                         end_index & span_index_mask);
 
-            auto next_it = [end_it](const_iterator cursor) {
+            // First span holding no in-range bit, i.e. one past the last span
+            // the scan may dereference. This is NOT end_it._p: when end_index
+            // is a multiple of N, end_it._p is already one past the last span
+            // and reading it overruns the buffer.
+            const span_type * const end_span_p =
+                _data.get() + num_spans(end_index);
+
+            auto next_it = [end_span_p](const_iterator cursor) {
                 span_type shifted;
                 if(++cursor._local_index == N) goto find_next_span;
                 shifted = (*cursor._p) >> cursor._local_index;
@@ -320,7 +335,7 @@ public:
                 find_next_span:
                     cursor._local_index = 0;
                     do {
-                        if(++cursor._p > end_it._p) [[unlikely]]
+                        if(++cursor._p >= end_span_p) [[unlikely]]
                             return cursor;
                     } while(*cursor._p == span_type{0});
                     shifted = *cursor._p;
@@ -330,7 +345,10 @@ public:
                 return cursor;
             };
 
-            if(!*begin_it) begin_it = next_it(begin_it);
+            // An empty range dereferences nothing: begin_it is already >=
+            // end_it, so the condition below rejects it straight away.
+            if(begin_index < end_index && !*begin_it)
+                begin_it = next_it(begin_it);
 
             return intrusive_view(
                 begin_it,

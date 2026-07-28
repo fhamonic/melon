@@ -65,15 +65,19 @@ public:
     constexpr auto operator-() const { return rational(-_num, _den); }
 };
 
+// The return type is spelled out rather than deduced: `-a` / `-b` are integer
+// promoted, so the sign-flipping branch would otherwise deduce a different
+// specialization than the other two (rational<int, int> vs rational<short,
+// short>) and the function would not compile at all for narrow types.
 template <typename T1, typename T2>
-constexpr auto make_rational(T1 a, T2 b) {
+constexpr rational<T1, T2> make_rational(T1 a, T2 b) {
     if(b == 0) {
-        return rational(T1{1}, b);
+        return rational<T1, T2>(T1{1}, b);
     }
     if(b < 0) {
-        return rational(-a, -b);
+        return rational<T1, T2>(static_cast<T1>(-a), static_cast<T2>(-b));
     }
-    return rational(a, b);
+    return rational<T1, T2>(a, b);
 }
 
 #define DEFINE_RATIONAL_OPERATOR(op, expr)                              \

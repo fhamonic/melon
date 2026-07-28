@@ -202,3 +202,34 @@ GTEST_TEST(canned_maps, element_map_projects_tuple_elements) {
     static_assert(input_mapping_of<views::element_map<1>,
                                    std::pair<int, double>, double>);
 }
+
+// ############### regression: mapping_all is SFINAE-friendly ##################
+
+// _MappingAll::operator() used to be unconstrained, so its noexcept-specifier
+// was instantiated for every argument and hard-errored outside the immediate
+// context. `requires { mapping_all(x); }` blew up instead of yielding false,
+// which made mapping_all_t unusable in a constraint.
+namespace {
+struct not_a_mapping {
+    not_a_mapping(const not_a_mapping &) = delete;
+    not_a_mapping(not_a_mapping &&) = delete;
+};
+
+template <typename T>
+concept can_mapping_all =
+    requires(T && t) { views::mapping_all(std::forward<T>(t)); };
+}  // namespace
+
+static_assert(can_mapping_all<std::vector<int> &>);
+static_assert(can_mapping_all<std::vector<int>>);
+static_assert(can_mapping_all<const std::vector<int> &>);
+static_assert(can_mapping_all<views::true_map>);
+static_assert(!can_mapping_all<not_a_mapping>);
+
+// an lvalue is referenced, an rvalue is owned -- the std::views::all contract
+static_assert(std::same_as<views::mapping_all_t<std::vector<int> &>,
+                           mapping_ref_view<std::vector<int>>>);
+static_assert(std::same_as<views::mapping_all_t<const std::vector<int> &>,
+                           mapping_ref_view<const std::vector<int>>>);
+static_assert(std::same_as<views::mapping_all_t<std::vector<int>>,
+                           mapping_owning_view<std::vector<int>>>);
