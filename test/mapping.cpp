@@ -16,7 +16,10 @@
 
 using namespace melon;
 
-// ############################### concepts ###############################
+////////////////////////////////////////////////////////////////////////////////
+// a mapping is subscriptable by the key AND readable through a const access;
+// output/contiguous refine what the subscript allows
+////////////////////////////////////////////////////////////////////////////////
 
 static_assert(mapping<std::vector<int>, std::size_t>);
 static_assert(!mapping<std::vector<int>, std::string>);
@@ -27,35 +30,49 @@ static_assert(
     std::same_as<mapped_const_reference_t<std::vector<int>, std::size_t>,
                  const int &>);
 
-static_assert(input_mapping<std::vector<int>, std::size_t>);
-static_assert(input_mapping_of<std::vector<int>, std::size_t, int>);
-static_assert(!input_mapping_of<std::vector<int>, std::size_t, double>);
+static_assert(mapping_of<std::vector<int>, std::size_t, int>);
+static_assert(!mapping_of<std::vector<int>, std::size_t, double>);
 static_assert(output_mapping<std::vector<int>, std::size_t>);
 static_assert(output_mapping_of<std::vector<int>, std::size_t, int>);
 
+// A subscript returning void reads nothing, so it is not a mapping.
+struct void_subscript_map {
+    void operator[](int) const {}
+};
+static_assert(!mapping<void_subscript_map, int>);
+
 // std::vector<bool> subscripts to a proxy, which still assigns through, so it
 // models the output protocol; a const vector is read-only.
-static_assert(input_mapping_of<std::vector<bool>, std::size_t, bool>);
+static_assert(mapping_of<std::vector<bool>, std::size_t, bool>);
 static_assert(output_mapping_of<std::vector<bool>, std::size_t, bool>);
 static_assert(!contiguous_mapping<std::vector<bool>, std::size_t>);
-static_assert(input_mapping_of<const std::vector<int>, std::size_t, int>);
+static_assert(mapping_of<const std::vector<int>, std::size_t, int>);
 static_assert(!output_mapping<const std::vector<int>, std::size_t>);
 
 static_assert(contiguous_mapping<std::vector<int>, std::size_t>);
 static_assert(contiguous_mapping_of<std::vector<int>, std::size_t, int>);
-// A std::map subscripts fine but has no data(), and its key is not integral.
-static_assert(mapping<std::map<std::string, int>, std::string>);
+// std::map::operator[] inserts and cannot be offered const, so a raw std::map
+// is not readable through a const access and models no mapping concept at
+// all; it is used through maps::mapping_all, whose views subscript a const
+// base via at().
+static_assert(!mapping<std::map<std::string, int>, std::string>);
 static_assert(!contiguous_mapping<std::map<std::size_t, int>, std::size_t>);
 
-// A raw mapping is not a view; the two adaptors and the canned maps are.
+////////////////////////////////////////////////////////////////////////////////
+// only the adaptors and the canned maps are mapping_views; a raw mapping is
+// not
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(!mapping_view<std::vector<int>, std::size_t>);
 static_assert(mapping_view<mapping_ref_view<std::vector<int>>, std::size_t>);
-static_assert(mapping_view<views::true_map, int>);
-static_assert(mapping_view<views::false_map, int>);
-static_assert(mapping_view<views::identity_map, int>);
-static_assert(mapping_view<views::element_map<0>, std::pair<int, int>>);
+static_assert(mapping_view<maps::true_map, int>);
+static_assert(mapping_view<maps::false_map, int>);
+static_assert(mapping_view<maps::identity_map, int>);
+static_assert(mapping_view<maps::element_map<0>, std::pair<int, int>>);
 
-// ############################## ref view ################################
+////////////////////////////////////////////////////////////////////////////////
+// mapping_ref_view is a shallow-const handle that binds to lvalues only
+////////////////////////////////////////////////////////////////////////////////
 
 // Shallow const, like std::ranges::ref_view: constness rides on Map, so a
 // const view over a mutable map still writes through.
@@ -63,8 +80,8 @@ static_assert(output_mapping_of<const mapping_ref_view<std::vector<int>>,
                                 std::size_t, int>);
 static_assert(
     !output_mapping<mapping_ref_view<const std::vector<int>>, std::size_t>);
-static_assert(input_mapping_of<mapping_ref_view<const std::vector<int>>,
-                               std::size_t, int>);
+static_assert(mapping_of<mapping_ref_view<const std::vector<int>>,
+                         std::size_t, int>);
 static_assert(std::copyable<mapping_ref_view<std::vector<int>>>);
 
 GTEST_TEST(mapping_ref_view, reads_and_writes_through) {
@@ -85,7 +102,9 @@ static_assert(std::constructible_from<mapping_ref_view<std::vector<int>>,
 static_assert(!std::constructible_from<mapping_ref_view<std::vector<int>>,
                                        std::vector<int>>);
 
-// ############################# owning view ##############################
+////////////////////////////////////////////////////////////////////////////////
+// mapping_owning_view owns its map with deep const and survives moves
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(mapping_owning_view, owns_its_map) {
     mapping_owning_view view{std::vector<int>{1, 2, 3}};
@@ -109,11 +128,13 @@ GTEST_TEST(mapping_owning_view, survives_a_move) {
     ASSERT_EQ(recovered.size(), 3u);
 }
 
-// ########################### the lambda case ############################
+////////////////////////////////////////////////////////////////////////////////
+// the owning view stays std::movable even over a non-assignable lambda
+////////////////////////////////////////////////////////////////////////////////
 
 // A capturing lambda is move-constructible but not assignable. The owning view
 // stores it in a movable-box so that it stays std::movable anyway, which is
-// what lets algorithms hold a `views::map(...)` by value.
+// what lets algorithms hold a `maps::map(...)` by value.
 GTEST_TEST(mapping_owning_view, keeps_a_lambda_assignable) {
     int offset = 10;
     auto lambda = [offset](std::size_t i) { return offset + int(i); };
@@ -122,21 +143,24 @@ GTEST_TEST(mapping_owning_view, keeps_a_lambda_assignable) {
     static_assert(!std::is_copy_assignable_v<lambda_t>);
     static_assert(std::movable<mapping_owning_view<lambda_t>>);
 
-    auto view = views::map(lambda);
+    auto view = maps::map(lambda);
     static_assert(std::movable<decltype(view)>);
     static_assert(mapping_view<decltype(view), std::size_t>);
     ASSERT_EQ(view[5u], 15);
 
-    auto other = views::map([](std::size_t i) { return int(i) * 2; });
+    auto other = maps::map([](std::size_t i) { return int(i) * 2; });
     static_assert(!std::same_as<decltype(other), decltype(view)>);
 
-    auto reassigned = views::map(lambda);
-    reassigned = views::map(lambda);
+    auto reassigned = maps::map(lambda);
+    reassigned = maps::map(lambda);
     ASSERT_EQ(reassigned[1u], 11);
 }
 
-// The three storage protocols a mapping may expose all reach the same
-// subscript: operator[], operator() and at().
+////////////////////////////////////////////////////////////////////////////////
+// the views dispatch all three subscript protocols: operator[], operator()
+// and at()
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(mapping_views, dispatch_the_three_subscript_protocols) {
     struct call_op {
         int operator()(std::size_t i) const { return int(i) + 1; }
@@ -146,73 +170,45 @@ GTEST_TEST(mapping_views, dispatch_the_three_subscript_protocols) {
         int at(std::size_t i) const { return v[i]; }
     };
 
-    ASSERT_EQ(views::map(call_op{})[3u], 4);
+    ASSERT_EQ(maps::map(call_op{})[3u], 4);
 
     at_only m;
     ASSERT_EQ(mapping_ref_view(m)[1u], 8);
 }
 
-// ############################# mapping_all ##############################
+////////////////////////////////////////////////////////////////////////////////
+// maps::mapping_all references lvalues, owns rvalues, passes views through --
+// and is SFINAE-friendly
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(mapping_all, selects_the_right_adaptor) {
     std::vector<int> v{1, 2, 3};
 
-    auto from_lvalue = views::mapping_all(v);
+    auto from_lvalue = maps::mapping_all(v);
     static_assert(std::same_as<decltype(from_lvalue),
                                mapping_ref_view<std::vector<int>>>);
     ASSERT_EQ(std::addressof(from_lvalue.base()), std::addressof(v));
 
-    auto from_rvalue = views::mapping_all(std::vector<int>{4, 5});
+    auto from_rvalue = maps::mapping_all(std::vector<int>{4, 5});
     static_assert(std::same_as<decltype(from_rvalue),
                                mapping_owning_view<std::vector<int>>>);
     ASSERT_EQ(from_rvalue[1u], 5);
 
     // An existing view is passed through rather than wrapped again.
-    auto passed_through = views::mapping_all(views::true_map{});
-    static_assert(std::same_as<decltype(passed_through), views::true_map>);
+    auto passed_through = maps::mapping_all(maps::true_map{});
+    static_assert(std::same_as<decltype(passed_through), maps::true_map>);
 
-    static_assert(std::same_as<views::mapping_all_t<std::vector<int> &>,
+    static_assert(std::same_as<maps::mapping_all_t<std::vector<int> &>,
                                mapping_ref_view<std::vector<int>>>);
-    static_assert(std::same_as<views::mapping_all_t<std::vector<int>>,
+    static_assert(std::same_as<maps::mapping_all_t<std::vector<int>>,
                                mapping_owning_view<std::vector<int>>>);
 }
 
-// ############################# canned maps ##############################
-
-GTEST_TEST(canned_maps, constant_and_identity) {
-    static_assert(views::true_map{}[0]);
-    static_assert(!views::false_map{}[0]);
-    static_assert(views::identity_map{}[42] == 42);
-
-    // They answer for any key type, which is what makes them usable as the
-    // default filter/priority map of the algorithms.
-    ASSERT_TRUE(views::true_map{}[std::string("anything")]);
-    ASSERT_FALSE(views::false_map{}[std::make_pair(1, 2)]);
-    ASSERT_EQ(views::identity_map{}[std::string("x")], "x");
-}
-
-GTEST_TEST(canned_maps, element_map_projects_tuple_elements) {
-    const auto entry = std::make_pair(1, std::make_tuple(2, 3.5));
-
-    using first = views::element_map<0>;
-    using second_first = views::element_map<1, 0>;
-    using second_second = views::element_map<1, 1>;
-
-    ASSERT_EQ(first{}[entry], 1);
-    ASSERT_EQ(second_first{}[entry], 2);
-    ASSERT_EQ(second_second{}[entry], 3.5);
-
-    static_assert(first{}[std::make_pair(4, 5)] == 4);
-    static_assert(input_mapping_of<views::element_map<1>,
-                                   std::pair<int, double>, double>);
-}
-
-// ############### regression: mapping_all is SFINAE-friendly ##################
-
-// mapping_all_fn::operator() used to be unconstrained, so its
+// regression: mapping_all_fn::operator() used to be unconstrained, so its
 // noexcept-specifier was instantiated for every argument and hard-errored
-// outside the immediate context. `requires { mapping_all(x); }` blew up instead
-// of yielding false, which made mapping_all_t unusable in a constraint.
+// outside the immediate context. `requires { maps::mapping_all(x); }` blew up
+// instead of yielding false, which made maps::mapping_all_t unusable in a
+// constraint.
 namespace {
 struct not_a_mapping {
     not_a_mapping(const not_a_mapping &) = delete;
@@ -221,29 +217,93 @@ struct not_a_mapping {
 
 template <typename T>
 concept can_mapping_all =
-    requires(T && t) { views::mapping_all(std::forward<T>(t)); };
+    requires(T && t) { maps::mapping_all(std::forward<T>(t)); };
 }  // namespace
 
 static_assert(can_mapping_all<std::vector<int> &>);
 static_assert(can_mapping_all<std::vector<int>>);
 static_assert(can_mapping_all<const std::vector<int> &>);
-static_assert(can_mapping_all<views::true_map>);
+static_assert(can_mapping_all<maps::true_map>);
 static_assert(!can_mapping_all<not_a_mapping>);
 
 // an lvalue is referenced, an rvalue is owned -- the std::views::all contract
-static_assert(std::same_as<views::mapping_all_t<std::vector<int> &>,
+static_assert(std::same_as<maps::mapping_all_t<std::vector<int> &>,
                            mapping_ref_view<std::vector<int>>>);
-static_assert(std::same_as<views::mapping_all_t<const std::vector<int> &>,
+static_assert(std::same_as<maps::mapping_all_t<const std::vector<int> &>,
                            mapping_ref_view<const std::vector<int>>>);
-static_assert(std::same_as<views::mapping_all_t<std::vector<int>>,
+static_assert(std::same_as<maps::mapping_all_t<std::vector<int>>,
                            mapping_owning_view<std::vector<int>>>);
 
-// ########## regression: map_if const operator[] decay-copied ################
+////////////////////////////////////////////////////////////////////////////////
+// the canned maps answer for any key type
+////////////////////////////////////////////////////////////////////////////////
 
-// vertex_map_if / arc_map_if returned `auto` from the const subscript and
-// decltype(auto) from the mutable one, so every read through a const algorithm
-// object copied the mapped value (dijkstra reads its distance and predecessor
-// maps that way).
+GTEST_TEST(canned_maps, constant_and_identity) {
+    static_assert(maps::true_map{}[0]);
+    static_assert(!maps::false_map{}[0]);
+    static_assert(maps::identity_map{}[42] == 42);
+
+    // They answer for any key type, which is what makes them usable as the
+    // default filter/priority map of the algorithms.
+    ASSERT_TRUE(maps::true_map{}[std::string("anything")]);
+    ASSERT_FALSE(maps::false_map{}[std::make_pair(1, 2)]);
+    ASSERT_EQ(maps::identity_map{}[std::string("x")], "x");
+}
+
+GTEST_TEST(canned_maps, element_map_projects_tuple_elements) {
+    const auto entry = std::make_pair(1, std::make_tuple(2, 3.5));
+
+    using first = maps::element_map<0>;
+    using second_first = maps::element_map<1, 0>;
+    using second_second = maps::element_map<1, 1>;
+
+    ASSERT_EQ(first{}[entry], 1);
+    ASSERT_EQ(second_first{}[entry], 2);
+    ASSERT_EQ(second_second{}[entry], 3.5);
+
+    static_assert(first{}[std::make_pair(4, 5)] == 4);
+    static_assert(
+        mapping_of<maps::element_map<1>, std::pair<int, double>, double>);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// maps::element_map's noexcept follows std::get, so variant access propagates
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: std::get is noexcept for tuple/pair/array but throws
+// bad_variant_access for std::variant, so an unconditional noexcept on the
+// accessor chain turned that throw into std::terminate.
+namespace {
+using int_pair = std::pair<int, int>;
+using nested_pair = std::pair<std::pair<int, int>, int>;
+using int_variant = std::variant<int, double>;
+using variant_pair = std::pair<std::variant<int, double>, int>;
+}  // namespace
+
+static_assert(noexcept(
+    std::declval<const maps::element_map<1> &>()[std::declval<int_pair &>()]));
+static_assert(noexcept(std::declval<const maps::element_map<0, 1> &>()
+                           [std::declval<nested_pair &>()]));
+static_assert(
+    !noexcept(std::declval<
+              const maps::element_map<0> &>()[std::declval<int_variant &>()]));
+static_assert(!noexcept(std::declval<const maps::element_map<0, 0> &>()
+                            [std::declval<variant_pair &>()]));
+
+GTEST_TEST(element_map, variant_access_propagates_instead_of_terminating) {
+    int_variant v{3.5};  // holds the double alternative
+    maps::element_map<0> first;
+    ASSERT_THROW((void)first[v], std::bad_variant_access);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// map_if's const subscript returns a reference, not a copy
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: vertex_map_if / arc_map_if returned `auto` from the const
+// subscript and decltype(auto) from the mutable one, so every read through a
+// const algorithm object copied the mapped value (dijkstra reads its distance
+// and predecessor maps that way).
 static_assert(
     std::same_as<decltype(std::declval<
                           vertex_map_if<true, static_digraph, std::string> &>()
@@ -274,32 +334,4 @@ GTEST_TEST(map_if, const_subscript_returns_a_reference) {
     // the disabled specialization is still an empty, freely constructible stub
     static_assert(
         std::is_empty_v<vertex_map_if<false, static_digraph, std::string>>);
-}
-
-// ############ regression: element_map noexcept vs std::variant ##############
-
-// std::get is noexcept for tuple/pair/array but throws bad_variant_access for
-// std::variant, so an unconditional noexcept on the accessor chain turned that
-// throw into std::terminate.
-namespace {
-using int_pair = std::pair<int, int>;
-using nested_pair = std::pair<std::pair<int, int>, int>;
-using int_variant = std::variant<int, double>;
-using variant_pair = std::pair<std::variant<int, double>, int>;
-}  // namespace
-
-static_assert(noexcept(
-    std::declval<const views::element_map<1> &>()[std::declval<int_pair &>()]));
-static_assert(noexcept(std::declval<const views::element_map<0, 1> &>()
-                           [std::declval<nested_pair &>()]));
-static_assert(
-    !noexcept(std::declval<
-              const views::element_map<0> &>()[std::declval<int_variant &>()]));
-static_assert(!noexcept(std::declval<const views::element_map<0, 0> &>()
-                            [std::declval<variant_pair &>()]));
-
-GTEST_TEST(element_map, variant_access_propagates_instead_of_terminating) {
-    int_variant v{3.5};  // holds the double alternative
-    views::element_map<0> first;
-    ASSERT_THROW((void)first[v], std::bad_variant_access);
 }

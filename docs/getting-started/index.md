@@ -18,7 +18,7 @@ and refined by capability concepts — `outward_incidence_graph`, `inward_adjace
 
 ```cpp
 template <outward_incidence_graph Graph,
-          input_mapping<arc_t<Graph>> LengthMap, dijkstra_trait Traits>
+          mapping_view<arc_t<Graph>> LengthMap, dijkstra_traits Traits>
     requires has_vertex_map<Graph>
 class dijkstra;
 ```
@@ -55,7 +55,7 @@ This inverts the usual dependency, and buys a lot:
 - the storage type is the graph implementation's choice and a full customization point — `static_digraph` hands back a flat `static_map` indexed in O(1), a graph with non-integral vertices can hand back a hash map, and either can use a custom allocator;
 - a mutable graph can hold a back-reference to its maps and resize them when vertices are created, or reclaim their memory on destruction.
 
-The [mapping concepts](../graphs/mappings.md) (`input_mapping`, `output_mapping`, `contiguous_mapping` and their `..._of` refinements) describe those maps in the same style: `std::vector`, `std::map`, `std::vector<bool>`, melon's own containers and your `operator[]`-providing type all qualify, and an algorithm asks for exactly the capability it uses. `contiguous_mapping` in particular is what lets the shortest-path algorithms issue explicit prefetches.
+The [mapping concepts](../graphs/mappings.md) (`mapping`, `output_mapping`, `contiguous_mapping` and their `..._of` refinements) describe those maps in the same style: `std::vector`, `std::vector<bool>`, melon's own containers and your `operator[]`-providing type all qualify (`std::map` too, once wrapped by `maps::mapping_all` — which the algorithms apply themselves), and an algorithm asks for exactly the capability it uses. `contiguous_mapping` in particular is what lets the shortest-path algorithms issue explicit prefetches.
 
 ## Algorithms are ranges you can step
 
@@ -97,7 +97,7 @@ for(auto && a : alg.path_to(t)) { ... }
 
 The predecessor and distance maps are declared `[[no_unique_address]]` and collapse to nothing when the corresponding flag is `false`, so the default Dijkstra allocates one status map and one heap — and `dist()` and `path_to()` are then *removed from the overload set* by a `requires` clause rather than failing at runtime. Swapping the [semiring](../algorithms/shortest-paths.md#semirings) turns the same Dijkstra into a most-reliable-path or a maximum-capacity-path search without touching the traversal code.
 
-The same principle drives the [views](../views/graphs.md): `views::reverse(g)`, `views::subgraph(g, vertex_filter, arc_filter)` and `views::undirect(g)` are lazy adaptors holding a reference, not rebuilt graphs, and they are themselves graphs — so they compose, and any algorithm accepts them.
+The same principle drives the [views](../views/graphs.md): `views::reverse(g)`, `views::subgraph(g, vertex_filter, arc_filter)` and `views::undirect(g)` are lazy adaptors holding a reference, not rebuilt graphs, and they are themselves graphs — so they compose (`g | views::subgraph(keep) | views::reverse`, as in `std::ranges`), and any algorithm accepts them.
 
 ## Is melon right for you?
 

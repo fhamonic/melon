@@ -24,7 +24,7 @@ namespace melon {
 
 // clang-format off
 template <typename Traits>
-concept network_voronoi_trait = semiring<typename Traits::semiring> &&
+concept network_voronoi_traits = semiring<typename Traits::semiring> &&
     updatable_priority_queue<typename Traits::heap> && requires() {
     { Traits::store_cluster_adjacency } -> std::convertible_to<bool>;
 };
@@ -47,7 +47,7 @@ struct network_voronoi_default_traits {
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
                              vertex_map_t<Graph, std::size_t>,
-                             views::element_map<1>, views::element_map<0>>;
+                             maps::element_map<1>, maps::element_map<0>>;
 
     static constexpr bool store_cluster_adjacency = false;
 };
@@ -59,9 +59,10 @@ struct network_voronoi_default_traits {
 // identifies the cell the vertex fell into. Same non-negativity requirement as
 // melon::dijkstra.
 // O((m + n) log n) with the default binary heap.
-template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> LengthMap,
-          network_voronoi_trait Traits>
-    requires has_vertex_map<Graph>
+template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
+          network_voronoi_traits Traits = network_voronoi_default_traits<
+              Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class network_voronoi : public algorithm_view_interface<
                             network_voronoi<Graph, LengthMap, Traits>> {
 private:
@@ -73,7 +74,6 @@ private:
     using entry_cmp = typename Traits::entry_cmp;
 
     using length_type = mapped_value_t<LengthMap, arc_t<Graph>>;
-    using traversal_entry = std::pair<vertex, length_type>;
 
     using heap = Traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
@@ -92,36 +92,58 @@ private:
 
 public:
     template <typename G, typename M>
-    [[nodiscard]] constexpr network_voronoi(G && g, M && l)
-        : _graph(views::graph_all(std::forward<G>(g)))
-        , _length_map(views::mapping_all(std::forward<M>(l)))
+        requires graph_storable_as<G, Graph> &&
+                     mapping_storable_as<M, LengthMap>
+    constexpr network_voronoi(G && g, M && l)
+        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        , _length_map(detail::store_mapping<LengthMap>(std::forward<M>(l)))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(
               create_vertex_map<vertex_status>(_graph, PRE_HEAP)) {}
 
     template <typename G, typename M, typename K>
-    [[nodiscard]] constexpr network_voronoi(G && g, M && l, K && k)
+        requires graph_storable_as<G, Graph> &&
+                 mapping_storable_as<M, LengthMap>
+    constexpr network_voronoi(G && g, M && l, K && k)
         : network_voronoi(std::forward<G>(g), std::forward<M>(l)) {
         set_kernels(std::forward<K>(k));
     }
 
     template <typename... Args>
-    [[nodiscard]] constexpr network_voronoi(Traits, Args &&... args)
+        requires std::constructible_from<network_voronoi, Args...>
+    constexpr network_voronoi(Traits, Args &&... args)
         : network_voronoi(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr network_voronoi(const network_voronoi &) = default;
-    [[nodiscard]] constexpr network_voronoi(network_voronoi &&) = default;
+    constexpr network_voronoi(const network_voronoi &) = default;
+    constexpr network_voronoi(network_voronoi &&) = default;
 
     constexpr network_voronoi & operator=(const network_voronoi &) = default;
     constexpr network_voronoi & operator=(network_voronoi &&) = default;
 
-    constexpr network_voronoi & reset() noexcept {
+    // The graph the algorithm runs over. An algorithm owns its view rather
+    // than adapting it, so this is the std::ranges::owning_view shape --
+    // references, ref-qualified -- and not the filter_view shape the graph
+    // *views* use. Returning a copy here would also put traversal_forest back
+    // where it started: it reaches its sources through base(), and an owned
+    // graph view is move-only.
+    [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
+    [[nodiscard]] constexpr const Graph & base() const & noexcept {
+        return _graph;
+    }
+    [[nodiscard]] constexpr Graph && base() && noexcept {
+        return std::move(_graph);
+    }
+    [[nodiscard]] constexpr const Graph && base() const && noexcept {
+        return std::move(_graph);
+    }
+
+    constexpr network_voronoi & reset() {
         _heap.clear();
         _vertex_status_map.fill(PRE_HEAP);
         return *this;
     }
     template <std::ranges::range K>
-    constexpr network_voronoi & set_kernels(K && kernels) noexcept {
+    constexpr network_voronoi & set_kernels(K && kernels) {
         assert(_heap.empty());
         for(auto && k : kernels) {
             assert(_vertex_status_map[k] != IN_HEAP);
@@ -131,23 +153,26 @@ public:
         return *this;
     }
 
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() const
+        noexcept(noexcept(_heap.empty())) {
         return _heap.empty();
     }
 
-    [[nodiscard]] constexpr auto current() const noexcept {
+    // See competing_dijkstras::current(): the noexcept measures the copy the
+    // return performs, not just the top() call.
+    [[nodiscard]] constexpr auto current() const
+        noexcept(noexcept(typename heap::value_type(_heap.top()))) {
         assert(!finished());
         return _heap.top();
     }
 
-    constexpr void advance() noexcept {
+    constexpr void advance() {
         assert(!finished());
         const auto [t, st_dist] = _heap.top();
         _vertex_status_map[t] = POST_HEAP;
         auto && out_arcs_range = melon::out_arcs(_graph, t);
-        prefetch_range(out_arcs_range);
-        prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
-        prefetch_mapped_values(out_arcs_range, _length_map);
+        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
+                                 _length_map);
         _heap.pop();
         for(const arc & a : out_arcs_range) {
             const vertex & w = melon::arc_target(_graph, a);
@@ -166,42 +191,44 @@ public:
         }
     }
 
-    constexpr void run() noexcept {
-        while(!finished()) advance();
-    }
-
-    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr bool reached(const vertex & u) const
+        noexcept(noexcept(_vertex_status_map[u] != PRE_HEAP)) {
         return _vertex_status_map[u] != PRE_HEAP;
     }
-    [[nodiscard]] constexpr bool visited(const vertex & u) const noexcept {
+    // A view of the reached state, like breadth_first_search's and
+    // depth_first_search's. It refers into the algorithm, as every melon map
+    // view refers into what it names: it is valid while this object lives and
+    // stays put, exactly the contract mapping_ref_view carries.
+    // See dijkstra::reached_map: computed, not stored.
+    [[nodiscard]] constexpr auto reached_map() const {
+        return maps::map([this](const vertex & u) { return reached(u); });
+    }
+    [[nodiscard]] constexpr bool visited(const vertex & u) const
+        noexcept(noexcept(_vertex_status_map[u] == POST_HEAP)) {
         return _vertex_status_map[u] == POST_HEAP;
     }
 };
 
-template <
-    typename Graph, typename LengthMap,
-    typename Traits = network_voronoi_default_traits<
-        Graph, mapped_value_t<views::mapping_all_t<LengthMap>, arc_t<Graph>>>>
+// No Traits parameter: the class template's own default computes it, so the
+// deduced type and the explicitly written `network_voronoi<G, LM>` agree.
+template <typename Graph, typename LengthMap>
 network_voronoi(Graph &&, LengthMap &&)
     -> network_voronoi<views::graph_all_t<Graph>,
-                       views::mapping_all_t<LengthMap>, Traits>;
+                       maps::mapping_all_t<LengthMap>>;
 
 template <typename Graph, typename LengthMap, typename Traits>
 network_voronoi(Traits, Graph &&, LengthMap &&)
     -> network_voronoi<views::graph_all_t<Graph>,
-                       views::mapping_all_t<LengthMap>, Traits>;
+                       maps::mapping_all_t<LengthMap>, Traits>;
 
-template <
-    typename Graph, typename LengthMap, typename Kernels,
-    typename Traits = network_voronoi_default_traits<
-        Graph, mapped_value_t<views::mapping_all_t<LengthMap>, arc_t<Graph>>>>
-network_voronoi(Graph &&, LengthMap &&, Kernels &&)
-    -> network_voronoi<views::graph_all_t<Graph>,
-                       views::mapping_all_t<LengthMap>, Traits>;
+template <typename Graph, typename LengthMap, typename Kernels>
+network_voronoi(Graph &&, LengthMap &&,
+                Kernels &&) -> network_voronoi<views::graph_all_t<Graph>,
+                                               maps::mapping_all_t<LengthMap>>;
 
 template <typename Graph, typename LengthMap, typename Kernels, typename Traits>
 network_voronoi(Traits, Graph &&, LengthMap &&, Kernels &&)
     -> network_voronoi<views::graph_all_t<Graph>,
-                       views::mapping_all_t<LengthMap>, Traits>;
+                       maps::mapping_all_t<LengthMap>, Traits>;
 
 }  // namespace melon

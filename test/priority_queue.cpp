@@ -17,6 +17,10 @@ using namespace melon;
 // states about the heap it is handed, so what matters is that the shipped
 // heaps satisfy them and that near-misses are rejected.
 
+////////////////////////////////////////////////////////////////////////////////
+// the shipped heaps model the concepts
+////////////////////////////////////////////////////////////////////////////////
+
 using plain_heap = d_ary_heap<2, int>;
 
 // The heap dijkstra instantiates: entries are (vertex, distance) pairs keyed
@@ -24,7 +28,7 @@ using plain_heap = d_ary_heap<2, int>;
 using dijkstra_heap =
     updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::less<int>,
                          static_map<unsigned int, std::size_t>,
-                         views::element_map<1>, views::element_map<0>>;
+                         maps::element_map<1>, maps::element_map<0>>;
 
 static_assert(priority_queue<plain_heap>);
 static_assert(priority_queue<d_ary_heap<4, double>>);
@@ -34,8 +38,13 @@ static_assert(updatable_priority_queue<dijkstra_heap>);
 // A plain heap has no handle on its entries, so it cannot be updated.
 static_assert(!updatable_priority_queue<plain_heap>);
 
-// std::priority_queue is the obvious near-miss: it has no clear(), and its
-// top() returns a reference rather than a value_type.
+////////////////////////////////////////////////////////////////////////////////
+// every concept requirement is load-bearing: near-misses are rejected
+////////////////////////////////////////////////////////////////////////////////
+
+// std::priority_queue is the obvious near-miss: it has no clear(), which
+// every melon algorithm's reset() needs. (Its by-reference top() is fine --
+// see top_by_reference below.)
 static_assert(!priority_queue<std::priority_queue<int>>);
 static_assert(!priority_queue<std::vector<int>>);
 static_assert(!priority_queue<int>);
@@ -60,6 +69,10 @@ struct no_clear : complete_queue {
 };
 static_assert(!priority_queue<no_clear>);
 
+// The std::priority_queue shape of top() -- by const reference -- is
+// accepted: the concept asks for convertible_to<value_type>, not
+// same_as, so a heap may hand back either a copy or a reference.
+// d_ary_heap itself returns by reference.
 struct top_by_reference {
     using value_type = int;
     using size_type = std::size_t;
@@ -70,7 +83,20 @@ struct top_by_reference {
     bool empty() const;
     void clear();
 };
-static_assert(!priority_queue<top_by_reference>);
+static_assert(priority_queue<top_by_reference>);
+
+// But a top() whose result does not convert to value_type is still rejected.
+struct top_unrelated {
+    using value_type = int;
+    using size_type = std::size_t;
+    void push(value_type);
+    void * top() const;
+    void pop();
+    size_type size() const;
+    bool empty() const;
+    void clear();
+};
+static_assert(!priority_queue<top_unrelated>);
 
 // std::semiregular is part of the concept: an algorithm default-constructs
 // its heap before filling it.
@@ -95,6 +121,11 @@ struct no_demote : updatable {
 static_assert(priority_queue<no_demote>);
 static_assert(!updatable_priority_queue<no_demote>);
 }  // namespace
+
+////////////////////////////////////////////////////////////////////////////////
+// driven through the concept surface alone, the heaps behave as an algorithm
+// expects
+////////////////////////////////////////////////////////////////////////////////
 
 // The concept only describes the surface; these check the surface actually
 // behaves as an algorithm would expect when driven through it alone.

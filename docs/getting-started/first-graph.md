@@ -39,7 +39,7 @@ The builder is variadic in its arc properties: `static_digraph_builder<static_di
 
 ## What you got back
 
-`graph` is a `static_digraph`. `length_map` is a plain `std::vector<double>`, which is all melon needs: it is indexed by arc, and `std::vector` already models [`input_mapping`](../graphs/mappings.md).
+`graph` is a `static_digraph`. `length_map` is a plain `std::vector<double>`, which is all melon needs: it is indexed by arc, and `std::vector` already models [`mapping`](../graphs/mappings.md).
 
 The two type aliases you will use everywhere are `vertex_t<G>` and `arc_t<G>` — for `static_digraph` both are `unsigned int`, which is why the sources below are written `0u`:
 
@@ -146,7 +146,16 @@ for(auto && [v, dist] : dijkstra(views::reverse(graph), length_map, 4u)) {
 }
 ```
 
-Views are graphs, so they nest: `views::reverse(views::subgraph(g, keep_vertex))` is a perfectly ordinary graph to melon. See [Graph views](../views/graphs.md).
+Views are graphs, so they nest — and, as in `std::ranges`, they pipe. These two lines describe the same adapted graph, and for a plain adaptor like `views::reverse` the call and pipe spellings even build exactly the same type:
+
+```cpp
+auto v1 = views::reverse(views::subgraph(g, keep_vertex));
+auto v2 = g | views::subgraph(keep_vertex) | views::reverse;
+```
+
+(The one difference: `views::subgraph(keep_vertex)` used as a pipe stage keeps its own copy of the filter, so the pipeline can never outlive it.)
+
+Passed an ordinary (lvalue) graph, a view holds a reference to it; passed a temporary, it takes ownership — the same rule as `std::views::all`, and you rarely need to think about it. When you do (returning a view from a function, storing one in a class), [Ownership and mapping views](../views/ownership.md) is the chapter that spells the rules out. See [Graph views](../views/graphs.md) for every adaptor.
 
 The length map does not have to be a container either — a callable works directly, and no storage is materialized at all:
 
@@ -156,7 +165,7 @@ for(auto && [v, hops] : dijkstra(graph, [](auto &&) { return 1; }, 0u))
     std::println("vertex {} at {} hops", v, hops);
 ```
 
-The lambda is wrapped into a mapping for you: every algorithm routes its map arguments through `views::mapping_all`, which [subscripts a callable by calling it](../graphs/mappings.md#mapping-views). The same holds for a `std::map`, whose `operator[]` is not const-callable.
+The lambda is wrapped into a mapping for you: every algorithm routes its map arguments through `maps::mapping_all`, which [subscripts a callable by calling it](../graphs/mappings.md#mapping-views). The same holds for a `std::map`, whose `operator[]` is not const-callable.
 
 ## When the graph must change
 

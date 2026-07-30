@@ -8,11 +8,21 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// static_forward_digraph models the outward-only incidence and adjacency
+// graph concepts and supports vertex and arc maps
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(melon::graph<static_forward_digraph>);
 static_assert(melon::outward_incidence_graph<static_forward_digraph>);
 static_assert(melon::outward_adjacency_graph<static_forward_digraph>);
 static_assert(melon::has_vertex_map<static_forward_digraph>);
 static_assert(melon::has_arc_map<static_forward_digraph>);
+
+////////////////////////////////////////////////////////////////////////////////
+// construction from source/target vectors defines the vertices, arcs,
+// out-incidence lists and validity bounds -- and out-of-range queries die
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(static_forward_digraph, empty_constructor) {
     static_forward_digraph graph;
@@ -124,4 +134,45 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
                   std::ranges::empty_view<vertex_t<static_forward_digraph>>()));
 
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the constructor forwards its range arguments: rvalues may be moved from,
+// lvalues are left intact
+////////////////////////////////////////////////////////////////////////////////
+
+// regression (2.8): the constructor did `_arc_target(std::move(targets))` on a
+// forwarding reference -- stealing from an lvalue the caller still owned --
+// and then read `targets` in the asserts below it. Harmless only because
+// static_map's range constructor copies. It forwards now, and checks the
+// member.
+GTEST_TEST(static_forward_digraph, built_from_rvalue_ranges) {
+    std::vector<unsigned int> sources{0u, 0u, 1u, 2u};
+    std::vector<unsigned int> targets{1u, 2u, 2u, 0u};
+
+    const static_forward_digraph graph(3, std::move(sources),
+                                       std::move(targets));
+
+    ASSERT_EQ(num_vertices(graph), 3u);
+    ASSERT_EQ(num_arcs(graph), 4u);
+    ASSERT_TRUE(EQ_RANGES(out_arcs(graph, 0u), {0u, 1u}));
+    ASSERT_TRUE(EQ_RANGES(out_arcs(graph, 1u), {2u}));
+    ASSERT_TRUE(EQ_RANGES(out_arcs(graph, 2u), {3u}));
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 0u), {1u, 2u}));
+    for(const auto a : arcs(graph))
+        ASSERT_EQ(arc_target(graph, a),
+                  std::vector<unsigned int>({1u, 2u, 2u, 0u})[a]);
+}
+
+// and from lvalues, which is what std::move was quietly stealing from
+GTEST_TEST(static_forward_digraph,
+           built_from_lvalue_ranges_leaves_them_intact) {
+    std::vector<unsigned int> sources{0u, 0u, 1u, 2u};
+    std::vector<unsigned int> targets{1u, 2u, 2u, 0u};
+
+    const static_forward_digraph graph(3, sources, targets);
+
+    ASSERT_EQ(num_arcs(graph), 4u);
+    ASSERT_TRUE(EQ_RANGES(sources, {0u, 0u, 1u, 2u}));
+    ASSERT_TRUE(EQ_RANGES(targets, {1u, 2u, 2u, 0u}));
 }

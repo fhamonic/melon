@@ -44,6 +44,10 @@ static bool contains(const std::string & haystack, const std::string & needle) {
     return haystack.find(needle) != std::string::npos;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// the output is a well-formed dot digraph, with sensible defaults
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(graphviz_printer, emits_a_well_formed_digraph) {
     const auto graph = triangle_digraph();
     const auto dot = print(printer(graph));
@@ -77,6 +81,11 @@ GTEST_TEST(graphviz_printer, uses_the_default_colors_and_page_size) {
     ASSERT_TRUE(contains(print(p), "size=\"4.5,6\""));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// per-element and map setters are reflected in the output, untouched elements
+// keep the defaults
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(graphviz_printer, setters_chain_and_are_reflected) {
     const auto graph = triangle_digraph();
     printer p(graph);
@@ -108,17 +117,17 @@ GTEST_TEST(graphviz_printer, map_setters_cover_every_element) {
     const auto graph = triangle_digraph();
     printer p(graph);
 
-    auto vertex_names = views::map(
+    auto vertex_names = maps::map(
         [](const vertex & v) { return std::string("v") + char('0' + v); });
-    auto arc_names = views::map(
+    auto arc_names = maps::map(
         [](const arc & a) { return std::string("a") + char('0' + a); });
 
     p.set_vertex_label_map(vertex_names)
         .set_vertex_size_map(
-            views::map([](const vertex & v) { return 1.0 + double(v); }))
+            maps::map([](const vertex & v) { return 1.0 + double(v); }))
         .set_arc_label_map(arc_names)
         .set_arc_size_map(
-            views::map([](const arc & a) { return 2.0 + double(a); }));
+            maps::map([](const arc & a) { return 2.0 + double(a); }));
 
     const auto dot = print(p);
     for(const auto & name : {"v0", "v1", "v2", "a0", "a1", "a2"})
@@ -127,6 +136,11 @@ GTEST_TEST(graphviz_printer, map_setters_cover_every_element) {
     ASSERT_TRUE(contains(dot, "penwidth=\"2\""));
     ASSERT_TRUE(contains(dot, "penwidth=\"4\""));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// layout: positions are rescaled to the page, same-colored elements share one
+// directive
+////////////////////////////////////////////////////////////////////////////////
 
 // Positions are rescaled to fit the page, so the bounding box of the drawing
 // spans the requested width or height, and starts at the origin.
@@ -160,6 +174,10 @@ GTEST_TEST(graphviz_printer, groups_elements_by_color) {
     ASSERT_EQ(count(dot, "fillcolor=\"#ff0000\""), 1u);
     ASSERT_EQ(count(dot, "fillcolor=\"#ffffff\""), 1u);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// a graph without arcs still prints a valid document
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(graphviz_printer, handles_a_graph_without_arcs) {
     static_digraph_builder<static_digraph> builder(2);

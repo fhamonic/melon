@@ -49,6 +49,7 @@ add_executable(
   reverse.cpp
   topological_sort.cpp
   subgraph.cpp
+  pipe_syntax.cpp
   dinitz.cpp
   strongly_connected_components.cpp
   graph_view.cpp
@@ -76,6 +77,8 @@ add_executable(
   graphviz_printer.cpp
   algorithmic_generator.cpp
   geometry.cpp
+  api_consistency.cpp
+  api_review.cpp
 )
 target_include_directories(melon_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(melon_test GTest::gtest)

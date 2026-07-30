@@ -89,6 +89,8 @@ for(auto && a : out_arcs(g, v) | std::views::filter([&](auto a) {
 
 There is no `tie(it, end) = vertices(g)`, no `INVALID` sentinel to compare against, and no `graph_traits` specialization to write.
 
+The same idiom extends to whole graphs: [graph views](../views/graphs.md) adapt lazily and pipe, `std::ranges`-style — `g | views::reverse`, `g | views::subgraph(keep)` — where Boost.Graph has `reverse_graph<G>` and `filtered_graph<G, P>` wrappers you spell out by type.
+
 ### 2. Algorithms are lazy generators, not visitor-driven calls
 
 Boost.Graph expresses "do something at each step" with a visitor class and named parameters; LEMON with `init()` / `addSource()` / `processNextNode()`. melon inverts the control flow: the algorithm is an [input range](../algorithms/index.md), so the *loop body* is the visitor, and `break` is the early exit.
@@ -115,7 +117,7 @@ auto dist = create_vertex_map<double>(g, 0.0);
 dist[v] = 3.0;
 ```
 
-The storage type is the graph's choice, and *anything* with `operator[]` qualifies as a map — `std::vector`, `std::map`, `std::vector<bool>`, your own type, or a lambda wrapped in `views::map`. See [Mappings](../graphs/mappings.md).
+The storage type is the graph's choice, and *anything* with `operator[]` qualifies as a map — `std::vector`, `std::map`, `std::vector<bool>`, your own type, or a lambda wrapped in `maps::map`. See [Mappings](../graphs/mappings.md).
 
 ### 4. Concepts replace traits classes — and your type can be the graph
 
@@ -124,8 +126,8 @@ To make a type usable by Boost.Graph you specialize `graph_traits` and provide t
 An algorithm's requirements are visible in its signature and enforced at the call site:
 
 ```cpp
-template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> LengthMap,
-          dijkstra_trait Traits>
+template <outward_incidence_graph Graph, mapping_view<arc_t<Graph>> LengthMap,
+          dijkstra_traits Traits>
     requires has_vertex_map<Graph>
 class dijkstra;
 ```

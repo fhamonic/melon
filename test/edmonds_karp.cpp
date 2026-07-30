@@ -3,48 +3,17 @@
 
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/mapping.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
+#include "melon/views/complete_digraph.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace melon;
 
-GTEST_TEST(edmonds_karp, no_arcs) {
-    static_digraph_builder<static_digraph, int, char> builder(2);
-
-    auto [graph, capacity, part_of_minimum_cut] = builder.build();
-
-    edmonds_karp alg(graph, capacity, 0u, 1u);
-    ASSERT_EQ(alg.run().flow_value(), 0);
-    ASSERT_TRUE(EMPTY(alg.minimum_cut()));
-    alg.reset();
-}
-
-GTEST_TEST(edmonds_karp, arc_with_0_capacity) {
-    static_digraph_builder<static_digraph, int> builder(2);
-
-    builder.add_arc(0, 1, 0);
-
-    auto [graph, capacity] = builder.build();
-
-    edmonds_karp alg(graph, capacity, 0u, 1u);
-    ASSERT_EQ(alg.run().flow_value(), 0);
-    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
-    alg.reset();
-}
-
-GTEST_TEST(edmonds_karp, arc_with_fixed_capacity) {
-    static_digraph_builder<static_digraph, int> builder(2);
-
-    builder.add_arc(0, 1, 107);
-
-    auto [graph, capacity] = builder.build();
-
-    edmonds_karp alg(graph, capacity, 0u, 1u);
-    ASSERT_EQ(alg.run().flow_value(), 107);
-    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
-    alg.reset();
-}
+////////////////////////////////////////////////////////////////////////////////
+// edmonds_karp computes the maximum flow value and a minimum cut
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(edmonds_karp, test) {
     static_digraph_builder<static_digraph, int, char> builder(6);
@@ -72,8 +41,51 @@ GTEST_TEST(edmonds_karp, test) {
     alg.reset();
 }
 
-#include "melon/mapping.hpp"
-#include "melon/views/complete_digraph.hpp"
+////////////////////////////////////////////////////////////////////////////////
+// degenerate networks are handled: a single saturated arc, a zero capacity,
+// no arcs at all
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(edmonds_karp, arc_with_fixed_capacity) {
+    static_digraph_builder<static_digraph, int> builder(2);
+
+    builder.add_arc(0, 1, 107);
+
+    auto [graph, capacity] = builder.build();
+
+    edmonds_karp alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 107);
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
+    alg.reset();
+}
+
+GTEST_TEST(edmonds_karp, arc_with_0_capacity) {
+    static_digraph_builder<static_digraph, int> builder(2);
+
+    builder.add_arc(0, 1, 0);
+
+    auto [graph, capacity] = builder.build();
+
+    edmonds_karp alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 0);
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
+    alg.reset();
+}
+
+GTEST_TEST(edmonds_karp, no_arcs) {
+    static_digraph_builder<static_digraph, int, char> builder(2);
+
+    auto [graph, capacity, part_of_minimum_cut] = builder.build();
+
+    edmonds_karp alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 0);
+    ASSERT_TRUE(EMPTY(alg.minimum_cut()));
+    alg.reset();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the algorithm also runs on a lazy graph view with a lambda capacity map
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(edmonds_karp, complete_digraph_view) {
     auto graph = views::complete_digraph<>(5ul);

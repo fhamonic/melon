@@ -10,6 +10,11 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// intrusive_view walks a cursor through deref/increment/condition functors and
+// is an input range
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(intrusive_range, test) {
     std::vector<int> values = {1, 2, 6, 3, 7};
 
@@ -33,33 +38,28 @@ GTEST_TEST(intrusive_range, test) {
         { ++i } -> std::same_as<I &>;
         i++;
     });
-    {
+    static_assert(std::movable<I>);
+    static_assert(std::weakly_incrementable<I>);
+    static_assert(std::input_or_output_iterator<I>);
+    static_assert(requires(const I in) {
+        typename std::iter_value_t<I>;
+        typename std::iter_reference_t<I>;
+        typename std::iter_rvalue_reference_t<I>;
+        { *in } -> std::same_as<std::iter_reference_t<I>>;
         {
-            {
-                static_assert(std::movable<I>);
-                static_assert(std::weakly_incrementable<I>);
-                static_assert(std::input_or_output_iterator<I>);
-            }
-            static_assert(requires(const I in) {
-                typename std::iter_value_t<I>;
-                typename std::iter_reference_t<I>;
-                typename std::iter_rvalue_reference_t<I>;
-                { *in } -> std::same_as<std::iter_reference_t<I>>;
-                {
-                    std::ranges::iter_move(in)
-                } -> std::same_as<std::iter_rvalue_reference_t<I>>;
-            });
-            static_assert(std::indirectly_readable<I>);
-            static_assert(std::input_iterator<I>);
-        }
-        static_assert(std::semiregular<S>);
-        static_assert(std::sentinel_for<S, I>);
-        static_assert(std::ranges::range<R>);
-        static_assert(std::ranges::input_range<R>);
-    }
+            std::ranges::iter_move(in)
+        } -> std::same_as<std::iter_rvalue_reference_t<I>>;
+    });
+    static_assert(std::indirectly_readable<I>);
+    static_assert(std::input_iterator<I>);
+    static_assert(std::semiregular<S>);
+    static_assert(std::sentinel_for<S, I>);
+    static_assert(std::ranges::range<R>);
+    static_assert(std::ranges::input_range<R>);
     static_assert(std::movable<R>);
     static_assert(std::ranges::viewable_range<R>);
 
+    // not a forward range: the iterator is single-pass
     // static_assert(std::forward_iterator<I>);
     // static_assert(std::ranges::forward_range<R>);
 
@@ -81,11 +81,34 @@ GTEST_TEST(intrusive_range, test) {
     ASSERT_TRUE(it == end);
 }
 
-// ############ regression: CTAD with named (lvalue) functors #################
+////////////////////////////////////////////////////////////////////////////////
+// the single-pass iterator advertises iterator_concept and no Cpp17 category
+////////////////////////////////////////////////////////////////////////////////
 
-// The constructor took `Deref &&` etc. directly. Those are *class* template
-// parameters, so they form plain rvalue references, not forwarding references,
-// and only inline temporaries could be passed:
+// See consumable_view.cpp: single-pass iterators advertise iterator_concept
+// and no iterator_category, so std::iterator_traits stays empty and
+// pre-ranges algorithms reject them at their constraints.
+namespace {
+template <typename T>
+constexpr bool advertises_cpp17_category_iv =
+    requires { typename std::iterator_traits<T>::iterator_category; };
+using probe_intrusive_view =
+    intrusive_view<int, std::identity, std::identity,
+                   decltype([](const int & i) { return i < 3; })>;
+using intrusive_it = std::ranges::iterator_t<probe_intrusive_view>;
+static_assert(std::input_iterator<intrusive_it>);
+static_assert(std::same_as<typename intrusive_it::iterator_concept,
+                           std::input_iterator_tag>);
+static_assert(!advertises_cpp17_category_iv<intrusive_it>);
+}  // namespace
+
+////////////////////////////////////////////////////////////////////////////////
+// CTAD accepts named lvalue functors and decays them into owned copies
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: the constructor took `Deref &&` etc. directly. Those are *class*
+// template parameters, so they form plain rvalue references, not forwarding
+// references, and only inline temporaries could be passed:
 //   error: cannot bind rvalue reference of type 'lambda&&' to lvalue
 GTEST_TEST(intrusive_view, accepts_named_lvalue_functors) {
     std::vector<int> values = {1, 2, 6, 3, 7};
@@ -117,11 +140,13 @@ GTEST_TEST(intrusive_view, accepts_named_lvalue_functors) {
     static_assert(std::ranges::input_range<decltype(from_lvalues)>);
 }
 
-// ################## regression: noexcept honesty ############################
+////////////////////////////////////////////////////////////////////////////////
+// noexcept follows the user functors, so a throwing functor propagates
+////////////////////////////////////////////////////////////////////////////////
 
-// operator*, operator++ and operator==(sentinel) were unconditionally noexcept
-// while invoking user-supplied functors: a throwing functor called
-// std::terminate instead of propagating.
+// regression: operator*, operator++ and operator==(sentinel) were
+// unconditionally noexcept while invoking user-supplied functors: a throwing
+// functor called std::terminate instead of propagating.
 namespace {
 struct throwing_deref {
     int operator()(const std::size_t i) const {

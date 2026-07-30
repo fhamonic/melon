@@ -6,7 +6,24 @@ A view is a graph that computes its answers from another graph instead of storin
 for(auto && [v, dist] : dijkstra(views::reverse(graph), length_map, t)) { ... }
 ```
 
-Views live in `namespace melon::views`, one header each under `melon/views/`.
+Views follow the `std::ranges` shape: the *class* lives in `melon` (`reverse_view`, `subgraph_view`, `induced_subgraph_view`, `undirect_view`) and the *adaptor object* you actually spell lives in `namespace melon::views` (`views::reverse`, `views::subgraph`, …), one header each under `melon/views/`.
+
+## Pipe syntax
+
+Every adaptor supports `operator|`. For an argument-free adaptor the two spellings name exactly the same type, so the pipe costs nothing by construction; a *bound* adaptor stage differs from the direct call in one deliberate way, explained below:
+
+```cpp
+auto r1 = views::reverse(graph);
+auto r2 = graph | views::reverse;               // same type as r1
+
+auto sub = graph | views::subgraph(keep);       // bound closure
+auto rsub = graph | views::reverse | views::subgraph();
+
+auto adaptor = views::reverse | views::subgraph();  // closures compose
+auto rsub2 = graph | adaptor;                   // same type as rsub
+```
+
+A multi-argument adaptor binds first, like `std::views::filter`: `views::subgraph(vf)` returns a self-contained closure holding a *copy* of the filter, so it is reusable and never dangles; `g | views::subgraph` without the parentheses is a compile error. Custom adaptors get the same behavior by deriving from `views::graph_adaptor_closure` (the melon analogue of `std::ranges::range_adaptor_closure`, whose `operator|` requires a `std::ranges::range` and therefore cannot serve graphs).
 
 ## `reverse`
 
@@ -33,7 +50,7 @@ The view exposes an inward capability exactly when the underlying graph has the 
 
 ## `subgraph`
 
-`views::subgraph(g, vertex_filter, arc_filter)` restricts a graph to the elements its filters accept. Both filters are [mappings](../graphs/mappings.md) to `bool` and both default to `views::true_map`:
+`views::subgraph(g, vertex_filter, arc_filter)` restricts a graph to the elements its filters accept. Both filters are [mappings](../graphs/mappings.md) to `bool` and both default to `maps::true_map`:
 
 ```cpp
 #include "melon/views/subgraph.hpp"
@@ -111,7 +128,7 @@ arc_source(cd, 5);  // 1
 arc_target(cd, 5);  // 3
 ```
 
-Arc `a` leaves vertex `a / (n - 1)`; self-loops are skipped, so the targets of vertex `u` are the other `n - 1` vertices in order. There is no storage and no allocation, which makes it the right input for a dense problem — a TSP instance, a metric closure — where the arc data lives in a `views::map` over the endpoint coordinates rather than in a container:
+Arc `a` leaves vertex `a / (n - 1)`; self-loops are skipped, so the targets of vertex `u` are the other `n - 1` vertices in order. There is no storage and no allocation, which makes it the right input for a dense problem — a TSP instance, a metric closure — where the arc data lives in a `maps::map` over the endpoint coordinates rather than in a container:
 
 ```cpp
 auto dist = [&](auto a) {

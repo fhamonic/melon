@@ -12,6 +12,16 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// d_ary_heap pops pushed elements in priority order, for any arity
+////////////////////////////////////////////////////////////////////////////////
+
+// top() has the std::priority_queue shape -- a reference into the heap
+// array, invalidated by push/pop/promote/demote -- not a copy per call.
+static_assert(
+    std::same_as<decltype(std::declval<const d_ary_heap<2, int> &>().top()),
+                 const int &>);
+
 GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
     d_ary_heap<2, int> heap;
@@ -45,7 +55,7 @@ GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
 
 // GTEST_TEST(d_ary_heap, 2_heap_prio_map_push_pop_test) {
 //     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-//     d_ary_heap<2, std::pair<bool, int>, views::element_map<1>> heap;
+//     d_ary_heap<2, std::pair<bool, int>, maps::element_map<1>> heap;
 //     for(auto && e : datas) {
 //         heap.push(std::make_pair(true, e));
 //     }
@@ -80,7 +90,7 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
-                   views::element_map<1>>
+                   maps::element_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -106,7 +116,7 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<3, std::pair<std::size_t, int>, std::greater<int>,
-                   views::element_map<1>>
+                   maps::element_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -132,7 +142,7 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<4, std::pair<std::size_t, int>, std::greater<int>,
-                   views::element_map<1>>
+                   maps::element_map<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -150,12 +160,16 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// updatable_d_ary_heap re-orders itself when a priority is promoted or demoted
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
     constexpr std::size_t num_elements = 6;
     updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::greater<int>,
                          std::array<std::size_t, num_elements>,
-                         views::element_map<1>, views::element_map<0>>
+                         maps::element_map<1>, maps::element_map<0>>
         heap;
 
     static_assert(updatable_priority_queue<decltype(heap)>);
@@ -209,7 +223,7 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
 //     external_priority_map::array = {0, 7, 3, 5, 6, 11};
 //     constexpr std::size_t num_elements = 6;
 //     d_ary_heap<2, unsigned int, external_priority_map, std::greater<int>,
-//                views::identity_map>
+//                maps::identity_map>
 //         heap;
 //     for(unsigned int i = 0; i < external_priority_map::array.size(); ++i) {
 //         heap.push(i);
@@ -255,10 +269,13 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
 //     //     heap.pop();
 //     // }
 // }
-// ######### regression: promote/demote need a writable priority map ###########
 
-// promote()/demote() rewrite the priority inside an entry via
-// `_entry_priority_map[e] = p`. With views::identity_map -- the default
+////////////////////////////////////////////////////////////////////////////////
+// promote/demote require a priority map that writes into the entry
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: promote()/demote() rewrite the priority inside an entry via
+// `_entry_priority_map[e] = p`. With maps::identity_map -- the default
 // EntryPriorityMap -- operator[] returns a prvalue, so the write landed on a
 // temporary and was discarded: the heap silently kept the old priority and was
 // never re-ordered. The operations are now constrained on a priority map that
@@ -284,17 +301,17 @@ using indices_map = mapping_owning_view<std::vector<std::size_t>>;
 // a priority map handing back a reference into the entry: supported
 using writable_heap =
     updatable_d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
-                         indices_map, views::element_map<1>,
-                         views::element_map<0>>;
+                         indices_map, maps::element_map<1>,
+                         maps::element_map<0>>;
 // a priority map handing back a copy of the entry: rejected
 using copying_heap =
     updatable_d_ary_heap<2, heap_item, heap_item_cmp, indices_map,
-                         views::identity_map, heap_item_id_map>;
+                         maps::identity_map, heap_item_id_map>;
 }  // namespace
 
-static_assert(mutable_entry_priority_map<views::element_map<1>,
+static_assert(mutable_entry_priority_map<maps::element_map<1>,
                                          std::pair<std::size_t, int>>);
-static_assert(!mutable_entry_priority_map<views::identity_map, heap_item>);
+static_assert(!mutable_entry_priority_map<maps::identity_map, heap_item>);
 
 // the constrained members disappear rather than silently misbehaving
 // (named concepts so the probe stays dependent and actually SFINAEs)
@@ -356,12 +373,14 @@ GTEST_TEST(updatable_d_ary_heap, demote_actually_reorders) {
     ASSERT_EQ(heap.top().second, 20);
 }
 
-// ################## regression: noexcept honesty ############################
+////////////////////////////////////////////////////////////////////////////////
+// the heap's operations declare noexcept honestly
+////////////////////////////////////////////////////////////////////////////////
 
-// push() grows a std::vector and sifts through the user's comparator and
-// priority map; declaring it noexcept turned a bad_alloc (or a throwing
-// comparator) into std::terminate. clear() is genuinely noexcept now that it
-// uses vector::clear rather than resize(0).
+// regression: push() grows a std::vector and sifts through the user's
+// comparator and priority map; declaring it noexcept turned a bad_alloc (or a
+// throwing comparator) into std::terminate. clear() is genuinely noexcept now
+// that it uses vector::clear rather than resize(0).
 namespace {
 using plain_heap = d_ary_heap<2, int, std::greater<int>>;
 }  // namespace
@@ -390,15 +409,17 @@ GTEST_TEST(d_ary_heap, clear_empties_the_heap) {
     ASSERT_EQ(heap.top(), 7);
 }
 
-// ######## regression: greedy single-argument constructor ####################
+////////////////////////////////////////////////////////////////////////////////
+// a single-argument constructor call cannot hijack the copy constructor
+////////////////////////////////////////////////////////////////////////////////
 
-// d_ary_heap_base's `template <typename PC> d_ary_heap_base(PC &&)` was
-// unconstrained, so for a non-const lvalue of the heap type it beat the copy
-// constructor (exact match vs an added const) and tried to build a comparator
-// out of a heap.
+// regression: d_ary_heap_base's `template <typename PC> d_ary_heap_base(PC &&)`
+// was unconstrained, so for a non-const lvalue of the heap type it beat the
+// copy constructor (exact match vs an added const) and tried to build a
+// comparator out of a heap.
 namespace {
 using heap_base = d_ary_heap_base<d_ary_heap<2, int, std::greater<int>>, 2, int,
-                                  std::greater<int>, views::identity_map>;
+                                  std::greater<int>, maps::identity_map>;
 }  // namespace
 
 static_assert(std::copy_constructible<heap_base>);

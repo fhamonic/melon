@@ -54,7 +54,7 @@ Neither is a [range](index.md) — the answer is a single solution, not a sequen
 ```cpp
 #include "melon/algorithm/bentley_ottmann.hpp"
 
-using coord = integer<std::int64_t>;
+using coord = numeric::integer<std::int64_t>;
 using point = std::tuple<coord, coord>;
 using segment = std::tuple<point, point>;
 
@@ -76,7 +76,7 @@ The arguments are a range of segment identifiers and a mapping from identifier t
 
 ### Exact arithmetic
 
-An intersection point is generally not representable in the coordinate type of the input: two integer segments cross at a rational point. melon's answer is `rational<NumT, DenT>` from `melon/utility/rational.hpp`, and the intersection coordinates come back as rationals with `num()` and `den()` accessors:
+An intersection point is generally not representable in the coordinate type of the input: two integer segments cross at a rational point. melon's answer is `rational<NumT, DenT>` from `melon/numeric/rational.hpp`, and the intersection coordinates come back as rationals with `num()` and `den()` accessors:
 
 ```cpp
 std::print("({}/{}, {}/{})", std::int64_t(std::get<0>(p).num()),
@@ -87,12 +87,12 @@ std::print("({}/{}, {}/{})", std::int64_t(std::get<0>(p).num()),
 
 Fractions are not normalized, so the point `(2, 2)` may be reported as `64/32, 64/32`. Compare with cross-multiplication, not by inspecting the numerator.
 
-!!! warning "Use `integer<T>`, not a raw integer type"
+!!! warning "Use `numeric::integer<T>`, not a raw integer type"
 
-    `integer<T>` is `rational<T, const_value<int, 1>>` — an integer that
+    `numeric::integer<T>` is `numeric::rational<T, numeric::const_value<int, 1>>` — an integer that
     participates in melon's exact rational arithmetic. Instantiating the sweep
     on raw `int` coordinates compiles, and then divides by zero at run time.
-    Feed it `integer<std::int64_t>`, or a
+    Feed it `numeric::integer<std::int64_t>`, or a
     [`bounded_value`](../containers/data-structures.md#other-utilities)
     if you want the intermediate widening checked.
 

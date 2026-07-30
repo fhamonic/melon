@@ -11,7 +11,7 @@
 
 namespace melon {
 
-template <graph Graph, input_mapping<arc_t<Graph>> CapacityMap>
+template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
              has_vertex_map<Graph> && has_arc_map<Graph>
 class edmonds_karp {
@@ -31,10 +31,15 @@ private:
     vertex_map_t<Graph, arc> _bfs_pred_arc;
 
 public:
+    // graph_storable_as / mapping_storable_as, so std::is_constructible
+    // answers what the mem-initializers actually do -- see dijkstra's
+    // constructor.
     template <typename G, typename M>
-    [[nodiscard]] constexpr edmonds_karp(G && g, M && c)
-        : _graph(views::graph_all(std::forward<G>(g)))
-        , _capacity_map(views::mapping_all(std::forward<M>(c)))
+        requires graph_storable_as<G, Graph> &&
+                     mapping_storable_as<M, CapacityMap>
+    constexpr edmonds_karp(G && g, M && c)
+        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        , _capacity_map(detail::store_mapping<CapacityMap>(std::forward<M>(c)))
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _bfs_reached_map(create_vertex_map<bool>(_graph))
         , _bfs_pred_arc(create_vertex_map<arc>(_graph)) {
@@ -45,28 +50,46 @@ public:
     }
 
     template <typename G, typename M>
-    [[nodiscard]] constexpr edmonds_karp(G && g, M && c, const vertex & s,
-                                         const vertex & t)
+        requires graph_storable_as<G, Graph> &&
+                 mapping_storable_as<M, CapacityMap>
+    constexpr edmonds_karp(G && g, M && c, const vertex & s, const vertex & t)
         : edmonds_karp(std::forward<G>(g), std::forward<M>(c)) {
         set_source(s);
         set_target(t);
     }
 
-    [[nodiscard]] constexpr edmonds_karp(const edmonds_karp & bin) = default;
-    [[nodiscard]] constexpr edmonds_karp(edmonds_karp && bin) = default;
+    constexpr edmonds_karp(const edmonds_karp &) = default;
+    constexpr edmonds_karp(edmonds_karp &&) = default;
 
     constexpr edmonds_karp & operator=(const edmonds_karp &) = default;
     constexpr edmonds_karp & operator=(edmonds_karp &&) = default;
 
-    constexpr edmonds_karp & set_source(const vertex & s) noexcept {
+    // The graph the algorithm runs over. An algorithm owns its view rather
+    // than adapting it, so this is the std::ranges::owning_view shape --
+    // references, ref-qualified -- and not the filter_view shape the graph
+    // *views* use. Returning a copy here would also put traversal_forest back
+    // where it started: it reaches its sources through base(), and an owned
+    // graph view is move-only.
+    [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
+    [[nodiscard]] constexpr const Graph & base() const & noexcept {
+        return _graph;
+    }
+    [[nodiscard]] constexpr Graph && base() && noexcept {
+        return std::move(_graph);
+    }
+    [[nodiscard]] constexpr const Graph && base() const && noexcept {
+        return std::move(_graph);
+    }
+
+    constexpr edmonds_karp & set_source(const vertex & s) {
         _s = s;
         return *this;
     }
-    constexpr edmonds_karp & set_target(const vertex & t) noexcept {
+    constexpr edmonds_karp & set_target(const vertex & t) {
         _t = t;
         return *this;
     }
-    constexpr edmonds_karp & reset() noexcept {
+    constexpr edmonds_karp & reset() {
         _carried_flow_map.fill(0);
         return *this;
     }
@@ -74,10 +97,8 @@ public:
 private:
     bool find_unsaturated_path() {
         const auto & out_arcs_range = out_arcs(_graph, _s);
-        prefetch_range(out_arcs_range);
-        prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
-        prefetch_mapped_values(out_arcs_range, _capacity_map);
-        prefetch_mapped_values(out_arcs_range, _carried_flow_map);
+        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
+                                 _capacity_map, _carried_flow_map);
         _bfs_reached_map.fill(false);
         _bfs_reached_map[_s] = true;
         _bfs_queue.resize(0);
@@ -138,18 +159,18 @@ private:
     }
 
 public:
-    constexpr edmonds_karp & run() noexcept {
+    constexpr edmonds_karp & run() {
         while(find_unsaturated_path()) {
             push_flow_on_found_path();
         }
         return *this;
     }
-    constexpr value_t flow_value() noexcept {
+    [[nodiscard]] constexpr value_t flow_value() const {
         value_t sum{0};
         for(auto && a : out_arcs(_graph, _s)) sum += _carried_flow_map[a];
         return sum;
     }
-    constexpr auto minimum_cut() noexcept {
+    [[nodiscard]] constexpr auto minimum_cut() const {
         if constexpr(std::ranges::viewable_range<out_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(
                 _bfs_queue, [this](const vertex_t<Graph> & v) {
@@ -171,12 +192,12 @@ public:
 template <typename Graph, typename CapacityMap>
 edmonds_karp(Graph &&,
              CapacityMap &&) -> edmonds_karp<views::graph_all_t<Graph>,
-                                             views::mapping_all_t<CapacityMap>>;
+                                             maps::mapping_all_t<CapacityMap>>;
 
 template <typename Graph, typename CapacityMap>
 edmonds_karp(Graph &&, CapacityMap &&, const vertex_t<Graph> &,
              const vertex_t<Graph> &)
     -> edmonds_karp<views::graph_all_t<Graph>,
-                    views::mapping_all_t<CapacityMap>>;
+                    maps::mapping_all_t<CapacityMap>>;
 
 }  // namespace melon

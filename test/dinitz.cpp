@@ -9,42 +9,9 @@
 
 using namespace melon;
 
-GTEST_TEST(dinitz, no_arcs) {
-    static_digraph_builder<static_digraph, int, char> builder(2);
-
-    auto [graph, capacity, part_of_minimum_cut] = builder.build();
-
-    dinitz alg(graph, capacity, 0u, 1u);
-    ASSERT_EQ(alg.run().flow_value(), 0);
-    ASSERT_TRUE(EMPTY(alg.minimum_cut()));
-    alg.reset();
-}
-
-GTEST_TEST(dinitz, arc_with_0_capacity) {
-    static_digraph_builder<static_digraph, int> builder(2);
-
-    builder.add_arc(0, 1, 0);
-
-    auto [graph, capacity] = builder.build();
-
-    dinitz alg(graph, capacity, 0u, 1u);
-    ASSERT_EQ(alg.run().flow_value(), 0);
-    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
-    alg.reset();
-}
-
-GTEST_TEST(dinitz, arc_with_fixed_capacity) {
-    static_digraph_builder<static_digraph, int> builder(2);
-
-    builder.add_arc(0, 1, 107);
-
-    auto [graph, capacity] = builder.build();
-
-    dinitz alg(graph, capacity, 0u, 1u);
-    ASSERT_EQ(alg.run().flow_value(), 107);
-    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
-    alg.reset();
-}
+////////////////////////////////////////////////////////////////////////////////
+// dinitz computes the maximum flow value and a minimum cut
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(dinitz, test) {
     static_digraph_builder<static_digraph, int, char> builder(6);
@@ -69,6 +36,48 @@ GTEST_TEST(dinitz, test) {
         alg.minimum_cut(), std::views::filter(arcs(graph), [&](const auto & a) {
             return part_of_minimum_cut[a];
         })));
+    alg.reset();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// degenerate networks are handled: a single saturated arc, a zero capacity,
+// no arcs at all
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(dinitz, arc_with_fixed_capacity) {
+    static_digraph_builder<static_digraph, int> builder(2);
+
+    builder.add_arc(0, 1, 107);
+
+    auto [graph, capacity] = builder.build();
+
+    dinitz alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 107);
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
+    alg.reset();
+}
+
+GTEST_TEST(dinitz, arc_with_0_capacity) {
+    static_digraph_builder<static_digraph, int> builder(2);
+
+    builder.add_arc(0, 1, 0);
+
+    auto [graph, capacity] = builder.build();
+
+    dinitz alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 0);
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {0u}));
+    alg.reset();
+}
+
+GTEST_TEST(dinitz, no_arcs) {
+    static_digraph_builder<static_digraph, int, char> builder(2);
+
+    auto [graph, capacity, part_of_minimum_cut] = builder.build();
+
+    dinitz alg(graph, capacity, 0u, 1u);
+    ASSERT_EQ(alg.run().flow_value(), 0);
+    ASSERT_TRUE(EMPTY(alg.minimum_cut()));
     alg.reset();
 }
 

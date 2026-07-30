@@ -49,7 +49,7 @@ template <typename Q>
 concept priority_queue = std::semiregular<Q> &&
     requires(Q q, typename Q::value_type v) {
     q.push(v);
-    { q.top() } -> std::same_as<typename Q::value_type>;
+    { q.top() } -> std::convertible_to<typename Q::value_type>;
     q.pop();
     { q.size() } -> std::same_as<typename Q::size_type>;
     { q.empty() } -> std::convertible_to<bool>;
@@ -66,14 +66,14 @@ concept updatable_priority_queue = priority_queue<Q> &&
 };
 ```
 
-Anything satisfying them can be substituted into an algorithm through its [traits](../algorithms/shortest-paths.md#traits) — including `std::priority_queue` for the non-updatable case, or a bucket queue of your own for integer priorities.
+Anything satisfying them can be substituted into an algorithm through its [traits](../algorithms/shortest-paths.md#traits) — a bucket queue of your own for integer priorities, or any heap with the `std::priority_queue` shape: `top()` may return by value or by `const` reference, whichever suits it. (`std::priority_queue` itself falls one member short: it has no `clear()`, which the algorithms' `reset()` relies on.)
 
 ### `d_ary_heap`
 
 ```cpp
 template <std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
-          input_mapping<Entry> EntryPriorityMap = views::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity_map>
 class d_ary_heap;
 ```
 
@@ -100,8 +100,8 @@ Watch the direction: with the default `std::greater` the maximum is on top. Dijk
 template <std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
           typename IndicesMap = mapping_owning_view<std::unordered_map<Entry, std::size_t>>,
-          input_mapping<Entry> EntryPriorityMap = views::identity_map,
-          input_mapping<Entry> EntryIdMap = views::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity_map,
+          mapping<Entry> EntryIdMap = maps::identity_map>
 class updatable_d_ary_heap;
 ```
 
@@ -111,15 +111,15 @@ Adds `contains(id)`, `priority(id)`, `promote(id, p)` and `demote(id, p)`, by tr
 - `EntryPriorityMap` extracts the priority from an entry.
 - `EntryIdMap` extracts the identifier from an entry.
 
-For a `std::pair<vertex, distance>` entry, the last two are `views::element_map<1>` and `views::element_map<0>`:
+For a `std::pair<vertex, distance>` entry, the last two are `maps::element_map<1>` and `maps::element_map<0>`:
 
 ```cpp
 using entry = std::pair<unsigned int, double>;
 
 updatable_d_ary_heap<2, entry, std::less<double>,
                      static_map<unsigned int, std::size_t>,
-                     views::element_map<1>,   // priority is entry.second
-                     views::element_map<0>>   // id is entry.first
+                     maps::element_map<1>,   // priority is entry.second
+                     maps::element_map<0>>   // id is entry.first
     heap(std::less<double>{}, static_map<unsigned int, std::size_t>(num_vertices));
 
 heap.push({0u, 3.0});
@@ -167,8 +167,8 @@ Every key must be `push`ed before it is looked up. This is the structure [`krusk
 | Header | What it provides |
 | --- | --- |
 | `utility/semiring.hpp` | `shortest_path_semiring`, `most_reliable_path_semiring`, `max_capacity_path_semiring`, `minimum_spanning_tree_semiring` — see [Shortest paths](../algorithms/shortest-paths.md#semirings) |
-| `utility/rational.hpp` | `rational<NumT, DenT>` exact arithmetic, used by the geometric algorithms |
+| `numeric/rational.hpp` | `rational<NumT, DenT>` exact arithmetic, used by the geometric algorithms |
 | `utility/geometry.hpp` | the `cartesian_point`, `cartesian_segment` and `cartesian_line` concepts and the `cartesian` traits |
-| `utility/bounded_value.hpp` | integer types that widen automatically instead of narrowing |
+| `numeric/bounded_value.hpp` | integer types that widen automatically instead of narrowing |
 | `utility/alias_method_sampler.hpp` | O(1) sampling from a discrete distribution |
 | `utility/algorithmic_generator.hpp` | the [`algorithmic_generator` concept](../algorithms/index.md) and the range adaptor built on it |

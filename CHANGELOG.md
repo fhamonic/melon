@@ -11,8 +11,161 @@ First stable release.
 
 ### Breaking changes
 
+- **`input_mapping` and `input_mapping_of` are collapsed into `mapping` and
+  `mapping_of`.** The old two-layer split was redundant: the loose syntactic
+  `mapping` supported no operation, and `input_mapping`'s real content —
+  readability through a const access — was hidden inside `mapped_value_t`.
+  `mapping` now states it directly, so `mapping<std::map<K, V>, K>` is false
+  (its inserting `operator[]` cannot be const; wrapped maps still work through
+  `maps::mapping_all`'s `at()` fallback), and `output_mapping` /
+  `contiguous_mapping` / `mapping_view` refine `mapping`. Rename
+  `input_mapping` → `mapping` and `input_mapping_of` → `mapping_of`; algorithm
+  class heads spell their map parameter `mapping_view<Key> Map` instead of the
+  former `input_mapping<Key> Map` + `requires mapping_view<Map, Key>` pair.
+  The mapped_* aliases probe the exact expression `m[k]` with the same value
+  categories as the concept, so a map whose `operator[]` takes the key by
+  non-const lvalue reference no longer satisfies the concept while
+  hard-erroring in the alias.
+- **`competing_dijkstras::init()` is removed.** "The heap top, if any blue
+  candidate remains, is blue" is now a class invariant that `add_blue_source`,
+  `add_red_source` and `advance()` maintain, so a sourced object is ready to
+  iterate like every other algorithm. Delete the `init()` call; nothing
+  replaces it. Forgetting the old call silently yielded red-claimed vertices.
+- **`bidirectional_dijkstra::run()` returns the algorithm, not the distance.**
+  Like every other `run()` in the library, it drains and returns `*this`; the
+  distance is read through the new `dist()` accessor — `alg.run().dist()`.
+  `run()` is now idempotent (the second call used to return `infty`) and the
+  result survives being ignored. Its traits flag `store_path` is renamed
+  `store_paths`, matching `dijkstra`.
+- **`biobjective_dijkstra::relax()` is private.** A public relaxation step let
+  callers push arbitrary labels behind the traversal's back — the same hole as
+  the removed `push_tarjan`. Insert labels through `add_source(v, blue, red)`,
+  which has the same semantics. The class gains the family's
+  `reached(v)` / `reached_map()` accessors.
+- **`add_source` preconditions are strict family-wide.** `dijkstra` and
+  `competing_dijkstras` used to assert only "not currently in the heap", which
+  admitted re-adding a *settled* vertex and silently corrupted stored paths
+  and distances; every `add_source` now asserts the vertex is untouched.
+- **Stored members are always views, library-wide** (the
+  `std::ranges::transform_view` precedent): `reverse_view`, `subgraph_view`
+  and `undirect_view` require a `graph_view` template argument, and every
+  algorithm's class head requires `graph_view` / `undirected_graph_view` for
+  its graph and `mapping_view` for its stored maps. Constructors always route
+  through `views::graph_all` / `maps::mapping_all`, so a non-view member type
+  was a legal spelling whose constructor could never run — and a raw container
+  member silently deep-copied its argument. Explicitly spelled raw-container
+  members (`dijkstra<static_digraph, static_map<…>>`) are now ill-formed;
+  value ownership is spelled `graph_owning_view` / `mapping_owning_view`,
+  which store the same bytes. Code using CTAD or the `views::…` factories —
+  which only ever produce view types — is unaffected.
+
+### Added
+
+- **`melon::traversal_algorithm` and `melon::rooted_traversal_algorithm`**
+  (`utility/algorithmic_generator.hpp`): the algorithm-object lifecycle as a
+  named, tested contract — `reset()` restores the constructor's state, `run()`
+  drains and returns the algorithm, `current()`/`advance()` require
+  `!finished()`, no post-construction step. Every algorithm is statically
+  asserted against it, and BFS/DFS/`topological_sort` gained the traits
+  concepts (`breadth_first_search_traits`, …) the dijkstra family already had,
+  so a misspelled traits flag fails the constraint instead of silently
+  defaulting.
+- **`graph_storable_as`, `undirected_graph_storable_as` and
+  `mapping_storable_as`**: every algorithm and view constructor is now
+  constrained on what its member initializers actually do — wrapping through
+  `graph_all` / `mapping_all` into the always-a-view member — so
+  `std::is_constructible` answers honestly. Hand-written copy operations carry
+  matching constraints, so `std::copyable` no longer lies for move-only
+  graphs.
+- **Relocation is sound and rebases.** Algorithms that cache incidence
+  cursors (`depth_first_search`, `strongly_connected_components`,
+  `connected_components`, `dinitz`, `traversal_forest`) re-aim every cursor at
+  the *new* graph member when they are moved or copied, using the vertex key
+  stored beside each cursor and `consumable_input_view`'s consumed counter
+  (new `rebase()` / `(range, consumed)` members). This fixes a use-after-free
+  in the defaulted moves over a by-value subgraph, and *widens* copyability:
+  an algorithm over an owned, filtered subgraph is now honestly copyable,
+  where copy used to require `borrowed_graph`.
+- **`static_map` accepts sized forward ranges** (one `ranges::distance` pass,
+  the way std containers accept forward iterators), which makes the
+  `forward_range` constraint on `static_digraph` / `static_forward_digraph`
+  constructors true instead of a lie. **`d_ary_heap`** forwards its base's
+  single-comparator constructor (previously dead code), now `explicit`.
+
 - **Removed the `fhamonic` umbrella namespace.** Everything now lives directly
   in `namespace melon`: replace `fhamonic::melon::` with `melon::`.
+- **Mapping views moved from `melon::views` to `melon::maps`.** `views::map`,
+  `views::mapping_all`, `views::mapping_all_t`, `views::true_map`,
+  `views::false_map`, `views::identity_map` and `views::element_map` are now
+  `maps::…`. `melon::views` holds graph views only — the two are different
+  abstractions that happened to share the word "view", and `views::map` next to
+  `views::reverse` read as though it transformed a graph. `mapping_ref_view`
+  and `mapping_owning_view` stay in `melon`, symmetric with `graph_ref_view`
+  and `graph_owning_view`; so do the mapping *concepts*.
+- **`rational`, `integer`, `make_rational`, `bounded_value` and `const_value`
+  moved to `melon::numeric`.** At namespace scope those names are generic
+  enough to collide with a user's own, and `integer` was not even one — it is
+  a `rational` with a unit denominator.
+- **The traits concepts are plural.** `dijkstra_trait`,
+  `bidirectional_dijkstra_trait`, `network_voronoi_trait`,
+  `biobjective_dijkstra_trait`, `competing_dijkstras_trait` and
+  `alias_method_sampler_trait` are now `…_traits`, matching
+  `bentley_ottmann_traits`. `default_bentley_ottmann_traits` became
+  `bentley_ottmann_default_traits`, matching every other
+  `<algorithm>_default_traits`.
+- **`vertex` / `arc` are private on every graph type.** `mutable_digraph` and
+  `views::subgraph` published them while `static_digraph` and
+  `complete_digraph` did not; `vertex_t<T>` / `arc_t<T>` are the supported
+  spelling and work for all of them.
+- **`disjoint_sets`' three maps are private**, and
+  `strongly_connected_components::push_tarjan()` is now the private
+  `_push_tarjan()` — pushing onto Tarjan's stack behind the traversal's back
+  was never meant to be callable.
+- **Algorithms that cache incidence ranges relocate by rebasing.**
+  `depth_first_search`, `strongly_connected_components`,
+  `connected_components`, `dinitz` and `traversal_forest` keep cursors over
+  `out_arcs` / `out_neighbors` / `vertices`; `views::subgraph`'s filtered
+  ranges capture `this`, so a memberwise copy or move aimed the new object's
+  cursors at the old object's graph. Copy and move now re-ask the *new* graph
+  member for every cached range (each cursor is keyed by its vertex, and the
+  consumed counter restores the position), so both are sound — and copy is
+  *wider* than an intermediate design that constrained it on
+  `melon::enable_borrowed_graph`: an algorithm over an owned, filtered
+  subgraph is copyable. The trait still exists and marks graphs whose ranges
+  are independent of the graph object (the rebase compiles away for them);
+  specialise it for your own view when that holds.
+- **`melon::cpo::incident_edges_fn` is `melon::cpo::incidence_fn`**, the only
+  CPO whose function-object name did not match the object it defines
+  (`melon::incidence`).
+- **`run()` returns `Algo &` on every algorithm** rather than `void` on ten of
+  them and `Algo &` on four, matching `reset()`. Additive: callers discarding
+  the result are unaffected. `bidirectional_dijkstra::run()` still returns the
+  computed distance — it is the one algorithm whose `run()` *is* the answer.
+- **`views::induced_subgraph::vertices()` returns a `ref_view`** over the
+  stored range rather than a copy of it, so its type changed. This is what
+  makes the view usable with an owned vertex range at all.
+- **`noexcept` removed where it was a lie** (see *Fixed* below). Code that
+  relied on those specifications — a `static_assert(noexcept(…))`, or a
+  `noexcept` operation of your own that wrapped one — will need updating.
+- **`subgraph::disable_arc` / `enable_arc` are non-`const`**, matching
+  `disable_vertex` / `enable_vertex`. The filter is part of the view's value.
+  Calls on a `const subgraph &` no longer compile — they only ever did for a
+  `mapping_ref_view` filter; with a `mapping_owning_view` one the pair did not
+  compile at all, which is now fixed.
+- **Three single-argument constructors are `explicit`** —
+  `static_filter_map(size_type)`, `static_digraph_builder(std::size_t)` and
+  `graphviz_printer(const G &)` — matching `static_map`'s. `graphviz_printer
+  p = g;` and `static_filter_map m = 10;` no longer compile.
+- **`bounded_value`'s unary `operator-` is `= delete`d** where the negation of
+  the *range* does not fit: unsigned `T`, or signed `T` with
+  `Min == numeric_limits<T>::min()`. It used to produce
+  `bounded_value<T, -Max, -Min, PS>` — bounds that bracket nothing for
+  unsigned, ill-formed at the signed edge. Widen with `.bound<...>()`,
+  subtract from a zero-valued `bounded_value`, or cast to `T`.
+- **`current()` returns a read-only range** on
+  `strongly_connected_components` (`std::span<const vertex>`) and
+  `connected_components`. It is a window onto the algorithm's own buffer,
+  which the next `advance()` rewrites.
 - **Compiler baseline is GCC 14 / C++23 or Clang 18 / C++23** (GCC 15 / C++26
   is recommended; GCC 14/15, Clang 18 and MinGW GCC 15 are all tested in CI). When the standard library does not provide
   `std::ranges::concat_view` (`__cpp_lib_ranges_concat`), melon transparently
@@ -21,9 +174,271 @@ First stable release.
   feature-test-macro detection. Earlier pre-releases required GCC 15 / C++26.
 - **Dropped the range-v3 dependency.** melon is now dependency-free; the
   `melon/1.0.0-alpha.1` package on Conan Center still predates this change.
+- **Graph views follow the `std::ranges` class/adaptor split, and adaptors
+  support pipe syntax.** The classes are now `melon::reverse_view`,
+  `melon::subgraph_view`, `melon::induced_subgraph_view` and
+  `melon::undirect_view`; the old names in `melon::views` remain as the
+  *adaptor objects*, so every call spelling (`views::reverse(g)`,
+  `views::subgraph(g, vf, af)`, …) is unchanged. What breaks is naming the
+  type: `views::reverse<G>` is now spelled `reverse_view<G>`. In exchange,
+  `g | views::reverse`, `g | views::subgraph(vf)`,
+  `g | views::graph_all` and closure composition
+  (`views::reverse | views::subgraph()`) all work, and both spellings name
+  exactly the same type, so the pipe is zero-cost by construction. Bound
+  closures are self-contained like std's: `views::subgraph(vf)` copies the
+  filter into the closure and each application copies (or, from an rvalue
+  closure, moves) it into the view, so a closure is reusable and never
+  dangles; the direct call keeps melon's reference semantics for lvalue
+  filters. Custom adaptors derive `views::graph_adaptor_closure` — the
+  melon analogue of `std::ranges::range_adaptor_closure`, which cannot be
+  reused because its `operator|` requires a `std::ranges::range`.
+- **`rational.hpp` and `bounded_value.hpp` moved from `melon/utility/` to
+  `melon/numeric/`**, so the directory matches the `melon::numeric`
+  namespace they already declare, the way `melon/views/` matches
+  `melon::views`.
+- **Algorithms are ranges, not `std::ranges` views.**
+  `algorithm_view_interface` no longer derives from
+  `std::ranges::view_interface`, so `std::ranges::view` and
+  `std::ranges::enable_view` are now false for every algorithm. They used to
+  be true, which made an lvalue algorithm piped into a standard adaptor
+  (`alg | std::views::take(3)`) deep-copy the whole algorithm -- heap and
+  vertex maps included -- and run on the copy, leaving the original
+  unconsumed. Adaptors now wrap a `ref_view` around an lvalue and move an
+  rvalue. The base bought nothing else: `empty()`, `front()` and
+  `operator bool` all require `forward_range`, and algorithm ranges are
+  input-only.
+- **`d_ary_heap::top()` returns `const value_type &`**, the
+  `std::priority_queue` shape, instead of a copy per call. The
+  `priority_queue` concept accordingly asks
+  `{ q.top() } -> std::convertible_to<value_type>` rather than
+  `same_as<value_type>`, so heaps may return by value or by reference --
+  the old spelling baked the copying shape into the concept and rejected
+  every STL-shaped heap. The reference is invalidated by `push()`, `pop()`,
+  `promote()` and `demote()`; copy first when the entry must survive one of
+  those (the in-tree algorithms already do).
+- **Single-pass iterators advertise `iterator_concept`, not
+  `iterator_category`.** `algorithm_iterator`, `consumable_iterator`, the
+  `intrusive_view` iterator and the bundled `concat_view` fallback's
+  iterator declared `iterator_category = input_iterator_tag` while their
+  post-increment returns `void` (P0541), so the Cpp17InputIterator
+  operations the category promises (`*it++`) were ill-formed. They now
+  expose `iterator_concept = input_iterator_tag` and no category:
+  `std::input_iterator` is still satisfied, `std::iterator_traits` stays
+  empty, and a pre-ranges algorithm rejects them at its constraint instead
+  of failing mid-instantiation.
+- **`connected_components::current()` returns `std::span<const vertex>`**,
+  the type `breadth_first_search::traversal()` and
+  `strongly_connected_components::current()` already settled on, instead of
+  a `ref_view` over its internal queue.
 
 ### Fixed
 
+#### Third API-review pass
+
+- **`graph_ref_view` and `undirected_graph_ref_view` accepted a temporary
+  whose conversion materialises the graph.** `convertible_to<T, G &>` alone
+  let a handle type with both `operator G&()` and `operator G()` bind, and
+  the view then pointed at an object dying at the end of the
+  full-expression. Both constructors now carry the `std::ranges::ref_view`
+  bindable-test that `mapping_ref_view` already had, plus the conditional
+  `noexcept` measuring the user conversion.
+- **`static_digraph::in_arcs()` yielded arc ids in descending order** while
+  `out_arcs()` is ascending: the constructor's counting sort filled each
+  bucket backwards over ascending ids. It now walks the ids in reverse, so
+  both incidence ranges come out ascending and arc maps indexed inside an
+  `in_arcs` loop are read with a forward stride.
+- **`dinitz::flow_value()` / `minimum_cut()` and `edmonds_karp`'s twins are
+  `[[nodiscard]]`** -- they were the only value-producing members in the
+  library without it, and a discarded `flow_value()` reads as a no-op
+  statement. `dinitz`'s deduction guides also name their map parameter
+  `CapacityMap` instead of the copy-pasted `LengthMap`.
+
+#### Second API-review pass
+
+- **Three algorithms kept a cursor as an iterator into their own buffer and
+  defaulted their copy.** `kruskal::_cursor` points into `_sorted_edges`, and
+  `knapsack_bnb::_best_sol` / `unbounded_knapsack_bnb::_best_sol` hold
+  iterators into `_value_cost_pairs`. A memberwise copy handed the new object
+  iterators into the *source*, so `kruskal::finished()` — comparing against the
+  copy's own `end()` — never came true and `advance()` walked off the end
+  (ASan: heap-buffer-overflow), while a knapsack copy outliving its source read
+  freed memory. All three now copy, then rebase, like the five algorithms that
+  already did.
+- **Cursors over a non-borrowed range aliased the range they were copied or
+  moved from.** `consumable_input_view`'s owning specialisation keeps an
+  iterator that may refer *back* into the range it holds -- a
+  `std::ranges::filter_view` iterator, which is what every `views::subgraph`
+  incidence range yields, holds a pointer to its parent view. The defaulted
+  copy and move therefore aimed the new cursor at the old range. This bit
+  ordinary use, not just copies: these cursors live inside
+  `depth_first_search::_stack`, so a plain vector reallocation moved them and a
+  DFS over a filtered subgraph read freed memory with no copy anywhere in the
+  program. The owning specialisation now tracks how far it has walked and
+  re-derives the iterator in a user-provided copy and move; its copy members
+  are constrained, so a cursor over a move-only range is honestly
+  not-copy-constructible rather than declared-but-ill-formed. **The borrowed
+  specialisation -- what every melon container lands on -- is untouched: 16
+  bytes, no counter, no extra work in `advance()`.** Only the `filter_view`
+  path pays, and it already carried 32 bytes of view: 48 becomes 56.
+- **`views::induced_subgraph` over an owned vertex range was not a graph.**
+  `vertices()` returned by value, and `std::views::all_t` of a temporary
+  container is a move-only `std::ranges::owning_view`, so the member was
+  ill-formed and `graph<induced_subgraph>` silently came back false while
+  construction still compiled. It now hands out a `ref_view`.
+- **`traversal_forest` could not take an owned graph.** It stored the graph
+  view twice — once itself, once inside its `breadth_first_search` — and built
+  the second from the first as an lvalue, which needs a copy
+  `graph_owning_view` does not have. It now stores it once, reached through
+  the new `breadth_first_search::base()`.
+- **`consumable_input_view::operator=` could not bind the expression it exists
+  for.** `_remaining_out_arcs[u] = out_arcs(_graph, u)` — the re-seeding idiom
+  the header documents — is a prvalue, which never bound to `operator=(R &)`.
+  It only compiled at all because the borrowed specialisation happened to have
+  a non-`explicit` converting constructor where the primary one was `explicit`.
+  Both are `explicit` now and both take the range by forwarding reference.
+- **`views::subgraph` was missed entirely by the 1.0.0 `noexcept` sweep.**
+  Every member was unconditionally `noexcept`, including `create_vertex_map` /
+  `create_arc_map`, which allocate, and the six members that build a
+  `filter_view`. Forwarding members now carry a conditional specification, the
+  rest carry none — the same rule the other views follow.
+- **`num_vertices()` carried no `noexcept` specification in any view**, while
+  its `num_arcs()` / `num_edges()` sibling carried a conditional one, silently
+  dropping a guarantee `static_digraph` does give. Fixed in `graph_ref_view`,
+  `graph_owning_view`, `views::reverse`, `views::undirect` and both undirected
+  views, which now also spell their guards as the existing `has_num_vertices` /
+  `has_num_arcs` / `has_num_edges` concepts.
+- **`views::graph_all` and `views::undirected_graph_all` claimed `noexcept`
+  unconditionally** for the ref-view branch, although the converting
+  constructor performs a `static_cast` a user conversion operator can make
+  throwing. Now measured, as `maps::mapping_all` already did.
+- **`bidirectional_dijkstra::length_type` was keyed on the vertex handle**
+  rather than the arc, disagreeing with the class's own default `Traits`; it
+  worked only because every melon container spells both handles `unsigned int`.
+  The same class combined the two frontiers with a raw `+` at four sites
+  instead of `Traits::semiring::plus`, silently wrong for any semiring whose
+  `plus` is not addition, and built its status map through a member call rather
+  than the CPO, rejecting graphs whose maps come from ADL.
+- **`dinitz::minimum_cut()` tested `out_arcs` and then built its view over
+  `in_arcs`**, so a graph with a viewable out-incidence and a non-viewable
+  in-incidence failed to compile. `flow_value()` and `minimum_cut()` are now
+  `const` on both flow algorithms.
+- **`competing_dijkstras` and `biobjective_dijkstra` still defaulted `Traits`
+  on their deduction guides**, computing it over the deduced (reference) graph
+  type while the class computes it over `views::graph_all_t` — so
+  `decltype(competing_dijkstras(g, b, r))` and
+  `competing_dijkstras<G, BLM, RLM>` were different types. Same fix the other
+  four algorithms got in 1.0.0. Both classes also now require
+  `has_vertex_map<Graph>`, which they had always used.
+- **`topological_sort` required `has_num_vertices` without declaring it** — it
+  reserves `num_vertices(_graph)` and keeps an iterator cursor whose stability
+  depends on that reserve — so a graph without it got a hard error inside the
+  constructor instead of a constraint failure.
+- **`alias_method_sampler` wrote `mutable` distributions through a `const`
+  `operator()`**, so two threads sampling from one `const` sampler raced — the
+  same defect `erdos_renyi`'s function-local statics had, in a per-object form.
+  Both distributions are locals now, and an empty item range is asserted rather
+  than handed to a distribution with an inverted range.
+- **`bentley_ottmann::segment_entry` declared assignment operators the compiler
+  had already deleted**: three `const` data members. Same trap that made
+  `induced_subgraph` fail `std::movable`.
+- **Ten missing standard includes** that only compiled transitively: `<span>`
+  (`strongly_connected_components`, `breadth_first_search`), `<stdexcept>`
+  (`static_map`, `static_filter_map` — both `throw std::out_of_range`),
+  `<cassert>` (`biobjective_dijkstra`, `competing_dijkstras`, `subgraph`),
+  `<ranges>` (`biobjective_dijkstra`, `intrusive_view`, `graphviz_printer`) and
+  `<optional>` (`dijkstra`, `topological_sort`).
+- `melon::detail::intrusive_view` inherited `std::ranges::view_base`
+  *privately*; `has_arc_removal` was the one `has_*` concept calling its CPO
+  unqualified; `mapped_reference_t` / `mapped_const_reference_t` probed an
+  rvalue where the `mapping` concept probes an lvalue.
+- `static_digraph_builder` copied each arc property **four times** per
+  `add_arc` — into `add_arc`'s by-value parameter, into `push_arc`'s, into a
+  `make_tuple`, and into `push_back` as an lvalue. Only the first remains.
+
+#### First API-review pass
+
+- **Two constructors read ranges they had just forwarded away.**
+  `static_forward_digraph` did `std::move(targets)` on a *forwarding
+  reference* — stealing from an lvalue the caller still owned — and then read
+  `targets` in its asserts; `static_digraph` forwarded both endpoint ranges
+  and then read them in its asserts and in both degree-counting loops. Both
+  now read the members they were forwarded into. It only ever worked because
+  `static_map`'s range constructor copies.
+- **`complete_digraph::num_arcs()` wrapped silently past 65536 vertices**: it
+  returned `std::size_t` but computed `n * (n - 1)` after casting both operands
+  to `arc`, so 70000 vertices reported 604'962'704 arcs instead of
+  4'899'930'000. It is computed in `std::size_t`, and asserts when the count no
+  longer fits in an arc handle.
+- **`erdos_renyi` was unseedable and raced.** The engine *and* the distribution
+  were function-local `static`s, so no call could be reproduced and concurrent
+  calls shared both. There is now an `erdos_renyi<G>(n, density, generator &)`
+  overload; the two-argument one seeds a local engine.
+- **`weakly_connected_components` was constrained on the wrong concepts** — the
+  adjacency ones, where `views::undirect` needs the incidence ones — so a graph
+  with adjacency but no incidence passed the constraint and then hard-errored
+  inside `undirect`, and one with incidence but no adjacency was rejected
+  although it works.
+- `bounded_value`'s CRTP downcast went through `reinterpret_cast`, which is
+  undefined behaviour for a derived-to-base cast; it is a `static_cast` now.
+  `const_value`'s value-discarding constructor gained the `assert(v == V)` that
+  was the only thing standing between a caller and an ignored argument.
+- `topological_sort` built its in-degree map with `create_vertex_map<long
+  unsigned int>` against a member declared `vertex_map_t<Graph, std::size_t>`:
+  the same type on LP64, three different ones on MinGW-w64 and MSVC, where it
+  did not compile.
+- `DEFINE_RATIONAL_OPERATOR` is `#undef`'d, so `rational.hpp` — and therefore
+  `all.hpp` — no longer leaks an unprefixed function-like macro into every TU.
+  `rational`'s converting `operator rational<ON, OD>()` is `const`, so a const
+  rational can be converted at all.
+- `operator*` on the path iterators of `dijkstra`, `topological_sort` and
+  `bidirectional_dijkstra`, and on `complete_digraph`'s arc iterator, returned
+  a `const` prvalue: it inhibits moves and disagrees with the `reference`
+  typedef beside it.
+- `static_digraph_builder` includes `<cassert>` for the `assert` it uses, and
+  lost a stray `;`. `breadth_first_search` is forward-declared with the tag it
+  is defined with (`-Wmismatched-tags` on Clang and MSVC).
+- **`noexcept` no longer promises what the code cannot keep.** Every algorithm
+  constructor, `reset()`, `add_source()`, `advance()` and `run()` asserted
+  `noexcept` while allocating a heap, a queue and one map per vertex, and while
+  calling the user's length map, semiring, comparator and graph. So did
+  `static_digraph`'s three-argument constructor, every container's
+  `create_vertex_map` / `create_arc_map`, `mutable_digraph::create_vertex` /
+  `create_arc`, `disjoint_sets::push` / `find` / `merge`,
+  `d_ary_heap`'s sift helpers and `static_digraph_builder`. A throw out of any
+  of them called `std::terminate` with no diagnostic. The forwarding views
+  (`graph_ref_view`, `graph_owning_view`, `views::reverse`, `views::undirect`,
+  `undirected_graph_ref_view`, `undirected_graph_owning_view`) keep a
+  *conditional* specification instead, so wrapping a graph neither invents a
+  guarantee it does not give nor discards one it does.
+- **The undirected-graph CPOs computed their `noexcept` from the wrong
+  overload.** Every `is_noexcept` helper in `undirected_graph.hpp` was called
+  as `is_noexcept<T &>()`, which — since `const T &` collapses to `T &` when
+  `T` is itself a reference — made the helper select and measure a *non-const*
+  member while `edges`, `num_edges`, `edge_endpoints`, `incidence` and `degree`
+  all take `const T &`. For a type with distinct const and non-const overloads
+  the specification described the overload that is never called.
+  `experimental/planar_map.hpp` had the same shape and the same fix.
+- **`finished()` and `current()` are `const` on every generator.** They were
+  not on `connected_components`, `strongly_connected_components` and
+  `traversal_forest`, so a `const` reference to one of those could not even be
+  asked whether it was done.
+- **Wrapping a graph in a view no longer loses its endpoint maps.**
+  `graph_ref_view`, `graph_owning_view` and `views::reverse` spelled them
+  `sources_map()` / `targets_map()`, names no CPO ever looked for, so
+  `arc_sources_map(view)` fell back to a synthesised per-arc lambda instead of
+  the container's flat array — once per settled vertex in `dijkstra::advance`.
+  They are `arc_sources_map()` / `arc_targets_map()` now, matching `subgraph`,
+  and are guarded by the new `has_arc_sources_map` / `has_arc_targets_map`
+  concepts.
+- **Copying a view or an algorithm works.** `views::reverse r2(r);`,
+  `breadth_first_search b2(b);` and the like used to pick the converting
+  constructor instead of the copy constructor whenever the operand was a
+  mutable lvalue, which failed to compile. Copies of `topological_sort`,
+  `connected_components` and `strongly_connected_components` are now
+  independent and usable as well; they previously shared a cursor with the
+  original and walked off the end of it.
+- `views::induced_subgraph` is a proper view: it is assignable, and passing one
+  along by value no longer wraps it in an extra owning layer.
 - `melon/all.hpp` compiles again (it referenced two non-existent headers) and
   now includes the entire public API; a dedicated test translation unit keeps
   it from rotting.
@@ -41,6 +456,41 @@ First stable release.
 
 ### Added
 
+- `melon::enable_borrowed_graph<G>` / `melon::borrowed_graph<G>` — an opt-in
+  trait mirroring `std::ranges::enable_borrowed_range`: true when the ranges a
+  graph hands out stay valid independently of the graph *object*. Specialised
+  for `graph_ref_view`, `undirected_graph_ref_view` and
+  `views::complete_digraph`, and propagated through `views::reverse` and
+  `views::undirect`.
+- `breadth_first_search::base()` — the graph view the traversal was built over,
+  so a composing algorithm can keep one copy of it instead of its own
+  alongside.
+
+- `static_map::resize(n)` — reallocates and keeps the elements that still fit,
+  where `reset(n)` keeps nothing. Neither initialises: after a growing
+  `resize` the new tail is indeterminate, unlike `std::vector::resize`.
+- **`static_digraph_builder::build()` is ref-qualified**: `build() &` copies
+  the property vectors as before, `build() &&` moves them out. `add_arc` is
+  ref-qualified to match, so a chain keeps its value category and
+  `static_digraph_builder<G, P>(n).add_arc(...).add_arc(...).build()` reaches
+  the moving overload with no `std::move`. Previously `add_arc` returned
+  `builder &` unconditionally, which would have sent
+  `std::move(b).add_arc(...).build()` back to the copying overload.
+- `has_arc_sources_map<G>` / `has_arc_targets_map<G>` concepts.
+- `[[nodiscard]]` was dropped from every constructor — including the defaulted
+  copy/move ones, where it is pure noise — and from the void-returning
+  `remove_vertex`, `remove_arc`, `change_arc_source` and `change_arc_target`
+  CPOs, where it means nothing. It stays on everything that returns a value the
+  caller has to use.
+- The docs now state which algorithms are ranges and which are not, and record
+  melon's `noexcept` policy: see
+  [Algorithms are ranges](docs/algorithms/index.md).
+- **`Traits` now has a default on every algorithm that takes one.**
+  `dijkstra<G, LM>`, `bidirectional_dijkstra<G, LM>`, `network_voronoi<G, LM>`
+  and `alias_method_sampler<R, P>` previously required all three arguments, so
+  the type CTAD produced could not be written down. The default moved from the
+  deduction guides onto the class templates, which is also what makes the two
+  spellings name the same type.
 - `melon/version.hpp` with `MELON_VERSION_MAJOR` / `MELON_VERSION_MINOR` /
   `MELON_VERSION_PATCH` and a combined `MELON_VERSION` macro for feature
   testing. It is the single source of truth for the version number, parsed by
@@ -53,6 +503,58 @@ First stable release.
   `cxx_std_23` compile feature.
 - `MELON_SANITIZE` CMake option (e.g. `-DMELON_SANITIZE=address,undefined`)
   to build the test suite with sanitizers.
+
+### Internal restructuring
+
+No behaviour change; verified by the suite and, for the Dijkstra hot loop, by
+benchmark (300k vertices / 2.4M arcs, minimum over eight alternating runs:
+**-2.5 %** against the previous release state, i.e. within noise and not a
+regression).
+
+- **The graph views' forwarding members exist once each.** `graph_ref_view`,
+  `graph_owning_view` and `views::reverse` each spelled out the same sixteen
+  accessors; `undirected_graph_ref_view` and `undirected_graph_owning_view` the
+  same ten. They now come from `detail::graph_forwarding_interface` and
+  `detail::undirected_graph_forwarding_interface`, to which a view supplies only
+  `_forwarding_base()`. `views::reverse` redeclares just the eight accessors
+  whose meaning genuinely crosses over, and name hiding does the rest — which
+  also gets availability right for free, since `reverse::out_arcs` is
+  constrained on `has_in_arcs<Graph>`. Forty-eight member definitions became
+  twenty-six. This duplication is *why* the 1.0.0 `noexcept` sweep could touch
+  67 members across four files and still leave `num_vertices` without a
+  specification in every one of them.
+- **Twenty-three of the twenty-six CPOs lost their private `is_noexcept()`.**
+  Each one re-ran the same `if constexpr` its `operator()` ran, in a different
+  place — which is exactly how `undirected_graph.hpp` came to measure an
+  overload the operator never called. They are now one constrained overload per
+  protocol, with the `noexcept` beside the expression it measures, so the two
+  cannot drift. The three left (`arcs`, `arcs_entries`, `out_neighbors` /
+  `in_neighbors`, and the three `create_*_map` factories) keep the `if
+  constexpr` form: their branches encode a ranking policy over several possible
+  fallbacks, and splitting them would be less readable, not more. Fixed on the
+  way: `arc_sources_map` / `arc_targets_map` measured `melon::arc_source` for a
+  branch that actually builds a lambda-backed view.
+- **`detail::intrusive_view` uses `detail::movable_box`.** It solved the
+  "a capturing lambda is copy-constructible but not assignable" problem with
+  three `std::optional`s and two hand-written assignment operators, written out
+  once for the view and again for its iterator — while `mapping_owning_view`
+  already used `movable_box` for the same problem. `movable_box` moved to
+  `melon/detail/movable_box.hpp` and gained an in-place constructor; the four
+  assignment operators are now `= default`, and every iterator sheds three
+  optional discriminants.
+- **`run()` lives in `algorithm_view_interface`.** `while(!finished())
+  advance();` was retyped in eleven algorithms and missing from `kruskal`, which
+  inherits the interface. The three whose `run()` means something else keep
+  their own: `dinitz` and `edmonds_karp` are not generators, and
+  `bidirectional_dijkstra::run()` returns the distance it computed.
+- **`prefetch_keys_and_values`** replaces the identical three- and four-line
+  prefetch preamble in `dijkstra`, `bidirectional_dijkstra`, `network_voronoi`,
+  `competing_dijkstras`, `biobjective_dijkstra` and `edmonds_karp`.
+
+The `advance()` bodies of the four Dijkstra variants were **not** merged. They
+share a shape, not an implementation — the state and the relaxation step differ
+in every one — so a common skeleton would have meant three or four CRTP hooks
+through the library's hottest loop in exchange for about forty lines.
 
 ### Build system
 

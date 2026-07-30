@@ -1,6 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include "melon/algorithm/breadth_first_search.hpp"
 #include "melon/algorithm/depth_first_search.hpp"
 #include "melon/container/mutable_digraph.hpp"
@@ -10,6 +12,11 @@
 #include "ranges_test_helper.hpp"
 
 using namespace melon;
+
+////////////////////////////////////////////////////////////////////////////////
+// the traversal visits the vertices reachable from the source in
+// depth-first order, one advance() at a time
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(depth_first_search, no_arcs_graph) {
     static_digraph_builder<static_digraph> builder(2);
@@ -72,6 +79,10 @@ GTEST_TEST(depth_first_search, test) {
     ASSERT_TRUE(alg.finished());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// the algorithm is an input range over its own traversal
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(depth_first_search, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(8);
 
@@ -102,7 +113,11 @@ GTEST_TEST(depth_first_search, algorithm_iterator) {
         ++cpt;
     }
 }
-// ######################### traits: the store_* flags #########################
+
+////////////////////////////////////////////////////////////////////////////////
+// the store_pred_* traits flags record the DFS tree, each gating exactly its
+// own accessor
+////////////////////////////////////////////////////////////////////////////////
 
 // depth_first_search_default_traits sets all three flags to false and nothing
 // ever overrode them, so _pred_vertices_map, _pred_arcs_map and _depth_map --
@@ -188,7 +203,9 @@ GTEST_TEST(depth_first_search, store_pred_vertices_alone) {
     ASSERT_EQ(alg.pred_vertex(2u), 1u);
 }
 
-// ########################## traits: store_depth #############################
+////////////////////////////////////////////////////////////////////////////////
+// store_depth records the depth along the DFS tree, and rides on no other flag
+////////////////////////////////////////////////////////////////////////////////
 
 // depth() is gated on store_depth, and store_depth alone: it must not ride in
 // on either of the predecessor flags, nor drag them in.
@@ -250,7 +267,9 @@ GTEST_TEST(depth_first_search, depth_equals_pred_chain_length) {
     }
 }
 
-// ############ regression: depth is a tree depth, not a distance #############
+////////////////////////////////////////////////////////////////////////////////
+// regression: depth is a tree depth, not a shortest-hop distance
+////////////////////////////////////////////////////////////////////////////////
 
 // The flag used to be called store_distances, which invited reading it as the
 // shortest-hop distance breadth_first_search::dist() returns. It is not: it
@@ -293,4 +312,32 @@ GTEST_TEST(depth_first_search, depth_is_not_the_shortest_hop_distance) {
     ASSERT_EQ(dfs.depth(v3), 3);
     ASSERT_GT(dfs.depth(v1), bfs.dist(v1));
     ASSERT_GT(dfs.depth(v3), bfs.dist(v3));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// regression: copying a mutable lvalue must pick the copy constructor, not
+// the greedy single-argument constructor
+////////////////////////////////////////////////////////////////////////////////
+
+// The unconstrained `depth_first_search(G &&)` beat the copy constructor for a
+// non-const lvalue and tried to build the algorithm out of itself.
+GTEST_TEST(depth_first_search,
+           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+    static_digraph_builder<static_digraph> builder(4);
+    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    auto [graph] = builder.build();
+
+    depth_first_search alg(graph, 0u);
+    alg.advance();
+
+    depth_first_search from_mutable_lvalue(alg);
+    static_assert(std::same_as<decltype(alg), decltype(from_mutable_lvalue)>);
+    ASSERT_EQ(from_mutable_lvalue.current(), alg.current());
+
+    from_mutable_lvalue.run();
+    ASSERT_TRUE(from_mutable_lvalue.reached(3u));
+    ASSERT_FALSE(alg.reached(3u));  // an independent copy
+
+    decltype(alg) from_const_lvalue(std::as_const(alg));
+    ASSERT_EQ(from_const_lvalue.current(), alg.current());
 }

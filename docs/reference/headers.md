@@ -2,14 +2,25 @@
 
 Every public header, and what it declares. Include what you use; `melon/all.hpp` pulls in everything and is meant for scratch programs.
 
-Everything lives in `namespace melon`, with views in `melon::views` and work in progress in `melon::experimental`.
+Everything lives in `namespace melon`, with four sub-namespaces:
+
+| Namespace | Holds |
+| --- | --- |
+| `melon::views` | **graph** views — `reverse`, `subgraph`, `induced_subgraph`, `undirect`, `complete_digraph`, `graph_all`, `undirected_graph_all` |
+| `melon::maps` | **mapping** views — `map`, `mapping_all`, `true_map`, `false_map`, `identity_map`, `element_map` |
+| `melon::numeric` | the arithmetic value types — `rational`, `integer`, `make_rational`, `bounded_value`, `const_value` |
+| `melon::experimental` | work in progress, no stability guarantee |
+
+The concepts and the customization points stay in `melon` itself, as do the
+ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
+`mapping_ref_view` / `mapping_owning_view`.
 
 ## Core
 
 | Header | Declares |
 | --- | --- |
 | `melon/graph.hpp` | the [graph concepts](../graphs/concepts.md) and every directed [customization point](customization-points.md); `vertex_t`, `arc_t`, `vertex_map_t`, `arc_map_t` |
-| `melon/mapping.hpp` | the [mapping concepts](../graphs/mappings.md), `mapping_ref_view` / `mapping_owning_view` / `views::mapping_all`, `views::map`, `views::true_map`, `views::false_map`, `views::identity_map`, `views::element_map` |
+| `melon/mapping.hpp` | the [mapping concepts](../graphs/mappings.md), `mapping_ref_view` / `mapping_owning_view` / `maps::mapping_all`, `maps::map`, `maps::true_map`, `maps::false_map`, `maps::identity_map`, `maps::element_map` |
 | `melon/undirected_graph.hpp` | the [undirected concepts](../graphs/undirected-graphs.md) and CPOs; `edge_t`, `edge_map_t` |
 | `melon/version.hpp` | `MELON_VERSION_MAJOR` / `MINOR` / `PATCH`, `MELON_VERSION` |
 | `melon/all.hpp` | everything below |
@@ -30,11 +41,11 @@ Everything lives in `namespace melon`, with views in `melon::views` and work in 
 
 | Header | Declares |
 | --- | --- |
-| `graph_view.hpp` | `graph_view_base`, `graph_ref_view`, `graph_owning_view`, `views::graph_all` |
+| `graph_view.hpp` | `graph_view_base`, `graph_ref_view`, `graph_owning_view`, `views::graph_all`, [`views::graph_adaptor_closure`](../views/graphs.md#pipe-syntax) |
 | `undirected_graph_view.hpp` | the undirected counterparts |
-| `reverse.hpp` | [`views::reverse`](../views/graphs.md#reverse) |
-| `subgraph.hpp` | [`views::subgraph`, `views::induced_subgraph`](../views/graphs.md#subgraph) |
-| `undirect.hpp` | [`views::undirect`](../views/graphs.md#undirect) |
+| `reverse.hpp` | `reverse_view`, the [`views::reverse`](../views/graphs.md#reverse) adaptor |
+| `subgraph.hpp` | `subgraph_view`, `induced_subgraph_view`, the [`views::subgraph`, `views::induced_subgraph`](../views/graphs.md#subgraph) adaptors |
+| `undirect.hpp` | `undirect_view`, the [`views::undirect`](../views/graphs.md#undirect) adaptor |
 | `complete_digraph.hpp` | [`views::complete_digraph`](../views/graphs.md#complete_digraph) |
 
 ## Algorithms — `melon/algorithm/`
@@ -47,7 +58,7 @@ Everything lives in `namespace melon`, with views in `melon::views` and work in 
 | `strongly_connected_components.hpp` | [`strongly_connected_components`](../algorithms/traversals.md#strongly_connected_components) |
 | `connected_components.hpp` | [`connected_components`, `weakly_connected_components`](../algorithms/traversals.md#connected-components) |
 | `traversal_forest.hpp` | [`traversal_forest`](../algorithms/traversals.md#traversal_forest) |
-| `dijkstra.hpp` | [`dijkstra`, `dijkstra_default_traits`, `dijkstra_trait`](../algorithms/shortest-paths.md#dijkstra) |
+| `dijkstra.hpp` | [`dijkstra`, `dijkstra_default_traits`, `dijkstra_traits`](../algorithms/shortest-paths.md#dijkstra) |
 | `bidirectional_dijkstra.hpp` | [`bidirectional_dijkstra`](../algorithms/shortest-paths.md#bidirectional_dijkstra) |
 | `biobjective_dijkstra.hpp` | [`biobjective_dijkstra`](../algorithms/shortest-paths.md#biobjective_dijkstra) |
 | `competing_dijkstras.hpp` | [`competing_dijkstras`](../algorithms/shortest-paths.md#competing_dijkstras) |
@@ -70,13 +81,22 @@ Everything lives in `namespace melon`, with views in `melon::views` and work in 
 | `graphviz_printer.hpp` | [`graphviz_printer`](../containers/graphs.md#printing-a-graph) |
 | `erdos_renyi.hpp` | [`erdos_renyi<G>(n, p)`](../containers/graphs.md#generating-a-graph) |
 | `alias_method_sampler.hpp` | [`alias_method_sampler`](../algorithms/others.md#sampling) |
-| `rational.hpp` | `rational<NumT, DenT>`, `integer<T>`, `make_rational` |
 | `geometry.hpp` | `cartesian_point`, `cartesian_segment`, `cartesian_line`, `cartesian` |
-| `bounded_value.hpp` | `bounded_value` and the widening-conversion helpers |
+
+## Numerics — `melon/numeric/`
+
+Everything here lives in `namespace melon::numeric`; the directory matches the namespace, the way `melon/views/` matches `melon::views`.
+
+| Header | Declares |
+| --- | --- |
+| `rational.hpp` | `numeric::rational<NumT, DenT>`, `numeric::integer<T>`, `numeric::make_rational` |
+| `bounded_value.hpp` | `numeric::bounded_value`, `numeric::const_value` and the widening-conversion helpers |
 
 ## Not public API
 
-**`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `prefetch.hpp`, `specialization_of.hpp`.
+**`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `borrowed_graph.hpp` (declares the `enable_borrowed_graph` trait, which *is* public — see below), `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `movable_box.hpp` (the `std::ranges`-style box that keeps a view owning a capturing lambda assignable), `not_self.hpp` (the guard that stops a single-argument constructor template from hijacking a copy), `prefetch.hpp`, `specialization_of.hpp`, `stdlib_check.hpp` (the libstdc++ version diagnostic).
+
+`enable_borrowed_graph` is the one name in that directory you may need: it lives in `melon`, not `melon::detail`, and specialising it is how you tell melon that ranges obtained from a graph view of your own survive the view being relocated. See [Ownership](../views/ownership.md#copying-an-algorithm-enable_borrowed_graph).
 
 The same applies to anything in a `detail` or `detail` namespace, or prefixed with `__` — including `melon::cpo`, where the CPO function objects are defined.
 
@@ -96,6 +116,6 @@ The last two remain in the repository but are excluded from both the CMake insta
 The dependency edges worth knowing:
 
 - `melon/graph.hpp` includes `melon/mapping.hpp` and, at the end, `melon/views/graph_view.hpp` — so having a graph gives you the mapping concepts and `views::graph_all`.
-- every algorithm header includes `melon/graph.hpp`, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `views::map` and the concepts.
+- every algorithm header includes `melon/graph.hpp`, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::map` and the concepts.
 - **container headers do not include `melon/graph.hpp`** — they only need `melon/mapping.hpp`. Including `container/mutable_digraph.hpp` on its own gives you the class but not `create_vertex`, `vertices` or `num_vertices`. Add `melon/graph.hpp` when a container is all you include.
 - no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (`algorithm/dijkstra.hpp` does pull in `container/d_ary_heap.hpp`, which its default traits need.)

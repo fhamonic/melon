@@ -6,9 +6,10 @@
 #include <numeric>
 
 #include "melon/detail/specialization_of.hpp"
-#include "melon/utility/bounded_value.hpp"
+#include "melon/numeric/bounded_value.hpp"
 
 namespace melon {
+namespace numeric {
 
 template <typename NumT, typename DenT = const_value<int, 1>>
 struct rational {
@@ -46,7 +47,7 @@ public:
 
     template <typename ON, typename OD>
         requires std::constructible_from<rational<ON, OD>, NumT, DenT>
-    explicit constexpr operator rational<ON, OD>() {
+    explicit constexpr operator rational<ON, OD>() const {
         return rational<ON, OD>(_num, _den);
     }
 
@@ -73,6 +74,12 @@ public:
 // promoted, so the sign-flipping branch would otherwise deduce a different
 // specialization than the other two (rational<int, int> vs rational<short,
 // short>) and the function would not compile at all for narrow types.
+// A zero denominator is *deliberately* collapsed to the 1/0 sentinel, which
+// compares greater than every finite rational -- that is what makes
+// `operator/` total, and division by a zero rational is how it arises. It is
+// not an error path: the numerator is discarded, so make_rational(5, 0) and
+// make_rational(-5, 0) are the same value. Callers that need to tell the
+// sentinel apart must test den() == 0 themselves.
 template <typename T1, typename T2>
 constexpr rational<T1, T2> make_rational(T1 a, T2 b) {
     if(b == 0) {
@@ -91,12 +98,12 @@ constexpr rational<T1, T2> make_rational(T1 a, T2 b) {
         return expr;                                                    \
     }                                                                   \
     template <typename T, typename N, typename D>                       \
-        requires(!detail::specialization_of<T, rational>)               \
+        requires(!melon::detail::specialization_of<T, rational>)        \
     constexpr auto operator op(const T & a, const rational<N, D> & r) { \
         return rational(a) op r;                                        \
     }                                                                   \
     template <typename T, typename N, typename D>                       \
-        requires(!detail::specialization_of<T, rational>)               \
+        requires(!melon::detail::specialization_of<T, rational>)        \
     constexpr auto operator op(const rational<N, D> & r, const T & a) { \
         return r op rational(a);                                        \
     }
@@ -115,7 +122,13 @@ DEFINE_RATIONAL_OPERATOR(>=, (r1.num() * r2.den()) >= (r2.num() * r1.den()))
 DEFINE_RATIONAL_OPERATOR(==, (r1.num() * r2.den()) == (r2.num() * r1.den()))
 DEFINE_RATIONAL_OPERATOR(!=, (r1.num() * r2.den()) != (r2.num() * r1.den()))
 
+// An unprefixed function-like macro must not survive the header: without this
+// every TU that includes rational.hpp -- and therefore every TU that includes
+// all.hpp -- carried DEFINE_RATIONAL_OPERATOR in the global macro namespace.
+#undef DEFINE_RATIONAL_OPERATOR
+
 template <typename T = int>
 using integer = rational<T, const_value<int, 1>>;
 
+}  // namespace numeric
 }  // namespace melon

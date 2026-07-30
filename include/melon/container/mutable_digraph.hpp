@@ -14,11 +14,12 @@
 namespace melon {
 
 class mutable_digraph {
-public:
+private:
+    // Private, like every other container's: vertex_t<T> / arc_t<T> are the
+    // supported way to name a graph's handle types.
     using vertex = unsigned int;
     using arc = unsigned int;
 
-private:
     static constexpr vertex INVALID_VERTEX = std::numeric_limits<vertex>::max();
     static constexpr arc INVALID_ARC = std::numeric_limits<arc>::max();
     struct vertex_struct {
@@ -109,15 +110,14 @@ private:
     };
 
 public:
-    [[nodiscard]] constexpr mutable_digraph() noexcept
+    constexpr mutable_digraph() noexcept
         : _first_vertex(INVALID_VERTEX)
         , _first_free_vertex(INVALID_VERTEX)
         , _first_free_arc(INVALID_ARC)
         , _num_vertices(0)
         , _num_arcs(0) {};
-    [[nodiscard]] constexpr mutable_digraph(const mutable_digraph & graph) =
-        default;
-    [[nodiscard]] constexpr mutable_digraph(mutable_digraph && graph) = default;
+    constexpr mutable_digraph(const mutable_digraph & graph) = default;
+    constexpr mutable_digraph(mutable_digraph && graph) = default;
 
     constexpr mutable_digraph & operator=(const mutable_digraph &) = default;
     constexpr mutable_digraph & operator=(mutable_digraph &&) = default;
@@ -144,8 +144,11 @@ public:
         assert(is_valid_arc(a));
         return _arcs[a].source;
     }
+    // A lambda-backed mapping_owning_view rather than the mapping_ref_view
+    // the two static digraphs return: the endpoints live inside arc_struct,
+    // so there is no contiguous array of sources to hand a reference to.
     [[nodiscard]] constexpr auto arc_sources_map() const noexcept {
-        return views::map(
+        return maps::map(
             [this](const arc a) -> vertex { return _arcs[a].source; });
     }
     [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
@@ -153,7 +156,7 @@ public:
         return _arcs[a].target;
     }
     [[nodiscard]] constexpr auto arc_targets_map() const noexcept {
-        return views::map(
+        return maps::map(
             [this](const arc a) -> vertex { return _arcs[a].target; });
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex v) const noexcept {
@@ -192,7 +195,9 @@ public:
         });
     }
 
-    [[nodiscard]] constexpr vertex create_vertex() noexcept {
+    // Neither create_vertex nor create_arc is noexcept: both may emplace_back
+    // into _vertices / _arcs (and their filters), which reallocates.
+    [[nodiscard]] constexpr vertex create_vertex() {
         vertex new_vertex;
         if(_first_free_vertex == INVALID_VERTEX) {
             new_vertex = static_cast<vertex>(_vertices.size());
@@ -214,8 +219,7 @@ public:
         return new_vertex;
     }
 
-    [[nodiscard]] constexpr arc create_arc(const vertex from,
-                                           const vertex to) noexcept {
+    [[nodiscard]] constexpr arc create_arc(const vertex from, const vertex to) {
         arc new_arc;
         vertex_struct & tos = _vertices[to];
         vertex_struct & froms = _vertices[from];
@@ -351,22 +355,22 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map()
-        const noexcept {
+    // None of the four below are noexcept: they allocate.
+    [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map() const {
         return static_map<vertex, T>(_vertices.size());
     }
     template <typename T>
     [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map(
-        const T & default_value) const noexcept {
+        const T & default_value) const {
         return static_map<vertex, T>(_vertices.size(), default_value);
     }
     template <typename T>
-    [[nodiscard]] constexpr static_map<arc, T> create_arc_map() const noexcept {
+    [[nodiscard]] constexpr static_map<arc, T> create_arc_map() const {
         return static_map<arc, T>(_arcs.size());
     }
     template <typename T>
     [[nodiscard]] constexpr static_map<arc, T> create_arc_map(
-        const T & default_value) const noexcept {
+        const T & default_value) const {
         return static_map<arc, T>(_arcs.size(), default_value);
     }
 };

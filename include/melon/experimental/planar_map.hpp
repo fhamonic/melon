@@ -22,11 +22,12 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_vertex_coordinates<T>)
-            return noexcept(std::declval<T &>().vertex_coordinates(
-                std::declval<vertex_t<T> &>()));
+            return noexcept(std::declval<const T &>().vertex_coordinates(
+                std::declval<const vertex_t<T> &>()));
         else
-            return noexcept(vertex_coordinates(std::declval<T &>(),
-                                               std::declval<vertex_t<T> &>()));
+            return noexcept(
+                vertex_coordinates(std::declval<const T &>(),
+                                   std::declval<const vertex_t<T> &>()));
     }
 
 public:
@@ -35,7 +36,7 @@ public:
                  has_adl_vertex_coordinates<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_vertex_coordinates<T>)
             return t.vertex_coordinates(v);
         else
@@ -50,7 +51,7 @@ inline constexpr cpo::vertex_coordinates_fn vertex_coordinates{};
 
 template <typename T>
 using vertex_coordinates_t = decltype(melon::experimental::vertex_coordinates(
-    std::declval<vertex_t<T> &>()));
+    std::declval<const vertex_t<T> &>()));
 
 template <typename T>
 concept has_vertex_coordinates =
@@ -80,16 +81,16 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_arc_source_coordinates<T>)
-            return noexcept(std::declval<T &>().arc_source_coordinates(
-                std::declval<arc_t<T> &>()));
+            return noexcept(std::declval<const T &>().arc_source_coordinates(
+                std::declval<const arc_t<T> &>()));
         else if constexpr(has_adl_arc_source_coordinates<T>)
-            return noexcept(arc_source_coordinates(std::declval<T &>(),
-                                                   std::declval<arc_t<T> &>()));
+            return noexcept(arc_source_coordinates(
+                std::declval<const T &>(), std::declval<const arc_t<T> &>()));
         else
             return noexcept(melon::experimental::vertex_coordinates(
-                std::declval<T &>(),
-                melon::arc_source(std::declval<T &>(),
-                                  std::declval<arc_t<T> &>())));
+                std::declval<const T &>(),
+                melon::arc_source(std::declval<const T &>(),
+                                  std::declval<const arc_t<T> &>())));
     }
 
 public:
@@ -99,7 +100,7 @@ public:
                  (has_arc_source<T> && has_vertex_coordinates<T>)
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_arc_source_coordinates<T>)
             return t.arc_source_coordinates(a);
         else if constexpr(has_adl_arc_source_coordinates<T>)
@@ -131,16 +132,16 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_arc_target_coordinates<T>)
-            return noexcept(std::declval<T &>().arc_target_coordinates(
-                std::declval<arc_t<T> &>()));
+            return noexcept(std::declval<const T &>().arc_target_coordinates(
+                std::declval<const arc_t<T> &>()));
         else if constexpr(has_adl_arc_target_coordinates<T>)
-            return noexcept(arc_target_coordinates(std::declval<T &>(),
-                                                   std::declval<arc_t<T> &>()));
+            return noexcept(arc_target_coordinates(
+                std::declval<const T &>(), std::declval<const arc_t<T> &>()));
         else
             return noexcept(melon::experimental::vertex_coordinates(
-                std::declval<T &>(),
-                melon::arc_target(std::declval<T &>(),
-                                  std::declval<arc_t<T> &>())));
+                std::declval<const T &>(),
+                melon::arc_target(std::declval<const T &>(),
+                                  std::declval<const arc_t<T> &>())));
     }
 
 public:
@@ -150,7 +151,7 @@ public:
                  (has_arc_target<T> && has_vertex_coordinates<T>)
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_arc_target_coordinates<T>)
             return t.arc_target_coordinates(a);
         else if constexpr(has_adl_arc_target_coordinates<T>)
@@ -183,16 +184,16 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_faces<T>)
-            return noexcept(std::declval<T &>().faces());
+            return noexcept(std::declval<const T &>().faces());
         else
-            return noexcept(faces(std::declval<T &>()));
+            return noexcept(faces(std::declval<const T &>()));
     }
 
 public:
     template <typename T>
         requires has_member_faces<T> || has_adl_faces<T>
     constexpr decltype(auto) operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_faces<T>)
             return t.faces();
         else if constexpr(has_adl_faces<T>)
@@ -206,7 +207,8 @@ inline constexpr cpo::faces_fn faces{};
 }  // namespace cust
 
 template <typename T>
-using faces_range_t = decltype(melon::experimental::faces(std::declval<T &>()));
+using faces_range_t =
+    decltype(melon::experimental::faces(std::declval<const T &>()));
 
 template <typename T>
 using face_t = std::ranges::range_value_t<faces_range_t<T>>;
@@ -227,12 +229,12 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_num_faces<T>)
-            return noexcept(std::declval<T &>().num_faces());
+            return noexcept(std::declval<const T &>().num_faces());
         else if constexpr(has_adl_num_faces<T>)
-            return noexcept(num_faces(std::declval<T &>()));
+            return noexcept(num_faces(std::declval<const T &>()));
         else
             return noexcept(std::ranges::size(
-                melon::experimental::faces(std::declval<T &>())));
+                melon::experimental::faces(std::declval<const T &>())));
     }
 
 public:
@@ -240,7 +242,7 @@ public:
         requires has_member_num_faces<T> || has_adl_num_faces<T> ||
                  std::ranges::sized_range<faces_range_t<T>>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_num_faces<T>)
             return t.num_faces();
         else if constexpr(has_adl_num_faces<T>)
@@ -271,11 +273,11 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_bounding_arcs<T>)
-            return noexcept(
-                std::declval<T &>().bounding_arcs(std::declval<face_t<T> &>()));
+            return noexcept(std::declval<const T &>().bounding_arcs(
+                std::declval<const face_t<T> &>()));
         else
-            return noexcept(bounding_arcs(std::declval<T &>(),
-                                          std::declval<face_t<T> &>()));
+            return noexcept(bounding_arcs(std::declval<const T &>(),
+                                          std::declval<const face_t<T> &>()));
     }
 
 public:
@@ -283,7 +285,7 @@ public:
         requires has_member_bounding_arcs<T> || has_adl_bounding_arcs<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const face_t<T> & f) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_bounding_arcs<T>)
             return t.bounding_arcs(f);
         else
@@ -298,7 +300,7 @@ inline constexpr cpo::bounding_arcs_fn bounding_arcs{};
 
 template <typename T>
 using bounding_arcs_range_t = decltype(melon::experimental::bounding_arcs(
-    std::declval<T &>(), std::declval<face_t<T> &>()));
+    std::declval<const T &>(), std::declval<const face_t<T> &>()));
 
 namespace cpo {
 template <typename T>
@@ -316,11 +318,11 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_arc_twin<T>)
-            return noexcept(
-                std::declval<T &>().arc_twin(std::declval<arc_t<T> &>()));
+            return noexcept(std::declval<const T &>().arc_twin(
+                std::declval<const arc_t<T> &>()));
         else
-            return noexcept(
-                arc_twin(std::declval<T &>(), std::declval<arc_t<T> &>()));
+            return noexcept(arc_twin(std::declval<const T &>(),
+                                     std::declval<const arc_t<T> &>()));
     }
 
 public:
@@ -328,7 +330,7 @@ public:
         requires has_member_arc_twin<T> || has_adl_arc_twin<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_arc_twin<T>)
             return t.arc_twin(a);
         else
@@ -351,11 +353,11 @@ private:
     template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_arc_face<T>)
-            return noexcept(
-                std::declval<T &>().arc_face(std::declval<arc_t<T> &>()));
+            return noexcept(std::declval<const T &>().arc_face(
+                std::declval<const arc_t<T> &>()));
         else
-            return noexcept(
-                arc_face(std::declval<T &>(), std::declval<arc_t<T> &>()));
+            return noexcept(arc_face(std::declval<const T &>(),
+                                     std::declval<const arc_t<T> &>()));
     }
 
 public:
@@ -363,7 +365,7 @@ public:
         requires has_member_arc_face<T> || has_adl_arc_face<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T &>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_arc_face<T>)
             return t.arc_face(a);
         else
@@ -437,10 +439,11 @@ private:
     template <typename ValueType, typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_create_face_map<T, ValueType>)
-            return noexcept(
-                std::declval<T &>().template create_face_map<ValueType>());
+            return noexcept(std::declval<const T &>()
+                                .template create_face_map<ValueType>());
         else
-            return noexcept(create_face_map<ValueType>(std::declval<T &>()));
+            return noexcept(
+                create_face_map<ValueType>(std::declval<const T &>()));
     }
 
 public:
@@ -448,7 +451,7 @@ public:
         requires has_member_create_face_map<T, ValueType> ||
                  has_adl_create_face_map<T, ValueType>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<ValueType, T &>()) {
+        noexcept(is_noexcept<ValueType, T>()) {
         if constexpr(has_member_create_face_map<T, ValueType>)
             return t.template create_face_map<ValueType>();
         else
@@ -460,7 +463,7 @@ public:
                  has_adl_create_face_map<T, ValueType>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const ValueType & d) const
-        noexcept(is_noexcept<ValueType, T &>()) {
+        noexcept(is_noexcept<ValueType, T>()) {
         if constexpr(has_member_create_face_map<T, ValueType>)
             return t.template create_face_map<ValueType>(d);
         else
@@ -476,7 +479,7 @@ template <typename ValueType, typename T>
     }
 inline constexpr auto create_face_map(const T & t) noexcept(
     noexcept(cpo::create_face_map_fn{}.template operator()<ValueType>(
-        std::declval<T &>()))) {
+        std::declval<const T &>()))) {
     return cpo::create_face_map_fn{}.template operator()<ValueType>(t);
 }
 
@@ -487,14 +490,14 @@ template <typename ValueType, typename T>
 inline constexpr auto
 create_face_map(const T & t, const ValueType & d) noexcept(
     noexcept(cpo::create_face_map_fn{}.template operator()<ValueType>(
-        std::declval<T &>(), std::declval<ValueType &>()))) {
+        std::declval<const T &>(), std::declval<ValueType &>()))) {
     return cpo::create_face_map_fn{}.template operator()<ValueType>(t, d);
 }
 }  // namespace cust
 
 template <typename T, typename ValueType>
 using face_map_t = decltype(melon::experimental::create_face_map<ValueType>(
-    std::declval<T &>()));
+    std::declval<const T &>()));
 
 template <typename T, typename ValueType = std::size_t>
 concept has_face_map =

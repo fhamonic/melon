@@ -5,6 +5,14 @@
 #include <ranges>
 #include <vector>
 
+////////////////////////////////////////////////////////////////////////////////
+// a plain std container models melon::graph by defining the customization
+// points -- no wrapper class needed
+////////////////////////////////////////////////////////////////////////////////
+
+// These definitions must appear BEFORE melon/graph.hpp is included so the
+// library's customization-point lookup can see them: the include order of this
+// file is load-bearing.
 using G = std::vector<std::vector<std::size_t>>;
 
 constexpr auto vertices(const G & g) { return std::views::iota(0ul, g.size()); }
@@ -22,6 +30,11 @@ constexpr auto create_vertex_map(const G & g, const V & d) {
 }
 
 #include "melon/graph.hpp"
+
+////////////////////////////////////////////////////////////////////////////////
+// the concepts detect exactly the protocols defined, and the CPOs and their
+// fallbacks drive them
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(CPO, test) {
     static_assert(melon::graph<G>);

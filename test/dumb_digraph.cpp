@@ -8,6 +8,11 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// dumb_digraph models the graph concepts it serves as a reference
+// implementation for in the fuzzy tests
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(melon::graph<dumb_digraph>);
 static_assert(melon::outward_incidence_graph<dumb_digraph>);
 static_assert(melon::outward_adjacency_graph<dumb_digraph>);
@@ -19,6 +24,12 @@ static_assert(melon::has_change_arc_target<dumb_digraph>);
 using Graph = dumb_digraph;
 using arc_entries_list = std::initializer_list<
     std::pair<arc_t<Graph>, std::pair<vertex_t<Graph>, vertex_t<Graph>>>>;
+
+////////////////////////////////////////////////////////////////////////////////
+// vertices and arcs are created with caller-chosen ids and queried through
+// the generic graph interface; invalid ids are rejected and asserting
+// accessors die on them
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(dumb_digraph, empty_constructor) {
     Graph graph;

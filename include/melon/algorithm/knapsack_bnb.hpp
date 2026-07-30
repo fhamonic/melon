@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <future>
+#include <memory>
 #include <numeric>
 #include <ranges>
 #include <thread>
@@ -16,12 +17,13 @@
 namespace melon {
 
 template <std::ranges::range ItemRange,
-          input_mapping<std::ranges::range_value_t<ItemRange>> ValueMap,
-          input_mapping<std::ranges::range_value_t<ItemRange>> CostMap>
+          mapping_view<std::ranges::range_value_t<ItemRange>> ValueMap,
+          mapping_view<std::ranges::range_value_t<ItemRange>> CostMap>
     requires std::is_arithmetic_v<mapped_value_t<
                  ValueMap, std::ranges::range_value_t<ItemRange>>> &&
              std::is_arithmetic_v<
-                 mapped_value_t<CostMap, std::ranges::range_value_t<ItemRange>>>
+                 mapped_value_t<CostMap,
+                                std::ranges::range_value_t<ItemRange>>>
 class knapsack_bnb {
 private:
     using Item = std::ranges::range_value_t<ItemRange>;
@@ -38,7 +40,7 @@ private:
     std::vector<typename decltype(_value_cost_pairs)::const_iterator> _best_sol;
 
 private:
-    double value_cost_ratio(const std::pair<Value, Cost> & p) const noexcept {
+    double value_cost_ratio(const std::pair<Value, Cost> & p) const {
         if constexpr(std::numeric_limits<float>::is_iec559) {
             return p.first / static_cast<double>(p.second);
         } else {
@@ -48,7 +50,7 @@ private:
     }
 
     Value computeUpperBound(auto it, const auto end, Value bound_value,
-                            Cost bound_budget_left) const noexcept {
+                            Cost bound_budget_left) const {
         for(; it < end; ++it) {
             if(bound_budget_left < it->second)
                 return static_cast<Value>(bound_value +
@@ -61,7 +63,7 @@ private:
         return bound_value;
     }
 
-    void iterative_bnb() noexcept {
+    void iterative_bnb() {
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
@@ -92,7 +94,7 @@ private:
             _best_sol = current_sol;
         }
     }
-    bool iterative_bnb_timeout(std::stop_token stoken) noexcept {
+    bool iterative_bnb_timeout(std::stop_token stoken) {
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
@@ -126,18 +128,66 @@ private:
     }
 
 public:
+    // Constrained on what the mem-initializers actually do, so
+    // std::is_constructible answers honestly -- see dijkstra's constructor.
     template <typename IR, typename VM, typename CM, typename B>
+        requires std::ranges::viewable_range<IR> &&
+                 std::constructible_from<ItemRange, std::views::all_t<IR>> &&
+                 mapping_storable_as<VM, ValueMap> &&
+                 mapping_storable_as<CM, CostMap>
     knapsack_bnb(IR && items_range, VM && value_map, CM && cost_map,
-                 const B budget) noexcept
+                 const B budget)
         : _items_range(std::views::all(std::forward<IR>(items_range)))
-        , _value_map(views::mapping_all(std::forward<VM>(value_map)))
-        , _cost_map(views::mapping_all(std::forward<CM>(cost_map)))
+        , _value_map(detail::store_mapping<ValueMap>(std::forward<VM>(value_map)))
+        , _cost_map(detail::store_mapping<CostMap>(std::forward<CM>(cost_map)))
         , _budget(budget) {
         reset();
     }
 
 public:
-    knapsack_bnb & reset() noexcept {
+    // _best_sol holds iterators *into* _value_cost_pairs. A memberwise copy
+    // leaves them pointing into the source's buffer, so solution_value() /
+    // solution_cost() / solution_items() on a copy read the source -- freed
+    // memory once it dies (ASan: heap-use-after-free). Copy, then rebase.
+    // Move is fine: the vector's buffer transfers with it.
+    // _permuted_items needs no rebasing: it holds iterators into the *wrapped*
+    // range, which a copy shares (an owning ItemRange is move-only, so a
+    // copyable knapsack always references a container it does not own).
+    knapsack_bnb(const knapsack_bnb & o)
+        : _items_range(o._items_range)
+        , _value_map(o._value_map)
+        , _cost_map(o._cost_map)
+        , _budget(o._budget)
+        , _permuted_items(o._permuted_items)
+        , _value_cost_pairs(o._value_cost_pairs) {
+        _rebase_best_sol_from(o);
+    }
+    knapsack_bnb(knapsack_bnb &&) = default;
+
+    knapsack_bnb & operator=(const knapsack_bnb & o) {
+        if(this == std::addressof(o)) return *this;
+        _items_range = o._items_range;
+        _value_map = o._value_map;
+        _cost_map = o._cost_map;
+        _budget = o._budget;
+        _permuted_items = o._permuted_items;
+        _value_cost_pairs = o._value_cost_pairs;
+        _rebase_best_sol_from(o);
+        return *this;
+    }
+    knapsack_bnb & operator=(knapsack_bnb &&) = default;
+
+private:
+    void _rebase_best_sol_from(const knapsack_bnb & o) {
+        _best_sol.resize(0);
+        _best_sol.reserve(o._best_sol.size());
+        for(auto && e : o._best_sol)
+            _best_sol.push_back(_value_cost_pairs.cbegin() +
+                                (e - o._value_cost_pairs.cbegin()));
+    }
+
+public:
+    knapsack_bnb & reset() {
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
         if constexpr(std::ranges::sized_range<ItemRange>) {
@@ -162,19 +212,18 @@ public:
         return *this;
     }
 
-    knapsack_bnb & set_budget(Cost b) noexcept {
+    knapsack_bnb & set_budget(Cost b) {
         _budget = b;
         return *this;
     }
 
-    knapsack_bnb & run() noexcept {
+    knapsack_bnb & run() {
         iterative_bnb();
         return *this;
     }
 
     template <typename Rep, typename Period>
-    bool run_with_timeout(
-        const std::chrono::duration<Rep, Period> & timeout) noexcept {
+    bool run_with_timeout(const std::chrono::duration<Rep, Period> & timeout) {
         std::jthread t([this](std::stop_token stoken) {
             return iterative_bnb_timeout(stoken);
         });
@@ -188,20 +237,20 @@ public:
         return true;
     }
 
-    auto solution_items() const noexcept {
+    auto solution_items() const {
         return std::views::transform(_best_sol, [this](auto && it) {
             return *_permuted_items[static_cast<std::size_t>(
                 std::distance(_value_cost_pairs.cbegin(), it))];
         });
     }
 
-    auto solution_value() const noexcept {
+    auto solution_value() const {
         Value sum = 0;
         for(auto && it : _best_sol) sum += it->first;
         return sum;
     }
 
-    auto solution_cost() const noexcept {
+    auto solution_cost() const {
         Cost sum = 0;
         for(auto && it : _best_sol) sum += it->second;
         return sum;
@@ -209,9 +258,8 @@ public:
 };
 
 template <typename ItemRange, typename ValueMap, typename CostMap>
-knapsack_bnb(ItemRange &&, ValueMap &&, CostMap &&,
-             auto &&) -> knapsack_bnb<std::views::all_t<ItemRange>,
-                                      views::mapping_all_t<ValueMap>,
-                                      views::mapping_all_t<CostMap>>;
+knapsack_bnb(ItemRange &&, ValueMap &&, CostMap &&, auto &&)
+    -> knapsack_bnb<std::views::all_t<ItemRange>, maps::mapping_all_t<ValueMap>,
+                    maps::mapping_all_t<CostMap>>;
 
 }  // namespace melon

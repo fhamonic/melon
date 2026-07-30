@@ -48,16 +48,15 @@ Every concept in melon's public API, with its header and a one-line statement of
 
 | Concept | Requires |
 | --- | --- |
-| `mapping<M, K>` | `m[k]` |
-| `input_mapping<M, K>` | `mapping` and a non-`void` value through a **const** access |
-| `output_mapping<M, K>` | `input_mapping` and `m[k] = v` |
-| `contiguous_mapping<M, K>` | `input_mapping`, integral `K`, and `m.data()` |
-| `input_mapping_of<M, K, V>` | `mapping` and `mapped_value_t<M, K>` is exactly `V` |
+| `mapping<M, K>` | `m[k]` and a non-`void` value through a **const** access |
+| `output_mapping<M, K>` | `mapping` and `m[k] = v` |
+| `contiguous_mapping<M, K>` | `mapping`, integral `K`, and `m.data()` |
+| `mapping_of<M, K, V>` | `mapping` and `mapped_value_t<M, K>` is exactly `V` |
 | `output_mapping_of<M, K, V>` | `output_mapping` and the value is exactly `V` |
 | `contiguous_mapping_of<M, K, V>` | `contiguous_mapping` and the value is exactly `V` |
 | `mapping_view<M, K>` | `mapping`, `std::movable`, and `enable_mapping_view<M>` |
 
-**Aliases.** `mapped_reference_t<M, K>`, `mapped_const_reference_t<M, K>`, `mapped_value_t<M, K>`, `views::mapping_all_t<M>`.
+**Aliases.** `mapped_reference_t<M, K>`, `mapped_const_reference_t<M, K>`, `mapped_value_t<M, K>`, `maps::mapping_all_t<M>`.
 
 ## Views — `melon/views/graph_view.hpp`, `melon/views/undirected_graph_view.hpp`
 
@@ -67,8 +66,18 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `graph_view<T>` | `graph`, `std::movable`, `enable_graph_view` |
 | `enable_undirected_graph_view<T>` | `std::derived_from<T, undirected_graph_view_base>` |
 | `undirected_graph_view<T>` | `undirected_graph`, `std::movable`, and the above |
+| `enable_borrowed_graph<T>` | Opt-in, `false` by default: ranges obtained from `T` stay valid when the `T` *object* is relocated |
+| `borrowed_graph<T>` | `enable_borrowed_graph<std::remove_cvref_t<T>>` |
 
 **Aliases.** `views::graph_all_t<G>`, `views::undirected_graph_all_t<G>`.
+
+`enable_borrowed_graph` mirrors `std::ranges::enable_borrowed_range` and is what
+decides whether an algorithm caching incidence ranges may be copied. It is
+`true` for `graph_ref_view`, `undirected_graph_ref_view` and
+`views::complete_digraph`, propagates through `views::reverse` and
+`views::undirect`, and is `false` for `views::subgraph` and `graph_owning_view`,
+whose ranges point back at the view. Specialise it for a view of your own whose
+ranges do not; see [Ownership](../views/ownership.md#copying-an-algorithm-enable_borrowed_graph).
 
 ## Algorithms and utilities
 
@@ -78,12 +87,12 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::semiregular`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
 | `updatable_priority_queue<Q>` | `utility/priority_queue.hpp` | `priority_queue` plus `contains`, `priority`, `promote`, `demote` |
 | `semiring<S>` | `utility/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less` |
-| `dijkstra_trait<T>` | `algorithm/dijkstra.hpp` | a `semiring`, an `updatable_priority_queue`, `store_distances`, `store_paths` |
-| `bidirectional_dijkstra_trait<T>` | `algorithm/bidirectional_dijkstra.hpp` | same shape |
-| `network_voronoi_trait<T>` | `algorithm/network_voronoi.hpp` | same shape |
-| `biobjective_dijkstra_trait<T>` | `algorithm/biobjective_dijkstra.hpp` | the two-objective label and heap types |
-| `competing_dijkstras_trait<T>` | `algorithm/competing_dijkstras.hpp` | same shape, plus the entry comparator |
-| `alias_method_sampler_trait<T>` | `utility/alias_method_sampler.hpp` | `heuristic_preprocessing` |
+| `dijkstra_traits<T>` | `algorithm/dijkstra.hpp` | a `semiring`, an `updatable_priority_queue`, `store_distances`, `store_paths` |
+| `bidirectional_dijkstra_traits<T>` | `algorithm/bidirectional_dijkstra.hpp` | same shape |
+| `network_voronoi_traits<T>` | `algorithm/network_voronoi.hpp` | same shape |
+| `biobjective_dijkstra_traits<T>` | `algorithm/biobjective_dijkstra.hpp` | the two-objective label and heap types |
+| `competing_dijkstras_traits<T>` | `algorithm/competing_dijkstras.hpp` | same shape, plus the entry comparator |
+| `alias_method_sampler_traits<T>` | `utility/alias_method_sampler.hpp` | `heuristic_preprocessing` |
 | `bentley_ottmann_traits<T>` | `algorithm/bentley_ottmann.hpp` | the geometric kernel types |
 | `cartesian_point<T>` | `utility/geometry.hpp` | `std::get<0>` and `std::get<1>` of the point |
 | `cartesian_segment<T>` | `utility/geometry.hpp` | two `cartesian_point`s |
@@ -96,7 +105,7 @@ Every concept in melon's public API, with its header and a one-line statement of
 Constrain templates on the *least* you need — the diagnostic then names the missing capability at the call site:
 
 ```cpp
-template <outward_incidence_graph G, input_mapping<arc_t<G>> LengthMap>
+template <outward_incidence_graph G, mapping<arc_t<G>> LengthMap>
     requires has_vertex_map<G, double>
 auto my_search(const G & g, const LengthMap & length);
 ```

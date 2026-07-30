@@ -9,10 +9,13 @@
 #include "type_name.hpp"
 
 #include "melon/algorithm/bentley_ottmann.hpp"
-#include "melon/utility/bounded_value.hpp"
+#include "melon/numeric/bounded_value.hpp"
 
 using namespace melon;
+using namespace melon::numeric;
 
+// declared before ranges_test_helper.hpp is included, so its assertion
+// helpers can stream rational coordinates
 template <typename N, typename D>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const rational<N, D> & r) {
@@ -20,6 +23,11 @@ testing::AssertionResult & operator<<(testing::AssertionResult & result,
 }
 
 #include "ranges_test_helper.hpp"
+
+////////////////////////////////////////////////////////////////////////////////
+// fixtures: random segment generators, and a naive quadratic oracle the sweep
+// is checked against
+////////////////////////////////////////////////////////////////////////////////
 
 template <typename C, int BOX_MIN, int BOX_MAX>
 auto generate_random_box_segments(std::size_t num_segments) {
@@ -160,6 +168,11 @@ auto naive_intersections(const std::vector<S> segments) {
     return naive_intersections_vec;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// bentley_ottmann sweeps a hand-built example, reporting each intersection
+// point with the segments through it
+////////////////////////////////////////////////////////////////////////////////
+
 // GTEST_TEST(bentley_ottmann, run_example) {
 //     using coord_t = integer<int64_t>;
 //     using segment =
@@ -222,6 +235,11 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// fuzzy: on random segment sets, the sweep finds the same intersection points
+// and the same segments through each as the quadratic oracle
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
     using coord = integer<int64_t>;
     using point = std::tuple<coord, coord>;
@@ -273,6 +291,7 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
         }
     }
 }
+
 GTEST_TEST(bentley_ottmann, fuzzy_sparse_test) {
     using coord = integer<int64_t>;
     using point = std::tuple<coord, coord>;
@@ -309,6 +328,11 @@ GTEST_TEST(bentley_ottmann, fuzzy_sparse_test) {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// fuzzy: the same agreement holds with bounded_value coordinates, whose
+// arithmetic widens instead of overflowing
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(bentley_ottmann, fuzzy_dense_bounded_value_test) {
     using coord = integer<bounded_value<int8_t>>;

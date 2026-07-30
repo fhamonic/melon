@@ -10,6 +10,11 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// mutable_digraph models the graph concepts with full vertex/arc creation,
+// removal and re-wiring, and its ranges are borrowed forward ranges
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(melon::graph<mutable_digraph>);
 static_assert(melon::outward_incidence_graph<mutable_digraph>);
 static_assert(melon::outward_adjacency_graph<mutable_digraph>);
@@ -31,6 +36,11 @@ static_assert(std::ranges::borrowed_range<in_arcs_range_t<mutable_digraph>>);
 using Graph = mutable_digraph;
 using arc_entries_list = std::initializer_list<
     std::pair<arc_t<Graph>, std::pair<vertex_t<Graph>, vertex_t<Graph>>>>;
+
+////////////////////////////////////////////////////////////////////////////////
+// vertices and arcs can be created, queried and removed; invalid ids are
+// rejected and asserting accessors die on them
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(mutable_digraph, empty_constructor) {
     Graph graph;
@@ -120,6 +130,11 @@ GTEST_TEST(mutable_digraph, remove_arcs) {
     ASSERT_TRUE(EMPTY(out_neighbors(graph, b)));
     ASSERT_TRUE(EQ_MULTISETS(out_neighbors(graph, c), {b}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// any sequence of mutations stays consistent with the dumb_digraph reference
+// implementation
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(mutable_digraph, fuzzy_test) {
     enum Operation {

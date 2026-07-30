@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cassert>
 #include <concepts>
+#include <limits>
 #include <ranges>
 
 #include "melon/container/static_map.hpp"
+#include "melon/detail/borrowed_graph.hpp"
 #include "melon/detail/concat_view.hpp"
 #include "melon/mapping.hpp"
 #include "melon/views/graph_view.hpp"
@@ -17,50 +20,61 @@ private:
     using vertex = V;
     using arc = A;
 
-    vertex _num_vertices;
+    vertex _vertices_end;
 
 public:
-    [[nodiscard]] constexpr explicit complete_digraph(const std::size_t n = 0)
-        : _num_vertices(static_cast<vertex>(n)) {}
+    constexpr explicit complete_digraph(const std::size_t n = 0)
+        : _vertices_end(static_cast<vertex>(n)) {}
 
-    [[nodiscard]] constexpr complete_digraph(const complete_digraph &) =
-        default;
-    [[nodiscard]] constexpr complete_digraph(complete_digraph &&) = default;
+    constexpr complete_digraph(const complete_digraph &) = default;
+    constexpr complete_digraph(complete_digraph &&) = default;
 
     constexpr complete_digraph & operator=(const complete_digraph &) = default;
     constexpr complete_digraph & operator=(complete_digraph &&) = default;
 
     [[nodiscard]] constexpr std::size_t num_vertices() const noexcept {
-        return _num_vertices;
+        return static_cast<std::size_t>(_vertices_end);
     }
     [[nodiscard]] constexpr std::size_t num_arcs() const noexcept {
-        return static_cast<arc>(_num_vertices) *
-               static_cast<arc>(_num_vertices - 1);
+        const std::size_t n = static_cast<std::size_t>(_vertices_end);
+        assert(n * (n - 1) <= std::numeric_limits<arc>::max());
+        return n * (n - 1);
+    }
+
+    // Present on every container in the library; this view was the one graph
+    // type that could not be asked whether a handle it produced is one of its
+    // own.
+    [[nodiscard]] constexpr bool is_valid_vertex(
+        const vertex u) const noexcept {
+        return u < _vertices_end;
+    }
+    [[nodiscard]] constexpr bool is_valid_arc(const arc a) const noexcept {
+        return static_cast<std::size_t>(a) < num_arcs();
     }
 
     [[nodiscard]] constexpr auto vertices() const noexcept {
-        return std::views::iota(vertex(0), _num_vertices);
+        return std::views::iota(vertex(0), _vertices_end);
     }
     [[nodiscard]] constexpr auto arcs() const noexcept {
-        return std::views::iota(arc(0), num_arcs());
+        return std::views::iota(arc(0), static_cast<arc>(num_arcs()));
     }
 
     [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
         assert(a < num_arcs());
-        return static_cast<vertex>(a / (_num_vertices - 1));
+        return static_cast<vertex>(a / (_vertices_end - 1));
     }
     [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
         assert(a < num_arcs());
         vertex source = arc_source(a);
-        vertex target = a % (_num_vertices - 1);
+        vertex target = a % (_vertices_end - 1);
         return target + (source <= target);
     }
 
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
-        assert(u < _num_vertices);
+        assert(u < _vertices_end);
         return std::views::iota(
-            static_cast<arc>(u * (_num_vertices - 1)),
-            static_cast<arc>((u + 1) * (_num_vertices - 1)));
+            static_cast<arc>(u * (_vertices_end - 1)),
+            static_cast<arc>((u + 1) * (_vertices_end - 1)));
     }
 
 private:
@@ -89,7 +103,7 @@ private:
         constexpr custom_iota_iterator(custom_iota_iterator &&) = default;
         constexpr custom_iota_iterator(const custom_iota_iterator &) = default;
 
-        constexpr const reference operator*() const { return _cursor; }
+        constexpr reference operator*() const { return _cursor; }
         constexpr custom_iota_iterator & operator++() noexcept {
             _cursor += _increment;
             return *this;
@@ -119,9 +133,9 @@ private:
 
 public:
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
-        assert(u < _num_vertices);
-        const auto increment = static_cast<arc>(_num_vertices - 1);
-        return detail::views::concat(
+        assert(u < _vertices_end);
+        const auto increment = static_cast<arc>(_vertices_end - 1);
+        return melon::detail::views::concat(
             std::ranges::subrange(
                 custom_iota_iterator(static_cast<arc>(u - 1),
                                      static_cast<arc>(u) * increment,
@@ -129,31 +143,39 @@ public:
                 std::default_sentinel),
             std::ranges::subrange(
                 custom_iota_iterator(
-                    static_cast<arc>((u + 1) * _num_vertices - 1),
+                    static_cast<arc>((u + 1) * _vertices_end - 1),
                     static_cast<arc>(num_arcs()), increment),
                 std::default_sentinel));
     }
 
+    // None of the four below are noexcept: they allocate.
     template <typename T>
-    [[nodiscard]] constexpr auto create_vertex_map() const noexcept {
-        return static_map<vertex, T>(_num_vertices);
+    [[nodiscard]] constexpr auto create_vertex_map() const {
+        return static_map<vertex, T>(_vertices_end);
     }
     template <typename T>
     [[nodiscard]] constexpr auto create_vertex_map(
-        const T & default_value) const noexcept {
-        return static_map<vertex, T>(_num_vertices, default_value);
+        const T & default_value) const {
+        return static_map<vertex, T>(_vertices_end, default_value);
     }
 
     template <typename T>
-    [[nodiscard]] constexpr auto create_arc_map() const noexcept {
+    [[nodiscard]] constexpr auto create_arc_map() const {
         return static_map<arc, T>(num_arcs());
     }
     template <typename T>
-    [[nodiscard]] constexpr auto create_arc_map(
-        const T & default_value) const noexcept {
+    [[nodiscard]] constexpr auto create_arc_map(const T & default_value) const {
         return static_map<arc, T>(num_arcs(), default_value);
     }
 };
 
 }  // namespace views
+
+// Purely generated: vertices(), arcs() and out_arcs() are iota_views and
+// in_arcs() a concat of subranges over self-contained iterators, none of
+// which refers to the view object.
+template <std::integral V, std::integral A>
+inline constexpr bool enable_borrowed_graph<views::complete_digraph<V, A>> =
+    true;
+
 }  // namespace melon

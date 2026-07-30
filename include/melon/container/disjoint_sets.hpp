@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/not_self.hpp"
 #include "melon/mapping.hpp"
 
 namespace melon {
@@ -20,23 +21,23 @@ public:
     using key_type = K;
     using component_type = mapped_value_t<M, K>;
 
-public:
+private:
     M _component_map;
     std::vector<component_type> _parent_map;
     std::vector<component_type> _size_map;
 
 public:
-    [[nodiscard]] constexpr disjoint_sets()
-        : _component_map(), _parent_map(), _size_map() {}
+    constexpr disjoint_sets() : _component_map(), _parent_map(), _size_map() {}
 
     template <typename CM>
-    [[nodiscard]] constexpr explicit disjoint_sets(CM && component_map)
+        requires detail::not_self<CM, disjoint_sets>
+    constexpr explicit disjoint_sets(CM && component_map)
         : _component_map(std::forward<CM>(component_map))
         , _parent_map()
         , _size_map() {}
 
-    [[nodiscard]] constexpr disjoint_sets(const disjoint_sets &) = default;
-    [[nodiscard]] constexpr disjoint_sets(disjoint_sets &&) = default;
+    constexpr disjoint_sets(const disjoint_sets &) = default;
+    constexpr disjoint_sets(disjoint_sets &&) = default;
 
     disjoint_sets & operator=(const disjoint_sets &) = default;
     disjoint_sets & operator=(disjoint_sets &&) = default;
@@ -47,12 +48,20 @@ public:
     [[nodiscard]] constexpr bool empty() const noexcept {
         return _parent_map.empty();
     }
+    // Drops the components, not the key-to-component map: M is only an
+    // output_mapping, so there is no way to enumerate or erase the keys already
+    // written into it. A key pushed before a clear() and not pushed again
+    // therefore still maps to a component index this object no longer has, and
+    // find() on it is out of range. Push every key you intend to query after
+    // each clear() -- which is what kruskal::reset() does.
     constexpr void clear() noexcept {
         _parent_map.resize(0);
         _size_map.resize(0);
     }
 
-    void push(const key_type & k) noexcept {
+    // None of the four below are noexcept: push_back allocates, and all of
+    // them subscript the caller-supplied component map.
+    constexpr void push(const key_type & k) {
         const component_type c = static_cast<component_type>(size());
         _component_map[k] = c;
         _parent_map.push_back(c);
@@ -60,7 +69,7 @@ public:
     }
 
 public:
-    [[nodiscard]] constexpr component_type find(const key_type & k) noexcept {
+    [[nodiscard]] constexpr component_type find(const key_type & k) {
         component_type c = _component_map[k];
         while(_parent_map[c] != c) {
             std::tie(c, _parent_map[c]) =
@@ -70,7 +79,7 @@ public:
     }
 
     constexpr component_type merge(const component_type & c1,
-                                   const component_type & c2) noexcept {
+                                   const component_type & c2) {
         if(c1 == c2) return c1;
         if(_size_map[c1] < _size_map[c2]) {
             _size_map[c2] += _size_map[c1];
@@ -81,7 +90,7 @@ public:
         }
     }
     constexpr component_type merge_keys(const key_type & k1,
-                                        const key_type & k2) noexcept {
+                                        const key_type & k2) {
         return merge(find(k1), find(k2));
     }
 };  // class disjoint_sets

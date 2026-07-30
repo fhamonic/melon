@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <concepts>
 #include <utility>
 
@@ -15,7 +16,7 @@ namespace melon {
 
 // clang-format off
 template <typename Traits>
-concept competing_dijkstras_trait = semiring<typename Traits::semiring> &&
+concept competing_dijkstras_traits = semiring<typename Traits::semiring> &&
     updatable_priority_queue<typename Traits::heap> && requires(typename Traits::entry & e) {
     e.first;
     { e.second } -> std::convertible_to<bool>;
@@ -38,7 +39,7 @@ struct competing_dijkstras_default_traits {
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
                              vertex_map_t<Graph, std::size_t>,
-                             views::element_map<1>, views::element_map<0>>;
+                             maps::element_map<1>, maps::element_map<0>>;
 };
 
 // Two Dijkstras racing on the same graph with different length maps: blue
@@ -49,11 +50,13 @@ struct competing_dijkstras_default_traits {
 // traversed, so that they can block blue, but never produced. Same
 // non-negativity requirement as melon::dijkstra, on both maps.
 // O((m + n) log n) with the default binary heap.
-template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> BLM,
-          input_mapping<arc_t<Graph>> RLM,
-          competing_dijkstras_trait Traits = competing_dijkstras_default_traits<
-              Graph, mapped_value_t<BLM, arc_t<Graph>>>>
-    requires std::is_same_v<mapped_value_t<BLM, arc_t<Graph>>,
+template <graph_view Graph, mapping_view<arc_t<Graph>> BLM,
+          mapping_view<arc_t<Graph>> RLM,
+          competing_dijkstras_traits Traits =
+              competing_dijkstras_default_traits<
+                  Graph, mapped_value_t<BLM, arc_t<Graph>>>>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
+             std::is_same_v<mapped_value_t<BLM, arc_t<Graph>>,
                             mapped_value_t<RLM, arc_t<Graph>>>
 class competing_dijkstras : public algorithm_view_interface<
                                 competing_dijkstras<Graph, BLM, RLM, Traits>> {
@@ -81,71 +84,100 @@ private:
     [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
+    // graph_storable_as / mapping_storable_as, so std::is_constructible
+    // answers what the mem-initializers actually do -- see dijkstra's
+    // constructor.
     template <typename G, typename BlueMap, typename RedMap>
+        requires graph_storable_as<G, Graph> &&
+                     mapping_storable_as<BlueMap, BLM> &&
+                     mapping_storable_as<RedMap, RLM>
     competing_dijkstras(G && g, BlueMap && l1, RedMap && l2)
-        : _graph(views::graph_all(std::forward<G>(g)))
-        , _blue_length_map(views::mapping_all(std::forward<BlueMap>(l1)))
-        , _red_length_map(views::mapping_all(std::forward<RedMap>(l2)))
+        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        , _blue_length_map(
+              detail::store_mapping<BLM>(std::forward<BlueMap>(l1)))
+        , _red_length_map(detail::store_mapping<RLM>(std::forward<RedMap>(l2)))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
         , _num_blue_candidates(0) {}
 
     template <typename... Args>
-    [[nodiscard]] constexpr competing_dijkstras(Traits, Args &&... args)
+        requires std::constructible_from<competing_dijkstras, Args...>
+    constexpr competing_dijkstras(Traits, Args &&... args)
         : competing_dijkstras(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr competing_dijkstras(const competing_dijkstras &) =
-        default;
-    [[nodiscard]] constexpr competing_dijkstras(competing_dijkstras &&) =
-        default;
+    constexpr competing_dijkstras(const competing_dijkstras &) = default;
+    constexpr competing_dijkstras(competing_dijkstras &&) = default;
 
     constexpr competing_dijkstras & operator=(const competing_dijkstras &) =
         default;
     constexpr competing_dijkstras & operator=(competing_dijkstras &&) = default;
 
+    // The graph the algorithm runs over. An algorithm owns its view rather
+    // than adapting it, so this is the std::ranges::owning_view shape --
+    // references, ref-qualified -- and not the filter_view shape the graph
+    // *views* use. Returning a copy here would also put traversal_forest back
+    // where it started: it reaches its sources through base(), and an owned
+    // graph view is move-only.
+    [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
+    [[nodiscard]] constexpr const Graph & base() const & noexcept {
+        return _graph;
+    }
+    [[nodiscard]] constexpr Graph && base() && noexcept {
+        return std::move(_graph);
+    }
+    [[nodiscard]] constexpr const Graph && base() const && noexcept {
+        return std::move(_graph);
+    }
+
     template <typename BlueMap>
-    competing_dijkstras & set_blue_length_map(
-        BlueMap && blue_length_map) noexcept {
+        requires mapping_storable_as<BlueMap, BLM> &&
+                 std::assignable_from<BLM &, BLM>
+    competing_dijkstras & set_blue_length_map(BlueMap && blue_length_map) {
         _blue_length_map =
-            views::mapping_all(std::forward<BlueMap>(blue_length_map));
+            detail::store_mapping<BLM>(std::forward<BlueMap>(blue_length_map));
         return *this;
     }
 
     template <typename RedMap>
-    competing_dijkstras & set_red_length_map(
-        RedMap && red_length_map) noexcept {
+        requires mapping_storable_as<RedMap, RLM> &&
+                 std::assignable_from<RLM &, RLM>
+    competing_dijkstras & set_red_length_map(RedMap && red_length_map) {
         _red_length_map =
-            views::mapping_all(std::forward<RedMap>(red_length_map));
+            detail::store_mapping<RLM>(std::forward<RedMap>(red_length_map));
         return *this;
     }
 
-    competing_dijkstras & reset() noexcept {
+    competing_dijkstras & reset() {
         _vertex_status_map.fill(PRE_HEAP);
         _heap.clear();
         _num_blue_candidates = 0;
         return *this;
     }
 
+    // Strict precondition, like every add_source in the family: the vertex
+    // must be untouched. Re-adding a settled vertex would re-process it.
+    // Both sources end by restoring the class invariant -- "the heap top, if
+    // any candidate remains, is blue" -- so there is no separate init() step:
+    // a sourced object is ready to iterate, like every other algorithm.
     competing_dijkstras & add_blue_source(
-        const vertex & s,
-        const length_type dist_v = Traits::semiring::zero) noexcept {
-        assert(_vertex_status_map[s] != IN_HEAP);
+        const vertex & s, const length_type dist_v = Traits::semiring::zero) {
+        assert(_vertex_status_map[s] == PRE_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, true}));
         ++_num_blue_candidates;
         _vertex_status_map[s] = IN_HEAP;
+        settle_red_prefix();
         return *this;
     }
     competing_dijkstras & add_red_source(
-        const vertex & s,
-        const length_type dist_v = Traits::semiring::zero) noexcept {
-        assert(_vertex_status_map[s] != IN_HEAP);
+        const vertex & s, const length_type dist_v = Traits::semiring::zero) {
+        assert(_vertex_status_map[s] == PRE_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, false}));
         _vertex_status_map[s] = IN_HEAP;
+        settle_red_prefix();
         return *this;
     }
 
-    void relax_blue_vertex(const vertex & w,
-                           const length_type new_dist_v) noexcept {
+    void relax_blue_vertex(const vertex & w, const length_type new_dist_v) {
         const entry_t new_dist = {new_dist_v, true};
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
@@ -163,8 +195,7 @@ public:
         }
     }
 
-    void relax_red_vertex(const vertex & w,
-                          const length_type new_dist_v) noexcept {
+    void relax_red_vertex(const vertex & w, const length_type new_dist_v) {
         const entry_t new_dist = {new_dist_v, false};
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
@@ -181,63 +212,78 @@ public:
         }
     }
 
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() const
+        noexcept(noexcept(_num_blue_candidates == 0)) {
         return _num_blue_candidates == 0;
     }
 
-    [[nodiscard]] constexpr auto current() const noexcept {
+    // The noexcept measures the copy the return performs, not just the
+    // top() call: top() hands back a reference, and returning it by value
+    // copy-constructs the entry.
+    [[nodiscard]] constexpr auto current() const
+        noexcept(noexcept(typename heap::value_type(_heap.top()))) {
         assert(!finished());
         return _heap.top();
     }
 
-    constexpr void advance() noexcept {
-        do {
-            const auto && [t, t_dist] = _heap.top();
+private:
+    // Settles every red vertex sitting on top of the heap, so that the class
+    // invariant -- "the heap top, if any blue candidate remains, is blue" --
+    // holds at every observable point. Guarded on the candidate count before
+    // touching top(), so it is safe on an empty heap.
+    constexpr void settle_red_prefix() {
+        while(_num_blue_candidates > 0 && !_heap.top().second.second) {
+            // A copy, not a reference binding: top() returns a reference into
+            // the heap array, and t_dist is read after the pop() below
+            // reorders it.
+            const auto [t, t_dist] = _heap.top();
             _vertex_status_map[t] = POST_HEAP;
             auto && out_arcs_range = out_arcs(_graph, t);
-            prefetch_range(out_arcs_range);
-            prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
-            if(t_dist.second) {
-                prefetch_mapped_values(out_arcs_range, _blue_length_map);
-                _heap.pop();
-                --_num_blue_candidates;
-                for(const arc & a : out_arcs_range) {
-                    const vertex & w = arc_target(_graph, a);
-                    relax_blue_vertex(
-                        w, Traits::semiring::plus(t_dist.first,
-                                                  _blue_length_map[a]));
-                }
-            } else {
-                prefetch_mapped_values(out_arcs_range, _red_length_map);
-                _heap.pop();
-                for(const arc a : out_arcs_range) {
-                    const vertex & w = arc_target(_graph, a);
-                    relax_red_vertex(w, Traits::semiring::plus(
-                                            t_dist.first, _red_length_map[a]));
-                }
+            prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
+                                     _red_length_map);
+            _heap.pop();
+            for(const arc a : out_arcs_range) {
+                const vertex & w = arc_target(_graph, a);
+                relax_red_vertex(w, Traits::semiring::plus(t_dist.first,
+                                                           _red_length_map[a]));
             }
-        } while(_num_blue_candidates > 0 && !_heap.top().second.second);
+        }
     }
 
-    constexpr void init() noexcept {
-        if(!_heap.top().second.second) advance();
-    }
-
-    constexpr void run() noexcept {
-        while(!finished()) advance();
+public:
+    constexpr void advance() {
+        assert(!finished());
+        // By the class invariant the top is blue here; see settle_red_prefix.
+        const auto [t, t_dist] = _heap.top();
+        assert(t_dist.second);
+        _vertex_status_map[t] = POST_HEAP;
+        auto && out_arcs_range = out_arcs(_graph, t);
+        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
+                                 _blue_length_map);
+        _heap.pop();
+        --_num_blue_candidates;
+        for(const arc & a : out_arcs_range) {
+            const vertex & w = arc_target(_graph, a);
+            relax_blue_vertex(
+                w, Traits::semiring::plus(t_dist.first, _blue_length_map[a]));
+        }
+        settle_red_prefix();
     }
 };
 
-template <typename Graph, typename BLM, typename RLM,
-          typename Traits = competing_dijkstras_default_traits<
-              Graph, mapped_value_t<views::mapping_all_t<BLM>, arc_t<Graph>>>>
+// No Traits parameter: the class template's own default computes it, so the
+// deduced type and the explicitly written `competing_dijkstras<G, BLM, RLM>`
+// agree. The guide used to default it over the *deduced* Graph -- a reference
+// type -- while the class computes it over views::graph_all_t<Graph>, so the
+// two named different specialisations of competing_dijkstras_default_traits.
+template <typename Graph, typename BLM, typename RLM>
 competing_dijkstras(Graph &&, BLM &&, RLM &&)
-    -> competing_dijkstras<views::graph_all_t<Graph>, views::mapping_all_t<BLM>,
-                           views::mapping_all_t<RLM>, Traits>;
+    -> competing_dijkstras<views::graph_all_t<Graph>, maps::mapping_all_t<BLM>,
+                           maps::mapping_all_t<RLM>>;
 
 template <typename Graph, typename BLM, typename RLM, typename Traits>
 competing_dijkstras(Traits, Graph &&, BLM &&, RLM &&)
-    -> competing_dijkstras<views::graph_all_t<Graph>, views::mapping_all_t<BLM>,
-                           views::mapping_all_t<RLM>, Traits>;
+    -> competing_dijkstras<views::graph_all_t<Graph>, maps::mapping_all_t<BLM>,
+                           maps::mapping_all_t<RLM>, Traits>;
 
 }  // namespace melon

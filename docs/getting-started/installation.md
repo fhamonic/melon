@@ -107,6 +107,8 @@ Every component is a separate header under `melon/`, and you include what you us
 
 Everything lives in `namespace melon`. Prior releases nested it inside an umbrella `fhamonic` namespace; that was removed, so `fhamonic::melon::dijkstra` is now `melon::dijkstra`.
 
+Four sub-namespaces carve out the parts that would otherwise take very generic names at top level: `melon::views` for graph views, `melon::maps` for mapping views, `melon::numeric` for `rational` / `integer` / `bounded_value`, and `melon::experimental`. See [Headers](../reference/headers.md).
+
 ## API stability
 
 Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): every header is frozen API for the whole 1.x series, with two explicit exceptions that carry **no stability guarantee** and may change or disappear in any release:

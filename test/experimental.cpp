@@ -12,7 +12,10 @@
 
 using namespace melon;
 
-// The concepts must reject a graph that models none of the planar CPOs.
+////////////////////////////////////////////////////////////////////////////////
+// the planar concepts reject a graph that models none of the planar CPOs
+////////////////////////////////////////////////////////////////////////////////
+
 // There is no concrete planar_map container yet, so this is the only
 // property that can be asserted today.
 static_assert(!experimental::has_vertex_coordinates<static_digraph>);
@@ -20,5 +23,9 @@ static_assert(!experimental::has_arc_twin<static_digraph>);
 static_assert(!experimental::has_arc_face<static_digraph>);
 static_assert(!experimental::planar_subdivision<static_digraph>);
 static_assert(!experimental::planar_map<static_digraph>);
+
+////////////////////////////////////////////////////////////////////////////////
+// the shipped experimental headers stay self-contained
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(experimental, headers_are_self_contained) { SUCCEED(); }

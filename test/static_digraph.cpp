@@ -8,7 +8,11 @@
 
 using namespace melon;
 
-static_assert(melon::graph<static_digraph>);
+////////////////////////////////////////////////////////////////////////////////
+// static_digraph models the incidence and adjacency graph concepts, in both
+// directions, and supports vertex and arc maps
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(melon::graph<static_digraph>);
 static_assert(melon::outward_incidence_graph<static_digraph>);
 static_assert(melon::outward_adjacency_graph<static_digraph>);
@@ -16,6 +20,11 @@ static_assert(melon::inward_incidence_graph<static_digraph>);
 static_assert(melon::inward_adjacency_graph<static_digraph>);
 static_assert(melon::has_vertex_map<static_digraph>);
 static_assert(melon::has_arc_map<static_digraph>);
+
+////////////////////////////////////////////////////////////////////////////////
+// construction from source/target vectors defines the vertices, arcs,
+// incidence lists and validity bounds -- and out-of-range queries die
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(static_digraph, empty_constructor) {
     static_digraph graph;
@@ -133,4 +142,24 @@ GTEST_TEST(static_digraph, vectors_constructor_2) {
         ASSERT_EQ(arc_source(graph, a), arc_pairs[a].second.first);
         ASSERT_EQ(arc_target(graph, a), arc_pairs[a].second.second);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// out_arcs and in_arcs enumerate arc ids in ascending order
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(static_digraph, incidence_ranges_are_ascending) {
+    // The constructor fills each in-arc bucket backwards over *descending*
+    // arc ids precisely so both incidence ranges come out ascending: forward
+    // strides through every arc map indexed inside an incidence loop.
+    std::vector<vertex_t<static_digraph>> sources = {0, 0, 1, 2, 2};
+    std::vector<vertex_t<static_digraph>> targets = {1, 2, 2, 0, 1};
+    static_digraph graph(3, sources, targets);
+
+    for(auto u : vertices(graph)) {
+        ASSERT_TRUE(std::ranges::is_sorted(out_arcs(graph, u)));
+        ASSERT_TRUE(std::ranges::is_sorted(in_arcs(graph, u)));
+    }
+    ASSERT_TRUE(EQ_RANGES(in_arcs(graph, 2u), {1u, 2u}));
+    ASSERT_TRUE(EQ_RANGES(in_arcs(graph, 1u), {0u, 4u}));
 }

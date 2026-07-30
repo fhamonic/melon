@@ -6,14 +6,18 @@
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/erdos_renyi.hpp"
+#include "melon/utility/graphviz_printer.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/subgraph.hpp"
-
-#include "melon/utility/graphviz_printer.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace melon;
+
+////////////////////////////////////////////////////////////////////////////////
+// competing_dijkstras enumerates the vertices the blue source wins over the
+// red one
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(competing_dijkstras, test) {
     static_digraph_builder<static_digraph, int, int> builder(8);
@@ -49,7 +53,6 @@ GTEST_TEST(competing_dijkstras, test) {
     competing_dijkstras algo(sgraph, length_map, reduced_length_map);
     algo.add_blue_source(6, length_map[1]);
     algo.add_red_source(0);
-    algo.init();
 
     std::vector<vertex_t<static_digraph>> strong_nodes;
     for(const auto & [u, u_dist] : algo) {
@@ -59,6 +62,11 @@ GTEST_TEST(competing_dijkstras, test) {
 
     ASSERT_TRUE(EQ_MULTISETS(strong_nodes, {6, 5, 4}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// fuzzy: on random graphs, the strong set matches a certificate recomputed
+// with two plain dijkstras
+////////////////////////////////////////////////////////////////////////////////
 
 template <graph G>
 auto compute_competing_dijkstras_map(const G & g,
@@ -116,7 +124,6 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                                      lower_length_map);
             algo.add_red_source(u);
             algo.add_blue_source(v, upper_length_map[uv]);
-            algo.init();
 
             certificat_length_map[uv] = upper_length_map[uv];
             for(const auto & [t, t_dist] : algo) {
@@ -143,7 +150,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                 std::cout << "shit!" << std::endl;
                 graphviz_printer printer(graph);
                 printer
-                    .set_vertex_color_map(views::map(
+                    .set_vertex_color_map(maps::map(
                         [&](auto && w)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -156,7 +163,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                             else
                                 return {255, 255, 255};
                         }))
-                    .set_arc_color_map(views::map(
+                    .set_arc_color_map(maps::map(
                         [&](auto && a)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -168,7 +175,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                             else
                                 return {64, 64, 64};
                         }))
-                    .set_arc_label_map(views::map([&](auto && a) {
+                    .set_arc_label_map(maps::map([&](auto && a) {
                         return (std::ostringstream{}
                                 << "[" << std::to_string(lower_length_map[a])
                                 << ',' << std::to_string(upper_length_map[a])
@@ -183,6 +190,11 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// fuzzy: custom tie-breaking traits compute the useless fiber, checked
+// against the same kind of dijkstra-built certificate
+////////////////////////////////////////////////////////////////////////////////
 
 template <graph G>
 auto compute_useless_fiber_map(const G & g,
@@ -228,7 +240,7 @@ struct useless_competing_dijkstras_traits {
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
                              vertex_map_t<Graph, std::size_t>,
-                             views::element_map<1>, views::element_map<0>>;
+                             maps::element_map<1>, maps::element_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -274,7 +286,6 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 sgraph, upper_length_map, lower_length_map);
             algo.add_blue_source(u);
             algo.add_red_source(v, lower_length_map[uv]);
-            algo.init();
 
             auto certificat_length_map = lower_length_map;
             for(const auto a : out_arcs(graph, u)) {
@@ -309,7 +320,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 std::cout << "shit!" << std::endl;
                 graphviz_printer printer(graph);
                 printer
-                    .set_vertex_color_map(views::map(
+                    .set_vertex_color_map(maps::map(
                         [&](auto && w)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -322,7 +333,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                             else
                                 return {255, 255, 255};
                         }))
-                    .set_arc_color_map(views::map(
+                    .set_arc_color_map(maps::map(
                         [&](auto && a)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -334,7 +345,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                             else
                                 return {64, 64, 64};
                         }))
-                    .set_arc_label_map(views::map([&](auto && a) {
+                    .set_arc_label_map(maps::map([&](auto && a) {
                         return (std::ostringstream{}
                                 << "[" << std::to_string(lower_length_map[a])
                                 << ',' << std::to_string(upper_length_map[a])

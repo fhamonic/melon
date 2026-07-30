@@ -8,6 +8,7 @@
 #include "melon/utility/geometry.hpp"
 
 using namespace melon;
+using namespace melon::numeric;
 
 // Exact rational coordinates, as bentley_ottmann uses them: line intersections
 // divide, and the predicates below must stay exact.
@@ -24,7 +25,9 @@ static segment S(int x1, int y1, int x2, int y2) {
     return segment(P(x1, y1), P(x2, y2));
 }
 
-// ############################### concepts ###############################
+////////////////////////////////////////////////////////////////////////////////
+// points, segments and lines are structural concepts over coordinate tuples
+////////////////////////////////////////////////////////////////////////////////
 
 static_assert(cartesian_point<point>);
 static_assert(cartesian_point<std::pair<int, int>>);
@@ -34,7 +37,9 @@ static_assert(!cartesian_segment<point>);
 static_assert(cartesian_line<line>);
 static_assert(!cartesian_line<int>);
 
-// ############################## comparator ##############################
+////////////////////////////////////////////////////////////////////////////////
+// point_xy_comparator orders points by x, breaking ties by y
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(cartesian, point_xy_comparator_orders_by_x_then_y) {
     const cartesian::point_xy_comparator cmp;
@@ -50,7 +55,9 @@ GTEST_TEST(cartesian, point_xy_comparator_orders_by_x_then_y) {
         requires { typename cartesian::point_xy_comparator::is_transparent; });
 }
 
-// ############################ segment to line ###########################
+////////////////////////////////////////////////////////////////////////////////
+// segment_to_line yields the supporting line a.x + b.y = c of a segment
+////////////////////////////////////////////////////////////////////////////////
 
 // The line through (x1,y1) and (x2,y2) is written a.x + b.y = c with
 // a = y2-y1, b = x1-x2 and c fixed by the first endpoint.
@@ -94,7 +101,10 @@ GTEST_TEST(cartesian, line_slope) {
     ASSERT_EQ(infinite.den(), 0);
 }
 
-// ########################## line intersections ##########################
+////////////////////////////////////////////////////////////////////////////////
+// lines_intersection returns the exact crossing point, or nothing for
+// parallel lines
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(cartesian, lines_intersection_of_crossing_lines) {
     const auto diagonal = cartesian::segment_to_line(S(0, 0, 2, 2));
@@ -132,7 +142,8 @@ GTEST_TEST(cartesian, lines_intersection_rejects_parallel_lines) {
     ASSERT_FALSE(cartesian::lines_intersection(l1, same).has_value());
 }
 
-// ############################ point on segment ##########################
+////////////////////////////////////////////////////////////////////////////////
+// point_on_segment restricts point_on_line to the segment's extent
 
 GTEST_TEST(cartesian, point_on_segment) {
     const auto s = S(0, 0, 4, 4);
@@ -148,7 +159,9 @@ GTEST_TEST(cartesian, point_on_segment) {
     ASSERT_FALSE(cartesian::point_on_segment(P(1, 2), s));
 }
 
-// ######################### segment intersections ########################
+////////////////////////////////////////////////////////////////////////////////
+// segments_intersection accepts only crossings that lie inside both segments
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(cartesian, segments_intersection_of_crossing_segments) {
     const auto i =
@@ -177,7 +190,9 @@ GTEST_TEST(cartesian, segments_intersection_rejects_parallel_segments) {
                      .has_value());
 }
 
-// ############################ segment overlaps ##########################
+////////////////////////////////////////////////////////////////////////////////
+// segments_overlap returns the shared sub-segment of colinear segments
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(cartesian, segments_overlap_of_colinear_segments) {
     const auto o = cartesian::segments_overlap(S(0, 0, 4, 0), S(2, 0, 6, 0));

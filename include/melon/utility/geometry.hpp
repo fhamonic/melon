@@ -3,7 +3,7 @@
 #include <tuple>
 #include <utility>
 
-#include "melon/utility/rational.hpp"
+#include "melon/numeric/rational.hpp"
 
 namespace melon {
 template <typename T>

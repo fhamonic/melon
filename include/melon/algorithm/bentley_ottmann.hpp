@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/not_self.hpp"
+
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/mapping.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -26,7 +28,7 @@ concept bentley_ottmann_traits = requires() {
 // clang-format on
 
 template <typename Segment>
-struct default_bentley_ottmann_traits {
+struct bentley_ottmann_default_traits {
     using coordinate_system = cartesian;
     using segment_type = Segment;
     using line_type = decltype(coordinate_system::segment_to_line(
@@ -46,8 +48,9 @@ struct default_bentley_ottmann_traits {
     static constexpr bool report_endpoints = true;
 };
 
+// mapping_view on the stored map: see dijkstra's head.
 template <bentley_ottmann_traits Traits, typename SegmentId,
-          input_mapping<SegmentId> SegmentMap = views::identity_map>
+          mapping_view<SegmentId> SegmentMap = maps::identity_map>
 class bentley_ottmann : public algorithm_view_interface<
                             bentley_ottmann<Traits, SegmentId, SegmentMap>> {
 private:
@@ -75,10 +78,15 @@ private:
     using event_cmp = coordinate_system::point_xy_comparator;
 
     struct segment_entry {
+        // None of these is `const`. Three const members make the two defaulted
+        // assignments below *deleted*, which is exactly the trap that made
+        // induced_subgraph fail std::movable; declaring `= default` on an
+        // operation the compiler has already deleted reads as though the type
+        // were assignable when it is not.
         mutable sweepline_intersection_type sweepline_intersection;
-        const line_type line;
-        const segment_type segment;
-        const segment_id_type segment_id;
+        line_type line;
+        segment_type segment;
+        segment_id_type segment_id;
 
         segment_entry(const segment_id_type & si, const segment_type & s,
                       const intersection_type & p)
@@ -149,11 +157,19 @@ private:
     std::vector<segment_id_type> _intersections;
 
 public:
+    // detail::not_self, because this constructor is callable with a single
+    // argument and bentley_ottmann is itself a range: without the guard,
+    // copying a non-const lvalue algorithm selected this constructor instead
+    // of the copy constructor. mapping_storable_as keeps
+    // std::is_constructible honest -- see dijkstra's constructor.
     template <std::ranges::range SegmentIdRange,
-              typename SM = views::identity_map>
+              typename SM = maps::identity_map>
+        requires detail::not_self<SegmentIdRange, bentley_ottmann> &&
+                     mapping_storable_as<SM, SegmentMap>
     bentley_ottmann(SegmentIdRange && segments_ids_range,
-                    SM && segment_map = {}) noexcept
-        : _segment_map(views::mapping_all(std::forward<SM>(segment_map)))
+                    SM && segment_map = {})
+        : _segment_map(
+              detail::store_mapping<SegmentMap>(std::forward<SM>(segment_map)))
         , _segments_tree(segment_cmp(std::cref(_current_event_point)))
         , _tmp_tree(segment_cmp(std::cref(_tmp_event_point))) {
         for(auto && s : segments_ids_range) {
@@ -176,16 +192,16 @@ public:
     }
 
     template <typename... Args>
-    [[nodiscard]] constexpr bentley_ottmann(Traits, Args &&... args)
+    constexpr bentley_ottmann(Traits, Args &&... args)
         : bentley_ottmann(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr bentley_ottmann(const bentley_ottmann &) = default;
-    [[nodiscard]] constexpr bentley_ottmann(bentley_ottmann &&) = default;
+    constexpr bentley_ottmann(const bentley_ottmann &) = default;
+    constexpr bentley_ottmann(bentley_ottmann &&) = default;
 
     constexpr bentley_ottmann & operator=(const bentley_ottmann &) = default;
     constexpr bentley_ottmann & operator=(bentley_ottmann &&) = default;
 
-    constexpr bentley_ottmann & reset() noexcept {
+    constexpr bentley_ottmann & reset() {
         _events_tree.clear();
         _segments_tree.clear();
         return *this;
@@ -202,7 +218,7 @@ private:
         _events_tree.try_emplace(i);
     }
     void detect_intersection(const segment_entry & e1,
-                             const segment_entry & e2) noexcept {
+                             const segment_entry & e2) {
         const auto & [a, b] = e1.segment;
         const auto & [c, d] = e2.segment;
 
@@ -234,7 +250,7 @@ private:
 
         push_intersection(i);
     }
-    void handle_event(const std::pair<intersection_type, events> & e) noexcept {
+    void handle_event(const std::pair<intersection_type, events> & e) {
         const auto & [i, evts] = e;
         _tmp_event_point = i;
 
@@ -307,17 +323,20 @@ private:
     }
 
 public:
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() const
+        noexcept(noexcept(_events_tree.empty())) {
         return _events_tree.empty();
     }
 
-    [[nodiscard]] constexpr auto current() const noexcept {
+    [[nodiscard]] constexpr auto current() const
+        noexcept(noexcept(std::make_pair(_events_tree.begin()->first,
+                                         std::views::all(_intersections)))) {
         assert(!finished());
         return std::make_pair(_events_tree.begin()->first,
                               std::views::all(_intersections));
     }
 
-    constexpr void advance() noexcept {
+    constexpr void advance() {
         assert(!finished());
         do {
             _events_tree.erase(_events_tree.begin());
@@ -329,27 +348,27 @@ public:
 
 template <typename SegmentIdRange>
 bentley_ottmann(SegmentIdRange &&)
-    -> bentley_ottmann<default_bentley_ottmann_traits<
+    -> bentley_ottmann<bentley_ottmann_default_traits<
                            std::ranges::range_value_t<SegmentIdRange>>,
                        std::ranges::range_value_t<SegmentIdRange>,
-                       views::identity_map>;
+                       maps::identity_map>;
 
 template <typename SegmentIdRange, typename SegmentMap>
 bentley_ottmann(SegmentIdRange &&, SegmentMap &&)
-    -> bentley_ottmann<default_bentley_ottmann_traits<mapped_value_t<
-                           views::mapping_all_t<SegmentMap>,
+    -> bentley_ottmann<bentley_ottmann_default_traits<mapped_value_t<
+                           maps::mapping_all_t<SegmentMap>,
                            std::ranges::range_value_t<SegmentIdRange>>>,
                        std::ranges::range_value_t<SegmentIdRange>,
-                       views::mapping_all_t<SegmentMap>>;
+                       maps::mapping_all_t<SegmentMap>>;
 
 template <typename SegmentIdRange, typename Traits>
 bentley_ottmann(Traits, SegmentIdRange &&)
     -> bentley_ottmann<Traits, std::ranges::range_value_t<SegmentIdRange>,
-                       views::identity_map>;
+                       maps::identity_map>;
 
 template <typename SegmentIdRange, typename SegmentMap, typename Traits>
 bentley_ottmann(Traits, SegmentIdRange &&, SegmentMap &&)
     -> bentley_ottmann<Traits, std::ranges::range_value_t<SegmentIdRange>,
-                       views::mapping_all_t<SegmentMap>>;
+                       maps::mapping_all_t<SegmentMap>>;
 
 }  // namespace melon

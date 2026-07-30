@@ -12,6 +12,11 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// is_dominated compares labels componentwise: a label is dominated only if it
+// is no better in both objectives
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(biobjective_dijkstra, domination) {
     static_digraph_builder<static_digraph, int, int> builder(1);
     auto [graph, blue_length_map, red_length_map] = builder.build();
@@ -30,7 +35,13 @@ GTEST_TEST(biobjective_dijkstra, domination) {
     ASSERT_FALSE(alg.is_dominated(0u, std::make_pair(2, 0)));
 }
 
-GTEST_TEST(biobjective_dijkstra, relax) {
+////////////////////////////////////////////////////////////////////////////////
+// inserting labels through add_source keeps only the non-dominated ones in
+// each vertex's pareto front (relax itself is private, like every
+// algorithm's relaxation step)
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(biobjective_dijkstra, label_insertion_dominance) {
     static_digraph_builder<static_digraph, int, int> builder(9);
     auto [graph, blue_length_map, red_length_map] = builder.build();
 
@@ -38,27 +49,31 @@ GTEST_TEST(biobjective_dijkstra, relax) {
 
     for(auto && v : vertices(graph)) alg.add_source(v, 1, 1);
 
-    alg.relax(0u, std::make_pair(2, 2));
+    alg.add_source(0u, 2, 2);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(0u), {std::make_pair(1, 1)}));
-    alg.relax(1u, std::make_pair(2, 1));
+    alg.add_source(1u, 2, 1);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(1u), {std::make_pair(1, 1)}));
-    alg.relax(2u, std::make_pair(1, 2));
+    alg.add_source(2u, 1, 2);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(2u), {std::make_pair(1, 1)}));
-    alg.relax(3u, std::make_pair(1, 1));
+    alg.add_source(3u, 1, 1);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(3u), {std::make_pair(1, 1)}));
-    alg.relax(4u, std::make_pair(1, 0));
+    alg.add_source(4u, 1, 0);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(4u), {std::make_pair(1, 0)}));
-    alg.relax(5u, std::make_pair(0, 1));
+    alg.add_source(5u, 0, 1);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(5u), {std::make_pair(0, 1)}));
-    alg.relax(6u, std::make_pair(0, 0));
+    alg.add_source(6u, 0, 0);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(6u), {std::make_pair(0, 0)}));
-    alg.relax(7u, std::make_pair(0, 2));
+    alg.add_source(7u, 0, 2);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(7u),
                              {std::make_pair(1, 1), std::make_pair(0, 2)}));
-    alg.relax(8u, std::make_pair(2, 0));
+    alg.add_source(8u, 2, 0);
     ASSERT_TRUE(EQ_MULTISETS(alg.pareto_front(8u),
                              {std::make_pair(1, 1), std::make_pair(2, 0)}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// a full run reproduces the pareto fronts of a literature instance
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(biobjective_dijkstra, test) {
     static_digraph_builder<static_digraph, int, int> builder(10);
