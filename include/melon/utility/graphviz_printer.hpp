@@ -60,6 +60,10 @@ private:
 public:
     // explicit: a graph is not a printer, and the implicit conversion made
     // every function taking a graphviz_printer accept a bare graph.
+    // The rvalue overload is deleted because _graph is a reference_wrapper:
+    // binding a temporary left the printer pointing at a dead graph (the
+    // mapping_ref_view bindable-test precedent).
+    explicit graphviz_printer(const G &&) = delete;
     explicit graphviz_printer(const G & g)
         : _graph(g)
         , _vertex_label_map()
@@ -181,8 +185,12 @@ public:
         return *this;
     }
 
-    template <typename OS>
-    void print(OS && output) const {
+    // Takes and returns the output iterator, std::format_to's own contract:
+    // discarding the returned iterator broke positional iterators (a char *
+    // overwrote its first characters on every call). Stateful inserters like
+    // back_insert_iterator masked it.
+    template <std::output_iterator<const char &> OS>
+    OS print(OS output) const {
         double min_x, max_x, min_y, max_y;
         min_x = min_y = std::numeric_limits<double>::max();
         max_x = max_y = std::numeric_limits<double>::lowest();
@@ -219,61 +227,68 @@ public:
                       return _arc_color_map[a.first] < _arc_color_map[b.first];
                   });
 
-        std::format_to(output, "digraph {{size=\"{},{}\";\n", _page_width,
-                       _page_height);
-        std::format_to(
+        output = std::format_to(output, "digraph {{size=\"{},{}\";\n",
+                                _page_width, _page_height);
+        // "graph", the dot keyword -- a member rename once hit this string
+        // literal, emitting a spurious node named _graph and losing the
+        // graph attributes.
+        output = std::format_to(
             output,
-            "_graph [pad=\"0.2,0.1\" bgcolor=transparent overlap=scale]\n");
-        std::format_to(output, "node [style=filled shape=\"circle\"]\n");
-        std::format_to(output, "edge [style=filled]\n");
+            "graph [pad=\"0.2,0.1\" bgcolor=transparent overlap=scale]\n");
+        output =
+            std::format_to(output, "node [style=filled shape=\"circle\"]\n");
+        output = std::format_to(output, "edge [style=filled]\n");
 
         std::optional<color> prev_color;
         for(vertex u : color_sorted_vertices) {
             if(!prev_color.has_value() ||
                _vertex_color_map[u] != prev_color.value()) {
-                std::format_to(output,
-                               "node [fillcolor=\"#{:02x}{:02x}{:02x}\"]\n",
-                               std::get<0>(_vertex_color_map[u]),
-                               std::get<1>(_vertex_color_map[u]),
-                               std::get<2>(_vertex_color_map[u]));
+                output = std::format_to(
+                    output, "node [fillcolor=\"#{:02x}{:02x}{:02x}\"]\n",
+                    std::get<0>(_vertex_color_map[u]),
+                    std::get<1>(_vertex_color_map[u]),
+                    std::get<2>(_vertex_color_map[u]));
                 prev_color.emplace(_vertex_color_map[u]);
             }
-            std::format_to(output, "{} [width=\"{}\"", u,
-                           scale_size(std::sqrt(_vertex_size_map[u])));
+            output = std::format_to(output, "{} [width=\"{}\"", u,
+                                    scale_size(std::sqrt(_vertex_size_map[u])));
             if(_vertex_label_map.has_value()) {
-                std::format_to(output, " label=\"{}\"",
-                               _vertex_label_map.value()[u]);
+                output = std::format_to(output, " label=\"{}\"",
+                                        _vertex_label_map.value()[u]);
             }
             if(_vertex_pos_map.has_value()) {
-                std::format_to(output, " pos=\"{},{}\"",
-                               scale_x(_vertex_pos_map.value()[u].first),
-                               scale_y(_vertex_pos_map.value()[u].second));
+                output =
+                    std::format_to(output, " pos=\"{},{}\"",
+                                   scale_x(_vertex_pos_map.value()[u].first),
+                                   scale_y(_vertex_pos_map.value()[u].second));
             }
-            std::format_to(output, "]\n");
+            output = std::format_to(output, "]\n");
         }
 
         prev_color.reset();
         for(const auto & [a, vertices_pair] : color_sorted_arcs_entries) {
             if(!prev_color.has_value() ||
                _arc_color_map[a] != prev_color.value()) {
-                std::format_to(output, "edge [color=\"#{:02x}{:02x}{:02x}\"]\n",
-                               std::get<0>(_arc_color_map[a]),
-                               std::get<1>(_arc_color_map[a]),
-                               std::get<2>(_arc_color_map[a]));
+                output = std::format_to(
+                    output, "edge [color=\"#{:02x}{:02x}{:02x}\"]\n",
+                    std::get<0>(_arc_color_map[a]),
+                    std::get<1>(_arc_color_map[a]),
+                    std::get<2>(_arc_color_map[a]));
                 prev_color.emplace(_arc_color_map[a]);
             }
-            std::format_to(output, "{} -> {} [penwidth=\"{}\"",
-                           vertices_pair.first, vertices_pair.second,
-                           _arc_size_map[a]);
+            output = std::format_to(output, "{} -> {} [penwidth=\"{}\"",
+                                    vertices_pair.first, vertices_pair.second,
+                                    _arc_size_map[a]);
 
             if(_arc_label_map.has_value()) {
-                std::format_to(output, " label=\"{}\"",
-                               _arc_label_map.value()[a]);
+                output = std::format_to(output, " label=\"{}\"",
+                                        _arc_label_map.value()[a]);
             }
-            std::format_to(output, "]\n");
+            output = std::format_to(output, "]\n");
         }
 
-        std::format_to(output, "}}\n");
+        output = std::format_to(output, "}}\n");
+        return output;
     }
 };
 }  // namespace melon

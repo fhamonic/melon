@@ -121,6 +121,24 @@ public:
 //   - finished() is answerable from a const object.
 // There is no post-construction, pre-iteration step: a constructed (and, for
 // rooted algorithms, sourced) object is ready to iterate.
+//
+// Algorithms are move-only, and std::movable here is the whole relocation
+// contract. Copying was supported until it was measured: nothing in the
+// library, the tests, the docs or the examples ever copied an algorithm for a
+// purpose -- the only internal copy was traversal_forest copying its own
+// breadth_first_search inside traversal_forest's own copy constructor -- while
+// the per-class copy members it required were a standing source of
+// dangling-cursor and lying-trait bugs. Worse, it could not be *stated*: over
+// one identical graph type (a subgraph of a ref to static_digraph) dijkstra,
+// breadth_first_search and topological_sort were copyable and
+// depth_first_search and strongly_connected_components were not, and
+// depth_first_search flipped its answer depending on whether the container
+// underneath handed out std-borrowed incidence ranges. A capability whose
+// availability rule a user cannot hold in their head is worse than no
+// capability. Copying also carries the whole search state -- every vertex map,
+// the heap, the cached cursors -- so making it a compile error is the honest
+// cost signal. Relocation of a *moved* algorithm remains fully supported and is
+// what the cursor rebasing in detail/consumable_view.hpp exists for.
 template <typename A>
 concept traversal_algorithm =
     std::ranges::input_range<A> && algorithmic_generator<A> &&

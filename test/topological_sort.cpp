@@ -24,7 +24,7 @@ GTEST_TEST(topological_sort, no_arcs_graph) {
 
     topological_sort alg(graph);
 
-    static_assert(std::copyable<decltype(alg)>);
+    static_assert(std::movable<decltype(alg)> && !std::copyable<decltype(alg)>);
 
     std::vector<vertex_t<static_digraph>> traversal = {0u, 1u};
 
@@ -443,29 +443,29 @@ GTEST_TEST(topological_sort, reset_re_seeds_the_queue) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: copying a mutable lvalue must pick the copy constructor, not
-// the greedy single-argument constructor
+// regression: an algorithm lvalue must not be swallowed by the greedy
+// single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 // The unconstrained `topological_sort(G &&)` beat the copy constructor for a
-// non-const lvalue and tried to build the algorithm out of itself.
-GTEST_TEST(topological_sort,
-           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+// non-const lvalue and tried to build the algorithm out of itself;
+// detail::not_self is what excludes it. Now that copy is deleted, the pin is
+// that an algorithm is not constructible from an algorithm lvalue at all.
+GTEST_TEST(topological_sort, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
 
     topological_sort alg(graph);
+    using alg_t = decltype(alg);
+    static_assert(!std::is_constructible_v<alg_t, alg_t &>);
+    static_assert(!std::is_constructible_v<alg_t, const alg_t &>);
+    static_assert(std::is_constructible_v<alg_t, alg_t &&>);
+
     alg.advance();
-
-    topological_sort from_mutable_lvalue(alg);
-    static_assert(std::same_as<decltype(alg), decltype(from_mutable_lvalue)>);
-    ASSERT_EQ(from_mutable_lvalue.current(), alg.current());
-
-    from_mutable_lvalue.run();
-    ASSERT_TRUE(from_mutable_lvalue.finished());
-    ASSERT_FALSE(alg.finished());  // an independent copy
-
-    decltype(alg) from_const_lvalue(std::as_const(alg));
-    ASSERT_EQ(from_const_lvalue.current(), alg.current());
+    const auto expected = alg.current();
+    auto relocated = std::move(alg);
+    ASSERT_EQ(relocated.current(), expected);
+    relocated.run();
+    ASSERT_TRUE(relocated.finished());
 }

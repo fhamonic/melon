@@ -236,6 +236,119 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// mid-run relocation: the trees' comparators reference the heap-anchored
+// event points, whose address a move transfers intact -- so a sweep moved
+// mid-run (construction and assignment, source destroyed either way) yields
+// exactly what an undisturbed sweep yields. Pins the fix for the defaulted
+// moves comparing against the moved-from object's members (ASan-confirmed
+// use-after-free before the anchor).
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(bentley_ottmann, mid_run_move) {
+    using coord = integer<int64_t>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
+    using intersection = decltype(cartesian::segments_intersection(
+        std::declval<segment>(), std::declval<segment>()))::value_type;
+
+    std::vector<segment> segments = {{{0, 0}, {8, 8}}, {{0, 8}, {8, 0}},
+                                     {{0, 4}, {8, 4}}, {{2, 0}, {2, 8}},
+                                     {{6, 0}, {6, 8}}, {{0, 2}, {8, 6}}};
+    auto segments_ids = std::views::iota(0ul, segments.size());
+
+    std::vector<std::pair<intersection, std::vector<std::size_t>>> expected;
+    for(const auto & [i, intersecting_segments] :
+        bentley_ottmann(segments_ids, segments)) {
+        expected.emplace_back(
+            i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                        intersecting_segments.end()));
+    }
+    ASSERT_GT(expected.size(), 2ul);
+
+    // move construction, the moved-from algorithm destroyed mid-run
+    {
+        std::vector<std::pair<intersection, std::vector<std::size_t>>> found;
+        auto moved = [&]() {
+            auto src = std::make_unique<decltype(bentley_ottmann(
+                segments_ids, segments))>(segments_ids, segments);
+            const auto & [i, intersecting_segments] = src->current();
+            found.emplace_back(
+                i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                            intersecting_segments.end()));
+            src->advance();
+            return std::move(*src);
+        }();
+        for(; !moved.finished(); moved.advance()) {
+            const auto & [i, intersecting_segments] = moved.current();
+            found.emplace_back(
+                i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                            intersecting_segments.end()));
+        }
+        ASSERT_EQ(found, expected);
+    }
+
+    // move assignment over an algorithm holding live trees of its own
+    {
+        bentley_ottmann alg(segments_ids, segments);
+        bentley_ottmann other(std::views::iota(0ul, 2ul), segments);
+        alg.advance();
+        other = std::move(alg);
+        std::vector<std::pair<intersection, std::vector<std::size_t>>> found = {
+            expected.front()};
+        for(; !other.finished(); other.advance()) {
+            const auto & [i, intersecting_segments] = other.current();
+            found.emplace_back(
+                i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                            intersecting_segments.end()));
+        }
+        ASSERT_EQ(found, expected);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// reset() re-seeds the event queue from the stored id range and replays the
+// sweep. Pins the fix for reset() clearing the trees with no way to refill
+// them, which left the object permanently finished().
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(bentley_ottmann, reset_replays_the_sweep) {
+    using coord = integer<int64_t>;
+    using point = std::tuple<coord, coord>;
+    using segment = std::tuple<point, point>;
+    using intersection = decltype(cartesian::segments_intersection(
+        std::declval<segment>(), std::declval<segment>()))::value_type;
+
+    std::vector<segment> segments = {{{0, 0}, {8, 8}}, {{0, 8}, {8, 0}},
+                                     {{0, 4}, {8, 4}}, {{2, 0}, {2, 8}},
+                                     {{6, 0}, {6, 8}}, {{0, 2}, {8, 6}}};
+    auto segments_ids = std::views::iota(0ul, segments.size());
+
+    bentley_ottmann alg(segments_ids, segments);
+
+    std::vector<std::pair<intersection, std::vector<std::size_t>>> first_run;
+    for(; !alg.finished(); alg.advance()) {
+        const auto & [i, intersecting_segments] = alg.current();
+        first_run.emplace_back(
+            i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                        intersecting_segments.end()));
+    }
+    ASSERT_GT(first_run.size(), 2ul);
+    ASSERT_TRUE(alg.finished());
+
+    alg.reset();
+    ASSERT_FALSE(alg.finished());
+
+    std::vector<std::pair<intersection, std::vector<std::size_t>>> second_run;
+    for(; !alg.finished(); alg.advance()) {
+        const auto & [i, intersecting_segments] = alg.current();
+        second_run.emplace_back(
+            i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                        intersecting_segments.end()));
+    }
+    ASSERT_EQ(second_run, first_run);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // fuzzy: on random segment sets, the sweep finds the same intersection points
 // and the same segments through each as the quadratic oracle
 ////////////////////////////////////////////////////////////////////////////////

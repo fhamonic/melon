@@ -47,28 +47,28 @@ struct biobjective_dijkstra_default_traits {
 // non-negativity requirement as melon::dijkstra, on both maps.
 // Cost is output-sensitive: the number of Pareto-optimal labels can grow
 // exponentially with the size of the graph, so there is no polynomial bound.
-template <graph_view Graph, mapping_view<arc_t<Graph>> BLM,
-          mapping_view<arc_t<Graph>> RLM,
+template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
+          mapping_view<arc_t<Graph>> RedLengthMap,
           biobjective_dijkstra_traits Traits =
               biobjective_dijkstra_default_traits<
-                  Graph, mapped_value_t<BLM, arc_t<Graph>>,
-                  mapped_value_t<RLM, arc_t<Graph>>>>
+                  Graph, mapped_value_t<BlueLengthMap, arc_t<Graph>>,
+                  mapped_value_t<RedLengthMap, arc_t<Graph>>>>
     requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class biobjective_dijkstra
     : public algorithm_view_interface<
-          biobjective_dijkstra<Graph, BLM, RLM, Traits>> {
+          biobjective_dijkstra<Graph, BlueLengthMap, RedLengthMap, Traits>> {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-    using blue_length_type = mapped_value_t<BLM, arc_t<Graph>>;
-    using red_length_type = mapped_value_t<RLM, arc_t<Graph>>;
+    using blue_length_type = mapped_value_t<BlueLengthMap, arc_t<Graph>>;
+    using red_length_type = mapped_value_t<RedLengthMap, arc_t<Graph>>;
     using heap = Traits::heap;
     using label = Traits::label;
 
 private:
     Graph _graph;
-    BLM _blue_length_map;
-    RLM _red_length_map;
+    BlueLengthMap _blue_length_map;
+    RedLengthMap _red_length_map;
 
     struct labels_cmp {
         [[nodiscard]] constexpr bool operator()(const label & l1,
@@ -80,18 +80,12 @@ private:
     heap _heap;
 
 public:
-    // graph_storable_as / mapping_storable_as, so std::is_constructible
-    // answers what the mem-initializers actually do -- see dijkstra's
-    // constructor.
-    template <typename G, typename BlueMap, typename RedMap>
-        requires graph_storable_as<G, Graph> &&
-                     mapping_storable_as<BlueMap, BLM> &&
-                     mapping_storable_as<RedMap, RLM>
-    biobjective_dijkstra(G && g, BlueMap && l1, RedMap && l2)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _blue_length_map(
-              detail::store_mapping<BLM>(std::forward<BlueMap>(l1)))
-        , _red_length_map(detail::store_mapping<RLM>(std::forward<RedMap>(l2)))
+    template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
+              mapping_for<RedLengthMap> RLM>
+    biobjective_dijkstra(G && g, BLM && blm, RLM && rlm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))
+        , _red_length_map(maps::mapping_all(std::forward<RLM>(rlm)))
         , _pareto_front_map(
               create_vertex_map<std::set<label, labels_cmp>>(_graph))
         , _heap() {}
@@ -101,11 +95,12 @@ public:
     constexpr biobjective_dijkstra(Traits, Args &&... args)
         : biobjective_dijkstra(std::forward<Args>(args)...) {}
 
-    constexpr biobjective_dijkstra(const biobjective_dijkstra &) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    constexpr biobjective_dijkstra(const biobjective_dijkstra &) = delete;
     constexpr biobjective_dijkstra(biobjective_dijkstra &&) = default;
 
     constexpr biobjective_dijkstra & operator=(const biobjective_dijkstra &) =
-        default;
+        delete;
     constexpr biobjective_dijkstra & operator=(biobjective_dijkstra &&) =
         default;
 
@@ -126,21 +121,18 @@ public:
         return std::move(_graph);
     }
 
-    template <typename BlueMap>
-        requires mapping_storable_as<BlueMap, BLM> &&
-                 std::assignable_from<BLM &, BLM>
-    biobjective_dijkstra & set_blue_length_map(BlueMap && blue_length_map) {
+    template <mapping_for<BlueLengthMap> BLM>
+        requires std::assignable_from<BlueLengthMap &, BlueLengthMap>
+    biobjective_dijkstra & set_blue_length_map(BLM && blue_length_map) {
         _blue_length_map =
-            detail::store_mapping<BLM>(std::forward<BlueMap>(blue_length_map));
+            maps::mapping_all(std::forward<BLM>(blue_length_map));
         return *this;
     }
 
-    template <typename RedMap>
-        requires mapping_storable_as<RedMap, RLM> &&
-                 std::assignable_from<RLM &, RLM>
-    biobjective_dijkstra & set_red_length_map(RedMap && red_length_map) {
-        _red_length_map =
-            detail::store_mapping<RLM>(std::forward<RedMap>(red_length_map));
+    template <mapping_for<RedLengthMap> RLM>
+        requires std::assignable_from<RedLengthMap &, RedLengthMap>
+    biobjective_dijkstra & set_red_length_map(RLM && red_length_map) {
+        _red_length_map = maps::mapping_all(std::forward<RLM>(red_length_map));
         return *this;
     }
 
@@ -254,14 +246,17 @@ public:
 
 // No Traits parameter: see competing_dijkstras' guide for why defaulting it
 // here made the deduced type differ from the spelled-out one.
-template <typename Graph, typename BLM, typename RLM>
-biobjective_dijkstra(Graph &&, BLM &&, RLM &&)
-    -> biobjective_dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<BLM>,
-                            maps::mapping_all_t<RLM>>;
+template <typename Graph, typename BlueLengthMap, typename RedLengthMap>
+biobjective_dijkstra(Graph &&, BlueLengthMap &&, RedLengthMap &&)
+    -> biobjective_dijkstra<views::graph_all_t<Graph>,
+                            maps::mapping_all_t<BlueLengthMap>,
+                            maps::mapping_all_t<RedLengthMap>>;
 
-template <typename Graph, typename BLM, typename RLM, typename Traits>
-biobjective_dijkstra(Traits, Graph &&, BLM &&, RLM &&)
-    -> biobjective_dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<BLM>,
-                            maps::mapping_all_t<RLM>, Traits>;
+template <typename Graph, typename BlueLengthMap, typename RedLengthMap,
+          typename Traits>
+biobjective_dijkstra(Traits, Graph &&, BlueLengthMap &&, RedLengthMap &&)
+    -> biobjective_dijkstra<views::graph_all_t<Graph>,
+                            maps::mapping_all_t<BlueLengthMap>,
+                            maps::mapping_all_t<RedLengthMap>, Traits>;
 
 }  // namespace melon

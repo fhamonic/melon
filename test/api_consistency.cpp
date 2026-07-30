@@ -524,12 +524,12 @@ using LM = melon::static_map<unsigned int, int>;
 using RG = melon::graph_ref_view<G>;
 using RLM = melon::mapping_ref_view<LM>;
 
-static_assert(melon::rooted_traversal_algorithm<
-              melon::breadth_first_search<RG>, unsigned int>);
+static_assert(melon::rooted_traversal_algorithm<melon::breadth_first_search<RG>,
+                                                unsigned int>);
 static_assert(melon::rooted_traversal_algorithm<melon::depth_first_search<RG>,
                                                 unsigned int>);
-static_assert(melon::rooted_traversal_algorithm<melon::dijkstra<RG, RLM>,
-                                                unsigned int>);
+static_assert(
+    melon::rooted_traversal_algorithm<melon::dijkstra<RG, RLM>, unsigned int>);
 // competing_dijkstras is rooted through a *pair* of coloured sources, so it
 // models the colour-free half of the contract only.
 static_assert(
@@ -550,11 +550,10 @@ static_assert(melon::traversal_algorithm<
 // answer is read through dist() after run(), like every other result
 // accessor in the family. Its run() used to *be* the result, which made a
 // second call return infty; dist() after a re-run must agree instead.
-static_assert(
-    std::same_as<decltype(std::declval<melon::bidirectional_dijkstra<
-                              RG, RLM> &>()
-                              .run()),
-                 melon::bidirectional_dijkstra<RG, RLM> &>);
+static_assert(std::same_as<
+              decltype(std::declval<melon::bidirectional_dijkstra<RG, RLM> &>()
+                           .run()),
+              melon::bidirectional_dijkstra<RG, RLM> &>);
 
 }  // namespace lifecycle
 
@@ -615,8 +614,7 @@ using SM = melon::static_map<unsigned int, int>;
 // requires-expression gets no SFINAE: naming the ill-formed specialization
 // directly would be a hard error, which is exactly what these pin.
 template <typename GG, typename MM>
-concept spellable_dijkstra =
-    requires { typename melon::dijkstra<GG, MM>; };
+concept spellable_dijkstra = requires { typename melon::dijkstra<GG, MM>; };
 template <typename GG>
 concept spellable_bfs = requires { typename melon::breadth_first_search<GG>; };
 template <typename GG>
@@ -632,9 +630,9 @@ static_assert(!spellable_scc<G>);
 
 // ...and ownership is spelled with the owning views, which store the same
 // bytes the raw member would have.
-static_assert(melon::traversal_algorithm<
-              melon::dijkstra<melon::graph_owning_view<G>,
-                              melon::mapping_owning_view<SM>>>);
+static_assert(
+    melon::traversal_algorithm<melon::dijkstra<
+        melon::graph_owning_view<G>, melon::mapping_owning_view<SM>>>);
 
 // Constructor honesty is unchanged by the head constraints, in both
 // directions: an lvalue map ref-views into a view-typed member, an rvalue
@@ -645,3 +643,66 @@ static_assert(std::is_constructible_v<RefD, G &, SM &>);
 static_assert(!std::is_constructible_v<RefD, G &, SM &&>);
 
 }  // namespace view_only_storage
+
+////////////////////////////////////////////////////////////////////////////////
+// 5. The not_self guard is checked *first*. A constrained template parameter's
+// constraint is conjoined ahead of the trailing requires-clause
+// ([temp.constr.decl]), so `template <graph_for<Graph> G> requires
+// not_self<G, X>` evaluates graph_for first -- and for G = X that asks
+// constructible_from<X, X>, the very question under evaluation. GCC rejects
+// the self-dependency outright, so the failure is a hard error at the point of
+// use, not an unsatisfied constraint: every one of these pins failed to
+// *compile* rather than returning false. The guard only cuts the recursion off
+// when it is the first conjunct of the trailing clause, which is why no
+// *_for helper may ride on a template parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+namespace guard_ordering {
+
+using G = melon::static_digraph;
+using RG = melon::graph_ref_view<G>;
+using Sub =
+    melon::subgraph_view<RG, melon::maps::true_map, melon::maps::true_map>;
+
+// The view itself: asking whether a subgraph_view copies must terminate.
+static_assert(std::copy_constructible<Sub>);
+static_assert(melon::graph_view<Sub>);
+
+// And the algorithms that ask it on the caller's behalf. The query that used
+// to detonate here was an algorithm's copy constructor, constrained on
+// copy_constructible<Graph>, which re-entered subgraph_view's own
+// constructibility; that constructor is gone -- algorithms are move-only (see
+// the melon::traversal_algorithm concept). What remains reaches the same guard
+// through the constructor template's graph_for, and must equally terminate:
+// every line below was once a hard error rather than an answer.
+static_assert(std::movable<melon::breadth_first_search<Sub>>);
+static_assert(!std::copy_constructible<melon::breadth_first_search<Sub>>);
+static_assert(std::is_constructible_v<melon::breadth_first_search<Sub>, Sub &>);
+static_assert(std::movable<melon::topological_sort<Sub>>);
+static_assert(!std::copy_constructible<melon::topological_sort<Sub>>);
+static_assert(std::is_constructible_v<melon::topological_sort<Sub>, Sub &>);
+// strongly_connected_components used to be the odd one out here, answering
+// false for a second reason -- the relocation guard on copy, since Sub
+// forwards static_digraph's borrowed ranges while not itself being a
+// borrowed_graph, so it could not rebase. Move-only makes that guard moot: the
+// answer is now false for one reason, and the same reason, family-wide.
+static_assert(std::movable<melon::strongly_connected_components<Sub>>);
+static_assert(
+    !std::copy_constructible<melon::strongly_connected_components<Sub>>);
+static_assert(
+    std::is_constructible_v<melon::strongly_connected_components<Sub>, Sub &>);
+
+// not_self stays deliberately narrow: a *different* specialization is still a
+// legal argument, so composing views keeps working. Only the class's own
+// specialization is diverted to the copy constructor.
+static_assert(
+    std::is_constructible_v<
+        melon::subgraph_view<Sub, melon::maps::true_map, melon::maps::true_map>,
+        Sub &>);
+// Composition passes the view through by value rather than ref-viewing it --
+// graph_all's pass_through branch -- so the ref-view spelling is *not* the
+// composed type. This is the query whose pass_through branch recursed.
+static_assert(!melon::graph_for<Sub &, melon::graph_ref_view<Sub>>);
+static_assert(!melon::graph_for<Sub &, RG>);
+
+}  // namespace guard_ordering

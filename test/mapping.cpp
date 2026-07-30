@@ -80,8 +80,8 @@ static_assert(output_mapping_of<const mapping_ref_view<std::vector<int>>,
                                 std::size_t, int>);
 static_assert(
     !output_mapping<mapping_ref_view<const std::vector<int>>, std::size_t>);
-static_assert(mapping_of<mapping_ref_view<const std::vector<int>>,
-                         std::size_t, int>);
+static_assert(
+    mapping_of<mapping_ref_view<const std::vector<int>>, std::size_t, int>);
 static_assert(std::copyable<mapping_ref_view<std::vector<int>>>);
 
 GTEST_TEST(mapping_ref_view, reads_and_writes_through) {

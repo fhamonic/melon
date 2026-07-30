@@ -7,6 +7,7 @@
 #include <memory>
 #include <ranges>
 #include <stdexcept>
+#include <utility>
 
 #include "melon/detail/not_self.hpp"
 
@@ -79,14 +80,23 @@ public:
     }
     constexpr static_map(const static_map & other)
         : static_map(other.data(), other.data() + other.size()) {};
-    constexpr static_map(static_map &&) = default;
+    // Hand-written so the source leaves as a valid *empty* map: defaulted,
+    // the move nulled _data but kept _size, and a moved-from map answered
+    // size() == N over a null buffer -- a reachable state, since algorithms
+    // take their graph (whose state this is) by value.
+    constexpr static_map(static_map && other) noexcept
+        : _data(std::move(other._data)), _size(std::exchange(other._size, 0)) {}
 
     constexpr static_map & operator=(const static_map & other) {
         reset(other.size());
         std::copy(other.data(), other.data() + other.size(), _data.get());
         return *this;
     }
-    static_map & operator=(static_map &&) = default;
+    constexpr static_map & operator=(static_map && other) noexcept {
+        _data = std::move(other._data);
+        _size = std::exchange(other._size, 0);
+        return *this;
+    }
 
     [[nodiscard]] constexpr iterator begin() noexcept { return _data.get(); }
     [[nodiscard]] constexpr iterator end() noexcept {

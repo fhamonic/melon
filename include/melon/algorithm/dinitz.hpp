@@ -13,11 +13,15 @@
 
 namespace melon {
 
-// graph_view / mapping_view on the stored members: see dijkstra's head.
+// numeric_limits must be genuinely specialized for the capacity type: the
+// primary template's max() returns T{} -- a zero infinity that made the
+// augmenting-path loop spin forever for a conforming custom value type that
+// compiled cleanly.
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
-    requires outward_incidence_graph<Graph> &&
-             inward_incidence_graph<Graph> && has_vertex_map<Graph> &&
-             has_arc_map<Graph>
+    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
+             has_vertex_map<Graph> && has_arc_map<Graph> &&
+             std::numeric_limits<
+                 mapped_value_t<CapacityMap, arc_t<Graph>>>::is_specialized
 class dinitz {
 private:
     using vertex = vertex_t<Graph>;
@@ -38,15 +42,10 @@ private:
         _remaining_in_arcs;
 
 public:
-    // graph_storable_as / mapping_storable_as, so std::is_constructible
-    // answers what the mem-initializers actually do -- see dijkstra's
-    // constructor.
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                 mapping_storable_as<M, CapacityMap>
-    constexpr dinitz(G && g, M && c)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _capacity_map(detail::store_mapping<CapacityMap>(std::forward<M>(c)))
+    template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
+    constexpr dinitz(G && g, CM && cm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
         , _remaining_out_arcs(
@@ -61,11 +60,9 @@ public:
         reset();
     }
 
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                 mapping_storable_as<M, CapacityMap>
-    constexpr dinitz(G && g, M && c, const vertex & s, const vertex & t)
-        : dinitz(std::forward<G>(g), std::forward<M>(c)) {
+    template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
+    constexpr dinitz(G && g, CM && cm, const vertex & s, const vertex & t)
+        : dinitz(std::forward<G>(g), std::forward<CM>(cm)) {
         set_source(s);
         set_target(t);
     }
@@ -74,35 +71,13 @@ public:
     // are re-askable -- out_arcs(_graph, v) / in_arcs(_graph, v) for exactly
     // the vertex they are stored under -- so after the members relocate,
     // _rebase_cursors() aims them at the *new* _graph and the _consumed
-    // counters put them back where they were. Copy therefore no longer
-    // requires borrowed_graph: rebasing is what makes a dinitz over an owned
-    // subgraph honestly copyable. The one combination that cannot rebase -- a
-    // non-borrowed graph handing out std-borrowed ranges, which have no
-    // counter -- keeps copy constrained away.
-    constexpr dinitz(const dinitz & o)
-        requires std::copy_constructible<Graph> &&
-                     std::copy_constructible<CapacityMap> &&
-                     std::copy_constructible<
-                         consumable_input_view_t<out_arcs_range_t<Graph>>> &&
-                     std::copy_constructible<
-                         consumable_input_view_t<in_arcs_range_t<Graph>>> &&
-                     (borrowed_graph<Graph> ||
-                      (!std::ranges::borrowed_range<out_arcs_range_t<Graph>> &&
-                       !std::ranges::borrowed_range<in_arcs_range_t<Graph>>))
-        : _graph(o._graph)
-        , _capacity_map(o._capacity_map)
-        , _s(o._s)
-        , _t(o._t)
-        , _carried_flow_map(o._carried_flow_map)
-        , _bfs_queue(o._bfs_queue)
-        , _vertex_rank_map(o._vertex_rank_map)
-        , _remaining_out_arcs(o._remaining_out_arcs)
-        , _remaining_in_arcs(o._remaining_in_arcs) {
-        _rebase_cursors();
-    }
+    // counters put them back where they were.
+    //
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Hand-written for the same reason as depth_first_search's move: a
     // memberwise move leaves the cached cursors' ranges pointing at the
     // moved-from object's _graph member.
+    constexpr dinitz(const dinitz &) = delete;
     constexpr dinitz(dinitz && o)
         : _graph(std::move(o._graph))
         , _capacity_map(std::move(o._capacity_map))
@@ -116,29 +91,7 @@ public:
         _rebase_cursors();
     }
 
-    constexpr dinitz & operator=(const dinitz & o)
-        requires std::copyable<Graph> && std::copyable<CapacityMap> &&
-                     std::copyable<
-                         consumable_input_view_t<out_arcs_range_t<Graph>>> &&
-                     std::copyable<
-                         consumable_input_view_t<in_arcs_range_t<Graph>>> &&
-                     (borrowed_graph<Graph> ||
-                      (!std::ranges::borrowed_range<out_arcs_range_t<Graph>> &&
-                       !std::ranges::borrowed_range<in_arcs_range_t<Graph>>))
-    {
-        if(this == std::addressof(o)) return *this;
-        _graph = o._graph;
-        _capacity_map = o._capacity_map;
-        _s = o._s;
-        _t = o._t;
-        _carried_flow_map = o._carried_flow_map;
-        _bfs_queue = o._bfs_queue;
-        _vertex_rank_map = o._vertex_rank_map;
-        _remaining_out_arcs = o._remaining_out_arcs;
-        _remaining_in_arcs = o._remaining_in_arcs;
-        _rebase_cursors();
-        return *this;
-    }
+    constexpr dinitz & operator=(const dinitz &) = delete;
     // See the move constructor.
     constexpr dinitz & operator=(dinitz && o) {
         if(this == std::addressof(o)) return *this;
@@ -172,7 +125,6 @@ private:
     }
 
 public:
-
     // The graph the algorithm runs over. An algorithm owns its view rather
     // than adapting it, so this is the std::ranges::owning_view shape --
     // references, ref-qualified -- and not the filter_view shape the graph

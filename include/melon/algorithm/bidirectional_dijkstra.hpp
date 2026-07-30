@@ -90,42 +90,27 @@ private:
     [[no_unique_address]] forward_pred_arcs_map _forward_pred_arcs_map;
     [[no_unique_address]] reverse_pred_arcs_map _reverse_pred_arcs_map;
     [[no_unique_address]] optional_midpoint _midpoint;
-    // The best s-t distance found so far; infty until a meeting point exists.
-    // A member rather than a local of run(), which is what makes run()
-    // idempotent -- re-running used to re-seed a local to infty and return
-    // that -- and what lets dist() answer after the run, where the result
-    // used to be gone the moment run()'s return value was discarded.
     length_type _st_dist = Traits::semiring::infty;
 
 public:
-    // graph_storable_as / mapping_storable_as, so std::is_constructible
-    // answers what the mem-initializers actually do -- see dijkstra's
-    // constructor.
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                     mapping_storable_as<M, LengthMap>
-    constexpr bidirectional_dijkstra(G && g, M && l)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _length_map(detail::store_mapping<LengthMap>(std::forward<M>(l)))
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+    constexpr bidirectional_dijkstra(G && g, LM && lm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _forward_heap(typename Traits::semiring::less_t(),
                         create_vertex_map<std::size_t>(_graph))
         , _reverse_heap(typename Traits::semiring::less_t(),
                         create_vertex_map<std::size_t>(_graph))
-        // Through the CPO, like every other algorithm: calling the member
-        // directly rejects a graph whose maps come from ADL, although
-        // has_vertex_map -- which this class requires -- accepts one.
         , _vertex_status_map(
               create_vertex_map<std::pair<vertex_status, vertex_status>>(
                   _graph, std::make_pair(PRE_HEAP, PRE_HEAP)))
         , _forward_pred_arcs_map(_graph)
         , _reverse_pred_arcs_map(_graph) {}
 
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                 mapping_storable_as<M, LengthMap>
-    constexpr bidirectional_dijkstra(G && g, M && l, const vertex & s,
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+    constexpr bidirectional_dijkstra(G && g, LM && lm, const vertex & s,
                                      const vertex & t)
-        : bidirectional_dijkstra(std::forward<G>(g), std::forward<M>(l)) {
+        : bidirectional_dijkstra(std::forward<G>(g), std::forward<LM>(lm)) {
         add_source(s);
         add_target(t);
     }
@@ -135,11 +120,12 @@ public:
     constexpr bidirectional_dijkstra(Traits, Args &&... args)
         : bidirectional_dijkstra(std::forward<Args>(args)...) {}
 
-    constexpr bidirectional_dijkstra(const bidirectional_dijkstra &) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    constexpr bidirectional_dijkstra(const bidirectional_dijkstra &) = delete;
     constexpr bidirectional_dijkstra(bidirectional_dijkstra &&) = default;
 
     constexpr bidirectional_dijkstra & operator=(
-        const bidirectional_dijkstra &) = default;
+        const bidirectional_dijkstra &) = delete;
     constexpr bidirectional_dijkstra & operator=(bidirectional_dijkstra &&) =
         default;
 

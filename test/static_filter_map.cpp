@@ -420,3 +420,45 @@ GTEST_TEST(static_filter_map, filter_lvalue_and_rvalue_agree) {
     ASSERT_TRUE(EQ_RANGES(map.filter(std::as_const(named_range)), expected));
     ASSERT_TRUE(EQ_RANGES(map.filter(std::views::iota(0, 200)), expected));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// a moved-from filter map is a valid empty map, like static_map's
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(static_filter_map, moved_from_is_a_valid_empty_map) {
+    static_filter_map<std::size_t> map(100, true);
+
+    static_filter_map<std::size_t> target(std::move(map));
+    ASSERT_EQ(target.size(), 100u);
+    ASSERT_EQ(map.size(), 0u);
+    ASSERT_TRUE(map.empty());
+
+    static_filter_map<std::size_t> copy(map);
+    ASSERT_EQ(copy.size(), 0u);
+
+    map = std::move(target);
+    ASSERT_EQ(map.size(), 100u);
+    ASSERT_TRUE(map[99]);
+    ASSERT_EQ(target.size(), 0u);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// filter() keeps an rvalue key range alive. Passed as an lvalue into
+// views::transform, an rvalue container was wrapped in a ref_view of a
+// temporary dead at the semicolon (ASan-confirmed); forwarding hands it to an
+// owning_view instead.
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(static_filter_map, filter_owns_an_rvalue_key_range) {
+    static_filter_map<std::size_t> map(10, false);
+    map[2] = true;
+    map[5] = true;
+    map[7] = true;
+
+    auto filtered = map.filter(std::vector<std::size_t>{1u, 2u, 5u, 6u, 9u});
+    ASSERT_TRUE(EQ_RANGES(filtered, {2u, 5u}));
+
+    // and an lvalue range is still referenced, not copied
+    std::vector<std::size_t> keys = {5u, 7u, 8u};
+    ASSERT_TRUE(EQ_RANGES(map.filter(keys), {5u, 7u}));
+}

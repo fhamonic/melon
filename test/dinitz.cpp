@@ -89,3 +89,23 @@ GTEST_TEST(dinitz, no_arcs) {
 //                   }, 0ul, 1ul) .run() .flow_value(),
 //               4);
 // }
+
+////////////////////////////////////////////////////////////////////////////////
+// capacity types without a genuine numeric_limits specialization are rejected
+// at the concept level: the primary template's max() returns T{} -- a zero
+// infinity that made the augmenting-path loop spin forever at runtime for a
+// type that compiled cleanly
+////////////////////////////////////////////////////////////////////////////////
+
+namespace zero_infinity_probes {
+struct opaque_capacity {
+    int v;
+};
+}  // namespace zero_infinity_probes
+
+template <typename V>
+concept dinitz_admits = requires(
+    static_digraph & g, std::vector<V> & capacities) { dinitz(g, capacities); };
+static_assert(dinitz_admits<int>);
+static_assert(dinitz_admits<double>);
+static_assert(!dinitz_admits<zero_infinity_probes::opaque_capacity>);

@@ -44,3 +44,24 @@ GTEST_TEST(knapsack_bnb, test2) {
     ASSERT_EQ(alg.solution_value(), 12);
     ASSERT_EQ(alg.solution_cost(), 14);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// set_budget re-derives the item filter. reset() excludes items costing more
+// than the budget, so only assigning _budget kept newly-affordable items
+// excluded and run() returned a wrong "optimal" value after a raise.
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(knapsack_bnb, set_budget_rederives_the_item_filter) {
+    std::vector<std::size_t> items = {0u, 1u, 2u};
+    std::vector<int> values = {10, 7, 1};
+    std::vector<int> costs = {9, 12, 2};
+
+    auto alg = knapsack_bnb(items, values, costs, 3);
+    ASSERT_EQ(alg.run().solution_value(), 1);
+
+    // at budget 23 every item fits; the stale filter built at budget 3 kept
+    // items 0 and 1 excluded and answered 1 again
+    alg.set_budget(23);
+    ASSERT_EQ(alg.run().solution_value(), 18);
+    ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {0u, 1u, 2u}));
+}

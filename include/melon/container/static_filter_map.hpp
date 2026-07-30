@@ -6,6 +6,7 @@
 #include <memory>
 #include <ranges>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "melon/detail/intrusive_view.hpp"
@@ -255,7 +256,11 @@ public:
         std::copy(other._data.get(), other._data.get() + num_spans(other._size),
                   _data.get());
     };
-    static_filter_map(static_filter_map &&) = default;
+    // Hand-written for the same reason as static_map's: a defaulted move
+    // nulled _data but kept _size, leaving the source lying about its size
+    // over a null buffer.
+    static_filter_map(static_filter_map && other) noexcept
+        : _data(std::move(other._data)), _size(std::exchange(other._size, 0)) {}
 
     static_filter_map & operator=(const static_filter_map & other) {
         reset(other.size());
@@ -263,7 +268,11 @@ public:
                   _data.get());
         return *this;
     };
-    static_filter_map & operator=(static_filter_map &&) = default;
+    static_filter_map & operator=(static_filter_map && other) noexcept {
+        _data = std::move(other._data);
+        _size = std::exchange(other._size, 0);
+        return *this;
+    }
 
     iterator begin() noexcept { return iterator(_data.get(), 0); }
     iterator end() noexcept {
@@ -418,9 +427,14 @@ public:
                 [end_index](const K & i) -> bool { return i < end_index; });
             //*/
         } else {
+            // forward, not r: passed as an lvalue, an rvalue container was
+            // wrapped in a ref_view of a temporary dead at the semicolon;
+            // forwarding lets views::transform take ownership through an
+            // owning_view.
             return std::views::filter(
                 std::views::transform(
-                    r, [](auto && i) { return static_cast<K>(i); }),
+                    std::forward<R>(r),
+                    [](auto && i) { return static_cast<K>(i); }),
                 [this](const auto & k) {
                     return operator[](static_cast<size_type>(k));
                 });

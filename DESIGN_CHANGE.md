@@ -193,6 +193,10 @@ The uniform policy — which is *more* permissive than today:
   *improvement*: DFS over an owned subgraph becomes honestly copyable, where today it is forbidden.
   The `borrowed_graph` constraint on copy was compensating for the missing rebase, not expressing a
   real semantic limit.
+
+  > **Superseded by Addendum 3**: copy is gone entirely. The move half of this proposal — the
+  > rebase engine and the hand-written moves — is unaffected and is what the machinery was
+  > always for. Read this bullet as the historical rationale, not the shipped policy.
 - **Handed-out maps get one documented caveat**: `reached_map()` et al. reference the algorithm
   object; relocating the algorithm invalidates previously handed-out maps (the same contract
   `std::ranges` adaptors have over a moved container).
@@ -262,6 +266,11 @@ constexpr dijkstra(G && g, M && m)
                      constructible_from<LengthMap, M>, else mapping_all */) { ... }
 ```
 
+> As shipped, the concepts are named `graph_for` / `mapping_for` /
+> `undirected_graph_for` and carry no raw-storage branch, and the *position* of each
+> constraint turned out to be load-bearing rather than cosmetic. See the two addenda
+> below; this block is the proposal as written.
+
 Two deliberate choices:
 
 1. `is_constructible` now tells the truth in **both directions** — false for the
@@ -326,7 +335,7 @@ A thin convenience layer for the 80% case — e.g. `melon::shortest_path(g, s, t
 
 ---
 
-## Addendum (2026-07-30, post-implementation): stored members are always views
+## Addendum 1 (2026-07-30, post-implementation): stored members are always views
 
 Ratified as a follow-up to Proposal 3 after all three proposals landed. Proposal 3 as written
 preserved two storage modes for algorithm members — view types (what CTAD deduces) and explicitly
@@ -355,3 +364,142 @@ directions is unchanged; only the domain shrank.
 Pinned in `test/api_consistency.cpp` §4: raw-container spellings are ill-formed (checked through
 dependent requires-expressions), the owning-view spelling models `traversal_algorithm`, and the
 lvalue/rvalue constructibility answers are asserted. CTAD users are unaffected throughout.
+
+---
+
+## Addendum 2 (2026-07-30, post-implementation): the guard's *position* is part of the contract
+
+Ratified after the refactor that renamed Proposal 3's `storable_as` concepts to their final
+spellings — `graph_for<G, Graph>`, `mapping_for<M, Map>`, `undirected_graph_for<UG, UGraph>`, each
+stating exactly "wraps through `graph_all`/`mapping_all` into the member". The rename is cosmetic.
+What is not cosmetic is where the constraints are allowed to sit.
+
+**The rule.** `detail::not_self` must be the **first conjunct of the trailing `requires`-clause**.
+No `*_for` helper may ride on a template parameter:
+
+```cpp
+// Wrong -- graph_for is checked first, whatever the trailing clause says.
+template <graph_for<Graph> G, mapping_for<VertexFilter> VF = maps::true_map>
+    requires detail::not_self<G, subgraph_view>
+
+// Right.
+template <typename G, typename VF = maps::true_map>
+    requires detail::not_self<G, subgraph_view> && graph_for<G, Graph> &&
+             mapping_for<VF, VertexFilter>
+```
+
+**Why.** A constrained template parameter's constraint is conjoined *ahead of* the trailing
+`requires`-clause ([temp.constr.decl]), so the sugar silently reverses the intended order. For a
+class that is itself a `graph_view` and whose constructor is callable with one argument — every
+view adaptor, since the filters default — the constructor template competes with the copy
+constructor, so `G` deduces to the class itself. Then `graph_for<G, Graph>` asks
+`constructible_from<Graph, graph_all_t<G>>`, whose `pass_through` branch asks
+`constructible_from<subgraph_view, subgraph_view>`: the very question under evaluation. This is not
+an unsatisfied constraint but a **hard error** — GCC's "satisfaction of atomic constraint depends on
+itself" — at the point of use, the same outside-the-immediate-context failure mode Proposal 3
+exists to eliminate. `not_self` was written precisely to cut the recursion off before it starts, and
+only the trailing position lets it.
+
+The bug was live in `subgraph_view`: every algorithm holding one failed to compile the moment
+anything asked `copy_constructible<Graph>`. It was latent in
+BFS/DFS/SCC/toposort/`connected_components`/`traversal_forest`/`bentley_ottmann`, which are
+single-argument-constructible but not themselves graphs, so `graph_for` short-circuited to a clean
+`false` before reaching `pass_through`. All are fixed; the latent ones defensively.
+
+**Where the sugar stays legal.** Two-argument constructors (`dijkstra`, `dinitz`, `edmonds_karp`,
+`kruskal`, the paired Dijkstras, `network_voronoi`) never compete with a copy constructor, so the
+class type is never deduced into `G` and no `not_self` is needed — `template <graph_for<Graph> G,
+mapping_for<LengthMap> LM>` is correct there. Same for `set_*_length_map` setters, and for
+constraints that cannot re-enter constructibility at all (`static_map`'s range concepts).
+
+Pinned in `test/api_consistency.cpp` §5: `copy_constructible` over a `subgraph_view` terminates for
+the view, the constructibility queries terminate for the algorithms that hold one, and composing a
+subgraph of a subgraph still works (`not_self` is deliberately narrow — a *different*
+specialization remains a legal argument). Some of those pins assert `false`, deliberately: every
+algorithm is non-copyable after Addendum 3, and view composition passes the view through by value
+rather than ref-viewing it. The point of the section is that these queries now *have* answers.
+
+> Addendum 3 narrows what §5 can even ask of an algorithm: the query that used to detonate was an
+> algorithm's copy constructor, constrained on `copy_constructible<Graph>`, which re-entered
+> `subgraph_view`'s own constructibility. With copy deleted, the guard is reached through the
+> constructor template's `graph_for` instead, so the section now pins `is_constructible_v<A, Sub&>`
+> alongside the movability. `copy_constructible<Sub>` — the view itself, where the recursion
+> actually lived — is unchanged and still the load-bearing pin.
+
+---
+
+## Addendum 3 (2026-07-30, post-implementation): algorithms are move-only
+
+Ratified after Proposals 1-3 landed, on the strength of measurement rather than principle. Copy is
+removed from every algorithm: `std::copyable<A>` is now `false` for every algorithm `A` over every
+graph, `std::movable<A>` is `true` for every one of them, and the `traversal_algorithm` concept's
+existing `std::movable` requirement becomes the *whole* relocation contract.
+
+**Why.** Three findings, in increasing order of weight.
+
+1. **Nothing used it.** No example, benchmark, documented use case or test used a copy for a
+   purpose — every test that copied an algorithm was testing copying. The single library-internal
+   copy was `traversal_forest` copying its own `_bfs`, inside `traversal_forest`'s own copy
+   constructor: circular, existing only so that a `traversal_forest` could itself be copied, which
+   nothing needed either. The one plausible use case, forking a branch-and-bound search, is one the
+   library had already designed away from — `knapsack_bnb` is deliberately iterative.
+
+2. **It was never cheap.** An algorithm carries every vertex map, the heap and the cached cursors.
+   Copying is O(V+E), and the syntax that triggers it — passing by value, `auto x = alg.run();` —
+   suggests otherwise. Deleting it turns a silent cost into a compile error. The library had
+   already reached this conclusion once from the other side: `algorithmic_generator.hpp` records
+   that deriving from `view_interface` made a copyable algorithm model `std::ranges::view`, so
+   `alg | std::views::take(3)` deep-copied the whole search state and ran on the copy.
+
+3. **The rule could not be stated — the decisive one.** Copyability was conditional, and the
+   condition was not something a user could hold in their head. Measured on the tree as of this
+   addendum, over one identical graph type (`subgraph_view<graph_ref_view<static_digraph>>`),
+   `dijkstra`, `breadth_first_search` and `topological_sort` were copyable while
+   `depth_first_search` and `strongly_connected_components` were not. Worse, the *same* algorithm
+   over the *same* view shape flipped on the container underneath: `depth_first_search` over a
+   subgraph of a `static_digraph` was not copyable, over a subgraph of a `mutable_digraph` it was —
+   because `static_digraph` hands out `std::span` (a `borrowed_range`, so the cursor has no
+   `_consumed` counter to reseek with) and `mutable_digraph` hands out intrusive views. A
+   capability whose availability rule depends on a two-level interaction between the container's
+   range flavour and the view stack above it is worse than no capability, and it made every generic
+   `std::copyable<A>` query a research problem.
+
+**What this does *not* remove.** Roughly half of the relocation machinery, and the harder half.
+The `_consumed` / `_reseek` / `rebase` / `(range, consumed)` layer in `detail/consumable_view.hpp`
+exists for **move**: the ASan finding that motivated Proposal 2 (REVIEW.md Tier 1, finding 2) is a
+move defect, reproducible "with no copy anywhere in the program". The hand-written moves in
+`depth_first_search`, `dinitz`, `strongly_connected_components`, `connected_components` and
+`traversal_forest` all stay, `rebase()` is still called from all four of DFS/dinitz/SCC's special
+members, and `frames_need_rebase` still feeds the move `noexcept` specifications. What disappears
+is the copy-only half: the hand-written copies, the `requires`-clauses that kept `std::copyable`
+honest, and the four rebase helpers that only copy paths ever called — BFS's `_rebase_cursors_from`,
+both knapsacks' `_rebase_best_sol_from`, `connected_components`' `_rebase_cursors` and
+`traversal_forest`'s `_rebase_sources`, each of which existed because a member pointed into another
+member's heap buffer, a problem a move does not have.
+
+**Net effect.** The 17 algorithm headers go from 5,162 to 4,759 lines — 403 net, after adding back
+the comments that record the ruling. `detail/movable_box.hpp` and `detail/consumable_view.hpp` keep
+their copy support: they serve the graph and mapping *views*, which stay copyable.
+
+**One defect closed on the way.** `knapsack_bnb` and `unbounded_knapsack_bnb` were the last
+hand-written copies in the library without the `requires`-clause of REVIEW.md finding 11 — for a
+move-only `ItemRange`, `std::copyable` answered `true` and the copy hard-errored inside the
+mem-initializer (verified). That is the fourth instance of the same defect found in a family that
+had already been swept for it twice, which is the argument for closing the class rather than the
+instance.
+
+**Observable API break.** Real, and the largest of the four rulings in this document: any code that
+copies an algorithm stops compiling. Migration is to construct a second algorithm, or to `reset()`
+one — which reuses the state it has already allocated, and is what `reset()` is for. The one shape
+that changes silently-looking code is `auto a = alg.run();`, since `run()` returns `*this` by
+reference; it becomes `alg.run();` with the answer read through the accessors. Acceptable at pre-1.0,
+and recorded in CHANGELOG.md under 1.0.0 breaking changes.
+
+**Enforcement.** `test/api_review.cpp`'s value-semantics tests now relocate by move and still
+destroy the source first; the relocation test moves twice mid-run (construction and assignment) and
+compares against an undisturbed traversal. The six "copying a mutable lvalue must pick the copy
+constructor" regressions become `!std::is_constructible_v<A, A &>` pins — the property `not_self`
+actually guards, which without it would let the greedy single-argument constructor become viable
+again where the deleted copy constructor should be chosen. Every algorithm test that pinned
+`std::copyable` now pins `std::movable && !std::copyable`. 340/340 pass, including under
+AddressSanitizer.

@@ -7,23 +7,65 @@
 
 The three proposals of [DESIGN_CHANGE.md](DESIGN_CHANGE.md) are **implemented** (constructor
 honesty, relocation-rebase policy, lifecycle contract; 340/340 tests pass, new behaviors pinned in
-`test/api_consistency.cpp` and `test/api_review.cpp`, relocation soundness ASan-verified). The
-checklist below tracks every finding of this review; unchecked items remain open.
+`test/api_consistency.cpp` and `test/api_review.cpp`, relocation soundness ASan-verified). A
+follow-up ruling then made **algorithms move-only** — see DESIGN_CHANGE.md Addendum 3 — which
+retires the copy half of several findings below outright. The checklist below tracks every finding
+of this review; unchecked items remain open.
 
 **Tier 1 — runtime bugs**
-- [ ] 1. `same_component()` compares lowlinks (wrong answers)
+- [x] 1. `same_component()` compares lowlinks (wrong answers) — `same_component()` is removed;
+      `strongly_connected_components` gained a traits parameter (the topological_sort pattern)
+      with a `store_component_ids` flag: when set, a dense component id is written per member as
+      the component is popped (`vertex_map_if`, `[[no_unique_address]]` air otherwise) and the
+      flag-gated `component_id()`/`component_ids_map()` expose them — the same-component query is
+      id equality. The lowlink comparison is gone; the review's counterexample graph is pinned in
+      `test/strongly_connected_components.cpp`
 - [x] 2. DFS move use-after-free — fixed by the rebase policy (Proposal 2); the refuted pin at
-      `test/api_review.cpp` is replaced by a behavioral move+copy-mid-run test
-- [ ] 3. `bentley_ottmann` comparator self-references on copy/move and `reset()` bricks the object
-      — *partially*: the missing `not_self` guard is fixed (constructor no longer hijacks copies);
-      the comparator rebind and `reset()` remain open
-- [ ] 4. `static_filter_map::filter()` rvalue dangle
-- [ ] 5. Moved-from `static_map`/digraphs stale `_size` over null buffer
-- [ ] 6. Flow algorithms' zero-infinity infinite loop
-- [ ] 7. `graphviz_printer` (format_to iterator, `_graph [` literal, temporary dangle)
+      `test/api_review.cpp` is replaced by a behavioral mid-run relocation test exercising both
+      move construction and move assignment. The rebase machinery is unaffected by Addendum 3:
+      this was always a *move* defect, reproducible with no copy anywhere in the program
+- [x] 3. `bentley_ottmann` comparator self-references on copy/move and `reset()` bricks the object
+      — closed in three steps: the missing `not_self` guard was fixed (constructor no longer
+      hijacks copies), the **copy half retired with copy itself** (Addendum 3), and now the *move*
+      half: both sweep points live behind a single `unique_ptr` (declared before the trees, whose
+      comparators `std::cref` its pointees), so their address is move-invariant and the defaulted
+      moves are sound — no rebind needed, and the comparison hot path keeps the one indirection
+      the `reference_wrapper` already was. `reset()` works because the id range is now *stored*
+      (`std::ranges::view` class parameter captured via `views::all`, the algorithms-store-views
+      ruling) and a private `seed()` — shared with the constructor — re-pushes the endpoints and
+      re-inits; `forward_range` is required so the range survives multiple passes. Both pinned in
+      `test/bentley_ottmann.cpp` (`mid_run_move`, `reset_replays_the_sweep`)
+- [x] 4. `static_filter_map::filter()` rvalue dangle — `std::forward<R>(r)` into the
+      `views::transform`, so an rvalue key range is owned by the pipeline (`owning_view`) instead
+      of ref-viewed as a dead temporary; lvalues keep the `ref_view`. ASan-verified; pinned in
+      `test/static_filter_map.cpp` (`filter_owns_an_rvalue_key_range`)
+- [x] 5. Moved-from `static_map`/digraphs stale `_size` over null buffer — hand-written moves
+      (`std::exchange(_size, 0)`) on `static_map` and `static_filter_map`; both static digraphs
+      inherit soundness since their state *is* `static_map`s. `mutable_digraph`'s hand-written
+      moves reset its five scalars (counts, list heads) to the default-constructed state its
+      vectors already reach. Moved-from objects are now valid empty containers — copyable,
+      reusable. Pinned as `moved_from_is_a_valid_empty_*` in the three containers' test files
+- [x] 6. Flow algorithms' zero-infinity infinite loop — both class heads now require
+      `std::numeric_limits<value_t>::is_specialized`, turning the forever-hang into a
+      concept-level rejection (genuinely unbounded capacity types are correctly refused: they
+      have no usable infinity; a sentinel constructor parameter can be added later, additively).
+      Pinned by `*_admits` concept probes in `test/edmonds_karp.cpp` / `test/dinitz.cpp`
+- [x] 7. `graphviz_printer` (format_to iterator, `_graph [` literal, temporary dangle) — `print`
+      takes the output iterator by value, threads it through every `std::format_to` and returns
+      it, constrained `std::output_iterator<const char &>` (positional iterators like `char *`
+      now come out whole — pinned against the `back_inserter` reference); the string literal is
+      `graph [`, so the attributes apply and the spurious `_graph` node is gone; and a deleted
+      `const G &&` constructor overload refuses to bind a temporary graph (the
+      `mapping_ref_view` bindable-test precedent). Pinned in `test/graphviz_printer.cpp`
 - [x] 8. `competing_dijkstras::init()` trap — `init()` removed; blue-top is a class invariant
       maintained by `add_*_source`/`advance()` (Proposal 1); `advance()` gained its assert
-- [ ] 9. Knapsack `set_budget` stale item filter
+- [x] 9. Knapsack `set_budget` stale item filter — `set_budget` re-derives through `reset()` in
+      both twins (the setter is O(n log n) now, the price of a correct answer). Fixing it
+      surfaced a **new sibling defect**: `unbounded_knapsack_bnb`'s `iterative_bnb` /
+      `iterative_bnb_timeout` lacked the `it == end` guard the bounded twin always had, so
+      `run()` over an empty feasible set (budget below every item) jumped `goto begin` into the
+      loop body and dereferenced `end` — hang/UB, now guarded. Pinned as
+      `set_budget_rederives_the_item_filter` in both knapsack test files
 
 **Tier 2 — lying type traits**
 - [x] 10. Unconstrained algorithm constructors — all 14 sites constrained on
@@ -32,13 +74,18 @@ checklist below tracks every finding of this review; unchecked items remain open
       requires `graph_view`/`undirected_graph_view`/`mapping_view` (the transform_view precedent),
       the raw-storage fallback was removed, and value ownership is spelled
       `graph_owning_view`/`mapping_owning_view`; pinned in api_consistency.cpp §4
-- [x] 11. BFS/topological_sort unconstrained hand-written copies — constrained on
-      `copy_constructible`/`copyable`; same sweep applied to kruskal
+- [x] 11. BFS/topological_sort unconstrained hand-written copies — first constrained on
+      `copy_constructible`/`copyable` (same sweep applied to kruskal), then **dissolved**: the
+      copies are gone (Addendum 3). The sweep had in fact missed two files —
+      `knapsack_bnb`/`unbounded_knapsack_bnb` were the last hand-written copies in the library with
+      no `requires`-clause, and `std::copyable` still answered true for a move-only `ItemRange`
+      while the copy hard-errored in the mem-initializer (verified). Deleting copy closes the whole
+      class of defect rather than one instance at a time
 - [x] 12. `static_digraph` forward-range constraint lie — dissolved from the static_map side
       (sized-forward-range constructor via `ranges::distance`)
 - [x] 13. Non-view `Graph` parameters — `reverse_view`/`subgraph_view`/`undirect_view` heads now
       require `graph_view`; both owning views gained `is_object_v`
-- [ ] 14. `reverse_view::arcs_entries` hard-errors on tuple-shaped entries
+- [x] 14. `reverse_view::arcs_entries` hard-errors on tuple-shaped entries
 - [ ] 15. Experimental headers (planar_map ADL loop, dual.hpp, doubly_connected_digraph,
       scapegoat_tree)
 
@@ -177,6 +224,11 @@ immediate context.
     `include/melon/algorithm/topological_sort.hpp:140-167`: `std::copyable` answers true for a
     move-only `graph_owning_view` graph, copy hard-errors. DFS already shows the correct constrained
     pattern; `traversal_forest` inherits the lie transitively.
+
+    > Resolved by removal rather than by constraint. The constrained pattern was applied
+    > file-by-file and still missed `knapsack_bnb`/`unbounded_knapsack_bnb`; algorithms are now
+    > move-only, so there is no copy constructor left to constrain. See DESIGN_CHANGE.md
+    > Addendum 3.
 
 12. **`static_digraph`/`static_forward_digraph` constructors accept `forward_range` but require
     `random_access_range` to compile** — `include/melon/container/static_digraph.hpp:130-137`,
@@ -410,12 +462,18 @@ immediate context.
 
 ---
 
-## Pin conflict to rule on
+## Pin conflict — ruled
 
-`test/api_review.cpp:214` pins "move stays available and is sound" for DFS over a by-value
-subgraph — the ASan trace shows it is not (Tier 1, finding 2). The pin's rationale
-(`consumable_input_view` re-derivation) covers only one of the two aliasing paths, so it appears to
-be based on an incomplete premise rather than a deliberate design decision.
+`test/api_review.cpp:214` pinned "move stays available and is sound" for DFS over a by-value
+subgraph — the ASan trace showed it was not (Tier 1, finding 2). The pin's rationale
+(`consumable_input_view` re-derivation) covered only one of the two aliasing paths, so it rested on
+an incomplete premise rather than a deliberate design decision.
+
+**Ruling: the pin's claim is kept and made true, not withdrawn.** Move is available and sound for
+every algorithm over every graph, because the relocation policy re-asks the new graph for each
+cached range (Proposal 2). The pin is now a behavioral test that moves mid-run, twice, and compares
+against an undisturbed traversal. The copy half of the same question was settled the other way:
+copy is gone (Addendum 3).
 
 ## Verification toolchain
 

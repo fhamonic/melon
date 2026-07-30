@@ -189,3 +189,40 @@ GTEST_TEST(graphviz_printer, handles_a_graph_without_arcs) {
     ASSERT_FALSE(contains(dot, "->"));
     ASSERT_EQ(count(dot, "width="), 2u);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// print threads the output iterator, emits the dot `graph` keyword, and
+// refuses to bind a temporary graph
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: every std::format_to result was discarded, so a positional
+// iterator like char * rewound to its start on each call and the calls
+// overwrote one another; only stateful inserters like back_insert_iterator
+// came out whole.
+GTEST_TEST(graphviz_printer, threads_positional_output_iterators) {
+    const auto graph = triangle_digraph();
+    printer p(graph);
+    const std::string reference = print(p);
+
+    std::vector<char> buffer(reference.size(), '\0');
+    char * const end = p.print(buffer.data());
+    ASSERT_EQ(static_cast<std::size_t>(end - buffer.data()), reference.size());
+    ASSERT_EQ(std::string(buffer.data(), end), reference);
+}
+
+// regression: a member rename hit the string literal, emitting a spurious
+// node named _graph and losing the graph attributes.
+GTEST_TEST(graphviz_printer, emits_the_graph_attributes_not_a_node) {
+    const auto graph = triangle_digraph();
+    const auto dot = print(printer(graph));
+
+    ASSERT_TRUE(contains(dot, "graph [pad=\"0.2,0.1\""));
+    ASSERT_FALSE(contains(dot, "_graph"));
+}
+
+// _graph is a reference_wrapper: binding a temporary left the printer
+// pointing at a dead graph, so the rvalue overload is deleted (the
+// mapping_ref_view precedent).
+static_assert(!std::is_constructible_v<printer, static_digraph>);
+static_assert(std::is_constructible_v<printer, static_digraph &>);
+static_assert(std::is_constructible_v<printer, const static_digraph &>);

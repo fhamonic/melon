@@ -5,6 +5,7 @@
 #include <concepts>
 #include <functional>
 #include <map>
+#include <memory>
 #include <ranges>
 #include <set>
 #include <type_traits>
@@ -48,13 +49,19 @@ struct bentley_ottmann_default_traits {
     static constexpr bool report_endpoints = true;
 };
 
-// mapping_view on the stored map: see dijkstra's head.
-template <bentley_ottmann_traits Traits, typename SegmentId,
-          mapping_view<SegmentId> SegmentMap = maps::identity_map>
-class bentley_ottmann : public algorithm_view_interface<
-                            bentley_ottmann<Traits, SegmentId, SegmentMap>> {
+// view / mapping_view on the stored members: see dijkstra's head. The id
+// range is *stored* (all algorithms keep what they run over) so that reset()
+// can re-seed the event queue; forward_range because seeding walks it once
+// per run, not once per object.
+template <bentley_ottmann_traits Traits, std::ranges::view SegmentIdRange,
+          mapping_view<std::ranges::range_value_t<SegmentIdRange>> SegmentMap =
+              maps::identity_map>
+    requires std::ranges::forward_range<SegmentIdRange>
+class bentley_ottmann
+    : public algorithm_view_interface<
+          bentley_ottmann<Traits, SegmentIdRange, SegmentMap>> {
 private:
-    using segment_id_type = SegmentId;
+    using segment_id_type = std::ranges::range_value_t<SegmentIdRange>;
     using coordinate_system = typename Traits::coordinate_system;
     using segment_type = typename Traits::segment_type;
     using endpoint_type =
@@ -144,37 +151,78 @@ private:
     using events = std::vector<std::pair<segment_id_type, event_type>>;
     using events_tree = typename Traits::template events_tree<events>;
 
+    // The two sweep points the tree comparators order against. segment_cmp
+    // holds a std::cref to them and std::set carries its comparator with it on
+    // move, so a comparator bound to a plain *member* kept comparing against
+    // the moved-from object (a use-after-free once the source died). Behind a
+    // unique_ptr their address is move-invariant, which is what makes the
+    // defaulted moves below sound; the comparison hot path is unchanged, the
+    // reference_wrapper was already one indirection. Declared before the
+    // trees: their mem-initializers dereference it.
+    struct event_points {
+        intersection_type current;
+        intersection_type tmp;
+    };
+
 private:
+    SegmentIdRange _segment_ids_range;
     [[no_unique_address]] SegmentMap _segment_map;
     [[no_unique_address]] event_cmp _event_cmp;
+    std::unique_ptr<event_points> _event_points;
     segments_tree _segments_tree;
     segments_tree _tmp_tree;
     events_tree _events_tree;
 
-    intersection_type _current_event_point;
-    intersection_type _tmp_event_point;
-
     std::vector<segment_id_type> _intersections;
 
 public:
-    // detail::not_self, because this constructor is callable with a single
-    // argument and bentley_ottmann is itself a range: without the guard,
-    // copying a non-const lvalue algorithm selected this constructor instead
-    // of the copy constructor. mapping_storable_as keeps
-    // std::is_constructible honest -- see dijkstra's constructor.
-    template <std::ranges::range SegmentIdRange,
-              typename SM = maps::identity_map>
-        requires detail::not_self<SegmentIdRange, bentley_ottmann> &&
-                     mapping_storable_as<SM, SegmentMap>
-    bentley_ottmann(SegmentIdRange && segments_ids_range,
-                    SM && segment_map = {})
-        : _segment_map(
-              detail::store_mapping<SegmentMap>(std::forward<SM>(segment_map)))
-        , _segments_tree(segment_cmp(std::cref(_current_event_point)))
-        , _tmp_tree(segment_cmp(std::cref(_tmp_event_point))) {
-        for(auto && s : segments_ids_range) {
-            // read through the wrapped member, not the raw parameter: the
-            // latter need not be subscriptable (a callable, typically).
+    template <typename SIR, mapping_for<SegmentMap> SM = maps::identity_map>
+        requires detail::not_self<SIR, bentley_ottmann> &&
+                     std::ranges::forward_range<SIR> &&
+                     std::constructible_from<SegmentIdRange,
+                                             std::views::all_t<SIR>>
+    bentley_ottmann(SIR && segments_ids_range, SM && segment_map = {})
+        : _segment_ids_range(
+              std::views::all(std::forward<SIR>(segments_ids_range)))
+        , _segment_map(maps::mapping_all(std::forward<SM>(segment_map)))
+        , _event_points(std::make_unique<event_points>())
+        , _segments_tree(segment_cmp(std::cref(_event_points->current)))
+        , _tmp_tree(segment_cmp(std::cref(_event_points->tmp))) {
+        seed();
+    }
+
+    // Constrained on the delegate it forwards to, so the tag overload is
+    // exactly as constructible as the constructor it names.
+    template <typename... Args>
+        requires std::constructible_from<bentley_ottmann, Args...>
+    constexpr bentley_ottmann(Traits, Args &&... args)
+        : bentley_ottmann(std::forward<Args>(args)...) {}
+
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // The defaulted moves are sound: the trees' comparators reference the
+    // heap-anchored event points, whose address the move transfers intact.
+    // The moved-from trees keep comparators into the transferred anchor,
+    // which the destroy/assign-only moved-from contract never dereferences.
+    constexpr bentley_ottmann(const bentley_ottmann &) = delete;
+    constexpr bentley_ottmann(bentley_ottmann &&) = default;
+
+    constexpr bentley_ottmann & operator=(const bentley_ottmann &) = delete;
+    constexpr bentley_ottmann & operator=(bentley_ottmann &&) = default;
+
+    constexpr bentley_ottmann & reset() {
+        _events_tree.clear();
+        _segments_tree.clear();
+        _tmp_tree.clear();
+        _intersections.clear();
+        seed();
+        return *this;
+    }
+
+private:
+    void seed() {
+        for(auto && s : _segment_ids_range) {
+            // read through the wrapped member, not the constructor parameter:
+            // the latter need not be subscriptable (a callable, typically).
             const auto & [p1, p2] = _segment_map[s];
             if(_event_cmp(p1, p2)) {
                 push_segment_endpoint(p1, s, event_type::starting);
@@ -190,24 +238,6 @@ public:
         }
         init();
     }
-
-    template <typename... Args>
-    constexpr bentley_ottmann(Traits, Args &&... args)
-        : bentley_ottmann(std::forward<Args>(args)...) {}
-
-    constexpr bentley_ottmann(const bentley_ottmann &) = default;
-    constexpr bentley_ottmann(bentley_ottmann &&) = default;
-
-    constexpr bentley_ottmann & operator=(const bentley_ottmann &) = default;
-    constexpr bentley_ottmann & operator=(bentley_ottmann &&) = default;
-
-    constexpr bentley_ottmann & reset() {
-        _events_tree.clear();
-        _segments_tree.clear();
-        return *this;
-    }
-
-private:
     void push_segment_endpoint(const endpoint_type & i,
                                const segment_id_type & s, const event_type et) {
         // auto && [it, inserted] = _events_tree.try_emplace(i);
@@ -246,13 +276,13 @@ private:
             return;
         const auto & i = i_opt.value();
 
-        if(_event_cmp(i, _current_event_point)) return;
+        if(_event_cmp(i, _event_points->current)) return;
 
         push_intersection(i);
     }
     void handle_event(const std::pair<intersection_type, events> & e) {
         const auto & [i, evts] = e;
-        _tmp_event_point = i;
+        _event_points->tmp = i;
 
         _intersections.resize(0);
         auto after_last_removed_it = _segments_tree.lower_bound(i);
@@ -277,7 +307,7 @@ private:
             }
         }
 
-        _current_event_point = i;
+        _event_points->current = i;
 
         for(const auto & [s, et] : evts) {
             if(et == event_type::ending) {
@@ -290,7 +320,7 @@ private:
             }
             if(et != event_type::starting) continue;
             _tmp_tree.emplace(
-                segment_entry(s, _segment_map[s], _current_event_point));
+                segment_entry(s, _segment_map[s], _event_points->current));
         }
 
         if(_tmp_tree.empty()) {
@@ -350,25 +380,24 @@ template <typename SegmentIdRange>
 bentley_ottmann(SegmentIdRange &&)
     -> bentley_ottmann<bentley_ottmann_default_traits<
                            std::ranges::range_value_t<SegmentIdRange>>,
-                       std::ranges::range_value_t<SegmentIdRange>,
-                       maps::identity_map>;
+                       std::views::all_t<SegmentIdRange>, maps::identity_map>;
 
 template <typename SegmentIdRange, typename SegmentMap>
 bentley_ottmann(SegmentIdRange &&, SegmentMap &&)
-    -> bentley_ottmann<bentley_ottmann_default_traits<mapped_value_t<
-                           maps::mapping_all_t<SegmentMap>,
+    -> bentley_ottmann<
+        bentley_ottmann_default_traits<
+            mapped_value_t<maps::mapping_all_t<SegmentMap>,
                            std::ranges::range_value_t<SegmentIdRange>>>,
-                       std::ranges::range_value_t<SegmentIdRange>,
-                       maps::mapping_all_t<SegmentMap>>;
+        std::views::all_t<SegmentIdRange>, maps::mapping_all_t<SegmentMap>>;
 
 template <typename SegmentIdRange, typename Traits>
 bentley_ottmann(Traits, SegmentIdRange &&)
-    -> bentley_ottmann<Traits, std::ranges::range_value_t<SegmentIdRange>,
+    -> bentley_ottmann<Traits, std::views::all_t<SegmentIdRange>,
                        maps::identity_map>;
 
 template <typename SegmentIdRange, typename SegmentMap, typename Traits>
 bentley_ottmann(Traits, SegmentIdRange &&, SegmentMap &&)
-    -> bentley_ottmann<Traits, std::ranges::range_value_t<SegmentIdRange>,
+    -> bentley_ottmann<Traits, std::views::all_t<SegmentIdRange>,
                        maps::mapping_all_t<SegmentMap>>;
 
 }  // namespace melon

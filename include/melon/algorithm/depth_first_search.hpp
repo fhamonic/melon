@@ -42,7 +42,6 @@ struct depth_first_search_default_traits {
     static constexpr bool store_depth = false;
 };
 
-// graph_view on the stored graph, like every algorithm: see dijkstra's head.
 template <graph_view Graph,
           depth_first_search_traits Traits = depth_first_search_default_traits>
     requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
@@ -86,13 +85,10 @@ private:
         _depth_map;
 
 public:
-    // graph_storable_as, so std::is_constructible answers what the
-    // mem-initializer actually does -- see dijkstra's constructor.
     template <typename G>
-        requires detail::not_self<G, depth_first_search> &&
-                     graph_storable_as<G, Graph>
+        requires detail::not_self<G, depth_first_search> && graph_for<G, Graph>
     constexpr explicit depth_first_search(G && g)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _stack()
         , _reached_map(create_vertex_map<bool>(_graph, false))
         , _pred_vertices_map(_graph)
@@ -104,8 +100,7 @@ public:
     }
 
     template <typename G>
-        requires detail::not_self<G, depth_first_search> &&
-                 graph_storable_as<G, Graph>
+        requires detail::not_self<G, depth_first_search> && graph_for<G, Graph>
     constexpr depth_first_search(G && g, const vertex & s)
         : depth_first_search(std::forward<G>(g)) {
         add_source(s);
@@ -124,28 +119,14 @@ public:
     // away entirely and these members behave exactly as the defaulted ones
     // they replace.
     //
-    // Copy used to require borrowed_graph<Graph>: without rebasing, a
-    // memberwise copy aimed the new object's cursors at the old object's
-    // graph -- a use-after-free once the original died. Rebasing is what
-    // makes a DFS over an *owned* subgraph honestly copyable. The requires
-    // clause keeps std::copyable truthful for move-only graphs and for the
-    // one combination that cannot rebase (see frames_need_rebase).
-    constexpr depth_first_search(const depth_first_search & o)
-        requires std::copy_constructible<Graph> &&
-                     std::copy_constructible<stack_cursor> &&
-                     (borrowed_graph<Graph> ||
-                      !std::ranges::borrowed_range<stack_range>)
-        : _graph(o._graph)
-        , _stack(o._stack)
-        , _reached_map(o._reached_map)
-        , _pred_vertices_map(o._pred_vertices_map)
-        , _pred_arcs_map(o._pred_arcs_map)
-        , _depth_map(o._depth_map) {
-        _rebase_stack();
-    }
-    // The defaulted move this replaces was unsound for the same reason the
-    // copy was constrained: the moved-from object's cached ranges pointed at
-    // its _graph member, which does not travel with a memberwise move.
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // The defaulted move this replaces was unsound: the moved-from object's
+    // cached ranges pointed at its _graph member, which does not travel with a
+    // memberwise move (REVIEW.md Tier 1, finding 2 -- an ASan-verified
+    // heap-use-after-free with no copy anywhere in the program). That is the
+    // half of the relocation problem that survives, and the half the rebasing
+    // below exists for.
+    constexpr depth_first_search(const depth_first_search &) = delete;
     constexpr depth_first_search(depth_first_search && o) noexcept(
         !frames_need_rebase && std::is_nothrow_move_constructible_v<Graph> &&
         std::is_nothrow_move_constructible_v<vertex_map_t<Graph, bool>>)
@@ -158,21 +139,8 @@ public:
         _rebase_stack();
     }
 
-    constexpr depth_first_search & operator=(const depth_first_search & o)
-        requires std::copyable<Graph> && std::copyable<stack_cursor> &&
-                 (borrowed_graph<Graph> ||
-                  !std::ranges::borrowed_range<stack_range>)
-    {
-        if(this == std::addressof(o)) return *this;
-        _graph = o._graph;
-        _stack = o._stack;
-        _reached_map = o._reached_map;
-        _pred_vertices_map = o._pred_vertices_map;
-        _pred_arcs_map = o._pred_arcs_map;
-        _depth_map = o._depth_map;
-        _rebase_stack();
-        return *this;
-    }
+    constexpr depth_first_search & operator=(const depth_first_search &) =
+        delete;
     constexpr depth_first_search & operator=(depth_first_search && o) noexcept(
         !frames_need_rebase && std::is_nothrow_move_assignable_v<Graph> &&
         std::is_nothrow_move_assignable_v<vertex_map_t<Graph, bool>>) {

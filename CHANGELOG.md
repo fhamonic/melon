@@ -11,6 +11,30 @@ First stable release.
 
 ### Breaking changes
 
+- **Algorithms are move-only.** Every algorithm's copy constructor and copy
+  assignment are deleted, so `std::copyable<A>` is now `false` for every
+  algorithm `A` over every graph, and `std::movable<A>` is `true` for every
+  one of them. Three things motivated it. Nothing needed copying: no example,
+  benchmark or documented use case copied an algorithm, and the only internal
+  copy was `traversal_forest` copying its own `breadth_first_search` inside
+  `traversal_forest`'s own copy constructor. Copying was never cheap — an
+  algorithm carries every vertex map, the heap and the cached cursors — so
+  passing one by value is now a compile error rather than a silent O(V+E)
+  duplication. And the availability rule could not be stated: over one
+  identical graph type (a subgraph of a ref to `static_digraph`), `dijkstra`,
+  `breadth_first_search` and `topological_sort` were copyable while
+  `depth_first_search` and `strongly_connected_components` were not, and
+  `depth_first_search` flipped its answer depending on whether the container
+  underneath handed out std-borrowed incidence ranges. Migration: construct a
+  second algorithm, or `reset()` one to reuse the state it already allocated;
+  `run()` returns `*this` by reference, so `auto a = alg.run();` becomes
+  `alg.run();` with the result read through the accessors. Moving is
+  unaffected and remains sound mid-traversal — the cursor rebasing in
+  `detail/consumable_view.hpp` exists for the move, not the copy. This also
+  retires a latent defect in `knapsack_bnb` / `unbounded_knapsack_bnb`, whose
+  hand-written copies lacked the `requires`-clause that keeps `std::copyable`
+  honest: for a move-only `ItemRange` the trait answered `true` and the copy
+  hard-errored inside the mem-initializer.
 - **`input_mapping` and `input_mapping_of` are collapsed into `mapping` and
   `mapping_of`.** The old two-layer split was redundant: the loose syntactic
   `mapping` supported no operation, and `input_mapping`'s real content —
@@ -232,6 +256,81 @@ First stable release.
   a `ref_view` over its internal queue.
 
 ### Fixed
+
+- **Moved-from `static_map`, `static_filter_map` and the digraphs violated
+  their invariants.** The defaulted moves nulled the buffer but kept `_size`
+  (and `mutable_digraph`'s counts and list heads), so a moved-from map
+  answered `size() == N` over a null buffer and copying it dereferenced
+  null — a reachable state, since algorithms take their graph by value. The
+  moves are hand-written (`std::exchange` to the empty state); a moved-from
+  container is now a valid empty one, and both static digraphs inherit the
+  fix through their `static_map` members.
+- **`static_filter_map::filter()` dangled for rvalue non-iota key ranges.**
+  The range was passed as an lvalue into `views::transform`, wrapping an
+  rvalue container in a `ref_view` of a temporary dead at the semicolon.
+  It is now forwarded, so the pipeline owns rvalues (`owning_view`) and
+  still references lvalues.
+- **`dinitz` and `edmonds_karp` hung forever for capacity types without a
+  `numeric_limits` specialization.** The primary template's `max()` returns
+  `T{}` — a zero infinity — so a conforming custom capacity type compiled
+  cleanly and looped forever. Both class heads now require
+  `std::numeric_limits<value_t>::is_specialized`, turning the hang into a
+  concept-level rejection.
+- **`graphviz_printer` was broken three ways.** `print` discarded every
+  iterator `std::format_to` returned, so positional output iterators (a
+  `char *`) rewound and overwrote on each call — it now takes the iterator
+  by value, threads it, returns it, and is constrained
+  `std::output_iterator<const char &>`. A member rename had hit the
+  `"graph ["` string literal, emitting a spurious `_graph` node and losing
+  the graph attributes. And the constructor silently bound a temporary
+  graph into its `reference_wrapper`; a deleted `const G &&` overload now
+  refuses it (the `mapping_ref_view` precedent).
+- **Knapsack `set_budget` left a stale item filter, and the unbounded twin
+  crashed on an empty feasible set.** Raising the budget after construction
+  silently kept newly-affordable items excluded, returning a wrong
+  "optimal" value; `set_budget` now re-derives through `reset()` in both
+  twins (the setter costs a re-sort — the O(1) version answered wrongly).
+  Testing it exposed a second defect: `unbounded_knapsack_bnb`'s solvers
+  lacked the `it == end` guard the bounded twin always had, so `run()` with
+  no feasible item jumped `goto begin` into the loop body and dereferenced
+  `end` — hang or garbage; both solver functions are now guarded.
+- **`bentley_ottmann`'s defaulted move compared through the moved-from
+  object, and `reset()` bricked it.** The sweep trees' comparator holds a
+  `std::cref` to the current event point, and `std::set` carries its
+  comparator with it on move — so a moved algorithm's trees kept ordering
+  against the *moved-from* object's member, a use-after-free once the source
+  died (ASan-confirmed; the copy half of the same defect was already retired
+  with copy itself). Both sweep points now live behind a single
+  `unique_ptr`, so their address survives the move and the defaulted moves
+  are sound; the comparison hot path is unchanged — the `reference_wrapper`
+  already was one indirection, it just lands on a heap anchor now.
+  `reset()` used to clear the event queue with no way to refill it (the
+  constructor consumed the id range and dropped it), leaving the object
+  permanently `finished()`; the range is now stored — the class head takes a
+  `std::ranges::view` id-range parameter captured through `views::all`, like
+  every algorithm stores what it runs over — and `reset()` re-seeds and
+  replays the sweep, which also requires the range to be a `forward_range`.
+  CTAD spellings are unaffected; only explicit specializations name the
+  range type where they named the id type. The tag-dispatch constructor is
+  also constrained on the delegate it forwards to, matching `dijkstra`.
+  Pinned in `test/bentley_ottmann.cpp` (`mid_run_move`,
+  `reset_replays_the_sweep`).
+- **`strongly_connected_components::same_component()` returned wrong
+  answers.** It compared Tarjan *lowlinks*, which are not uniform within a
+  finished component — for the single-component graph `0→1, 0→2, 1→0, 2→1`
+  it answered `same_component(0,1)` but not `same_component(0,2)` — and two
+  unreached vertices compared "same" through the sentinel. `same_component()`
+  is removed. The algorithm instead takes a traits parameter
+  (`strongly_connected_components_traits`, the `topological_sort` pattern)
+  with a `store_component_ids` flag: when set, a dense component id —
+  emission order, so reverse topological order of the condensation — is
+  written per member as the component is popped, and the flag-gated
+  `component_id(u)` and `component_ids_map()` expose the ids; the
+  same-component query is spelled `component_id(u) == component_id(v)`.
+  Without the flag none of these exist and the id map is
+  `[[no_unique_address]]` air, so the default configuration pays nothing
+  beyond the counter behind the new `num_components()` — not gated, since
+  the count of components yielded so far is meaningful without the ids.
 
 #### Third API-review pass
 

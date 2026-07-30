@@ -50,20 +50,21 @@ struct competing_dijkstras_default_traits {
 // traversed, so that they can block blue, but never produced. Same
 // non-negativity requirement as melon::dijkstra, on both maps.
 // O((m + n) log n) with the default binary heap.
-template <graph_view Graph, mapping_view<arc_t<Graph>> BLM,
-          mapping_view<arc_t<Graph>> RLM,
+template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
+          mapping_view<arc_t<Graph>> RedLengthMap,
           competing_dijkstras_traits Traits =
               competing_dijkstras_default_traits<
-                  Graph, mapped_value_t<BLM, arc_t<Graph>>>>
+                  Graph, mapped_value_t<BlueLengthMap, arc_t<Graph>>>>
     requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
-             std::is_same_v<mapped_value_t<BLM, arc_t<Graph>>,
-                            mapped_value_t<RLM, arc_t<Graph>>>
-class competing_dijkstras : public algorithm_view_interface<
-                                competing_dijkstras<Graph, BLM, RLM, Traits>> {
+             std::is_same_v<mapped_value_t<BlueLengthMap, arc_t<Graph>>,
+                            mapped_value_t<RedLengthMap, arc_t<Graph>>>
+class competing_dijkstras
+    : public algorithm_view_interface<
+          competing_dijkstras<Graph, BlueLengthMap, RedLengthMap, Traits>> {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-    using length_type = mapped_value_t<BLM, arc_t<Graph>>;
+    using length_type = mapped_value_t<BlueLengthMap, arc_t<Graph>>;
     using entry_t = typename Traits::entry;
     using entry_cmp = typename Traits::entry_cmp;
     using heap = typename Traits::heap;
@@ -75,8 +76,8 @@ private:
 
 private:
     Graph _graph;
-    BLM _blue_length_map;
-    RLM _red_length_map;
+    BlueLengthMap _blue_length_map;
+    RedLengthMap _red_length_map;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
     heap _heap;
@@ -84,18 +85,12 @@ private:
     [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
-    // graph_storable_as / mapping_storable_as, so std::is_constructible
-    // answers what the mem-initializers actually do -- see dijkstra's
-    // constructor.
-    template <typename G, typename BlueMap, typename RedMap>
-        requires graph_storable_as<G, Graph> &&
-                     mapping_storable_as<BlueMap, BLM> &&
-                     mapping_storable_as<RedMap, RLM>
-    competing_dijkstras(G && g, BlueMap && l1, RedMap && l2)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _blue_length_map(
-              detail::store_mapping<BLM>(std::forward<BlueMap>(l1)))
-        , _red_length_map(detail::store_mapping<RLM>(std::forward<RedMap>(l2)))
+    template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
+              mapping_for<RedLengthMap> RLM>
+    competing_dijkstras(G && g, BLM && blm, RLM && rlm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))
+        , _red_length_map(maps::mapping_all(std::forward<RLM>(rlm)))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
         , _num_blue_candidates(0) {}
@@ -105,11 +100,12 @@ public:
     constexpr competing_dijkstras(Traits, Args &&... args)
         : competing_dijkstras(std::forward<Args>(args)...) {}
 
-    constexpr competing_dijkstras(const competing_dijkstras &) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    constexpr competing_dijkstras(const competing_dijkstras &) = delete;
     constexpr competing_dijkstras(competing_dijkstras &&) = default;
 
     constexpr competing_dijkstras & operator=(const competing_dijkstras &) =
-        default;
+        delete;
     constexpr competing_dijkstras & operator=(competing_dijkstras &&) = default;
 
     // The graph the algorithm runs over. An algorithm owns its view rather
@@ -129,21 +125,18 @@ public:
         return std::move(_graph);
     }
 
-    template <typename BlueMap>
-        requires mapping_storable_as<BlueMap, BLM> &&
-                 std::assignable_from<BLM &, BLM>
-    competing_dijkstras & set_blue_length_map(BlueMap && blue_length_map) {
+    template <mapping_for<BlueLengthMap> BLM>
+        requires std::assignable_from<BlueLengthMap &, BlueLengthMap>
+    competing_dijkstras & set_blue_length_map(BLM && blue_length_map) {
         _blue_length_map =
-            detail::store_mapping<BLM>(std::forward<BlueMap>(blue_length_map));
+            maps::mapping_all(std::forward<BLM>(blue_length_map));
         return *this;
     }
 
-    template <typename RedMap>
-        requires mapping_storable_as<RedMap, RLM> &&
-                 std::assignable_from<RLM &, RLM>
-    competing_dijkstras & set_red_length_map(RedMap && red_length_map) {
-        _red_length_map =
-            detail::store_mapping<RLM>(std::forward<RedMap>(red_length_map));
+    template <mapping_for<RedLengthMap> RLM>
+        requires std::assignable_from<RedLengthMap &, RedLengthMap>
+    competing_dijkstras & set_red_length_map(RLM && red_length_map) {
+        _red_length_map = maps::mapping_all(std::forward<RLM>(red_length_map));
         return *this;
     }
 
@@ -272,18 +265,22 @@ public:
 };
 
 // No Traits parameter: the class template's own default computes it, so the
-// deduced type and the explicitly written `competing_dijkstras<G, BLM, RLM>`
-// agree. The guide used to default it over the *deduced* Graph -- a reference
-// type -- while the class computes it over views::graph_all_t<Graph>, so the
-// two named different specialisations of competing_dijkstras_default_traits.
-template <typename Graph, typename BLM, typename RLM>
-competing_dijkstras(Graph &&, BLM &&, RLM &&)
-    -> competing_dijkstras<views::graph_all_t<Graph>, maps::mapping_all_t<BLM>,
-                           maps::mapping_all_t<RLM>>;
+// deduced type and the explicitly written `competing_dijkstras<G,
+// BlueLengthMap, RedLengthMap>` agree. The guide used to default it over the
+// *deduced* Graph -- a reference type -- while the class computes it over
+// views::graph_all_t<Graph>, so the two named different specialisations of
+// competing_dijkstras_default_traits.
+template <typename Graph, typename BlueLengthMap, typename RedLengthMap>
+competing_dijkstras(Graph &&, BlueLengthMap &&, RedLengthMap &&)
+    -> competing_dijkstras<views::graph_all_t<Graph>,
+                           maps::mapping_all_t<BlueLengthMap>,
+                           maps::mapping_all_t<RedLengthMap>>;
 
-template <typename Graph, typename BLM, typename RLM, typename Traits>
-competing_dijkstras(Traits, Graph &&, BLM &&, RLM &&)
-    -> competing_dijkstras<views::graph_all_t<Graph>, maps::mapping_all_t<BLM>,
-                           maps::mapping_all_t<RLM>, Traits>;
+template <typename Graph, typename BlueLengthMap, typename RedLengthMap,
+          typename Traits>
+competing_dijkstras(Traits, Graph &&, BlueLengthMap &&, RedLengthMap &&)
+    -> competing_dijkstras<views::graph_all_t<Graph>,
+                           maps::mapping_all_t<BlueLengthMap>,
+                           maps::mapping_all_t<RedLengthMap>, Traits>;
 
 }  // namespace melon

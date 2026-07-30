@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 #include <ranges>
 #include <vector>
 
@@ -11,9 +12,15 @@
 
 namespace melon {
 
+// numeric_limits must be genuinely specialized for the capacity type: the
+// primary template's max() returns T{} -- a zero infinity that made the
+// augmenting-path loop spin forever for a conforming custom value type that
+// compiled cleanly.
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
-             has_vertex_map<Graph> && has_arc_map<Graph>
+             has_vertex_map<Graph> && has_arc_map<Graph> &&
+             std::numeric_limits<
+                 mapped_value_t<CapacityMap, arc_t<Graph>>>::is_specialized
 class edmonds_karp {
 private:
     using vertex = vertex_t<Graph>;
@@ -31,15 +38,10 @@ private:
     vertex_map_t<Graph, arc> _bfs_pred_arc;
 
 public:
-    // graph_storable_as / mapping_storable_as, so std::is_constructible
-    // answers what the mem-initializers actually do -- see dijkstra's
-    // constructor.
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                     mapping_storable_as<M, CapacityMap>
-    constexpr edmonds_karp(G && g, M && c)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _capacity_map(detail::store_mapping<CapacityMap>(std::forward<M>(c)))
+    template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
+    constexpr edmonds_karp(G && g, CM && cm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _bfs_reached_map(create_vertex_map<bool>(_graph))
         , _bfs_pred_arc(create_vertex_map<arc>(_graph)) {
@@ -49,19 +51,18 @@ public:
         reset();
     }
 
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                 mapping_storable_as<M, CapacityMap>
-    constexpr edmonds_karp(G && g, M && c, const vertex & s, const vertex & t)
-        : edmonds_karp(std::forward<G>(g), std::forward<M>(c)) {
+    template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
+    constexpr edmonds_karp(G && g, CM && cm, const vertex & s, const vertex & t)
+        : edmonds_karp(std::forward<G>(g), std::forward<CM>(cm)) {
         set_source(s);
         set_target(t);
     }
 
-    constexpr edmonds_karp(const edmonds_karp &) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    constexpr edmonds_karp(const edmonds_karp &) = delete;
     constexpr edmonds_karp(edmonds_karp &&) = default;
 
-    constexpr edmonds_karp & operator=(const edmonds_karp &) = default;
+    constexpr edmonds_karp & operator=(const edmonds_karp &) = delete;
     constexpr edmonds_karp & operator=(edmonds_karp &&) = default;
 
     // The graph the algorithm runs over. An algorithm owns its view rather

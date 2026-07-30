@@ -15,15 +15,12 @@
 
 namespace melon {
 
-// undirected_graph_view on the stored graph: see dijkstra's head.
 template <undirected_graph_view UGraph>
     requires has_incidence<UGraph> && has_vertex_map<UGraph>
 class connected_components
     : public algorithm_view_interface<connected_components<UGraph>> {
 private:
     using vertex = vertex_t<UGraph>;
-    // size_type, not int: the fallback is an index into _queue and was being
-    // compared against _queue.size().
     using cursor = std::conditional_t<has_num_vertices<UGraph>,
                                       typename std::vector<vertex>::iterator,
                                       typename std::vector<vertex>::size_type>;
@@ -36,13 +33,11 @@ private:
     vertex_map_t<UGraph, bool> _reached_map;
 
 public:
-    // undirected_graph_storable_as, so std::is_constructible answers what the
-    // mem-initializer actually does -- see dijkstra's constructor.
     template <typename UG>
         requires detail::not_self<UG, connected_components> &&
-                     undirected_graph_storable_as<UG, UGraph>
+                     undirected_graph_for<UG, UGraph>
     constexpr explicit connected_components(UG && g)
-        : _graph(detail::store_undirected_graph<UGraph>(std::forward<UG>(g)))
+        : _graph(views::undirected_graph_all(std::forward<UG>(g)))
         , _remaining_vertices(vertices(_graph))
         , _queue()
         , _reached_map(create_vertex_map<bool>(_graph, false)) {
@@ -59,43 +54,12 @@ public:
         if(!finished()) advance();
     }
 
-    // With has_num_vertices the cursor is an iterator *into* _queue, and the
-    // traversal relies on the constructor's reserve() to keep it stable across
-    // the push_backs. A memberwise copy hands the new object an iterator into
-    // the source's buffer, at a capacity only as large as the source's size:
-    // _finished_component() never becomes true again. Copy the queue, restore
-    // the capacity, then rebase -- the same shape as branchless
-    // breadth_first_search. Move is fine: the vector's buffer transfers.
-    // The relocation policy is depth_first_search's: _remaining_vertices is
-    // re-askable from vertices(_graph), so after the members relocate,
-    // _rebase_cursors() aims it at the *new* _graph and the _consumed counter
-    // puts it back where it was. Copy therefore no longer requires
-    // borrowed_graph; the one combination that cannot rebase -- a
-    // non-borrowed graph handing out a std-borrowed vertices range, which has
-    // no counter -- keeps copy constrained away.
-    constexpr connected_components(const connected_components & o)
-        requires std::copy_constructible<UGraph> &&
-                     std::copy_constructible<
-                         consumable_input_view<vertices_range_t<UGraph>>> &&
-                     (borrowed_graph<UGraph> ||
-                      !std::ranges::borrowed_range<vertices_range_t<UGraph>>)
-        : _graph(o._graph)
-        , _remaining_vertices(o._remaining_vertices)
-        , _queue(o._queue)
-        , _reached_map(o._reached_map) {
-        if constexpr(has_num_vertices<UGraph>) {
-            _queue.reserve(num_vertices(_graph));
-            _queue_current =
-                _queue.begin() + (o._queue_current - o._queue.begin());
-        } else {
-            _queue_current = o._queue_current;
-        }
-        _rebase_cursors();
-    }
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Hand-written for the same reason as depth_first_search's move: a
     // memberwise move leaves the cached cursor's range pointing at the
     // moved-from object's _graph member. The queue's buffer transfers, so
     // _queue_current needs nothing.
+    constexpr connected_components(const connected_components &) = delete;
     constexpr connected_components(connected_components && o)
         : _graph(std::move(o._graph))
         // Not a memberwise move: the cursor's move constructor reseeks
@@ -114,29 +78,8 @@ public:
         , _queue_current(std::move(o._queue_current))
         , _reached_map(std::move(o._reached_map)) {}
 
-    constexpr connected_components & operator=(const connected_components & o)
-        requires std::copyable<UGraph> &&
-                 std::copyable<
-                     consumable_input_view<vertices_range_t<UGraph>>> &&
-                 (borrowed_graph<UGraph> ||
-                  !std::ranges::borrowed_range<vertices_range_t<UGraph>>)
-    {
-        if(this == std::addressof(o)) return *this;
-        _graph = o._graph;
-        _remaining_vertices = o._remaining_vertices;
-        if constexpr(has_num_vertices<UGraph>) {
-            const auto offset = o._queue_current - o._queue.begin();
-            _queue = o._queue;
-            _queue.reserve(num_vertices(_graph));
-            _queue_current = _queue.begin() + offset;
-        } else {
-            _queue = o._queue;
-            _queue_current = o._queue_current;
-        }
-        _reached_map = o._reached_map;
-        _rebase_cursors();
-        return *this;
-    }
+    constexpr connected_components & operator=(const connected_components &) =
+        delete;
     // See the move constructor.
     constexpr connected_components & operator=(connected_components && o) {
         if(this == std::addressof(o)) return *this;
@@ -153,15 +96,6 @@ public:
         return *this;
     }
 
-private:
-    // See depth_first_search::_rebase_stack.
-    constexpr void _rebase_cursors() {
-        if constexpr(!borrowed_graph<UGraph> &&
-                     !std::ranges::borrowed_range<vertices_range_t<UGraph>>)
-            _remaining_vertices.rebase(vertices(_graph));
-    }
-
-public:
     // The graph the algorithm runs over. An algorithm owns its view rather
     // than adapting it, so this is the std::ranges::owning_view shape --
     // references, ref-qualified -- and not the filter_view shape the graph

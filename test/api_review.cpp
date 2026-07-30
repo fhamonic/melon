@@ -4,9 +4,12 @@
 // it guards and passes after. The file is organised by theme, not by review
 // pass.
 //
-// The value-semantics tests deliberately destroy the source before reading the
-// copy: a copy whose cursor still points into a *live* source reads plausible
-// values, which is why the original defects survived a full suite.
+// The relocation tests deliberately destroy the source before reading the
+// moved-to object: a cursor that still points into a *live* source reads
+// plausible values, which is why the original defects survived a full suite.
+// They were written against copy, which no longer exists -- algorithms are
+// move-only (see the melon::traversal_algorithm concept) -- so each now
+// relocates by move, which is the operation the cursor rebasing still serves.
 
 #undef NDEBUG
 #include <gtest/gtest.h>
@@ -44,15 +47,13 @@
 using namespace melon;
 
 ////////////////////////////////////////////////////////////////////////////////
-// a copied or assigned algorithm owns its state: no cursor may point into
-// another object
+// a relocated algorithm owns its state: no cursor may point into another object
 ////////////////////////////////////////////////////////////////////////////////
 
-// kruskal kept its cursor as an iterator into its own _sorted_edges, so a
-// memberwise copy compared it against the *copy's* end() -- never equal.
-// Destroying the source first turns the old behaviour into an ASan report
+// kruskal keeps its cursor as an iterator into its own _sorted_edges.
+// Destroying the source first turns a cursor left behind into an ASan report
 // instead of a silently wrong traversal.
-GTEST_TEST(api_review, kruskal_copy_owns_its_cursor) {
+GTEST_TEST(api_review, kruskal_move_owns_its_cursor) {
     static_digraph_builder<static_digraph, double> b(4);
     b.add_arc(0u, 1u, 1.0)
         .add_arc(1u, 2u, 2.0)
@@ -62,15 +63,15 @@ GTEST_TEST(api_review, kruskal_copy_owns_its_cursor) {
     auto ug = views::undirect(g);
 
     auto source = std::make_unique<decltype(kruskal(ug, costs))>(ug, costs);
-    auto copy = *source;
+    auto moved = std::move(*source);
     source.reset();
 
     std::vector<unsigned> taken;
-    for(; !copy.finished(); copy.advance()) taken.push_back(copy.current());
+    for(; !moved.finished(); moved.advance()) taken.push_back(moved.current());
     EXPECT_EQ(taken.size(), 3u) << "a spanning tree of 4 vertices has 3 edges";
 }
 
-GTEST_TEST(api_review, kruskal_copy_assignment_owns_its_cursor) {
+GTEST_TEST(api_review, kruskal_move_assignment_owns_its_cursor) {
     static_digraph_builder<static_digraph, double> b(3);
     b.add_arc(0u, 1u, 1.0).add_arc(1u, 2u, 2.0);
     auto [g, costs] = b.build();
@@ -78,7 +79,7 @@ GTEST_TEST(api_review, kruskal_copy_assignment_owns_its_cursor) {
 
     kruskal reference(ug, costs);
     auto source = std::make_unique<decltype(kruskal(ug, costs))>(ug, costs);
-    reference = *source;
+    reference = std::move(*source);
     source.reset();
 
     std::size_t n = 0;
@@ -88,7 +89,7 @@ GTEST_TEST(api_review, kruskal_copy_assignment_owns_its_cursor) {
 
 // knapsack_bnb / unbounded_knapsack_bnb keep _best_sol as iterators into their
 // own _value_cost_pairs.
-GTEST_TEST(api_review, knapsack_copy_owns_its_solution) {
+GTEST_TEST(api_review, knapsack_move_owns_its_solution) {
     std::vector<unsigned> items{0u, 1u, 2u, 3u};
     std::vector<double> value{10.0, 7.0, 5.0, 3.0};
     std::vector<double> cost{5.0, 4.0, 3.0, 2.0};
@@ -98,16 +99,16 @@ GTEST_TEST(api_review, knapsack_copy_owns_its_solution) {
     source->run();
     const double expected = source->solution_value();
 
-    auto copy = *source;
+    auto moved = std::move(*source);
     source.reset();
-    EXPECT_EQ(copy.solution_value(), expected);
-    EXPECT_LE(copy.solution_cost(), 9.0);
+    EXPECT_EQ(moved.solution_value(), expected);
+    EXPECT_LE(moved.solution_cost(), 9.0);
     std::size_t n = 0;
-    for([[maybe_unused]] auto && i : copy.solution_items()) ++n;
+    for([[maybe_unused]] auto && i : moved.solution_items()) ++n;
     EXPECT_GT(n, 0u);
 }
 
-GTEST_TEST(api_review, unbounded_knapsack_copy_owns_its_solution) {
+GTEST_TEST(api_review, unbounded_knapsack_move_owns_its_solution) {
     std::vector<unsigned> items{0u, 1u};
     std::vector<double> value{6.0, 5.0};
     std::vector<double> cost{4.0, 3.0};
@@ -117,14 +118,14 @@ GTEST_TEST(api_review, unbounded_knapsack_copy_owns_its_solution) {
     source->run();
     const double expected = source->solution_value();
 
-    auto copy = *source;
+    auto moved = std::move(*source);
     source.reset();
-    EXPECT_EQ(copy.solution_value(), expected);
+    EXPECT_EQ(moved.solution_value(), expected);
 }
 
-// The generic breadth_first_search specialisation kept a defaulted copy while
-// its cursor is an iterator into its own _queue. Destroy the source first: a
-// cursor into a live source reads plausible values.
+// The generic breadth_first_search specialisation keeps its cursor as an
+// iterator into its own _queue. Destroy the source first: a cursor into a live
+// source reads plausible values.
 namespace {
 struct distance_bfs_traits {
     static constexpr bool store_pred_vertices = false;
@@ -134,25 +135,25 @@ struct distance_bfs_traits {
 };
 }  // namespace
 
-GTEST_TEST(api_review, generic_bfs_copy_rebases_its_cursor) {
+GTEST_TEST(api_review, generic_bfs_move_keeps_its_cursor) {
     static_digraph_builder<static_digraph> b(4);
     b.add_arc(0u, 1u).add_arc(0u, 2u).add_arc(1u, 3u).add_arc(2u, 3u);
     auto [g] = b.build();
 
     using BFS = breadth_first_search<graph_ref_view<static_digraph>,
                                      distance_bfs_traits>;
-    static_assert(std::copyable<BFS>);
+    static_assert(std::movable<BFS> && !std::copyable<BFS>);
 
     auto source = std::make_unique<BFS>(g);
     source->add_source(0u);
     source->advance();
 
-    BFS copy = *source;
+    BFS moved = std::move(*source);
     source.reset();
 
-    copy.run();
-    for(const auto & v : melon::vertices(g)) EXPECT_TRUE(copy.reached(v));
-    EXPECT_EQ(copy.dist(3u), 2);
+    moved.run();
+    for(const auto & v : melon::vertices(g)) EXPECT_TRUE(moved.reached(v));
+    EXPECT_EQ(moved.dist(3u), 2);
 }
 
 // A cursor over a non-borrowed range keeps an iterator that refers back into
@@ -187,38 +188,41 @@ GTEST_TEST(api_review, dfs_cursors_survive_stack_reallocation) {
 
 // The other half of the cursor problem: views::subgraph's filtered ranges
 // capture `this`, so a range obtained from a subgraph an algorithm stores *by
-// value* points back at that member, and a memberwise copy or move aims the
-// new object's cursors at the old object's graph. Every cached cursor is
-// keyed by the vertex it walks from, so relocation *re-asks the new graph*
-// for each frame's range and the consumed counter restores the position --
-// which is what makes a DFS over an owned, filtered subgraph honestly
-// copyable, where it used to be constrained away, and what makes its move
-// sound, which the defaulted move it replaces was not (the old pin here
-// claimed soundness the ASan trace refuted).
+// value* points back at that member, and a memberwise move aims the new
+// object's cursors at the old object's graph. Every cached cursor is keyed by
+// the vertex it walks from, so relocation *re-asks the new graph* for each
+// frame's range and the consumed counter restores the position -- which is
+// what makes the move sound, where the defaulted move it replaces was not
+// (the old pin here claimed soundness the ASan trace refuted).
 GTEST_TEST(api_review, algorithms_caching_ranges_rebase_on_relocation) {
     static_digraph static_g;
     mutable_digraph mutable_g;
 
-    // Copyable as before: every range these hand out references storage that
-    // lives outside the graph view the algorithm stores.
-    static_assert(std::copyable<decltype(depth_first_search(static_g, 0u))>);
-    static_assert(std::copyable<decltype(depth_first_search(mutable_g, 0u))>);
-    static_assert(std::copyable<decltype(depth_first_search(
-                      views::reverse(static_g), 0u))>);
-    static_assert(
-        std::copyable<decltype(strongly_connected_components(static_g))>);
+    // Move-only, and uniformly so. This used to be the family's most confusing
+    // corner: copyability depended on the algorithm, on whether a view sat in
+    // between, and on whether the container underneath handed out std-borrowed
+    // incidence ranges -- depth_first_search over a subgraph of a
+    // static_digraph was not copyable while the same over a mutable_digraph
+    // was. There is one answer for every combination now.
+    using dfs_static = decltype(depth_first_search(static_g, 0u));
+    using dfs_mutable = decltype(depth_first_search(mutable_g, 0u));
+    using dfs_reverse =
+        decltype(depth_first_search(views::reverse(static_g), 0u));
+    using scc_static = decltype(strongly_connected_components(static_g));
+    static_assert(std::movable<dfs_static> && !std::copyable<dfs_static>);
+    static_assert(std::movable<dfs_mutable> && !std::copyable<dfs_mutable>);
+    static_assert(std::movable<dfs_reverse> && !std::copyable<dfs_reverse>);
+    static_assert(std::movable<scc_static> && !std::copyable<scc_static>);
 
-    // Newly copyable: the cached ranges point back at the stored subgraph,
-    // and the copy re-aims them at its own subgraph member.
     using sub = subgraph_view<graph_ref_view<static_digraph>,
                               mapping_ref_view<static_map<unsigned, bool>>,
                               maps::true_map>;
     using sub_dfs = decltype(depth_first_search(std::declval<sub &>(), 0u));
-    static_assert(std::copyable<sub_dfs>);
-    static_assert(std::movable<sub_dfs>);
+    static_assert(std::movable<sub_dfs> && !std::copyable<sub_dfs>);
 
-    // And the relocations are sound mid-run: interleave a move and a copy
-    // into a traversal and it yields exactly what an undisturbed one does.
+    // And the relocations are sound mid-run: interleave a move construction
+    // and a move assignment into a traversal and it yields exactly what an
+    // undisturbed one does.
     auto builder = static_digraph_builder<static_digraph>(8);
     builder.add_arc(0u, 1u)
         .add_arc(0u, 2u)
@@ -239,22 +243,18 @@ GTEST_TEST(api_review, algorithms_caching_ranges_rebase_on_relocation) {
     std::vector<unsigned> visited;
     visited.push_back(dfs.current());
     dfs.advance();
-    auto moved = std::move(dfs);           // relocate mid-run
+    auto moved = std::move(dfs);  // relocate mid-run: move construction
     visited.push_back(moved.current());
     moved.advance();
-    auto copied = moved;                   // duplicate mid-run
-    while(!copied.finished()) {
-        visited.push_back(copied.current());
-        copied.advance();
+    // relocate mid-run again, this time onto a live object: move assignment
+    auto reassigned = depth_first_search(
+        views::subgraph(g, mapping_ref_view(filter), maps::true_map{}), 7u);
+    reassigned = std::move(moved);
+    while(!reassigned.finished()) {
+        visited.push_back(reassigned.current());
+        reassigned.advance();
     }
     EXPECT_EQ(visited, expected);
-    // The copy's source is unharmed and finishes on its own.
-    std::size_t remaining = 0;
-    while(!moved.finished()) {
-        ++remaining;
-        moved.advance();
-    }
-    EXPECT_EQ(remaining, expected.size() - 2);
 }
 
 // views::undirect promised its ranges survive the view being relocated while
@@ -752,7 +752,10 @@ GTEST_TEST(api_review, reached_map_accompanies_reached) {
     static_digraph_builder<static_digraph> b(4);
     b.add_arc(0u, 1u).add_arc(1u, 2u);
     auto [g] = b.build();
-    auto ts = topological_sort(g).run();
+    // run() returns *this by reference; algorithms are move-only, so the
+    // result is bound, not copied out.
+    auto ts = topological_sort(g);
+    ts.run();
     for(const auto & v : melon::vertices(g))
         EXPECT_EQ(ts.reached_map()[v], ts.reached(v));
 }

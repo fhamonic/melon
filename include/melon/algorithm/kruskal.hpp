@@ -30,52 +30,24 @@ private:
     disjoint_sets<vertex, vertex_map_t<UGraph, unsigned int>> _components_sets;
 
 public:
-    // undirected_graph_storable_as / mapping_storable_as, so
-    // std::is_constructible answers what the mem-initializers actually do --
-    // see dijkstra's constructor.
-    template <typename UG, typename M>
-        requires undirected_graph_storable_as<UG, UGraph> &&
-                 mapping_storable_as<M, CostMap>
-    constexpr kruskal(UG && g, M && c)
-        : _ugraph(detail::store_undirected_graph<UGraph>(std::forward<UG>(g)))
-        , _cost_map(detail::store_mapping<CostMap>(std::forward<M>(c)))
+    template <undirected_graph_for<UGraph> UG, mapping_for<CostMap> CM>
+    constexpr kruskal(UG && ug, CM && cm)
+        : _ugraph(views::undirected_graph_all(std::forward<UG>(ug)))
+        , _cost_map(maps::mapping_all(std::forward<CM>(cm)))
         , _components_sets(create_vertex_map<unsigned int>(_ugraph)) {
         reset();
     }
 
-    // _cursor is an iterator *into* _sorted_edges. A memberwise copy hands the
-    // new object an iterator into the *source's* buffer, so finished() --
-    // which compares it against the copy's own end() -- never becomes true and
-    // advance() walks off the end (ASan: heap-buffer-overflow on the first
-    // edge_endpoints of a copied kruskal). Copy the edge list, then rebase.
-    // Move is fine: the vector's buffer transfers with it.
-    // Constrained on the copyability of what it copies: a user-provided
-    // special member of a class template is only instantiated when called, so
-    // without the requires-clause std::copyable answered true for a move-only
-    // UGraph or CostMap and the failure moved to the call site.
-    constexpr kruskal(const kruskal & o)
-        requires std::copy_constructible<UGraph> &&
-                     std::copy_constructible<CostMap>
-        : _ugraph(o._ugraph)
-        , _cost_map(o._cost_map)
-        , _sorted_edges(o._sorted_edges)
-        , _components_sets(o._components_sets) {
-        _cursor = _sorted_edges.begin() + (o._cursor - o._sorted_edges.begin());
-    }
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Moves stay defaulted: _cursor is an iterator into _sorted_edges, whose
+    // buffer transfers with the move. Only the copy needed a rebase -- it
+    // handed the new object an iterator into the source's buffer, so
+    // finished(), comparing it against the copy's own end(), never became true
+    // and advance() walked off the end.
+    constexpr kruskal(const kruskal &) = delete;
     constexpr kruskal(kruskal &&) = default;
 
-    constexpr kruskal & operator=(const kruskal & o)
-        requires std::copyable<UGraph> && std::copyable<CostMap>
-    {
-        if(this == std::addressof(o)) return *this;
-        const auto offset = o._cursor - o._sorted_edges.begin();
-        _ugraph = o._ugraph;
-        _cost_map = o._cost_map;
-        _sorted_edges = o._sorted_edges;
-        _cursor = _sorted_edges.begin() + offset;
-        _components_sets = o._components_sets;
-        return *this;
-    }
+    constexpr kruskal & operator=(const kruskal &) = delete;
     constexpr kruskal & operator=(kruskal &&) = default;
 
     // The graph the algorithm runs over. An algorithm owns its view rather

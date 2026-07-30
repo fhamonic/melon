@@ -37,10 +37,9 @@ private:
 
 public:
     template <typename G>
-        requires detail::not_self<G, reverse_view> &&
-                 graph_storable_as<G, Graph>
+        requires detail::not_self<G, reverse_view> && graph_for<G, Graph>
     constexpr explicit reverse_view(G && g)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g))) {}
+        : _graph(views::graph_all(std::forward<G>(g))) {}
 
     constexpr reverse_view(const reverse_view &) = default;
     constexpr reverse_view(reverse_view &&) = default;
@@ -137,8 +136,9 @@ public:
         return std::views::transform(
             melon::arcs_entries(_graph), [](auto && entry) {
                 return std::make_pair(
-                    entry.first,
-                    std::make_pair(entry.second.second, entry.second.first));
+                    std::get<0>(entry),
+                    std::make_pair(std::get<1>(std::get<1>(entry)),
+                                   std::get<0>(std::get<1>(entry))));
             });
     }
 };

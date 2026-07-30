@@ -519,29 +519,7 @@ using graph_all_t = decltype(graph_all(std::declval<Graph>()));
 
 }  // namespace views
 
-// The graph twin of mapping_storable_as (mapping.hpp): "this constructor
-// argument can become the stored member", through views::graph_all -- the
-// ref-or-owning view types CTAD deduces. Stored member types are always graph
-// views (the algorithms' class heads require it, like the view adaptors), so
-// there is no direct-construction fallback: value ownership is spelled
-// graph_owning_view. See mapping_storable_as for why the constructors must be
-// constrained on it.
-template <typename G, typename Stored>
-concept graph_storable_as =
-    requires(G && g) { views::graph_all(std::forward<G>(g)); } &&
-    std::constructible_from<Stored, views::graph_all_t<G>>;
-
-namespace detail {
-
-// The construction graph_storable_as promises. Fully qualified: inside
-// melon::detail a bare `views::` finds melon::detail::views (the concat
-// shim), not melon::views.
-template <typename Stored, typename G>
-    requires graph_storable_as<G, Stored>
-[[nodiscard]] constexpr Stored store_graph(G && g) {
-    return Stored(melon::views::graph_all(std::forward<G>(g)));
-}
-
-}  // namespace detail
+template <typename G, typename Graph>
+concept graph_for = std::constructible_from<Graph, views::graph_all_t<G>>;
 
 }  // namespace melon

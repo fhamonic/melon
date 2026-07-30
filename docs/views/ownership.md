@@ -142,19 +142,32 @@ auto length_map = maps::mapping_all(lengths);
 
 `mapping_owning_view` stores its target in a `std::ranges`-style movable box, so it remains `std::movable` even when what it owns is not assignable — a capturing lambda, typically. Without that, an algorithm holding a lambda-based length map would not be movable, and could not be returned from a function or stored in a container.
 
-## Copying an algorithm: `enable_borrowed_graph`
+## Relocating an algorithm: move-only, always sound
+
+**Every algorithm is move-only.** `std::copyable<A>` is `false` for every
+algorithm `A`, over every graph, and `std::movable<A>` is `true` for every one
+of them. An algorithm carries the whole search state — each vertex map, the
+heap, the cached cursors — so copying it is never the cheap operation the
+syntax suggests; passing one by value is a compile error rather than a silent
+O(V+E) duplication. The `melon::traversal_algorithm` concept states the ruling.
+
+If you want a second search, construct a second algorithm. If you want to
+re-run one, `reset()` reuses the state it has already allocated.
+
+Moving, on the other hand, is always available and always sound — including
+mid-traversal. Getting that right is what `enable_borrowed_graph` is for.
 
 `depth_first_search`, `strongly_connected_components`, `connected_components`
 and `dinitz` keep a *cursor* over an incidence range for each stack frame or
-vertex, so a copy of the algorithm copies ranges the graph handed out. Whether
-that is sound depends on what those ranges point at.
+vertex, so relocating the algorithm relocates ranges the graph handed out.
+Whether a memberwise move would suffice depends on what those ranges point at.
 
 `graph_ref_view` is a bare pointer, so `out_arcs(v)` names storage that lives
-outside the view — copying the algorithm, which relocates the stored view, does
+outside the view — moving the algorithm, which relocates the stored view, does
 not disturb it. `views::subgraph` is different: its filtered ranges capture
 `this`, so a range obtained from a subgraph the algorithm stores *by value*
-points back at that member, and a copy would leave the new object's cursors
-aimed at the original's graph.
+points back at that member, and a memberwise move would leave the new object's
+cursors aimed at the moved-from object's graph.
 
 `melon::enable_borrowed_graph<G>` draws that line, mirroring
 `std::ranges::enable_borrowed_range`. It is `true` for `graph_ref_view`,
@@ -162,17 +175,18 @@ aimed at the original's graph.
 `views::reverse` and `views::undirect`, and is `false` by default — including
 for `views::subgraph` and `graph_owning_view`.
 
-The four algorithms above constrain their copy constructor and copy assignment
-on it, so copying over a subgraph is a compile error rather than a
-use-after-free, and `std::copyable` reports the truth:
+Where it is `false`, those four hand-write their move to *re-ask the new graph*
+for each cached range; the cursor's consumed counter puts it back where it was.
+You never see the difference:
 
 ```cpp
-auto dfs = melon::depth_first_search(graph, 0u);           // copyable
-auto sub = melon::depth_first_search(subgraph_view, 0u);   // move-only
+auto dfs = melon::depth_first_search(subgraph_view, 0u);
+dfs.advance();
+auto relocated = std::move(dfs);   // sound mid-run: the cursors are rebased
 ```
 
-Moving is always available, and always sound. If you write a graph view whose
-ranges do not refer to the view object, specialise the trait:
+If you write a graph view whose ranges do not refer to the view object,
+specialise the trait and that rebasing compiles away entirely:
 
 ```cpp
 template <>
@@ -191,4 +205,4 @@ The mapping side is where constness bites: an algorithm that writes through a ma
 - Views hold references too — `views::subgraph(graph, filter)` keeps both alive only if *you* do.
 - Callables and non-const-subscriptable containers need no wrapping to be *passed* to an algorithm; wrap them with `maps::map` / `maps::mapping_all` when you need the mapping as a type.
 - Derive from `graph_view_base` / `mapping_view_base` to make your own adaptors pass through unwrapped.
-- Algorithms that cache incidence ranges are copyable only over a graph satisfying `melon::borrowed_graph`; everything is movable.
+- Algorithms are move-only, uniformly. Those that cache incidence ranges rebase them on the move, so relocating one is always sound — mid-traversal included.

@@ -283,24 +283,8 @@ using undirected_graph_all_t =
 
 }  // namespace views
 
-// The undirected twin of graph_storable_as (views/graph_view.hpp): see
-// mapping_storable_as (mapping.hpp) for why constructors are constrained on
-// it, and graph_storable_as for why there is no direct-construction fallback.
-template <typename UG, typename Stored>
-concept undirected_graph_storable_as =
-    requires(UG && ug) { views::undirected_graph_all(std::forward<UG>(ug)); } &&
-    std::constructible_from<Stored, views::undirected_graph_all_t<UG>>;
-
-namespace detail {
-
-// See store_mapping (mapping.hpp). Fully qualified: inside melon::detail a
-// bare `views::` finds melon::detail::views (the concat shim).
-template <typename Stored, typename UG>
-    requires undirected_graph_storable_as<UG, Stored>
-[[nodiscard]] constexpr Stored store_undirected_graph(UG && ug) {
-    return Stored(melon::views::undirected_graph_all(std::forward<UG>(ug)));
-}
-
-}  // namespace detail
+template <typename UG, typename UndirectedGraph>
+concept undirected_graph_for =
+    std::constructible_from<UndirectedGraph, views::undirected_graph_all_t<UG>>;
 
 }  // namespace melon

@@ -49,10 +49,9 @@ private:
 
 public:
     template <typename G>
-        requires detail::not_self<G, undirect_view> &&
-                 graph_storable_as<G, Graph>
+        requires detail::not_self<G, undirect_view> && graph_for<G, Graph>
     constexpr explicit undirect_view(G && g)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g))) {}
+        : _graph(views::graph_all(std::forward<G>(g))) {}
 
     constexpr undirect_view(const undirect_view &) = default;
     constexpr undirect_view(undirect_view &&) = default;

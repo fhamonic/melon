@@ -5,6 +5,7 @@
 #include <functional>
 #include <limits>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 #include "melon/container/static_map.hpp"
@@ -117,10 +118,36 @@ public:
         , _num_vertices(0)
         , _num_arcs(0) {};
     constexpr mutable_digraph(const mutable_digraph & graph) = default;
-    constexpr mutable_digraph(mutable_digraph && graph) = default;
+    // Hand-written moves, like static_map's: the vectors empty on move but
+    // the defaulted member-wise move kept the counts and list heads, so a
+    // moved-from graph claimed vertices its vectors no longer held. The
+    // scalars go back to the default-constructed (empty) state.
+    constexpr mutable_digraph(mutable_digraph && graph) noexcept
+        : _vertices(std::move(graph._vertices))
+        , _arcs(std::move(graph._arcs))
+        , _vertices_filter(std::move(graph._vertices_filter))
+        , _arcs_filter(std::move(graph._arcs_filter))
+        , _first_vertex(std::exchange(graph._first_vertex, INVALID_VERTEX))
+        , _first_free_vertex(
+              std::exchange(graph._first_free_vertex, INVALID_VERTEX))
+        , _first_free_arc(std::exchange(graph._first_free_arc, INVALID_ARC))
+        , _num_vertices(std::exchange(graph._num_vertices, 0))
+        , _num_arcs(std::exchange(graph._num_arcs, 0)) {}
 
     constexpr mutable_digraph & operator=(const mutable_digraph &) = default;
-    constexpr mutable_digraph & operator=(mutable_digraph &&) = default;
+    constexpr mutable_digraph & operator=(mutable_digraph && graph) noexcept {
+        _vertices = std::move(graph._vertices);
+        _arcs = std::move(graph._arcs);
+        _vertices_filter = std::move(graph._vertices_filter);
+        _arcs_filter = std::move(graph._arcs_filter);
+        _first_vertex = std::exchange(graph._first_vertex, INVALID_VERTEX);
+        _first_free_vertex =
+            std::exchange(graph._first_free_vertex, INVALID_VERTEX);
+        _first_free_arc = std::exchange(graph._first_free_arc, INVALID_ARC);
+        _num_vertices = std::exchange(graph._num_vertices, 0);
+        _num_arcs = std::exchange(graph._num_arcs, 0);
+        return *this;
+    }
 
     [[nodiscard]] constexpr bool is_valid_vertex(
         const vertex v) const noexcept {
