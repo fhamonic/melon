@@ -100,12 +100,10 @@ public:
     // immediate context. The store_* helpers also admit raw storage into
     // explicitly spelled member types, which the unconditional mapping_all
     // wrap used to reject.
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                     mapping_storable_as<M, LengthMap>
-    constexpr dijkstra(G && g, M && l)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _length_map(detail::store_mapping<LengthMap>(std::forward<M>(l)))
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+    constexpr dijkstra(G && g, LM && lm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _heap(typename Traits::semiring::less_t(),
                 create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
@@ -113,11 +111,9 @@ public:
         , _pred_arcs_map(_graph)
         , _distances_map(_graph) {}
 
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                 mapping_storable_as<M, LengthMap>
-    constexpr dijkstra(G && g, M && l, const vertex & s)
-        : dijkstra(std::forward<G>(g), std::forward<M>(l)) {
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+    constexpr dijkstra(G && g, LM && lm, const vertex & s)
+        : dijkstra(std::forward<G>(g), std::forward<LM>(lm)) {
         add_source(s);
     }
 
@@ -128,10 +124,11 @@ public:
     constexpr dijkstra(Traits, Args &&... args)
         : dijkstra(std::forward<Args>(args)...) {}
 
-    constexpr dijkstra(const dijkstra &) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    constexpr dijkstra(const dijkstra &) = delete;
     constexpr dijkstra(dijkstra &&) = default;
 
-    constexpr dijkstra & operator=(const dijkstra &) = default;
+    constexpr dijkstra & operator=(const dijkstra &) = delete;
     constexpr dijkstra & operator=(dijkstra &&) = default;
 
     // The graph the algorithm runs over. An algorithm owns its view rather
@@ -239,11 +236,6 @@ public:
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const
         requires(Traits::store_paths)
     {
-        // Not .value(): a source's predecessor arc is a reset optional, and
-        // asking for it is a precondition violation, not an exceptional
-        // condition -- assert so a debug build names the caller's mistake.
-        // (This used to be noexcept as well, which turned the throw into a
-        // silent std::terminate.)
         assert(reached(u) && _pred_arcs_map[u].has_value());
         return *_pred_arcs_map[u];
     }

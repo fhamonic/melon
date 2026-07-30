@@ -93,3 +93,25 @@ GTEST_TEST(edmonds_karp, complete_digraph_view) {
     ASSERT_EQ(alg.run().flow_value(), 4);
     alg.reset();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// capacity types without a genuine numeric_limits specialization are rejected
+// at the concept level: the primary template's max() returns T{} -- a zero
+// infinity that made the augmenting-path loop spin forever at runtime for a
+// type that compiled cleanly
+////////////////////////////////////////////////////////////////////////////////
+
+namespace zero_infinity_probes {
+struct opaque_capacity {
+    int v;
+};
+}  // namespace zero_infinity_probes
+
+template <typename V>
+concept edmonds_karp_admits =
+    requires(static_digraph & g, std::vector<V> & capacities) {
+        edmonds_karp(g, capacities);
+    };
+static_assert(edmonds_karp_admits<int>);
+static_assert(edmonds_karp_admits<double>);
+static_assert(!edmonds_karp_admits<zero_infinity_probes::opaque_capacity>);

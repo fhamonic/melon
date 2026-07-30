@@ -22,8 +22,7 @@ template <std::ranges::range ItemRange,
     requires std::is_arithmetic_v<mapped_value_t<
                  ValueMap, std::ranges::range_value_t<ItemRange>>> &&
              std::is_arithmetic_v<
-                 mapped_value_t<CostMap,
-                                std::ranges::range_value_t<ItemRange>>>
+                 mapped_value_t<CostMap, std::ranges::range_value_t<ItemRange>>>
 class unbounded_knapsack_bnb {
 private:
     using Item = std::ranges::range_value_t<ItemRange>;
@@ -55,6 +54,9 @@ private:
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
+        // guards the goto: with no feasible item it jumped into the loop body
+        // and dereferenced end (the bounded twin always had this check)
+        if(it == end) return _best_sol;
         std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
         Value best_sol_value = 0;
@@ -90,6 +92,8 @@ private:
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
+        // same empty guard as iterative_bnb's
+        if(it == end) return _best_sol;
         std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
         Value best_sol_value = 0;
@@ -124,17 +128,15 @@ private:
 public:
     // Constrained on what the mem-initializers actually do, so
     // std::is_constructible answers honestly -- see dijkstra's constructor.
-    template <typename IR, typename VM, typename CM, typename B>
-        requires std::ranges::viewable_range<IR> &&
-                 std::constructible_from<ItemRange, std::views::all_t<IR>> &&
-                 mapping_storable_as<VM, ValueMap> &&
-                 mapping_storable_as<CM, CostMap>
+    template <std::ranges::viewable_range IR, mapping_for<ValueMap> VM,
+              mapping_for<CostMap> CM, std::convertible_to<Cost> B>
+        requires std::constructible_from<ItemRange, std::views::all_t<IR>>
     unbounded_knapsack_bnb(IR && items_range, VM && value_map, CM && cost_map,
-                           const B budget)
+                           B && budget)
         : _items_range(std::views::all(std::forward<IR>(items_range)))
-        , _value_map(detail::store_mapping<ValueMap>(std::forward<VM>(value_map)))
-        , _cost_map(detail::store_mapping<CostMap>(std::forward<CM>(cost_map)))
-        , _budget(budget) {
+        , _value_map(maps::mapping_all(std::forward<VM>(value_map)))
+        , _cost_map(maps::mapping_all(std::forward<CM>(cost_map)))
+        , _budget(std::forward<B>(budget)) {
         reset();
     }
 
@@ -157,50 +159,18 @@ private:
     }
 
 public:
-    // _best_sol holds iterators *into* _value_cost_pairs. A memberwise copy
-    // leaves them pointing into the source's buffer, so solution_value() /
-    // solution_cost() / solution_items() on a copy read the source -- freed
-    // memory once it dies (ASan: heap-use-after-free). Copy, then rebase.
-    // Move is fine: the vector's buffer transfers with it.
-    // _permuted_items needs no rebasing: it holds iterators into the *wrapped*
-    // range, which a copy shares (an owning ItemRange is move-only, so a
-    // copyable knapsack always references a container it does not own).
-    unbounded_knapsack_bnb(const unbounded_knapsack_bnb & o)
-        : _items_range(o._items_range)
-        , _value_map(o._value_map)
-        , _cost_map(o._cost_map)
-        , _budget(o._budget)
-        , _permuted_items(o._permuted_items)
-        , _value_cost_pairs(o._value_cost_pairs) {
-        _rebase_best_sol_from(o);
-    }
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Moves stay defaulted: _best_sol holds iterators into _value_cost_pairs,
+    // whose buffer transfers with the move. Only the copy needed a rebase --
+    // and, like its bounded twin, it was still missing the requires-clause that
+    // keeps std::copyable honest, so for a move-only ItemRange the trait
+    // answered true and the copy hard-errored inside the mem-initializer.
+    unbounded_knapsack_bnb(const unbounded_knapsack_bnb &) = delete;
     unbounded_knapsack_bnb(unbounded_knapsack_bnb &&) = default;
 
-    unbounded_knapsack_bnb & operator=(const unbounded_knapsack_bnb & o) {
-        if(this == std::addressof(o)) return *this;
-        _items_range = o._items_range;
-        _value_map = o._value_map;
-        _cost_map = o._cost_map;
-        _budget = o._budget;
-        _permuted_items = o._permuted_items;
-        _value_cost_pairs = o._value_cost_pairs;
-        _rebase_best_sol_from(o);
-        return *this;
-    }
+    unbounded_knapsack_bnb & operator=(const unbounded_knapsack_bnb &) = delete;
     unbounded_knapsack_bnb & operator=(unbounded_knapsack_bnb &&) = default;
 
-private:
-    void _rebase_best_sol_from(const unbounded_knapsack_bnb & o) {
-        _best_sol.resize(0);
-        _best_sol.reserve(o._best_sol.size());
-        for(auto && e : o._best_sol)
-            _best_sol.push_back(
-                std::make_pair(_value_cost_pairs.cbegin() +
-                                   (e.first - o._value_cost_pairs.cbegin()),
-                               e.second));
-    }
-
-public:
     unbounded_knapsack_bnb & reset() {
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
@@ -227,9 +197,12 @@ public:
         return *this;
     }
 
+    // Re-derives through reset(): the item filter built there depends on the
+    // budget, so only assigning _budget kept newly-affordable items excluded
+    // and run() returned a wrong optimum after a raise.
     unbounded_knapsack_bnb & set_budget(Cost b) {
         _budget = b;
-        return *this;
+        return reset();
     }
 
     unbounded_knapsack_bnb & run() {

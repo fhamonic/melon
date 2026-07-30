@@ -72,12 +72,13 @@ Every concept in melon's public API, with its header and a one-line statement of
 **Aliases.** `views::graph_all_t<G>`, `views::undirected_graph_all_t<G>`.
 
 `enable_borrowed_graph` mirrors `std::ranges::enable_borrowed_range` and is what
-decides whether an algorithm caching incidence ranges may be copied. It is
+decides whether an algorithm caching incidence ranges must rebase those cursors
+when it is moved, or can let the compiler default the move. It is
 `true` for `graph_ref_view`, `undirected_graph_ref_view` and
 `views::complete_digraph`, propagates through `views::reverse` and
 `views::undirect`, and is `false` for `views::subgraph` and `graph_owning_view`,
 whose ranges point back at the view. Specialise it for a view of your own whose
-ranges do not; see [Ownership](../views/ownership.md#copying-an-algorithm-enable_borrowed_graph).
+ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound).
 
 ## Algorithms and utilities
 

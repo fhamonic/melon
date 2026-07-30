@@ -331,29 +331,8 @@ public:
 
 }  // namespace maps
 
-// The relation an algorithm constructor's requires-clause states about a
-// mapping argument: "this argument can become the stored member" -- through
-// maps::mapping_all, producing the view types CTAD deduces. Stored member
-// types are always mapping views (the algorithms' class heads require it, the
-// std::ranges adaptor rule), so there is no direct-construction fallback: a
-// caller who wants value ownership spells mapping_owning_view. Naming the
-// relation is what lets the constructors be constrained: unconstrained,
-// std::is_constructible answered true for argument lists whose member
-// initialisers then hard-errored outside the immediate context.
-template <typename M, typename Stored>
-concept mapping_storable_as =
-    requires(M && m) { maps::mapping_all(std::forward<M>(m)); } &&
-    std::constructible_from<Stored, maps::mapping_all_t<M>>;
-
-namespace detail {
-
-// The construction mapping_storable_as promises.
-template <typename Stored, typename M>
-    requires mapping_storable_as<M, Stored>
-[[nodiscard]] constexpr Stored store_mapping(M && m) {
-    return Stored(maps::mapping_all(std::forward<M>(m)));
-}
-
-}  // namespace detail
+template <typename M, typename LengthMap>
+concept mapping_for =
+    std::constructible_from<LengthMap, maps::mapping_all_t<M>>;
 
 }  // namespace melon

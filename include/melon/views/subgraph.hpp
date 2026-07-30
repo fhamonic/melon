@@ -31,20 +31,27 @@ private:
     [[no_unique_address]] ArcFilter _arc_filter;
 
 public:
+    // not_self goes first, and the storability checks stay in the trailing
+    // requires-clause rather than riding on the template parameters. A
+    // constrained parameter's constraint is conjoined *before* the trailing
+    // clause, so `template <graph_for<Graph> G> requires not_self<...>` checks
+    // graph_for first -- and graph_for<G, Graph> asks
+    // constructible_from<Graph, graph_all_t<G>>, whose pass_through branch asks
+    // constructible_from<subgraph_view, subgraph_view> for G = subgraph_view:
+    // the very question being answered. GCC rejects that outright
+    // ("satisfaction of atomic constraint depends on itself"), so every copy of
+    // an algorithm holding a subgraph_view failed to compile. not_self exists
+    // precisely to cut that off, and only the trailing position lets it.
     template <typename G, typename VF = maps::true_map,
               typename AF = maps::true_map>
-        requires detail::not_self<G, subgraph_view> &&
-                 graph_storable_as<G, Graph> &&
-                 mapping_storable_as<VF, VertexFilter> &&
-                 mapping_storable_as<AF, ArcFilter>
+        requires detail::not_self<G, subgraph_view> && graph_for<G, Graph> &&
+                     mapping_for<VF, VertexFilter> && mapping_for<AF, ArcFilter>
     constexpr explicit subgraph_view(G && g,
                                      VF && vertex_filter = maps::true_map{},
                                      AF && arc_filter = maps::true_map{})
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _vertex_filter(
-              detail::store_mapping<VertexFilter>(std::forward<VF>(vertex_filter)))
-        , _arc_filter(
-              detail::store_mapping<ArcFilter>(std::forward<AF>(arc_filter))) {}
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _vertex_filter(maps::mapping_all(std::forward<VF>(vertex_filter)))
+        , _arc_filter(maps::mapping_all(std::forward<AF>(arc_filter))) {}
 
     constexpr subgraph_view(const subgraph_view &) = default;
     constexpr subgraph_view(subgraph_view &&) = default;

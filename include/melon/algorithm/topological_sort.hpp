@@ -42,22 +42,13 @@ struct topological_sort_default_traits {
 // constraint failure.
 template <graph_view Graph,
           topological_sort_traits Traits = topological_sort_default_traits>
-    requires outward_incidence_graph<Graph> &&
-             has_vertex_map<Graph> && has_num_vertices<Graph>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
+             has_num_vertices<Graph>
 class topological_sort
     : public algorithm_view_interface<topological_sort<Graph, Traits>> {
-public:
+private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-
-    // No static_assert guarding store_critical_paths: the class already
-    // requires outward_incidence_graph, so the arcs are always available. The
-    // check that used to sit here rejected every graph that *also* modelled
-    // outward_adjacency_graph -- static_digraph among them -- which made the
-    // predecessor maps impossible to switch on.
-
-    // _t suffix, like vertex_map_t / arc_map_t: `reached_map` is now the name
-    // of the accessor below, and a nested type may not share a member's name.
     using reached_map_t = vertex_map_t<Graph, bool>;
     using remaining_in_degree_map_t = vertex_map_t<Graph, std::size_t>;
 
@@ -118,20 +109,12 @@ private:
     }
 
 public:
-    // graph_storable_as, so std::is_constructible answers what the
-    // mem-initializer actually does -- see dijkstra's constructor.
     template <typename G>
-        requires detail::not_self<G, topological_sort> &&
-                 graph_storable_as<G, Graph>
+        requires detail::not_self<G, topological_sort> && graph_for<G, Graph>
     constexpr explicit topological_sort(G && g)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()
         , _reached_map(create_vertex_map<bool>(_graph, false))
-        // std::size_t, matching the member's declared type: `long unsigned
-        // int` and `std::size_t` are the same on LP64 but not on MinGW-w64 or
-        // MSVC, where this did not compile. The seed is 0 rather than a
-        // sentinel because push_start_vertices() below writes every entry
-        // before anything reads one.
         , _remaining_in_degree_map(
               create_vertex_map<std::size_t>(_graph, std::size_t{0}))
         , _pred_vertices_map(_graph)
@@ -146,47 +129,16 @@ public:
     constexpr topological_sort(Traits, Args &&... args)
         : topological_sort(std::forward<Args>(args)...) {}
 
-    // _queue_current is an iterator *into* _queue, and the traversal relies on
-    // the constructor's reserve() to keep it stable across the push_backs. A
-    // memberwise copy hands the new object an iterator into the source's
-    // buffer, at a capacity that is only as large as the source's size, so the
-    // copy walks off the end. Copy the queue, restore the capacity, then
-    // rebase the cursor -- the same shape as branchless breadth_first_search.
-    // Move is fine: the vector's buffer transfers with it.
-    // Constrained on the copyability of what it copies: a user-provided
-    // special member of a class template is only instantiated when called, so
-    // without the requires-clause std::copyable answered true for a move-only
-    // Graph (any graph_owning_view) and the failure moved to the call site.
-    constexpr topological_sort(const topological_sort & o)
-        requires std::copy_constructible<Graph>
-        : _graph(o._graph)
-        , _queue(o._queue)
-        , _reached_map(o._reached_map)
-        , _remaining_in_degree_map(o._remaining_in_degree_map)
-        , _pred_vertices_map(o._pred_vertices_map)
-        , _pred_arcs_map(o._pred_arcs_map)
-        , _rank_map(o._rank_map) {
-        _queue.reserve(num_vertices(_graph));
-        _queue_current = _queue.begin() + (o._queue_current - o._queue.begin());
-    }
-    constexpr topological_sort(topological_sort && bin) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Moves stay defaulted: _queue_current is an iterator into _queue, whose
+    // buffer transfers with the move, and the constructor's reserve() keeps it
+    // stable across the push_backs. Only the copy needed a rebase -- it handed
+    // the new object an iterator into the source's buffer, at a capacity only
+    // as large as the source's size, so the copy walked off the end.
+    constexpr topological_sort(const topological_sort &) = delete;
+    constexpr topological_sort(topological_sort &&) = default;
 
-    constexpr topological_sort & operator=(const topological_sort & o)
-        requires std::copyable<Graph>
-    {
-        if(this == std::addressof(o)) return *this;
-        const auto offset = o._queue_current - o._queue.begin();
-        _graph = o._graph;
-        _queue = o._queue;
-        _queue.reserve(num_vertices(_graph));
-        _queue_current = _queue.begin() + offset;
-        _reached_map = o._reached_map;
-        _remaining_in_degree_map = o._remaining_in_degree_map;
-        _pred_vertices_map = o._pred_vertices_map;
-        _pred_arcs_map = o._pred_arcs_map;
-        _rank_map = o._rank_map;
-        return *this;
-    }
+    constexpr topological_sort & operator=(const topological_sort &) = delete;
     constexpr topological_sort & operator=(topological_sort &&) = default;
 
     // The graph the algorithm runs over. An algorithm owns its view rather
@@ -207,10 +159,7 @@ public:
     }
 
 public:
-    // Rebuilds the remaining in-degrees and re-seeds the queue. Clearing the
-    // queue alone would not do: the run decrements every in-degree to zero, so
-    // a reset that skipped push_start_vertices() left the sort finished with
-    // nothing left to yield.
+    // Rebuilds the remaining in-degrees and re-seeds the queue.
     constexpr topological_sort & reset() {
         push_start_vertices();
         return *this;

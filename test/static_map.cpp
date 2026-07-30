@@ -397,3 +397,31 @@ GTEST_TEST(static_map, a_failed_resize_leaves_the_map_untouched) {
     ASSERT_EQ(map[0].v, 1);
     ASSERT_EQ(map[1].v, 2);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// a moved-from map is a valid empty map. The defaulted move nulled _data but
+// kept _size, so the source answered size() == N over a null buffer and
+// copying it dereferenced null -- a reachable state, since algorithms take
+// their graph by value.
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(static_map, moved_from_is_a_valid_empty_map) {
+    static_map<std::size_t, int> map(4, 7);
+
+    static_map<std::size_t, int> target(std::move(map));
+    ASSERT_EQ(target.size(), 4u);
+    ASSERT_EQ(map.size(), 0u);
+    ASSERT_TRUE(map.empty());
+    ASSERT_EQ(map.begin(), map.end());
+
+    // everything valid on an empty map stays valid on a moved-from one
+    static_map<std::size_t, int> copy(map);
+    ASSERT_EQ(copy.size(), 0u);
+
+    // move assignment empties the source the same way
+    map = std::move(target);
+    ASSERT_EQ(map.size(), 4u);
+    ASSERT_EQ(map[0], 7);
+    ASSERT_EQ(target.size(), 0u);
+    ASSERT_TRUE(target.empty());
+}

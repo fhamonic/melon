@@ -113,7 +113,27 @@ for(auto && component : strongly_connected_components(graph)) {
 
 Tarjan's algorithm, iterative for the same reason as DFS. Each `current()` is a *range* of the vertices of one component, and components come out in reverse topological order of the condensation — the sinks first.
 
-`same_component(u, v)` answers the query directly after a `run()`.
+With the `store_component_ids` traits flag, the algorithm records a component id
+per vertex as each component is popped — dense, in emission order — and
+`component_id(u)` answers from those ids once `u`'s component has been yielded,
+so directly after a `run()`. Comparing ids is the same-component query, and
+`component_ids_map()` views the whole map, for passing to anything that takes a
+vertex map:
+
+```cpp
+struct scc_traits {
+    static constexpr bool store_component_ids = true;
+};
+
+strongly_connected_components alg(scc_traits{}, graph);
+alg.run();
+if(alg.component_id(u) == alg.component_id(v)) { ... }  // mutually reachable
+auto ids = alg.component_ids_map();  // ids[v] == 0 for the first component, ...
+```
+
+Without the flag none of these exist and no id map is stored.
+`num_components()` is available either way: the number of components yielded so
+far, `current()` included, so the component count of the graph after a `run()`.
 
 Requires `outward_adjacency_graph` and `has_vertex_map`.
 

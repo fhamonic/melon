@@ -242,3 +242,38 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// a moved-from graph is a valid empty graph. The vectors empty on move but
+// the defaulted member-wise move kept the counts and list heads, so the
+// source claimed vertices its vectors no longer held.
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(mutable_digraph, moved_from_is_a_valid_empty_graph) {
+    mutable_digraph graph;
+    const auto u = create_vertex(graph);
+    const auto v = create_vertex(graph);
+    [[maybe_unused]] const auto a = create_arc(graph, u, v);
+
+    mutable_digraph target(std::move(graph));
+    ASSERT_EQ(target.num_vertices(), 2u);
+    ASSERT_EQ(target.num_arcs(), 1u);
+    ASSERT_EQ(graph.num_vertices(), 0u);
+    ASSERT_EQ(graph.num_arcs(), 0u);
+    ASSERT_TRUE(std::ranges::empty(vertices(graph)));
+    auto moved_from_arcs = arcs(graph);
+    ASSERT_TRUE(moved_from_arcs.begin() == moved_from_arcs.end());
+
+    // the empty state is fully usable: creation restarts from scratch
+    const auto w = create_vertex(graph);
+    ASSERT_EQ(graph.num_vertices(), 1u);
+    ASSERT_TRUE(graph.is_valid_vertex(w));
+
+    // move assignment empties the source the same way
+    graph = std::move(target);
+    ASSERT_EQ(graph.num_vertices(), 2u);
+    ASSERT_EQ(graph.num_arcs(), 1u);
+    ASSERT_EQ(target.num_vertices(), 0u);
+    ASSERT_EQ(target.num_arcs(), 0u);
+    ASSERT_TRUE(std::ranges::empty(vertices(target)));
+}

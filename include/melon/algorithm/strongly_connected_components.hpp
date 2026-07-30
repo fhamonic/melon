@@ -14,6 +14,7 @@
 
 #include "melon/detail/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
+#include "melon/detail/map_if.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -21,10 +22,26 @@
 
 namespace melon {
 
-template <graph_view Graph>
+// A traits concept, like the dijkstra family's: without it a misspelled flag
+// in a user traits struct silently fell back to nothing instead of failing
+// the constraint.
+// clang-format off
+template <typename Traits>
+concept strongly_connected_components_traits = requires() {
+    { Traits::store_component_ids } -> std::convertible_to<bool>;
+};
+// clang-format on
+
+struct strongly_connected_components_default_traits {
+    static constexpr bool store_component_ids = false;
+};
+
+template <graph_view Graph, strongly_connected_components_traits Traits =
+                                strongly_connected_components_default_traits>
     requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
 class strongly_connected_components
-    : public algorithm_view_interface<strongly_connected_components<Graph>> {
+    : public algorithm_view_interface<
+          strongly_connected_components<Graph, Traits>> {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
@@ -44,29 +61,32 @@ private:
     std::vector<vertex>::iterator _component_begin;
     component_num _start_index;
     component_num _index;
+    component_num _num_components;
     vertex_map_t<Graph, bool> _in_tarjan_stack_map;
     vertex_map_t<Graph, component_num> _index_map;
     vertex_map_t<Graph, component_num> _lowlink_map;
+    [[no_unique_address]] vertex_map_if<Traits::store_component_ids, Graph,
+                                        component_num> _component_id_map;
 
 public:
-    // graph_storable_as, so std::is_constructible answers what the
-    // mem-initializer actually does -- see dijkstra's constructor.
-    template <typename T>
-        requires detail::not_self<T, strongly_connected_components> &&
-                     graph_storable_as<T, Graph>
-    constexpr explicit strongly_connected_components(T && g)
-        : _graph(detail::store_graph<Graph>(std::forward<T>(g)))
+    template <typename G>
+        requires detail::not_self<G, strongly_connected_components> &&
+                     graph_for<G, Graph>
+    constexpr explicit strongly_connected_components(G && g)
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _remaining_vertices(vertices(_graph))
         , _dfs_stack()
         , _tarjan_stack()
         , _component_begin()
         , _start_index(0)
         , _index(0)
+        , _num_components(0)
         , _in_tarjan_stack_map(create_vertex_map<bool>(_graph, false))
         , _index_map(
               create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
         , _lowlink_map(
-              create_vertex_map<component_num>(_graph, INVALID_COMPONENT)) {
+              create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
+        , _component_id_map(_graph, INVALID_COMPONENT) {
         if constexpr(has_num_vertices<Graph>) {
             _dfs_stack.reserve(num_vertices(_graph));
             _tarjan_stack.reserve(num_vertices(_graph));
@@ -78,55 +98,24 @@ public:
         if(!finished()) advance();
     }
 
-    // _component_begin is an iterator *into* _tarjan_stack, and current()
-    // hands out the range from it to the stack's end. A memberwise copy leaves
-    // it pointing into the source's buffer, so the copy's very first current()
-    // reads someone else's memory; the reserve() the traversal relies on is
-    // lost too, since a copied vector only has capacity for what it holds.
-    // Same shape as branchless breadth_first_search. Move is fine: the
-    // vector's buffer transfers with it.
-    //
+    template <typename... Args>
+        requires std::constructible_from<strongly_connected_components, Args...>
+    constexpr strongly_connected_components(Traits, Args &&... args)
+        : strongly_connected_components(std::forward<Args>(args)...) {}
+
     // The relocation policy is depth_first_search's: the cached cursors are
     // re-askable -- _remaining_vertices from vertices(_graph), each _dfs_stack
     // frame from the vertex sitting next to it -- so after the members
     // relocate, _rebase_cursors() aims them at the *new* _graph and the
-    // _consumed counters put them back where they were. Copy therefore no
-    // longer requires borrowed_graph: rebasing is what makes an SCC over an
-    // owned subgraph honestly copyable. The one combination that cannot
-    // rebase -- a non-borrowed graph handing out std-borrowed ranges, which
-    // have no counter -- keeps copy constrained away.
-    constexpr strongly_connected_components(
-        const strongly_connected_components & o)
-        requires std::copy_constructible<Graph> &&
-                     std::copy_constructible<
-                         consumable_input_view<vertices_range_t<Graph>>> &&
-                     std::copy_constructible<
-                         consumable_input_view<out_neighbors_range_t<Graph>>> &&
-                     (borrowed_graph<Graph> ||
-                      (!std::ranges::borrowed_range<vertices_range_t<Graph>> &&
-                       !std::ranges::borrowed_range<
-                           out_neighbors_range_t<Graph>>))
-        : _graph(o._graph)
-        , _remaining_vertices(o._remaining_vertices)
-        , _dfs_stack(o._dfs_stack)
-        , _tarjan_stack(o._tarjan_stack)
-        , _start_index(o._start_index)
-        , _index(o._index)
-        , _in_tarjan_stack_map(o._in_tarjan_stack_map)
-        , _index_map(o._index_map)
-        , _lowlink_map(o._lowlink_map) {
-        if constexpr(has_num_vertices<Graph>) {
-            _dfs_stack.reserve(num_vertices(_graph));
-            _tarjan_stack.reserve(num_vertices(_graph));
-        }
-        _component_begin = _tarjan_stack.begin() +
-                           (o._component_begin - o._tarjan_stack.begin());
-        _rebase_cursors();
-    }
+    // _consumed counters put them back where they were.
+    //
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Hand-written for the same reason as depth_first_search's move: a
     // memberwise move leaves the cached cursors' ranges pointing at the
     // moved-from object's _graph member. _component_begin needs nothing --
-    // the vector's buffer transfers with it.
+    // it is an iterator into _tarjan_stack, whose buffer transfers with it.
+    constexpr strongly_connected_components(
+        const strongly_connected_components &) = delete;
     constexpr strongly_connected_components(strongly_connected_components && o)
         : _graph(std::move(o._graph))
         // Not a memberwise move: the cursor's move constructor reseeks
@@ -147,42 +136,16 @@ public:
         , _component_begin(std::move(o._component_begin))
         , _start_index(o._start_index)
         , _index(o._index)
+        , _num_components(o._num_components)
         , _in_tarjan_stack_map(std::move(o._in_tarjan_stack_map))
         , _index_map(std::move(o._index_map))
-        , _lowlink_map(std::move(o._lowlink_map)) {
+        , _lowlink_map(std::move(o._lowlink_map))
+        , _component_id_map(std::move(o._component_id_map)) {
         _rebase_cursors();
     }
 
     constexpr strongly_connected_components & operator=(
-        const strongly_connected_components & o)
-        requires std::copyable<Graph> &&
-                 std::copyable<
-                     consumable_input_view<vertices_range_t<Graph>>> &&
-                 std::copyable<
-                     consumable_input_view<out_neighbors_range_t<Graph>>> &&
-                 (borrowed_graph<Graph> ||
-                  (!std::ranges::borrowed_range<vertices_range_t<Graph>> &&
-                   !std::ranges::borrowed_range<out_neighbors_range_t<Graph>>))
-    {
-        if(this == std::addressof(o)) return *this;
-        const auto offset = o._component_begin - o._tarjan_stack.begin();
-        _graph = o._graph;
-        _remaining_vertices = o._remaining_vertices;
-        _dfs_stack = o._dfs_stack;
-        _tarjan_stack = o._tarjan_stack;
-        if constexpr(has_num_vertices<Graph>) {
-            _dfs_stack.reserve(num_vertices(_graph));
-            _tarjan_stack.reserve(num_vertices(_graph));
-        }
-        _component_begin = _tarjan_stack.begin() + offset;
-        _start_index = o._start_index;
-        _index = o._index;
-        _in_tarjan_stack_map = o._in_tarjan_stack_map;
-        _index_map = o._index_map;
-        _lowlink_map = o._lowlink_map;
-        _rebase_cursors();
-        return *this;
-    }
+        const strongly_connected_components &) = delete;
     // See the move constructor.
     constexpr strongly_connected_components & operator=(
         strongly_connected_components && o) {
@@ -200,9 +163,11 @@ public:
         _component_begin = std::move(o._component_begin);
         _start_index = o._start_index;
         _index = o._index;
+        _num_components = o._num_components;
         _in_tarjan_stack_map = std::move(o._in_tarjan_stack_map);
         _index_map = std::move(o._index_map);
         _lowlink_map = std::move(o._lowlink_map);
+        _component_id_map = std::move(o._component_id_map);
         _rebase_cursors();
         return *this;
     }
@@ -248,6 +213,7 @@ public:
     constexpr strongly_connected_components & reset() {
         _start_index = 0;
         _index = 0;
+        _num_components = 0;
         _remaining_vertices = vertices(_graph);
         _dfs_stack.clear();
         _tarjan_stack.resize(0);
@@ -255,6 +221,8 @@ public:
         _in_tarjan_stack_map.fill(false);
         _index_map.fill(INVALID_COMPONENT);
         _lowlink_map.fill(INVALID_COMPONENT);
+        if constexpr(Traits::store_component_ids)
+            _component_id_map.fill(INVALID_COMPONENT);
         if(!finished()) advance();
         return *this;
     }
@@ -277,6 +245,15 @@ public:
         return std::span<const vertex>(
             std::to_address(_component_begin),
             static_cast<std::size_t>(_tarjan_stack.end() - _component_begin));
+    }
+
+    // The number of components yielded so far, current() included -- the
+    // component count of the graph once finished(). Not gated on
+    // store_component_ids: the counter is what numbers the ids, but the count
+    // is meaningful without them. When ids are stored, every assigned
+    // component_id() is below this.
+    [[nodiscard]] constexpr component_num num_components() const noexcept {
+        return _num_components;
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & v) const
@@ -355,8 +332,13 @@ public:
                 for(_component_begin = _tarjan_stack.end() - 1;
                     *_component_begin != v; --_component_begin) {
                     _in_tarjan_stack_map[*_component_begin] = false;
+                    if constexpr(Traits::store_component_ids)
+                        _component_id_map[*_component_begin] = _num_components;
                 }
                 _in_tarjan_stack_map[v] = false;
+                if constexpr(Traits::store_component_ids)
+                    _component_id_map[v] = _num_components;
+                ++_num_components;
                 return;
             }
             _dfs_stack.pop_back();
@@ -366,15 +348,39 @@ public:
         }
     }
 
-    [[nodiscard]] constexpr bool same_component(const vertex & u,
-                                                const vertex & v) const
-        noexcept(noexcept(_lowlink_map[u] == _lowlink_map[v])) {
-        return _lowlink_map[u] == _lowlink_map[v];
+    // The id of the component u belongs to: dense, in emission order -- the
+    // k-th component yielded is id k, reverse topological order of the
+    // condensation. Only assigned once the component is popped, so asking
+    // before u's component has been yielded is a precondition violation, the
+    // same contract as dijkstra::pred_arc on an unreached vertex. The
+    // same-component query is component_id(u) == component_id(v) -- there is
+    // no same_component() answering it from the lowlinks, which are not
+    // uniform within a finished component.
+    [[nodiscard]] constexpr component_num component_id(const vertex & u) const
+        requires(Traits::store_component_ids)
+    {
+        assert(_component_id_map[u] != INVALID_COMPONENT);
+        return _component_id_map[u];
+    }
+    // A view of the stored ids, reached_map()'s contract: valid while this
+    // object lives and stays put. Unlike component_id() it cannot assert per
+    // read, so vertices whose component has not been yielded still hold the
+    // sentinel -- read it once the components of interest are out.
+    [[nodiscard]] constexpr auto component_ids_map() const
+        noexcept(noexcept(maps::mapping_all(_component_id_map._map)))
+        requires(Traits::store_component_ids)
+    {
+        return maps::mapping_all(_component_id_map._map);
     }
 };
 
-template <typename Graph>
+template <typename Graph,
+          typename Traits = strongly_connected_components_default_traits>
 strongly_connected_components(Graph &&)
-    -> strongly_connected_components<views::graph_all_t<Graph>>;
+    -> strongly_connected_components<views::graph_all_t<Graph>, Traits>;
+
+template <typename Graph, typename Traits>
+strongly_connected_components(Traits, Graph &&)
+    -> strongly_connected_components<views::graph_all_t<Graph>, Traits>;
 
 }  // namespace melon

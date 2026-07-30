@@ -145,29 +145,28 @@ GTEST_TEST(traversal_forest, empty_source_range) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: copying a mutable lvalue must pick the copy constructor, not
-// the greedy single-argument constructor
+// regression: an algorithm lvalue must not be swallowed by the greedy
+// single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 // The unconstrained `traversal_forest(G &&)` beat the copy constructor for a
-// non-const lvalue and tried to build the algorithm out of itself. Only the
-// one-argument form competes: the (graph, sources) overload takes two.
-GTEST_TEST(traversal_forest,
-           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+// non-const lvalue and tried to build the algorithm out of itself;
+// detail::not_self is what excludes it. Only the one-argument form competes:
+// the (graph, sources) overload takes two. Now that copy is deleted, the pin is
+// that an algorithm is not constructible from an algorithm lvalue at all.
+GTEST_TEST(traversal_forest, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(2, 3);
     auto [graph] = builder.build();
 
     traversal_forest alg(graph);
+    using alg_t = decltype(alg);
+    static_assert(!std::is_constructible_v<alg_t, alg_t &>);
+    static_assert(!std::is_constructible_v<alg_t, const alg_t &>);
+    static_assert(std::is_constructible_v<alg_t, alg_t &&>);
 
-    traversal_forest from_mutable_lvalue(alg);
-    static_assert(std::same_as<decltype(alg), decltype(from_mutable_lvalue)>);
-    ASSERT_TRUE(EQ_MULTISETS(from_mutable_lvalue.current(), {0u, 1u}));
-
-    from_mutable_lvalue.advance();
-    ASSERT_TRUE(EQ_MULTISETS(from_mutable_lvalue.current(), {2u, 3u}));
-    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {0u, 1u}));  // independent copy
-
-    decltype(alg) from_const_lvalue(std::as_const(alg));
-    ASSERT_TRUE(EQ_MULTISETS(from_const_lvalue.current(), {0u, 1u}));
+    auto relocated = std::move(alg);
+    ASSERT_TRUE(EQ_MULTISETS(relocated.current(), {0u, 1u}));
+    relocated.advance();
+    ASSERT_TRUE(EQ_MULTISETS(relocated.current(), {2u, 3u}));
 }

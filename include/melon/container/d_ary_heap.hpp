@@ -265,7 +265,7 @@ public:
     // not compile although the base defines exactly that constructor.
     template <typename PC>
         requires(!std::same_as<std::remove_cvref_t<PC>, d_ary_heap>) &&
-                    std::constructible_from<PriorityComparator, PC>
+                std::constructible_from<PriorityComparator, PC>
     constexpr explicit d_ary_heap(PC && priority_cmp)
         : base_class(std::forward<PC>(priority_cmp)) {}
 

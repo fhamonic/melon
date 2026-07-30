@@ -459,6 +459,8 @@ GTEST_TEST(strongly_connected_components, reset_restarts_the_whole_run) {
 
     const auto first_component = collect_first(alg);
     ASSERT_EQ(count_components(alg), 2);
+    // num_components() agrees, default traits included
+    ASSERT_EQ(alg.num_components(), 2u);
 
     alg.reset();
 
@@ -499,29 +501,154 @@ GTEST_TEST(strongly_connected_components, empty_graph) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: copying a mutable lvalue must pick the copy constructor, not
-// the greedy single-argument constructor
+// with store_component_ids the algorithm writes each vertex's component id
+// when its component is popped; equal component_id() is the same-component
+// query
+////////////////////////////////////////////////////////////////////////////////
+
+struct scc_store_ids_traits {
+    static constexpr bool store_component_ids = true;
+};
+
+// The lowlink counterexample of the design review: for the single-component
+// graph 0->1, 0->2, 1->0, 2->1 the finished lowlinks are not uniform, so the
+// old same_component() -- which compared lowlinks -- said same_component(0,1)
+// but not same_component(0,2). The stored ids are uniform.
+GTEST_TEST(strongly_connected_components, component_ids_single_scc) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0, 1).add_arc(0, 2).add_arc(1, 0).add_arc(2, 1);
+    auto [graph] = builder.build();
+
+    strongly_connected_components alg(scc_store_ids_traits{}, graph);
+    alg.run();
+
+    ASSERT_EQ(alg.component_id(0u), 0u);
+    ASSERT_EQ(alg.component_id(1u), 0u);
+    ASSERT_EQ(alg.component_id(2u), 0u);
+}
+
+// Ids are dense and follow emission order -- the k-th component yielded is id
+// k -- and same_component() separates what it should separate.
+GTEST_TEST(strongly_connected_components, component_ids_emission_order) {
+    static_digraph_builder<static_digraph> builder(8);
+
+    builder.add_arc(0, 1)
+        .add_arc(1, 2)
+        .add_arc(2, 0)
+        .add_arc(3, 1)
+        .add_arc(3, 2)
+        .add_arc(3, 5)
+        .add_arc(4, 2)
+        .add_arc(4, 6)
+        .add_arc(5, 3)
+        .add_arc(5, 4)
+        .add_arc(6, 4)
+        .add_arc(7, 5)
+        .add_arc(7, 6);
+
+    auto [graph] = builder.build();
+
+    strongly_connected_components alg(scc_store_ids_traits{}, graph);
+
+    // the ids of the current component's members are readable as soon as
+    // current() names them, before the run is finished; num_components()
+    // counts the components yielded so far, current() included
+    ASSERT_TRUE(EQ_MULTISETS(alg.current(), {2u, 1u, 0u}));
+    ASSERT_EQ(alg.num_components(), 1u);
+    ASSERT_EQ(alg.component_id(0u), 0u);
+
+    alg.run();
+    ASSERT_EQ(alg.num_components(), 4u);
+
+    // components come out {0,1,2}, {4,6}, {3,5}, {7}; equal ids answer the
+    // same-component query
+    for(auto && [v, id] :
+        std::vector<std::pair<unsigned, unsigned>>{{0u, 0u},
+                                                   {1u, 0u},
+                                                   {2u, 0u},
+                                                   {4u, 1u},
+                                                   {6u, 1u},
+                                                   {3u, 2u},
+                                                   {5u, 2u},
+                                                   {7u, 3u}}) {
+        ASSERT_EQ(alg.component_id(v), id);
+    }
+
+    // component_ids_map() views the same ids, for passing to anything that
+    // takes a vertex map
+    auto ids = alg.component_ids_map();
+    for(auto && v : melon::vertices(graph)) {
+        ASSERT_EQ(ids[v], alg.component_id(v));
+    }
+
+    // reset() clears the ids and the count, and a rerun reassigns the same
+    // ones
+    alg.reset();
+    alg.run();
+    ASSERT_EQ(alg.num_components(), 4u);
+    ASSERT_EQ(alg.component_id(7u), 3u);
+}
+
+// Without the flag the map is not stored and the id queries do not exist --
+// and there is no same_component() at all anymore: the old one answered from
+// lowlinks, which are not uniform within a finished component.
+template <typename A>
+concept answers_component_id = requires(
+    const A & a, const vertex_t<static_digraph> & v) { a.component_id(v); };
+template <typename A>
+concept answers_component_ids_map =
+    requires(const A & a) { a.component_ids_map(); };
+template <typename A>
+concept answers_same_component =
+    requires(const A & a, const vertex_t<static_digraph> & v) {
+        a.same_component(v, v);
+    };
+
+GTEST_TEST(strongly_connected_components, no_ids_without_the_flag) {
+    using default_alg =
+        strongly_connected_components<graph_ref_view<static_digraph>>;
+    static_assert(!answers_component_id<default_alg>);
+    static_assert(!answers_component_ids_map<default_alg>);
+    // the count is not gated: it is meaningful without the ids
+    static_assert(requires(const default_alg & a) { a.num_components(); });
+
+    using ids_alg =
+        strongly_connected_components<graph_ref_view<static_digraph>,
+                                      scc_store_ids_traits>;
+    static_assert(answers_component_id<ids_alg>);
+    static_assert(answers_component_ids_map<ids_alg>);
+    // same_component() is gone in every configuration
+    static_assert(!answers_same_component<default_alg>);
+    static_assert(!answers_same_component<ids_alg>);
+    // the guarded map is [[no_unique_address]] air when the flag is off
+    static_assert(sizeof(default_alg) < sizeof(ids_alg));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// regression: an algorithm lvalue must not be swallowed by the greedy
+// single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 // The unconstrained `strongly_connected_components(T &&)` beat the copy
 // constructor for a non-const lvalue and tried to build the algorithm out of
-// itself.
+// itself; detail::not_self is what excludes it. Now that copy is deleted, the
+// pin is that an algorithm is not constructible from an algorithm lvalue at
+// all.
 GTEST_TEST(strongly_connected_components,
-           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+           is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 0).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
 
     strongly_connected_components alg(graph);
+    using alg_t = decltype(alg);
+    static_assert(!std::is_constructible_v<alg_t, alg_t &>);
+    static_assert(!std::is_constructible_v<alg_t, const alg_t &>);
+    static_assert(std::is_constructible_v<alg_t, alg_t &&>);
 
-    strongly_connected_components from_mutable_lvalue(alg);
-    static_assert(std::same_as<decltype(alg), decltype(from_mutable_lvalue)>);
-    ASSERT_TRUE(EQ_MULTISETS(from_mutable_lvalue.current(), alg.current()));
-
-    from_mutable_lvalue.advance();
-    ASSERT_FALSE(EQ_MULTISETS(from_mutable_lvalue.current(),
-                              alg.current()));  // independent copy
-
-    decltype(alg) from_const_lvalue(std::as_const(alg));
-    ASSERT_TRUE(EQ_MULTISETS(from_const_lvalue.current(), alg.current()));
+    std::vector<unsigned> first(alg.current().begin(), alg.current().end());
+    auto relocated = std::move(alg);
+    ASSERT_TRUE(EQ_MULTISETS(relocated.current(), first));
+    relocated.advance();
+    ASSERT_FALSE(EQ_MULTISETS(relocated.current(), first));
 }

@@ -50,7 +50,7 @@ GTEST_TEST(depth_first_search, test) {
 
     depth_first_search alg(graph, 0u);
 
-    static_assert(std::copyable<decltype(alg)>);
+    static_assert(std::movable<decltype(alg)> && !std::copyable<decltype(alg)>);
 
     ASSERT_FALSE(alg.finished());
     ASSERT_EQ(alg.current(), 0u);
@@ -315,29 +315,30 @@ GTEST_TEST(depth_first_search, depth_is_not_the_shortest_hop_distance) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: copying a mutable lvalue must pick the copy constructor, not
-// the greedy single-argument constructor
+// regression: an algorithm lvalue must not be swallowed by the greedy
+// single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 // The unconstrained `depth_first_search(G &&)` beat the copy constructor for a
-// non-const lvalue and tried to build the algorithm out of itself.
-GTEST_TEST(depth_first_search,
-           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+// non-const lvalue and tried to build the algorithm out of itself;
+// detail::not_self is what excludes it. Now that copy is deleted, the pin is
+// that an algorithm is not constructible from an algorithm lvalue at all --
+// without not_self the greedy constructor would quietly become viable again
+// where the deleted copy constructor should be chosen.
+GTEST_TEST(depth_first_search, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
 
     depth_first_search alg(graph, 0u);
+    using alg_t = decltype(alg);
+    static_assert(!std::is_constructible_v<alg_t, alg_t &>);
+    static_assert(!std::is_constructible_v<alg_t, const alg_t &>);
+    static_assert(std::is_constructible_v<alg_t, alg_t &&>);
+
     alg.advance();
-
-    depth_first_search from_mutable_lvalue(alg);
-    static_assert(std::same_as<decltype(alg), decltype(from_mutable_lvalue)>);
-    ASSERT_EQ(from_mutable_lvalue.current(), alg.current());
-
-    from_mutable_lvalue.run();
-    ASSERT_TRUE(from_mutable_lvalue.reached(3u));
-    ASSERT_FALSE(alg.reached(3u));  // an independent copy
-
-    decltype(alg) from_const_lvalue(std::as_const(alg));
-    ASSERT_EQ(from_const_lvalue.current(), alg.current());
+    auto relocated = std::move(alg);
+    ASSERT_EQ(relocated.current(), 1u);
+    relocated.run();
+    ASSERT_TRUE(relocated.reached(3u));
 }

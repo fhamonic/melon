@@ -198,7 +198,7 @@ GTEST_TEST(rational, bounded_value_components) {
 // converting *constructor* and prove nothing.
 template <typename R, typename Target>
 concept has_const_conversion_operator =
-    requires(const R & r) { r.template operator Target(); };
+    requires(const R & r) { r.operator Target(); };
 
 static_assert(
     has_const_conversion_operator<rational<int, int>, rational<long, long>>);

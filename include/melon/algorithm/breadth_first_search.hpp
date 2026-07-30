@@ -84,13 +84,11 @@ private:
         _dist_map;
 
 public:
-    // graph_storable_as, so std::is_constructible answers what the
-    // mem-initializer actually does -- see dijkstra's constructor.
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                     graph_storable_as<G, Graph>
+                     graph_for<G, Graph>
     constexpr explicit breadth_first_search(G && g)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()
         , _reached_map(create_vertex_map<bool>(_graph, false))
         , _pred_vertices_map(_graph)
@@ -106,82 +104,35 @@ public:
 
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                 graph_storable_as<G, Graph>
+                 graph_for<G, Graph>
     constexpr breadth_first_search(G && g, const vertex & s)
         : breadth_first_search(std::forward<G>(g)) {
         add_source(s);
     }
 
-    // Constrained on the delegate it forwards to, so the tag overload is
-    // exactly as constructible as the constructor it names.
     template <typename... Args>
         requires std::constructible_from<breadth_first_search, Args...>
     constexpr breadth_first_search(Traits, Args &&... args)
         : breadth_first_search(std::forward<Args>(args)...) {}
 
-    // With has_num_vertices the cursor is an iterator *into* _queue, and the
-    // traversal relies on the constructor's reserve() to keep it stable across
-    // the push_backs. The defaulted copy this replaces handed the new object an
-    // iterator into the *source's* buffer, at a capacity only as large as the
-    // source's size: finished() compared iterators from two different vectors
-    // and advance() then read freed memory (ASan: heap-use-after-free). Copy
-    // the queue, restore the capacity, then rebase -- the shape
-    // topological_sort, connected_components, kruskal and the branchless
-    // specialisation below all already had. This was the one member of the
-    // family the sweep missed, because the branchless copy right below it was
-    // hand-written and looked like the job was done. Move stays defaulted: the
-    // buffer transfers.
-    // Constrained on the copyability of what it copies: a user-provided
-    // special member of a class template is only instantiated when called, so
-    // without the requires-clause std::copyable answered true for a move-only
-    // Graph (any graph_owning_view) and the failure moved to the call site.
-    constexpr breadth_first_search(const breadth_first_search & o)
-        requires std::copy_constructible<Graph>
-        : _graph(o._graph)
-        , _queue(o._queue)
-        , _reached_map(o._reached_map)
-        , _pred_vertices_map(o._pred_vertices_map)
-        , _pred_arcs_map(o._pred_arcs_map)
-        , _dist_map(o._dist_map) {
-        _rebase_cursors_from(o);
-    }
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Both moves stay defaulted, and that is the whole relocation story here:
+    // with has_num_vertices the cursor is an iterator *into* _queue, whose
+    // buffer transfers with the move, and the constructor's reserve() keeps it
+    // stable across the push_backs. It is the *copy* that could not be
+    // defaulted -- it handed the new object an iterator into the source's
+    // buffer, at a capacity only as large as the source's size, so finished()
+    // compared iterators from two different vectors and advance() read freed
+    // memory (ASan: heap-use-after-free). Deleting copy retires the
+    // hand-written rebase that fixed it.
+    constexpr breadth_first_search(const breadth_first_search &) = delete;
     constexpr breadth_first_search(breadth_first_search &&) = default;
 
-    constexpr breadth_first_search & operator=(const breadth_first_search & o)
-        requires std::copyable<Graph>
-    {
-        if(this == std::addressof(o)) return *this;
-        _graph = o._graph;
-        _queue = o._queue;
-        _reached_map = o._reached_map;
-        _pred_vertices_map = o._pred_vertices_map;
-        _pred_arcs_map = o._pred_arcs_map;
-        _dist_map = o._dist_map;
-        _rebase_cursors_from(o);
-        return *this;
-    }
+    constexpr breadth_first_search & operator=(const breadth_first_search &) =
+        delete;
     constexpr breadth_first_search & operator=(breadth_first_search &&) =
         default;
 
-private:
-    // _queue is already a copy of o._queue here; only the cursors are left.
-    constexpr void _rebase_cursors_from(const breadth_first_search & o) {
-        if constexpr(has_num_vertices<Graph>) {
-            _queue.reserve(num_vertices(_graph));
-            _queue_current =
-                _queue.begin() + (o._queue_current - o._queue.begin());
-            if constexpr(Traits::store_traversal_range)
-                _queue_traversal_begin =
-                    _queue.begin() +
-                    (o._queue_traversal_begin - o._queue.begin());
-        } else {
-            _queue_current = o._queue_current;
-            if constexpr(Traits::store_traversal_range)
-                _queue_traversal_begin = o._queue_traversal_begin;
-        }
-    }
-
-public:
     // The graph the traversal was built over. Lets a composing algorithm keep a
     // single copy of the graph view instead of storing its own alongside --
     // see traversal_forest, where the duplicate made an owned graph impossible
@@ -349,13 +300,11 @@ private:
     vertex_map_t<Graph, bool> _reached_map;
 
 public:
-    // See the generic specialisation: graph_storable_as keeps
-    // std::is_constructible honest.
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                     graph_storable_as<G, Graph>
+                     graph_for<G, Graph>
     constexpr explicit breadth_first_search(G && g)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        : _graph(views::graph_all(std::forward<G>(g)))
         , _queue(std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) +
                                                           1))
         , _queue_traversal_begin(_queue.get())
@@ -365,7 +314,7 @@ public:
 
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                 graph_storable_as<G, Graph>
+                 graph_for<G, Graph>
     constexpr breadth_first_search(G && g, const vertex & s)
         : breadth_first_search(std::forward<G>(g)) {
         add_source(s);
@@ -376,45 +325,15 @@ public:
     constexpr breadth_first_search(Traits, Args &&... args)
         : breadth_first_search(std::forward<Args>(args)...) {}
 
-    // See the generic specialisation for the requires-clause: without it,
-    // std::copyable lied for a move-only Graph.
-    constexpr breadth_first_search(const breadth_first_search & o)
-        requires std::copy_constructible<Graph>
-        : _graph(o._graph)
-        , _queue(std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) +
-                                                          1ul))
-        , _queue_traversal_begin(_queue.get() +
-                                 (o._queue_traversal_begin - o._queue.get()))
-        , _queue_traversal_end(_queue.get() +
-                               (o._queue_traversal_end - o._queue.get()))
-        , _queue_current(_queue.get() + (o._queue_current - o._queue.get()))
-        , _reached_map(o._reached_map) {
-        std::copy(o._queue_traversal_begin, o._queue_traversal_end,
-                  _queue_traversal_begin);
-    }
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // The three cursors are raw pointers into the _queue buffer, which the
+    // unique_ptr hands over on a move -- so, as in the generic specialisation,
+    // only the copy ever needed a hand-written reallocate-and-reoffset body.
+    constexpr breadth_first_search(const breadth_first_search &) = delete;
     constexpr breadth_first_search(breadth_first_search &&) = default;
 
-    // Self-assignment has to bail out before the reallocation: the new buffer
-    // replaces the one std::copy would then read from. And the return was
-    // missing entirely, which made this specialisation -- the one selected for
-    // static_digraph with the default traits -- not copy-assignable at all.
-    constexpr breadth_first_search & operator=(const breadth_first_search & o)
-        requires std::copyable<Graph>
-    {
-        if(this == std::addressof(o)) return *this;
-        _graph = o._graph;
-        _queue =
-            std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) + 1);
-        _queue_traversal_begin =
-            _queue.get() + (o._queue_traversal_begin - o._queue.get());
-        _queue_current = _queue.get() + (o._queue_current - o._queue.get());
-        _queue_traversal_end =
-            _queue.get() + (o._queue_traversal_end - o._queue.get());
-        _reached_map = o._reached_map;
-        std::copy(o._queue_traversal_begin, o._queue_traversal_end,
-                  _queue_traversal_begin);
-        return *this;
-    }
+    constexpr breadth_first_search & operator=(const breadth_first_search &) =
+        delete;
     constexpr breadth_first_search & operator=(breadth_first_search &&) =
         default;
 

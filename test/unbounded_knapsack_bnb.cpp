@@ -47,3 +47,22 @@ GTEST_TEST(unbounded_knapsack_bnb, test2) {
     ASSERT_EQ(alg.solution_value(), 13);
     ASSERT_EQ(alg.solution_cost(), 15);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// set_budget re-derives the item filter, as in knapsack_bnb
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(unbounded_knapsack_bnb, set_budget_rederives_the_item_filter) {
+    std::vector<std::size_t> items = {0u, 1u};
+    std::vector<int> values = {5, 4};
+    std::vector<int> costs = {4, 3};
+
+    auto alg = unbounded_knapsack_bnb(items, values, costs, 2);
+    ASSERT_EQ(alg.run().solution_value(), 0);
+
+    // at budget 6 two copies of item 1 are optimal; the stale filter built
+    // at budget 2 held no items at all and answered 0 again
+    alg.set_budget(6);
+    ASSERT_EQ(alg.run().solution_value(), 8);
+    ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {std::pair{1u, 2}}));
+}

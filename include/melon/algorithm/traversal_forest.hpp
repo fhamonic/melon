@@ -44,11 +44,8 @@ private:
     bool _sources_from_base = false;
 
 public:
-    // graph_storable_as, so std::is_constructible answers what constructing
-    // the inner traversal actually does -- see dijkstra's constructor.
     template <typename G>
-        requires detail::not_self<G, traversal_forest> &&
-                 graph_storable_as<G, Graph>
+        requires detail::not_self<G, traversal_forest> && graph_for<G, Graph>
     constexpr explicit traversal_forest(G && g)
         : _bfs(std::forward<G>(g))
         , _remaining_sources(vertices(_bfs.base()))
@@ -64,30 +61,29 @@ public:
     // where the deduction guide had already committed Sources to
     // std::views::all_t<S> -- an owning_view for an rvalue range. Passing a
     // temporary container did not compile at all.
-    template <typename G, typename S>
-        requires detail::not_self<G, traversal_forest> &&
-                 graph_storable_as<G, Graph> &&
-                 std::constructible_from<consumable_view<Sources>,
-                                         std::views::all_t<S>>
-    constexpr traversal_forest(G && g, S && sources)
+    template <typename G, std::ranges::range SR>
+        requires detail::not_self<G, traversal_forest> && graph_for<G, Graph> &&
+                     std::constructible_from<consumable_view<Sources>,
+                                             std::views::all_t<SR>> &&
+                     std::convertible_to<std::ranges::range_value_t<SR>,
+                                         vertex_t<Graph>>
+    constexpr traversal_forest(G && g, SR && sources)
         : _bfs(std::forward<G>(g))
-        , _remaining_sources(std::views::all(std::forward<S>(sources))) {
+        , _remaining_sources(std::views::all(std::forward<SR>(sources))) {
         if(!finished()) advance();
     }
 
     // The relocation policy is depth_first_search's, restricted to the one
     // cursor that can point back into this object (see _sources_from_base):
-    // after the members relocate, _rebase_sources() re-derives the source
-    // range from the *new* _bfs.base() and the _consumed counter puts the
-    // cursor back where it was. The inner _bfs carries its own policy.
-    constexpr traversal_forest(const traversal_forest & o)
-        requires std::copy_constructible<decltype(_bfs)> &&
-                     std::copy_constructible<consumable_view<Sources>>
-        : _bfs(o._bfs)
-        , _remaining_sources(o._remaining_sources)
-        , _sources_from_base(o._sources_from_base) {
-        _rebase_sources();
-    }
+    // after the members relocate, the source range is re-derived from the
+    // *new* _bfs.base() and the _consumed counter puts the cursor back where
+    // it was. The inner _bfs carries its own policy.
+    //
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // This is also the one place the library ever copied an algorithm object
+    // internally -- _bfs, here, so that a traversal_forest could itself be
+    // copied. Nothing needed either.
+    constexpr traversal_forest(const traversal_forest &) = delete;
     constexpr traversal_forest(traversal_forest && o)
         : _bfs(std::move(o._bfs))
         // Not always a memberwise move: for self-referential sources the
@@ -97,40 +93,27 @@ public:
         // consumed count; caller-supplied sources move as members.
         , _remaining_sources([&]() -> consumable_view<Sources> {
             if constexpr(!borrowed_graph<Graph> &&
-                         !std::ranges::borrowed_range<Sources> &&
-                         requires {
+                         !std::ranges::borrowed_range<Sources> && requires {
                              consumable_view<Sources>(
                                  vertices(_bfs.base()),
                                  o._remaining_sources.consumed());
                          }) {
                 if(o._sources_from_base)
                     return consumable_view<Sources>(
-                        vertices(_bfs.base()),
-                        o._remaining_sources.consumed());
+                        vertices(_bfs.base()), o._remaining_sources.consumed());
             }
             return std::move(o._remaining_sources);
         }())
         , _sources_from_base(o._sources_from_base) {}
 
-    constexpr traversal_forest & operator=(const traversal_forest & o)
-        requires std::copyable<decltype(_bfs)> &&
-                     std::copyable<consumable_view<Sources>>
-    {
-        if(this == std::addressof(o)) return *this;
-        _bfs = o._bfs;
-        _remaining_sources = o._remaining_sources;
-        _sources_from_base = o._sources_from_base;
-        _rebase_sources();
-        return *this;
-    }
+    constexpr traversal_forest & operator=(const traversal_forest &) = delete;
     // See the move constructor.
     constexpr traversal_forest & operator=(traversal_forest && o) {
         if(this == std::addressof(o)) return *this;
         _bfs = std::move(o._bfs);
         _sources_from_base = o._sources_from_base;
         if constexpr(!borrowed_graph<Graph> &&
-                     !std::ranges::borrowed_range<Sources> &&
-                     requires {
+                     !std::ranges::borrowed_range<Sources> && requires {
                          consumable_view<Sources>(
                              vertices(_bfs.base()),
                              o._remaining_sources.consumed());
@@ -144,24 +127,6 @@ public:
         _remaining_sources = std::move(o._remaining_sources);
         return *this;
     }
-
-private:
-    // See depth_first_search::_rebase_stack. Guarded three ways: compile-time
-    // on the graph being non-borrowed and the source range being re-derivable
-    // at all, and at runtime on the sources actually coming from this
-    // object's own graph.
-    constexpr void _rebase_sources() {
-        if constexpr(!borrowed_graph<Graph> &&
-                     !std::ranges::borrowed_range<Sources> &&
-                     requires {
-                         _remaining_sources.rebase(vertices(_bfs.base()));
-                     }) {
-            if(_sources_from_base)
-                _remaining_sources.rebase(vertices(_bfs.base()));
-        }
-    }
-
-public:
 
     // Delegated: _bfs holds the only copy of the graph view, which is the whole
     // point of reaching it through base() rather than storing it twice.

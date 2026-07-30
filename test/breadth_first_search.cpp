@@ -23,7 +23,7 @@ GTEST_TEST(breadth_first_search, no_arcs_graph) {
 
     breadth_first_search alg(graph, 0u);
 
-    static_assert(std::copyable<decltype(alg)>);
+    static_assert(std::movable<decltype(alg)> && !std::copyable<decltype(alg)>);
 
     ASSERT_FALSE(alg.finished());
     ASSERT_EQ(alg.current(), 0u);
@@ -331,13 +331,14 @@ GTEST_TEST(breadth_first_search, store_distances_alone) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// copy assignment produces an independent object that owns its buffers
+// move assignment produces an object that owns its buffers
 ////////////////////////////////////////////////////////////////////////////////
 
-// std::copyable only checks that the assignment *declaration* is valid, so the
-// static_assert in no_arcs_graph above was satisfied while the branchless
-// specialisation's operator= body -- which had no return statement at all --
-// was never instantiated. Assigning one is what forces the body.
+// std::movable only checks that the assignment *declaration* is valid, so the
+// static_assert in no_arcs_graph above is satisfied without the operator=
+// body ever being instantiated -- which is how the branchless specialisation's
+// hand-written assignment once shipped with no return statement at all.
+// Assigning one is what forces the body.
 namespace {
 struct bfs_pred_arcs_traits {
     static constexpr bool store_pred_vertices = false;
@@ -347,7 +348,7 @@ struct bfs_pred_arcs_traits {
 };
 }  // namespace
 
-GTEST_TEST(breadth_first_search, is_copy_assignable) {
+GTEST_TEST(breadth_first_search, is_move_assignable) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
@@ -365,83 +366,77 @@ GTEST_TEST(breadth_first_search, is_copy_assignable) {
     alg.advance();
     ASSERT_EQ(alg.current(), 1u);
 
-    breadth_first_search copy(graph, 0u);
-    copy = alg;
-    ASSERT_EQ(copy.current(), 1u);
-    ASSERT_TRUE(copy.reached(1u));
-    ASSERT_FALSE(copy.reached(3u));
+    breadth_first_search target(graph, 0u);
+    target = std::move(alg);
+    ASSERT_EQ(target.current(), 1u);
+    ASSERT_TRUE(target.reached(1u));
+    ASSERT_FALSE(target.reached(3u));
 
-    // the assigned-to object must own its buffer, not alias the source's
-    copy.run();
-    ASSERT_TRUE(copy.reached(3u));
-    ASSERT_EQ(alg.current(), 1u);
-    ASSERT_FALSE(alg.reached(3u));
-
-    // self-assignment must not reallocate the buffer out from under the copy.
-    // Through a reference, so that -Wself-assign-overloaded stays quiet.
-    auto & alg_ref = alg;
-    alg = alg_ref;
-    ASSERT_EQ(alg.current(), 1u);
-    alg.run();
-    ASSERT_TRUE(alg.reached(3u));
+    // the assigned-to object owns its buffer: it can finish on its own, and
+    // the cursor it took over is aimed at that buffer, not the source's
+    target.run();
+    ASSERT_TRUE(target.reached(3u));
 }
 
-GTEST_TEST(breadth_first_search, is_copy_assignable_with_pred_arcs) {
+GTEST_TEST(breadth_first_search, is_move_assignable_with_pred_arcs) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
 
+    auto reference = breadth_first_search(bfs_pred_arcs_traits{}, graph, 0u);
+    reference.run();
+    const auto expected_pred_arc = reference.pred_arc(3u);
+
     auto alg = breadth_first_search(bfs_pred_arcs_traits{}, graph, 0u);
     alg.run();
 
-    auto copy = breadth_first_search(bfs_pred_arcs_traits{}, graph, 0u);
-    copy = alg;
-    ASSERT_TRUE(copy.reached(3u));
-    ASSERT_EQ(copy.pred_arc(3u), alg.pred_arc(3u));
-
-    auto & copy_ref = copy;
-    copy = copy_ref;
-    ASSERT_TRUE(copy.reached(3u));
+    auto target = breadth_first_search(bfs_pred_arcs_traits{}, graph, 0u);
+    target = std::move(alg);
+    ASSERT_TRUE(target.reached(3u));
+    ASSERT_EQ(target.pred_arc(3u), expected_pred_arc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: copying a mutable lvalue must pick the copy constructor, not
-// the greedy single-argument constructor
+// regression: an algorithm lvalue must not be swallowed by the greedy
+// single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 // `template <typename G> breadth_first_search(G &&)` was unconstrained, so for
 // a non-const lvalue of the algorithm type it beat the copy constructor and
 // tried to build the algorithm out of itself -- `graph_all` has no overload for
-// a breadth_first_search. Both specializations carried it, so both are pinned
-// here: default traits select the branchless one, bfs_pred_arcs_traits the
-// general one.
-GTEST_TEST(breadth_first_search,
-           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+// a breadth_first_search. detail::not_self is what excludes it. Now that copy
+// is deleted, the pin is that an algorithm is not constructible from an
+// algorithm lvalue *at all*: with not_self gone the greedy constructor would
+// quietly become viable again where the deleted copy should be chosen. Both
+// specializations carried the original bug, so both are pinned here: default
+// traits select the branchless one, bfs_pred_arcs_traits the general one.
+GTEST_TEST(breadth_first_search, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
 
     breadth_first_search branchless(graph, 0u);
-    branchless.advance();
-
-    breadth_first_search from_mutable_lvalue(branchless);
-    static_assert(
-        std::same_as<decltype(branchless), decltype(from_mutable_lvalue)>);
-    ASSERT_EQ(from_mutable_lvalue.current(), branchless.current());
-    ASSERT_TRUE(from_mutable_lvalue.reached(0u));
-    from_mutable_lvalue.run();
-    ASSERT_TRUE(from_mutable_lvalue.reached(3u));
-    ASSERT_FALSE(branchless.reached(3u));  // an independent copy
-
     auto general = breadth_first_search(bfs_pred_arcs_traits{}, graph, 0u);
     // the two specializations really are different types
     static_assert(!std::same_as<decltype(branchless), decltype(general)>);
+
+    using branchless_t = decltype(branchless);
+    using general_t = decltype(general);
+    static_assert(!std::is_constructible_v<branchless_t, branchless_t &>);
+    static_assert(!std::is_constructible_v<branchless_t, const branchless_t &>);
+    static_assert(!std::is_constructible_v<general_t, general_t &>);
+    static_assert(!std::is_constructible_v<general_t, const general_t &>);
+    // relocating one, on the other hand, is the supported operation
+    static_assert(std::is_constructible_v<branchless_t, branchless_t &&>);
+    static_assert(std::is_constructible_v<general_t, general_t &&>);
+
+    branchless.advance();
+    auto relocated = std::move(branchless);
+    ASSERT_EQ(relocated.current(), 1u);
+    relocated.run();
+    ASSERT_TRUE(relocated.reached(3u));
+
     general.run();
-
-    decltype(general) general_copy(general);
-    ASSERT_TRUE(general_copy.reached(3u));
-    ASSERT_EQ(general_copy.pred_arc(3u), general.pred_arc(3u));
-
-    decltype(branchless) from_const_lvalue(std::as_const(branchless));
-    ASSERT_TRUE(from_const_lvalue.reached(0u));
+    auto general_relocated = std::move(general);
+    ASSERT_TRUE(general_relocated.reached(3u));
 }

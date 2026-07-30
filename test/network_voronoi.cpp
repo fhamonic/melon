@@ -42,7 +42,7 @@ GTEST_TEST(network_voronoi, test) {
 
     network_voronoi alg(graph, length_map, kernels);
 
-    static_assert(std::copyable<decltype(alg)>);
+    static_assert(std::movable<decltype(alg)> && !std::copyable<decltype(alg)>);
     std::cout << "network_voronoi size: " << sizeof(decltype(alg)) << std::endl;
 
     ASSERT_FALSE(alg.finished());

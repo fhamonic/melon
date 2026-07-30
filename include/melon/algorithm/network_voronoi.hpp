@@ -91,22 +91,19 @@ private:
     [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
-    template <typename G, typename M>
-        requires graph_storable_as<G, Graph> &&
-                     mapping_storable_as<M, LengthMap>
-    constexpr network_voronoi(G && g, M && l)
-        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
-        , _length_map(detail::store_mapping<LengthMap>(std::forward<M>(l)))
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+    constexpr network_voronoi(G && g, LM && lm)
+        : _graph(views::graph_all(std::forward<G>(g)))
+        , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(
               create_vertex_map<vertex_status>(_graph, PRE_HEAP)) {}
 
-    template <typename G, typename M, typename K>
-        requires graph_storable_as<G, Graph> &&
-                 mapping_storable_as<M, LengthMap>
-    constexpr network_voronoi(G && g, M && l, K && k)
-        : network_voronoi(std::forward<G>(g), std::forward<M>(l)) {
-        set_kernels(std::forward<K>(k));
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM,
+              std::ranges::range KR>
+    constexpr network_voronoi(G && g, LM && lm, KR && kr)
+        : network_voronoi(std::forward<G>(g), std::forward<LM>(lm)) {
+        set_kernels(std::forward<KR>(kr));
     }
 
     template <typename... Args>
@@ -114,10 +111,11 @@ public:
     constexpr network_voronoi(Traits, Args &&... args)
         : network_voronoi(std::forward<Args>(args)...) {}
 
-    constexpr network_voronoi(const network_voronoi &) = default;
+    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    constexpr network_voronoi(const network_voronoi &) = delete;
     constexpr network_voronoi(network_voronoi &&) = default;
 
-    constexpr network_voronoi & operator=(const network_voronoi &) = default;
+    constexpr network_voronoi & operator=(const network_voronoi &) = delete;
     constexpr network_voronoi & operator=(network_voronoi &&) = default;
 
     // The graph the algorithm runs over. An algorithm owns its view rather
@@ -142,8 +140,10 @@ public:
         _vertex_status_map.fill(PRE_HEAP);
         return *this;
     }
-    template <std::ranges::range K>
-    constexpr network_voronoi & set_kernels(K && kernels) {
+    template <std::ranges::input_range KR>
+        requires std::convertible_to<std::ranges::range_value_t<KR>,
+                                     vertex_t<Graph>>
+    constexpr network_voronoi & set_kernels(KR && kernels) {
         assert(_heap.empty());
         for(auto && k : kernels) {
             assert(_vertex_status_map[k] != IN_HEAP);
