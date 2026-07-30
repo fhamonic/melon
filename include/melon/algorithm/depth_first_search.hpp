@@ -9,12 +9,26 @@
 #include <variant>
 #include <vector>
 
+#include "melon/detail/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/map_if.hpp"
+#include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
 namespace melon {
+
+// A traits concept, like the dijkstra family's: without it a misspelled flag
+// in a user traits struct silently fell back to nothing instead of failing
+// the constraint.
+// clang-format off
+template <typename Traits>
+concept depth_first_search_traits = requires() {
+    { Traits::store_pred_vertices } -> std::convertible_to<bool>;
+    { Traits::store_pred_arcs } -> std::convertible_to<bool>;
+    { Traits::store_depth } -> std::convertible_to<bool>;
+};
+// clang-format on
 
 struct depth_first_search_default_traits {
     static constexpr bool store_pred_vertices = false;
@@ -28,9 +42,10 @@ struct depth_first_search_default_traits {
     static constexpr bool store_depth = false;
 };
 
-template <outward_adjacency_graph Graph,
-          typename Traits = depth_first_search_default_traits>
-    requires has_vertex_map<Graph>
+// graph_view on the stored graph, like every algorithm: see dijkstra's head.
+template <graph_view Graph,
+          depth_first_search_traits Traits = depth_first_search_default_traits>
+    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
 class depth_first_search
     : public algorithm_view_interface<depth_first_search<Graph, Traits>> {
 private:
@@ -43,10 +58,24 @@ private:
     using stack_range =
         std::conditional_t<Traits::store_pred_arcs, out_arcs_range_t<Graph>,
                            out_neighbors_range_t<Graph>>;
+    using stack_cursor = consumable_input_view<stack_range>;
+
+    // Whether relocating this object requires re-aiming the cached cursors at
+    // the relocated _graph. Borrowed graphs hand out ranges independent of the
+    // graph object, so nothing to do. Otherwise the ranges may capture the
+    // stored graph's address (views::subgraph's do), and each frame must be
+    // re-asked for -- which the primary consumable_input_view's _consumed
+    // counter makes possible. The remaining combination -- a non-borrowed
+    // graph whose incidence ranges are std-borrowed (iterators into storage
+    // the graph merely owns) -- has no counter to reseek with, so relocation
+    // support for it is exactly what the defaulted members provide: moves
+    // (storage transfers), no copies.
+    static constexpr bool frames_need_rebase =
+        !borrowed_graph<Graph> && !std::ranges::borrowed_range<stack_range>;
 
 private:
     Graph _graph;
-    std::vector<std::pair<vertex, consumable_view<stack_range>>> _stack;
+    std::vector<std::pair<vertex, stack_cursor>> _stack;
     vertex_map_t<Graph, bool> _reached_map;
 
     [[no_unique_address]] vertex_map_if<Traits::store_pred_vertices, Graph,
@@ -57,9 +86,13 @@ private:
         _depth_map;
 
 public:
+    // graph_storable_as, so std::is_constructible answers what the
+    // mem-initializer actually does -- see dijkstra's constructor.
     template <typename G>
-    [[nodiscard]] constexpr explicit depth_first_search(G && g)
-        : _graph(views::graph_all(std::forward<G>(g)))
+        requires detail::not_self<G, depth_first_search> &&
+                     graph_storable_as<G, Graph>
+    constexpr explicit depth_first_search(G && g)
+        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
         , _stack()
         , _reached_map(create_vertex_map<bool>(_graph, false))
         , _pred_vertices_map(_graph)
@@ -71,29 +104,125 @@ public:
     }
 
     template <typename G>
-    [[nodiscard]] constexpr depth_first_search(G && g, const vertex & s)
+        requires detail::not_self<G, depth_first_search> &&
+                 graph_storable_as<G, Graph>
+    constexpr depth_first_search(G && g, const vertex & s)
         : depth_first_search(std::forward<G>(g)) {
         add_source(s);
     }
 
     template <typename... Args>
-    [[nodiscard]] constexpr depth_first_search(Traits, Args &&... args)
+        requires std::constructible_from<depth_first_search, Args...>
+    constexpr depth_first_search(Traits, Args &&... args)
         : depth_first_search(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr depth_first_search(const depth_first_search &) =
-        default;
-    [[nodiscard]] constexpr depth_first_search(depth_first_search &&) = default;
+    // The relocation policy, stated once: every cached cursor is keyed by the
+    // vertex sitting right next to it in the frame, so after the members
+    // relocate, _rebase_stack() re-asks the *new* _graph for each frame's
+    // range and the _consumed counter puts the cursor back where it was. For
+    // borrowed graphs (and std-borrowed incidence ranges) that loop compiles
+    // away entirely and these members behave exactly as the defaulted ones
+    // they replace.
+    //
+    // Copy used to require borrowed_graph<Graph>: without rebasing, a
+    // memberwise copy aimed the new object's cursors at the old object's
+    // graph -- a use-after-free once the original died. Rebasing is what
+    // makes a DFS over an *owned* subgraph honestly copyable. The requires
+    // clause keeps std::copyable truthful for move-only graphs and for the
+    // one combination that cannot rebase (see frames_need_rebase).
+    constexpr depth_first_search(const depth_first_search & o)
+        requires std::copy_constructible<Graph> &&
+                     std::copy_constructible<stack_cursor> &&
+                     (borrowed_graph<Graph> ||
+                      !std::ranges::borrowed_range<stack_range>)
+        : _graph(o._graph)
+        , _stack(o._stack)
+        , _reached_map(o._reached_map)
+        , _pred_vertices_map(o._pred_vertices_map)
+        , _pred_arcs_map(o._pred_arcs_map)
+        , _depth_map(o._depth_map) {
+        _rebase_stack();
+    }
+    // The defaulted move this replaces was unsound for the same reason the
+    // copy was constrained: the moved-from object's cached ranges pointed at
+    // its _graph member, which does not travel with a memberwise move.
+    constexpr depth_first_search(depth_first_search && o) noexcept(
+        !frames_need_rebase && std::is_nothrow_move_constructible_v<Graph> &&
+        std::is_nothrow_move_constructible_v<vertex_map_t<Graph, bool>>)
+        : _graph(std::move(o._graph))
+        , _stack(std::move(o._stack))
+        , _reached_map(std::move(o._reached_map))
+        , _pred_vertices_map(std::move(o._pred_vertices_map))
+        , _pred_arcs_map(std::move(o._pred_arcs_map))
+        , _depth_map(std::move(o._depth_map)) {
+        _rebase_stack();
+    }
 
-    constexpr depth_first_search & operator=(const depth_first_search &) =
-        default;
-    constexpr depth_first_search & operator=(depth_first_search &&) = default;
+    constexpr depth_first_search & operator=(const depth_first_search & o)
+        requires std::copyable<Graph> && std::copyable<stack_cursor> &&
+                 (borrowed_graph<Graph> ||
+                  !std::ranges::borrowed_range<stack_range>)
+    {
+        if(this == std::addressof(o)) return *this;
+        _graph = o._graph;
+        _stack = o._stack;
+        _reached_map = o._reached_map;
+        _pred_vertices_map = o._pred_vertices_map;
+        _pred_arcs_map = o._pred_arcs_map;
+        _depth_map = o._depth_map;
+        _rebase_stack();
+        return *this;
+    }
+    constexpr depth_first_search & operator=(depth_first_search && o) noexcept(
+        !frames_need_rebase && std::is_nothrow_move_assignable_v<Graph> &&
+        std::is_nothrow_move_assignable_v<vertex_map_t<Graph, bool>>) {
+        if(this == std::addressof(o)) return *this;
+        _graph = std::move(o._graph);
+        _stack = std::move(o._stack);
+        _reached_map = std::move(o._reached_map);
+        _pred_vertices_map = std::move(o._pred_vertices_map);
+        _pred_arcs_map = std::move(o._pred_arcs_map);
+        _depth_map = std::move(o._depth_map);
+        _rebase_stack();
+        return *this;
+    }
 
-    constexpr depth_first_search & reset() noexcept {
+private:
+    constexpr void _rebase_stack() {
+        if constexpr(frames_need_rebase) {
+            for(auto & [v, cursor] : _stack) {
+                if constexpr(Traits::store_pred_arcs)
+                    cursor.rebase(out_arcs(_graph, v));
+                else
+                    cursor.rebase(out_neighbors(_graph, v));
+            }
+        }
+    }
+
+public:
+    // The graph the algorithm runs over. An algorithm owns its view rather
+    // than adapting it, so this is the std::ranges::owning_view shape --
+    // references, ref-qualified -- and not the filter_view shape the graph
+    // *views* use. Returning a copy here would also put traversal_forest back
+    // where it started: it reaches its sources through base(), and an owned
+    // graph view is move-only.
+    [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
+    [[nodiscard]] constexpr const Graph & base() const & noexcept {
+        return _graph;
+    }
+    [[nodiscard]] constexpr Graph && base() && noexcept {
+        return std::move(_graph);
+    }
+    [[nodiscard]] constexpr const Graph && base() const && noexcept {
+        return std::move(_graph);
+    }
+
+    constexpr depth_first_search & reset() {
         _stack.resize(0);
         _reached_map.fill(false);
         return *this;
     }
-    constexpr depth_first_search & add_source(const vertex & s) noexcept {
+    constexpr depth_first_search & add_source(const vertex & s) {
         assert(!_reached_map[s]);
         if constexpr(Traits::store_pred_arcs)
             _stack.emplace_back(s, out_arcs(_graph, s));
@@ -105,16 +234,18 @@ public:
         return *this;
     }
 
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() const
+        noexcept(noexcept(_stack.empty())) {
         return _stack.empty();
     }
 
-    [[nodiscard]] constexpr vertex current() const noexcept {
+    [[nodiscard]] constexpr vertex current() const
+        noexcept(noexcept(_stack.back().first)) {
         assert(!finished());
         return _stack.back().first;
     }
 
-    constexpr void advance() noexcept {
+    constexpr void advance() {
         assert(!finished());
         do {
             if constexpr(Traits::store_pred_arcs) {
@@ -129,8 +260,8 @@ public:
                         _pred_vertices_map[w] = _stack.back().first;
                     if constexpr(Traits::store_depth)
                         _depth_map[w] = _depth_map[_stack.back().first] + 1;
-                    _stack.emplace_back(w, out_arcs(_graph, w));
                     remaining_arcs.advance();
+                    _stack.emplace_back(w, out_arcs(_graph, w));
                     return;
                 }
             } else {
@@ -144,8 +275,8 @@ public:
                         _pred_vertices_map[w] = _stack.back().first;
                     if constexpr(Traits::store_depth)
                         _depth_map[w] = _depth_map[_stack.back().first] + 1;
-                    _stack.emplace_back(w, out_neighbors(_graph, w));
                     remaining_neighbors.advance();
+                    _stack.emplace_back(w, out_neighbors(_graph, w));
                     return;
                 }
             }
@@ -153,23 +284,23 @@ public:
         } while(!_stack.empty());
     }
 
-    constexpr void run() noexcept {
-        while(!finished()) advance();
-    }
-
-    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr bool reached(const vertex & u) const
+        noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
-    [[nodiscard]] constexpr auto reached_map() const noexcept {
-        return views::mapping_all(_reached_map);
+    [[nodiscard]] constexpr auto reached_map() const
+        noexcept(noexcept(maps::mapping_all(_reached_map))) {
+        return maps::mapping_all(_reached_map);
     }
-    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
+    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const
+        noexcept(noexcept(_pred_vertices_map[u]))
         requires(Traits::store_pred_vertices)
     {
         assert(reached(u));
         return _pred_vertices_map[u];
     }
-    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
+    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const
+        noexcept(noexcept(_pred_arcs_map[u]))
         requires(Traits::store_pred_arcs)
     {
         assert(reached(u));
@@ -179,7 +310,8 @@ public:
     // the length of the pred_vertex chain up to the source. See store_depth:
     // this is not a shortest-path distance, and two runs over the same graph
     // can disagree if the out-arcs come in a different order.
-    [[nodiscard]] constexpr int depth(const vertex & u) const noexcept
+    [[nodiscard]] constexpr int depth(const vertex & u) const
+        noexcept(noexcept(_depth_map[u]))
         requires(Traits::store_depth)
     {
         assert(reached(u));

@@ -122,7 +122,7 @@ public:
     template <typename T>
         requires has_face_map<P>
     [[nodiscard]] constexpr auto create_vertex_map(
-        T default_value) const noexcept {
+        const T & default_value) const noexcept {
         return melon::experimental::create_face_map<T>(_planar_map.get(),
                                                        default_value);
     }
@@ -135,7 +135,7 @@ public:
     template <typename T>
         requires has_arc_map<P>
     [[nodiscard]] constexpr auto create_arc_map(
-        T default_value) const noexcept {
+        const T & default_value) const noexcept {
         return melon::create_arc_map<T>(_planar_map.get(), default_value);
     }
 
@@ -147,7 +147,7 @@ public:
     template <typename T>
         requires has_vertex_map<P>
     [[nodiscard]] constexpr auto create_face_map(
-        T default_value) const noexcept {
+        const T & default_value) const noexcept {
         return melon::create_vertex_map<T>(_planar_map.get(), default_value);
     }
 };

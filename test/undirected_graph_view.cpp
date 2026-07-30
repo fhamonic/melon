@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -18,7 +19,11 @@ using triangle = adl_ugraph::triangle;
 using ref_view = undirected_graph_ref_view<triangle>;
 using owning_view = undirected_graph_owning_view<triangle>;
 
-// A bare undirected graph is not a view; the two adaptors are.
+////////////////////////////////////////////////////////////////////////////////
+// the two adaptors model undirected_graph_view; a bare undirected graph does
+// not
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(!undirected_graph_view<triangle>);
 static_assert(undirected_graph_view<ref_view>);
 static_assert(undirected_graph_view<owning_view>);
@@ -38,6 +43,10 @@ static_assert(
 static_assert(
     std::same_as<views::undirected_graph_all_t<triangle>, owning_view>);
 static_assert(std::same_as<views::undirected_graph_all_t<ref_view>, ref_view>);
+
+////////////////////////////////////////////////////////////////////////////////
+// the ref view is a shallow-const, rebindable handle that forwards every CPO
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(undirected_graph_ref_view, forwards_every_cpo) {
     triangle g;
@@ -84,6 +93,10 @@ GTEST_TEST(undirected_graph_ref_view, is_rebindable) {
     ASSERT_EQ(melon::num_edges(view), 2u);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// the owning view owns its graph, forwards to it, and hands ownership back out
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(undirected_graph_owning_view, owns_and_forwards) {
     owning_view view{triangle{}};
 
@@ -109,6 +122,10 @@ GTEST_TEST(undirected_graph_owning_view, survives_a_move) {
     triangle recovered = std::move(moved).base();
     ASSERT_EQ(recovered.edge_list.size(), 3u);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// undirected_graph_all selects the right adaptor and never wraps a view twice
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(undirected_graph_all, selects_the_right_adaptor) {
     triangle g;
@@ -139,4 +156,36 @@ GTEST_TEST(undirected_graph_all, passes_undirect_through) {
     auto all = views::undirected_graph_all(undirected);
     static_assert(std::same_as<decltype(all), decltype(undirected)>);
     ASSERT_EQ(melon::num_edges(all), 3u);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// copying a mutable lvalue view uses the copy constructor
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: same defect and same fix as graph_ref_view -- the greedy
+// single-argument constructor's guard was tested against the deduced T, which
+// for a mutable lvalue is a reference type.
+static_assert(std::copy_constructible<ref_view>);
+static_assert(std::constructible_from<ref_view, triangle &>);
+static_assert(std::constructible_from<ref_view, ref_view &>);
+static_assert(std::constructible_from<undirected_graph_ref_view<const triangle>,
+                                      triangle &>);
+
+// what the paired convertible_to constraint now rejects cleanly
+static_assert(!std::constructible_from<
+              ref_view, undirected_graph_ref_view<const triangle> &>);
+static_assert(!std::constructible_from<ref_view, int &>);
+
+GTEST_TEST(undirected_graph_view,
+           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+    triangle graph;
+    ref_view view(graph);
+
+    ref_view from_mutable_lvalue(view);
+    ASSERT_EQ(std::addressof(from_mutable_lvalue.base()),
+              std::addressof(graph));
+    ASSERT_EQ(num_edges(from_mutable_lvalue), num_edges(graph));
+
+    ref_view from_const_lvalue(std::as_const(view));
+    ASSERT_EQ(std::addressof(from_const_lvalue.base()), std::addressof(graph));
 }

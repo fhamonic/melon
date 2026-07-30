@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <limits>
+#include <memory>
+#include <optional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -11,39 +13,60 @@
 
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
+#include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
 namespace melon {
+
+// A traits concept, like the dijkstra family's: without it a misspelled flag
+// in a user traits struct silently fell back to nothing instead of failing
+// the constraint.
+// clang-format off
+template <typename Traits>
+concept topological_sort_traits = requires() {
+    { Traits::store_ranks } -> std::convertible_to<bool>;
+    { Traits::store_critical_paths } -> std::convertible_to<bool>;
+};
+// clang-format on
 
 struct topological_sort_default_traits {
     static constexpr bool store_ranks = false;
     static constexpr bool store_critical_paths = false;
 };
 
-template <graph Graph, typename Traits = topological_sort_default_traits>
-    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
+// has_num_vertices is a real requirement, not an accident: the constructor
+// reserves num_vertices(_graph) and _queue_current is an iterator into _queue
+// whose stability depends on that reserve. It used to be left implicit, so a
+// graph without it got a hard error inside the constructor rather than a
+// constraint failure.
+template <graph_view Graph,
+          topological_sort_traits Traits = topological_sort_default_traits>
+    requires outward_incidence_graph<Graph> &&
+             has_vertex_map<Graph> && has_num_vertices<Graph>
 class topological_sort
     : public algorithm_view_interface<topological_sort<Graph, Traits>> {
 public:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
 
-    // No static_assert guarding store_pred_arcs: the class already requires
-    // outward_incidence_graph, so the arcs are always available. The check
-    // that used to sit here rejected every graph that *also* modelled
-    // outward_adjacency_graph -- static_digraph among them -- which made
-    // store_pred_arcs impossible to switch on.
+    // No static_assert guarding store_critical_paths: the class already
+    // requires outward_incidence_graph, so the arcs are always available. The
+    // check that used to sit here rejected every graph that *also* modelled
+    // outward_adjacency_graph -- static_digraph among them -- which made the
+    // predecessor maps impossible to switch on.
 
-    using reached_map = vertex_map_t<Graph, bool>;
-    using remaining_in_degree_map = vertex_map_t<Graph, std::size_t>;
+    // _t suffix, like vertex_map_t / arc_map_t: `reached_map` is now the name
+    // of the accessor below, and a nested type may not share a member's name.
+    using reached_map_t = vertex_map_t<Graph, bool>;
+    using remaining_in_degree_map_t = vertex_map_t<Graph, std::size_t>;
 
 private:
     Graph _graph;
     std::vector<vertex> _queue;
     std::vector<vertex>::iterator _queue_current;
-    reached_map _reached_map;
-    remaining_in_degree_map _remaining_in_degree_map;
+    reached_map_t _reached_map;
+    remaining_in_degree_map_t _remaining_in_degree_map;
 
     [[no_unique_address]] vertex_map_if<Traits::store_critical_paths &&
                                             !has_arc_source<Graph>,
@@ -53,9 +76,8 @@ private:
     [[no_unique_address]] vertex_map_if<Traits::store_ranks, Graph, int>
         _rank_map;
 
-    constexpr void push_start_vertices() noexcept {
+    constexpr void push_start_vertices() {
         _queue.resize(0);
-        _queue_current = _queue.begin();
         _reached_map.fill(false);
         if constexpr(has_in_degree<Graph>) {
             for(auto && u : vertices(_graph)) {
@@ -91,52 +113,121 @@ private:
             }
         }
         if constexpr(Traits::store_ranks) _rank_map.fill(0);
+        // After the push_backs above, never before them.
+        _queue_current = _queue.begin();
     }
 
 public:
+    // graph_storable_as, so std::is_constructible answers what the
+    // mem-initializer actually does -- see dijkstra's constructor.
     template <typename G>
-    [[nodiscard]] constexpr explicit topological_sort(G && g)
-        : _graph(views::graph_all(std::forward<G>(g)))
+        requires detail::not_self<G, topological_sort> &&
+                 graph_storable_as<G, Graph>
+    constexpr explicit topological_sort(G && g)
+        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
         , _queue()
-        , _reached_map(create_vertex_map<bool>(g, false))
-        , _remaining_in_degree_map(create_vertex_map<long unsigned int>(
-              g, std::numeric_limits<unsigned int>::max()))
+        , _reached_map(create_vertex_map<bool>(_graph, false))
+        // std::size_t, matching the member's declared type: `long unsigned
+        // int` and `std::size_t` are the same on LP64 but not on MinGW-w64 or
+        // MSVC, where this did not compile. The seed is 0 rather than a
+        // sentinel because push_start_vertices() below writes every entry
+        // before anything reads one.
+        , _remaining_in_degree_map(
+              create_vertex_map<std::size_t>(_graph, std::size_t{0}))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _rank_map(_graph) {
-        _queue.reserve(num_vertices(g));
+        _queue.reserve(num_vertices(_graph));
         push_start_vertices();
     }
 
     template <typename... Args>
-    [[nodiscard]] constexpr topological_sort(Traits, Args &&... args)
+        requires std::constructible_from<topological_sort, Args...>
+    constexpr topological_sort(Traits, Args &&... args)
         : topological_sort(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr topological_sort(const topological_sort & bin) =
-        default;
-    [[nodiscard]] constexpr topological_sort(topological_sort && bin) = default;
+    // _queue_current is an iterator *into* _queue, and the traversal relies on
+    // the constructor's reserve() to keep it stable across the push_backs. A
+    // memberwise copy hands the new object an iterator into the source's
+    // buffer, at a capacity that is only as large as the source's size, so the
+    // copy walks off the end. Copy the queue, restore the capacity, then
+    // rebase the cursor -- the same shape as branchless breadth_first_search.
+    // Move is fine: the vector's buffer transfers with it.
+    // Constrained on the copyability of what it copies: a user-provided
+    // special member of a class template is only instantiated when called, so
+    // without the requires-clause std::copyable answered true for a move-only
+    // Graph (any graph_owning_view) and the failure moved to the call site.
+    constexpr topological_sort(const topological_sort & o)
+        requires std::copy_constructible<Graph>
+        : _graph(o._graph)
+        , _queue(o._queue)
+        , _reached_map(o._reached_map)
+        , _remaining_in_degree_map(o._remaining_in_degree_map)
+        , _pred_vertices_map(o._pred_vertices_map)
+        , _pred_arcs_map(o._pred_arcs_map)
+        , _rank_map(o._rank_map) {
+        _queue.reserve(num_vertices(_graph));
+        _queue_current = _queue.begin() + (o._queue_current - o._queue.begin());
+    }
+    constexpr topological_sort(topological_sort && bin) = default;
 
-    constexpr topological_sort & operator=(const topological_sort &) = default;
+    constexpr topological_sort & operator=(const topological_sort & o)
+        requires std::copyable<Graph>
+    {
+        if(this == std::addressof(o)) return *this;
+        const auto offset = o._queue_current - o._queue.begin();
+        _graph = o._graph;
+        _queue = o._queue;
+        _queue.reserve(num_vertices(_graph));
+        _queue_current = _queue.begin() + offset;
+        _reached_map = o._reached_map;
+        _remaining_in_degree_map = o._remaining_in_degree_map;
+        _pred_vertices_map = o._pred_vertices_map;
+        _pred_arcs_map = o._pred_arcs_map;
+        _rank_map = o._rank_map;
+        return *this;
+    }
     constexpr topological_sort & operator=(topological_sort &&) = default;
 
+    // The graph the algorithm runs over. An algorithm owns its view rather
+    // than adapting it, so this is the std::ranges::owning_view shape --
+    // references, ref-qualified -- and not the filter_view shape the graph
+    // *views* use. Returning a copy here would also put traversal_forest back
+    // where it started: it reaches its sources through base(), and an owned
+    // graph view is move-only.
+    [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
+    [[nodiscard]] constexpr const Graph & base() const & noexcept {
+        return _graph;
+    }
+    [[nodiscard]] constexpr Graph && base() && noexcept {
+        return std::move(_graph);
+    }
+    [[nodiscard]] constexpr const Graph && base() const && noexcept {
+        return std::move(_graph);
+    }
+
 public:
-    constexpr topological_sort & reset() noexcept {
-        _queue.resize(0);
-        _queue_current = _queue.begin();
-        _reached_map.fill(false);
+    // Rebuilds the remaining in-degrees and re-seeds the queue. Clearing the
+    // queue alone would not do: the run decrements every in-degree to zero, so
+    // a reset that skipped push_start_vertices() left the sort finished with
+    // nothing left to yield.
+    constexpr topological_sort & reset() {
+        push_start_vertices();
         return *this;
     }
 
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() const
+        noexcept(noexcept(_queue_current == _queue.end())) {
         return _queue_current == _queue.end();
     }
 
-    [[nodiscard]] constexpr vertex current() const noexcept {
+    [[nodiscard]] constexpr vertex current() const
+        noexcept(noexcept(*_queue_current)) {
         assert(!finished());
         return *_queue_current;
     }
 
-    constexpr void advance() noexcept {
+    constexpr void advance() {
         assert(!finished());
         const vertex & u = *_queue_current;
         ++_queue_current;
@@ -153,20 +244,28 @@ public:
         }
     }
 
-    constexpr void run() noexcept {
-        while(!finished()) advance();
-    }
-
-    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr bool reached(const vertex & u) const
+        noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
-    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
+    // A view of the reached state, like breadth_first_search's and
+    // depth_first_search's. It refers into the algorithm, as every melon map
+    // view refers into what it names: it is valid while this object lives and
+    // stays put, exactly the contract mapping_ref_view carries.
+    [[nodiscard]] constexpr auto reached_map() const
+        noexcept(noexcept(maps::mapping_all(_reached_map))) {
+        return maps::mapping_all(_reached_map);
+    }
+    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const
         requires(Traits::store_critical_paths)
     {
-        assert(reached(u));
-        return _pred_arcs_map[u].value();
+        // Not .value(): see dijkstra::pred_arc. Asking a start vertex for a
+        // predecessor arc is a precondition violation, not an exceptional
+        // condition.
+        assert(reached(u) && _pred_arcs_map[u].has_value());
+        return *_pred_arcs_map[u];
     }
-    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
+    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const
         requires(Traits::store_critical_paths)
     {
         assert(reached(u) && _pred_arcs_map[u].has_value());
@@ -175,7 +274,8 @@ public:
         else
             return _pred_vertices_map[u];
     }
-    [[nodiscard]] constexpr int rank(const vertex & u) const noexcept
+    [[nodiscard]] constexpr int rank(const vertex & u) const
+        noexcept(noexcept(_rank_map[u]))
         requires(Traits::store_ranks)
     {
         assert(reached(u));
@@ -191,27 +291,32 @@ private:
         using intrusive_iterator_base<topological_sort,
                                       vertex>::intrusive_iterator_base;
 
-        constexpr const reference operator*() const {
+        // Returns a plain prvalue, not a `const` one: a const prvalue
+        // inhibits moves and makes std::iterator_traits disagree with the
+        // `reference` typedef right above, which is a
+        // std::indirectly_readable hazard.
+        constexpr reference operator*() const {
             return this->_structure->_pred_arcs_map[this->_cursor].value();
         }
-        constexpr path_iterator & operator++() noexcept {
+        constexpr path_iterator & operator++() {
             this->_cursor = this->_structure->pred_vertex(this->_cursor);
             return *this;
         }
-        constexpr path_iterator operator++(int) noexcept {
+        constexpr path_iterator operator++(int) {
             path_iterator it(*this);
             operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(
-            const path_iterator & it, std::default_sentinel_t) noexcept {
+            const path_iterator & it, std::default_sentinel_t) {
             return !it._structure->_pred_arcs_map[it._cursor].has_value();
         }
     };
 
 public:
-    [[nodiscard]] constexpr auto critical_path_to(
-        const vertex & t) const noexcept
+    [[nodiscard]] constexpr auto critical_path_to(const vertex & t) const
+        noexcept(noexcept(std::ranges::subrange(path_iterator(this, t),
+                                                std::default_sentinel)))
         requires(Traits::store_critical_paths)
     {
         assert(reached(t));

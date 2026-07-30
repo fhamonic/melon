@@ -177,7 +177,9 @@ BFS runs, because it only requires adjacency. Dijkstra would not compile on this
 
 **`arcs_entries` is worth defining when you can.** It is synthesized from `arcs` + `arc_source` + `arc_target`, or by joining incidences — and melon [picks whichever route has the stronger range category](../reference/customization-points.md#choosing-between-fallbacks). If your structure can produce entries directly, a member `arcs_entries()` beats both.
 
-**Views only forward the interface they know.** When an algorithm takes your graph, it wraps it in [`graph_ref_view`](../views/ownership.md), which forwards `vertices`, `arcs`, `num_vertices`, `num_arcs`, `arc_source`, `arc_target`, `out_arcs`, `in_arcs`, `out_neighbors`, `in_neighbors` and the map factories — but not `arcs_entries`. A type whose *only* route to `arcs_entries` is a member of its own will satisfy `graph` on its own and fail to satisfy it once wrapped. Providing `arcs` with `arc_source`/`arc_target`, or out-arcs with `arc_target`, avoids the trap.
+**Views forward the whole read-only interface.** When an algorithm takes your graph, it wraps it in [`graph_ref_view`](../views/ownership.md), which forwards `vertices`, `arcs`, `num_vertices`, `num_arcs`, `arcs_entries`, `arc_source`, `arc_target`, `out_arcs`, `in_arcs`, `out_neighbors`, `in_neighbors`, `out_degree`, `in_degree`, `is_valid_vertex`, `is_valid_arc`, the endpoint maps and the map factories. So a graph whose *only* route to `arcs_entries` is a member of its own keeps satisfying `graph` once wrapped, and a container's own `arcs_entries` is not quietly replaced by the synthesized one.
+
+What a view does **not** forward is the mutating half — `create_vertex`, `create_arc`, `remove_vertex`, `remove_arc`, `change_arc_source`, `change_arc_target`. A view is read-only, so `has_vertex_removal<graph_ref_view<G>>` is false even when `has_vertex_removal<G>` is true. The validity *question* is forwarded, which is what lets [`views::subgraph`](../views/graphs.md) tell a vertex you filtered out from one the graph underneath has removed.
 
 ## Checking your work
 

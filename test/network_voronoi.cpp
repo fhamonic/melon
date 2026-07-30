@@ -9,6 +9,11 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// network_voronoi assigns each vertex to its closest kernel, enumerated in
+// increasing distance order
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(network_voronoi, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
@@ -62,6 +67,7 @@ GTEST_TEST(network_voronoi, test) {
     alg.reset();
 }
 
+// iterating the algorithm as a range gives the same sequence
 GTEST_TEST(network_voronoi, test_for) {
     static_digraph_builder<static_digraph, int> builder(6);
 
@@ -99,9 +105,12 @@ GTEST_TEST(network_voronoi, test_for) {
                           expected_output));
 }
 
-// ################ traits: store_cluster_adjacency = true #####################
+////////////////////////////////////////////////////////////////////////////////
+// custom traits must carry store_cluster_adjacency, but the flag is inert
+// today
+////////////////////////////////////////////////////////////////////////////////
 
-// network_voronoi_trait *requires* every traits struct to define
+// network_voronoi_traits *requires* every traits struct to define
 // store_cluster_adjacency, so a custom traits struct has to carry it -- but
 // the class body never reads it, and no accessor is gated on it. The flag is
 // inert today, which is exactly what this test pins down: flipping it changes
@@ -116,7 +125,7 @@ struct network_voronoi_adjacency_traits
 };
 }  // namespace
 
-static_assert(network_voronoi_trait<network_voronoi_adjacency_traits>);
+static_assert(network_voronoi_traits<network_voronoi_adjacency_traits>);
 
 GTEST_TEST(network_voronoi, store_cluster_adjacency_is_inert) {
     static_digraph_builder<static_digraph, int> builder(6);
@@ -154,4 +163,54 @@ GTEST_TEST(network_voronoi, store_cluster_adjacency_is_inert) {
     ASSERT_TRUE(EQ_RANGES(network_voronoi(network_voronoi_adjacency_traits{},
                                           graph, length_map, kernels),
                           expected_output));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// regression (2.3): the Traits default lives on the class, not the deduction
+// guides
+////////////////////////////////////////////////////////////////////////////////
+
+// Same as dijkstra: the default lived on the deduction guides only, so
+// `network_voronoi<G, LM>` did not compile and CTAD's result could not be
+// named. It is on the class now, and the guides no longer carry one.
+namespace traits_default {
+using G = views::graph_all_t<static_digraph &>;
+using LM = maps::mapping_all_t<static_map<arc_t<static_digraph>, int> &>;
+
+using written_out = network_voronoi<G, LM>;
+
+template <typename... Ts>
+using deduced = decltype(network_voronoi(std::declval<Ts>()...));
+}  // namespace traits_default
+
+static_assert(
+    std::same_as<traits_default::written_out,
+                 network_voronoi<
+                     traits_default::G, traits_default::LM,
+                     network_voronoi_default_traits<traits_default::G, int>>>);
+static_assert(std::same_as<
+              traits_default::deduced<static_digraph &,
+                                      static_map<arc_t<static_digraph>, int> &>,
+              traits_default::written_out>);
+// the three-argument form, which deduces Kernels too, lands on the same type
+static_assert(
+    std::same_as<traits_default::deduced<
+                     static_digraph &, static_map<arc_t<static_digraph>, int> &,
+                     std::vector<vertex_t<static_digraph>> &>,
+                 traits_default::written_out>);
+
+GTEST_TEST(network_voronoi, default_traits_spelling_runs) {
+    static_digraph_builder<static_digraph, int> builder(4);
+    builder.add_arc(0, 1, 2).add_arc(1, 2, 3).add_arc(3, 2, 1);
+    auto [graph, length_map] = builder.build();
+    std::vector<vertex_t<static_digraph>> kernels = {0u, 3u};
+
+    network_voronoi<views::graph_all_t<decltype(graph) &>,
+                    maps::mapping_all_t<decltype(length_map) &>>
+        alg(graph, length_map, kernels);
+
+    ASSERT_TRUE(EQ_RANGES(
+        alg, std::vector<std::pair<vertex_t<static_digraph>,
+                                   std::pair<int, vertex_t<static_digraph>>>>{
+                 {0u, {0, 0u}}, {3u, {0, 3u}}, {2u, {1, 3u}}, {1u, {2, 0u}}}));
 }

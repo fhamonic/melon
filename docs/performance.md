@@ -67,7 +67,7 @@ dijkstra(views::subgraph(graph, keep), length_map, s);   // no rebuild
 
 **Pick the narrowest container.** [`static_forward_digraph`](containers/graphs.md#static_forward_digraph) stores one integer per arc against `static_digraph`'s three. If the traversal is forward-only, that is two thirds of the arc memory saved, and memory is what large graph traversals are bound by.
 
-**Let the graph give you the maps.** `create_vertex_map<T>(g)` returns a contiguous map for melon's containers. A `std::map` or `std::unordered_map` of your own is [accepted](graphs/mappings.md#stdmap-does-not-satisfy-input_mapping) but is not contiguous, so it is never prefetched — and every lookup is a hash or a tree descent where the flat map is an array index.
+**Let the graph give you the maps.** `create_vertex_map<T>(g)` returns a contiguous map for melon's containers. A `std::map` or `std::unordered_map` of your own is [accepted](graphs/mappings.md#stdmap-is-not-a-mapping) but is not contiguous, so it is never prefetched — and every lookup is a hash or a tree descent where the flat map is an array index.
 
 **Try a 4-ary heap.** `dijkstra_default_traits` uses a binary heap; on large sparse graphs a 4-ary heap usually reduces the number of sift-down comparisons that miss cache. It is a one-character change in a traits struct.
 

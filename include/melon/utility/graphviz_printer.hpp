@@ -12,6 +12,7 @@
 #include <iterator>
 #include <limits>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -57,7 +58,9 @@ private:
     double _page_height;
 
 public:
-    graphviz_printer(const G & g)
+    // explicit: a graph is not a printer, and the implicit conversion made
+    // every function taking a graphviz_printer accept a bare graph.
+    explicit graphviz_printer(const G & g)
         : _graph(g)
         , _vertex_label_map()
         , _vertex_pos_map()
@@ -77,7 +80,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<vertex> LM>
+    template <mapping<vertex> LM>
         requires std::convertible_to<mapped_value_t<LM, vertex>, std::string>
     graphviz_printer<G> & set_vertex_label_map(const LM & label_map) {
         if(!_vertex_label_map.has_value())
@@ -96,7 +99,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<vertex> PM>
+    template <mapping<vertex> PM>
         requires std::convertible_to<mapped_value_t<PM, vertex>, point2d>
     graphviz_printer<G> & set_vertex_pos_map(const PM & pos_map) {
         _vertex_pos_map.emplace(create_vertex_map<point2d>(_graph.get()));
@@ -110,7 +113,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<vertex> SM>
+    template <mapping<vertex> SM>
         requires std::convertible_to<mapped_value_t<SM, vertex>, double>
     graphviz_printer<G> & set_vertex_size_map(const SM & size_map) {
         for(auto && u : vertices(_graph.get()))
@@ -123,7 +126,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<vertex> CM>
+    template <mapping<vertex> CM>
         requires std::convertible_to<mapped_value_t<CM, vertex>, color>
     graphviz_printer<G> & set_vertex_color_map(const CM & color_map) {
         for(auto && u : vertices(_graph.get()))
@@ -139,7 +142,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<arc> LM>
+    template <mapping<arc> LM>
         requires std::convertible_to<mapped_value_t<LM, arc>, std::string>
     graphviz_printer<G> & set_arc_label_map(const LM & label_map) {
         _arc_label_map.emplace(create_arc_map<std::string>(_graph.get()));
@@ -153,7 +156,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<arc> SM>
+    template <mapping<arc> SM>
         requires std::convertible_to<mapped_value_t<SM, arc>, double>
     graphviz_printer<G> & set_arc_size_map(const SM & size_map) {
         for(auto && a : arcs(_graph.get())) _arc_size_map[a] = size_map[a];
@@ -165,7 +168,7 @@ public:
         return *this;
     }
 
-    template <input_mapping<arc> CM>
+    template <mapping<arc> CM>
         requires std::convertible_to<mapped_value_t<CM, arc>, color>
     graphviz_printer<G> & set_arc_color_map(const CM & color_map) {
         for(auto && u : arcs(_graph.get())) _arc_color_map[u] = color_map[u];

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <memory>
 #include <random>
@@ -16,7 +17,7 @@ namespace melon {
 
 // clang-format off
 template <typename Traits>
-concept alias_method_sampler_trait = requires() {
+concept alias_method_sampler_traits = requires() {
     { Traits::heuristic_preprocessing } -> std::convertible_to<bool>;
 };
 // clang-format on
@@ -25,7 +26,9 @@ struct alias_method_sampler_default_traits {
     static constexpr bool heuristic_preprocessing = false;
 };
 
-template <typename ItemRange, typename Prob, alias_method_sampler_trait Traits>
+template <typename ItemRange, typename Prob,
+          alias_method_sampler_traits Traits =
+              alias_method_sampler_default_traits>
 class alias_method_sampler {
 private:
     using index_type = int;
@@ -33,20 +36,19 @@ private:
     ItemRange _items;
     static_map<index_type, Prob> _probs;
     static_map<index_type, index_type> _aliases;
-    mutable std::uniform_int_distribution<index_type> _index_distribution;
-    mutable std::uniform_real_distribution<Prob> _prob_distribution;
+    index_type _last_index;
 
 public:
     template <std::ranges::random_access_range R,
               std::invocable<std::ranges::range_value_t<R>> P>
-    [[nodiscard]] constexpr alias_method_sampler(R && items, P && prob_map)
+    constexpr alias_method_sampler(R && items, P && prob_map)
         : _items(std::views::all(std::forward<R>(items)))
         , _probs(_items.size())
         , _aliases(_items.size())
-        , _index_distribution(
-              index_type{0},
-              static_cast<index_type>(_items.size()) - index_type{1})
-        , _prob_distribution(0.0, 1.0) {
+        , _last_index(static_cast<index_type>(_items.size()) - index_type{1}) {
+        // An empty item range would give the index distribution the range
+        // [0, -1], whose precondition is a <= b.
+        assert(!std::ranges::empty(_items));
         const std::size_t n = _items.size();
         auto overfull_buckets = std::make_unique_for_overwrite<index_type[]>(n);
         auto underfull_buckets =
@@ -100,35 +102,41 @@ public:
 
 public:
     template <typename... Args>
-    [[nodiscard]] constexpr alias_method_sampler(Traits, Args &&... args)
+    constexpr alias_method_sampler(Traits, Args &&... args)
         : alias_method_sampler(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr alias_method_sampler(const alias_method_sampler &) =
-        default;
-    [[nodiscard]] constexpr alias_method_sampler(alias_method_sampler &&) =
-        default;
+    constexpr alias_method_sampler(const alias_method_sampler &) = default;
+    constexpr alias_method_sampler(alias_method_sampler &&) = default;
 
     constexpr alias_method_sampler & operator=(const alias_method_sampler &) =
         default;
     constexpr alias_method_sampler & operator=(alias_method_sampler &&) =
         default;
 
+    // The two distributions are locals, not `mutable` members. A distribution
+    // carries its own state, so writing one through a const operator() made
+    // two threads sampling from the same const sampler race -- the same
+    // defect erdos_renyi's function-local statics had, in a per-object form.
+    // Both are trivially constructed from their bounds.
     template <typename Generator>
     [[nodiscard]] decltype(auto) operator()(Generator & gen) const {
-        const index_type i = _index_distribution(gen);
+        std::uniform_int_distribution<index_type> index_distribution(
+            index_type{0}, _last_index);
+        std::uniform_real_distribution<Prob> prob_distribution(0.0, 1.0);
+        const index_type i = index_distribution(gen);
         const auto prob = _probs[i];
         const auto alias = _aliases[i];
-        return _items[i + (_prob_distribution(gen) > prob) * (alias - i)];
+        return _items[i + (prob_distribution(gen) > prob) * (alias - i)];
     }
 };
 
-template <typename Range, typename ProbMap,
-          typename Traits = alias_method_sampler_default_traits>
+// No Traits parameter: the class template's own default supplies it, so the
+// deduced type and the explicitly written `alias_method_sampler<R, P>` agree.
+template <typename Range, typename ProbMap>
 alias_method_sampler(Range &&, ProbMap &&)
     -> alias_method_sampler<
         std::views::all_t<Range>,
-        std::invoke_result_t<ProbMap, std::ranges::range_value_t<Range>>,
-        Traits>;
+        std::invoke_result_t<ProbMap, std::ranges::range_value_t<Range>>>;
 
 template <typename Range, typename ProbMap, typename Traits>
 alias_method_sampler(Traits, Range &&, ProbMap &&)

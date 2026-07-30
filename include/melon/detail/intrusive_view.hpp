@@ -2,14 +2,16 @@
 
 #include <functional>
 #include <iterator>
-#include <optional>
+#include <ranges>
+
 #include <type_traits>
 #include <utility>
+#include "melon/detail/movable_box.hpp"
 
 namespace melon {
 
 template <typename I, typename Incr, typename Deref, typename Cond>
-class intrusive_view : std::ranges::view_base {
+class intrusive_view : public std::ranges::view_base {
 public:
     using reference = std::invoke_result_t<Deref, const I &>;
     using value_type = std::decay_t<reference>;
@@ -19,10 +21,17 @@ public:
     using difference_type = std::ptrdiff_t;
 
 private:
+    // movable_box, not std::optional: the problem these three solve is that a
+    // capturing lambda is copy-constructible but not *assignable*, which is
+    // exactly what melon::detail::movable_box exists for -- mapping_owning_view
+    // already used it for the same reason. The optionals cost a discriminant
+    // byte plus padding in every iterator and forced the two hand-written
+    // assignment operators below (once here, once again in the iterator) that
+    // are now `= default`.
     I _begin;
-    std::optional<Deref> _deref;
-    std::optional<Incr> _incr;
-    std::optional<Cond> _cond;
+    [[no_unique_address]] detail::movable_box<Deref> _deref;
+    [[no_unique_address]] detail::movable_box<Incr> _incr;
+    [[no_unique_address]] detail::movable_box<Cond> _cond;
 
 public:
     // Templated on the argument types rather than taking `Deref &&` etc.
@@ -33,49 +42,39 @@ public:
         requires std::constructible_from<Deref, DerefArg> &&
                      std::constructible_from<Incr, IncrArg> &&
                      std::constructible_from<Cond, CondArg>
-    [[nodiscard]] constexpr intrusive_view(I begin, DerefArg && deref,
-                                           IncrArg && incr, CondArg && cond)
+    constexpr intrusive_view(I begin, DerefArg && deref, IncrArg && incr,
+                             CondArg && cond)
         : _begin(std::move(begin))
-        , _deref(std::forward<DerefArg>(deref))
-        , _incr(std::forward<IncrArg>(incr))
-        , _cond(std::forward<CondArg>(cond)) {}
+        , _deref(std::in_place, std::forward<DerefArg>(deref))
+        , _incr(std::in_place, std::forward<IncrArg>(incr))
+        , _cond(std::in_place, std::forward<CondArg>(cond)) {}
 
-    [[nodiscard]] constexpr intrusive_view() = default;
-    [[nodiscard]] constexpr intrusive_view(const intrusive_view &) = default;
-    [[nodiscard]] constexpr intrusive_view(intrusive_view &&) = default;
+    // Constrained, not unconditional: a box holding a capturing lambda has no
+    // default constructor. Nothing requires an intrusive_view to be
+    // default-initialisable -- std::input_iterator and std::ranges::view do
+    // not -- so this is now honest rather than an empty-optional placeholder.
+    constexpr intrusive_view()
+        requires std::default_initializable<Deref> &&
+                     std::default_initializable<Incr> &&
+                     std::default_initializable<Cond>
+    = default;
+    constexpr intrusive_view(const intrusive_view &) = default;
+    constexpr intrusive_view(intrusive_view &&) = default;
 
-    // intrusive_view would not be a viewable_range without operator=
-    // https://www.fluentcpp.com/2020/10/02/how-to-implement-operator-when-a-data-member-is-a-lambda/
-    constexpr intrusive_view & operator=(const intrusive_view & that) noexcept(
-        std::is_nothrow_copy_assignable_v<I> &&
-        std::is_nothrow_copy_constructible_v<Deref> &&
-        std::is_nothrow_copy_constructible_v<Incr> &&
-        std::is_nothrow_copy_constructible_v<Cond>) {
-        _begin = that._begin;
-        _deref.reset();
-        if(that._deref) _deref.emplace(*that._deref);
-        _incr.reset();
-        if(that._incr) _incr.emplace(*that._incr);
-        _cond.reset();
-        if(that._cond) _cond.emplace(*that._cond);
-        return *this;
-    }
-    constexpr intrusive_view & operator=(intrusive_view && that) {
-        _begin = std::move(that._begin);
-        _deref.reset();
-        if(that._deref) _deref.emplace(std::move(*that._deref));
-        _incr.reset();
-        if(that._incr) _incr.emplace(std::move(*that._incr));
-        _cond.reset();
-        if(that._cond) _cond.emplace(std::move(*that._cond));
-        return *this;
-    }
+    // Defaulted now: movable_box is what makes a non-assignable functor
+    // assignable, so the destroy-and-reconstruct dance these two used to spell
+    // out by hand -- for three members, in two classes -- lives in one place.
+    constexpr intrusive_view & operator=(const intrusive_view &) = default;
+    constexpr intrusive_view & operator=(intrusive_view &&) = default;
 
     struct sentinel {};
 
     class iterator {
     public:
-        using iterator_category = std::input_iterator_tag;
+        // iterator_concept, not iterator_category: `*it++` is ill-formed here
+        // (post-increment returns void), so the Cpp17 category the old
+        // typedef promised was a lie. See algorithm_iterator.
+        using iterator_concept = std::input_iterator_tag;
         using reference = std::invoke_result_t<Deref, const I &>;
         using value_type = std::decay_t<reference>;
         using pointer = void;
@@ -83,43 +82,26 @@ public:
 
     private:
         I _index;
-        std::optional<Deref> _deref;
-        std::optional<Incr> _incr;
-        std::optional<Cond> _cond;
+        [[no_unique_address]] detail::movable_box<Deref> _deref;
+        [[no_unique_address]] detail::movable_box<Incr> _incr;
+        [[no_unique_address]] detail::movable_box<Cond> _cond;
 
     public:
-        [[nodiscard]] constexpr iterator(const I & index, const Deref & deref,
-                                         const Incr & incr, const Cond & cond)
+        constexpr iterator(const I & index, const Deref & deref,
+                           const Incr & incr, const Cond & cond)
             : _index(index), _deref(deref), _incr(incr), _cond(cond) {}
 
-        [[nodiscard]] constexpr iterator() = default;
-        [[nodiscard]] constexpr iterator(const iterator &) = default;
-        [[nodiscard]] constexpr iterator(iterator &&) = default;
+        // See intrusive_view's default constructor.
+        constexpr iterator()
+            requires std::default_initializable<Deref> &&
+                         std::default_initializable<Incr> &&
+                         std::default_initializable<Cond>
+        = default;
+        constexpr iterator(const iterator &) = default;
+        constexpr iterator(iterator &&) = default;
 
-        constexpr iterator & operator=(const iterator & that) noexcept(
-            std::is_nothrow_copy_assignable_v<I> &&
-            std::is_nothrow_copy_constructible_v<Deref> &&
-            std::is_nothrow_copy_constructible_v<Incr> &&
-            std::is_nothrow_copy_constructible_v<Cond>) {
-            _index = that._index;
-            _deref.reset();
-            if(that._deref) _deref.emplace(*that._deref);
-            _incr.reset();
-            if(that._incr) _incr.emplace(*that._incr);
-            _cond.reset();
-            if(that._cond) _cond.emplace(*that._cond);
-            return *this;
-        }
-        constexpr iterator & operator=(iterator && that) {
-            _index = std::move(that._index);
-            _deref.reset();
-            if(that._deref) _deref.emplace(std::move(*that._deref));
-            _incr.reset();
-            if(that._incr) _incr.emplace(std::move(*that._incr));
-            _cond.reset();
-            if(that._cond) _cond.emplace(std::move(*that._cond));
-            return *this;
-        }
+        constexpr iterator & operator=(const iterator &) = default;
+        constexpr iterator & operator=(iterator &&) = default;
 
         // These three invoke user-supplied functors, so their noexcept has to
         // be conditional on the invocation: an unconditional one turned a

@@ -11,7 +11,7 @@ for(auto && [v, dist] : dijkstra(graph, length_map, 0u))
     std::println("vertex {} at distance {}", v, dist);
 ```
 
-Requires `outward_incidence_graph`, `has_vertex_map`, and a length map modelling `input_mapping<arc_t<G>>`. Vertices come out in nondecreasing distance order, each exactly once, with its final distance.
+Requires `outward_incidence_graph`, `has_vertex_map`, and a length map modelling `mapping<arc_t<G>>`. Vertices come out in nondecreasing distance order, each exactly once, with its final distance.
 
 **Members.**
 
@@ -28,6 +28,8 @@ Requires `outward_incidence_graph`, `has_vertex_map`, and a length map modelling
 | `path_to(t)` | the arcs of the path, **target first** — needs `store_paths` |
 
 Multiple sources are allowed and give the distance to the *nearest* one; seeding them at different offsets is how you express a weighted multi-source problem.
+
+`dijkstra(graph, length_map)` without a source is the same two-phase pattern the flow algorithms use: it builds the maps so you can seed and re-seed cheaply. Unlike them it is harmless to run unseeded — a search with no source is simply `finished()` from the start.
 
 ```cpp
 struct traits : dijkstra_default_traits<static_digraph, double> {
@@ -69,7 +71,7 @@ struct reliability_traits {
     using heap = updatable_d_ary_heap<
         2, std::pair<vertex_t<static_digraph>, double>,
         typename semiring::less_t, vertex_map_t<static_digraph, std::size_t>,
-        views::element_map<1>, views::element_map<0>>;
+        maps::element_map<1>, maps::element_map<0>>;
     static constexpr bool store_distances = true;
     static constexpr bool store_paths = false;
 };
@@ -105,7 +107,7 @@ The default heap is worth reading once: its index map is a `vertex_map_t<Graph, 
 #include "melon/algorithm/bidirectional_dijkstra.hpp"
 
 bidirectional_dijkstra alg(graph, length_map, 0u, 4u);
-auto distance = alg.run();
+auto distance = alg.run().dist();
 
 if(alg.path_found())
     for(auto && a : alg.path()) std::print(" {}", a);   //  1 5 7
@@ -113,7 +115,7 @@ if(alg.path_found())
 
 Advances a forward search from the source and a backward search from the target in alternation, stopping when their frontiers meet. On a large graph where you want one distance rather than all of them, this typically explores a small fraction of what a one-sided Dijkstra would.
 
-It requires **both** `outward_incidence_graph` and `inward_incidence_graph` — the backward search walks in-arcs — so it does not accept a `static_forward_digraph`. It is not a range: `run()` returns the distance, and `path()` returns the arcs of the path in order from source to target.
+It requires **both** `outward_incidence_graph` and `inward_incidence_graph` — the backward search walks in-arcs — so it does not accept a `static_forward_digraph`. It is not a range: `run()` drains the search and returns the algorithm like every other `run()` in the library, `dist()` then reads the distance (idempotently — a second `run()` is a no-op), and `path()` returns the arcs of the path in order from source to target.
 
 ## `network_voronoi`
 

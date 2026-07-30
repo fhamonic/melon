@@ -10,6 +10,20 @@
 
 using namespace melon;
 
+namespace {
+// Drains the generator into the list of edges it selects.
+auto mst_edges(auto & alg) {
+    std::vector<decltype(alg.current())> edges;
+    for(; !alg.finished(); alg.advance()) edges.push_back(alg.current());
+    return edges;
+}
+}  // namespace
+
+////////////////////////////////////////////////////////////////////////////////
+// kruskal enumerates the MST edges in ascending cost order, and reset()
+// replays exactly the same run
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(kruskal, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
@@ -45,5 +59,49 @@ GTEST_TEST(kruskal, test) {
     ASSERT_EQ(alg.current(), 8);
     alg.advance();
     ASSERT_TRUE(alg.finished());
+
+    // reset() must give back exactly the run above -- it used to append the
+    // edge list to the one already there and re-push every vertex, so both grew
+    // with each call, and it returned void where every other algorithm returns
+    // *this.
+    ASSERT_EQ(std::addressof(alg.reset()), std::addressof(alg));
+    ASSERT_TRUE(EQ_RANGES(mst_edges(alg), {6, 7, 0, 1, 8}));
+    alg.reset().reset();
+    ASSERT_TRUE(EQ_RANGES(mst_edges(alg), {6, 7, 0, 1, 8}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// degenerate inputs the unconditional first-edge merge used to mishandle
+////////////////////////////////////////////////////////////////////////////////
+
+// reset() seeded the cursor by merging *_sorted_edges.begin() outright, with no
+// emptiness test: on a graph with vertices but no edges that dereferenced
+// end(). Such a graph has an empty spanning forest.
+GTEST_TEST(kruskal, edgeless_graph) {
+    static_digraph_builder<static_digraph, int> builder(3);
+    auto [graph, cost_map] = builder.build();
+    auto ugraph = views::undirect(graph);
+
+    kruskal alg(ugraph, cost_map);
+    ASSERT_TRUE(alg.finished());
+    ASSERT_TRUE(mst_edges(alg).empty());
+
     alg.reset();
+    ASSERT_TRUE(alg.finished());
+}
+
+// The same unconditional merge accepted the first edge without asking whether
+// its endpoints were already in one component, so a cheapest self-loop went
+// into the tree. Every other edge went through that test all along.
+GTEST_TEST(kruskal, cheapest_edge_is_a_self_loop) {
+    static_digraph_builder<static_digraph, int> builder(3);
+    builder
+        .add_arc(0, 0, 1)   // 0: self-loop, and the cheapest edge
+        .add_arc(0, 1, 2)   // 1
+        .add_arc(1, 2, 3);  // 2
+    auto [graph, cost_map] = builder.build();
+    auto ugraph = views::undirect(graph);
+
+    kruskal alg(ugraph, cost_map);
+    ASSERT_TRUE(EQ_RANGES(mst_edges(alg), {1, 2}));
 }

@@ -10,7 +10,11 @@ template <typename Q>
 concept priority_queue = std::semiregular<Q> &&
     requires(Q q, typename Q::value_type v) {
     q.push(v);
-    { q.top() } -> std::same_as<typename Q::value_type>;
+    // convertible_to, not same_as: top() may return by value or by
+    // const reference. same_as<value_type> baked the copy-returning shape
+    // into the concept and rejected every STL-shaped heap -- including
+    // d_ary_heap once its top() adopted std::priority_queue's return type.
+    { q.top() } -> std::convertible_to<typename Q::value_type>;
     q.pop();
     { q.size() } -> std::same_as<typename Q::size_type>;
     { q.empty() } -> std::convertible_to<bool>;

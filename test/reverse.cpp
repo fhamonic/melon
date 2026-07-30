@@ -1,6 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -9,6 +11,36 @@
 #include "ranges_test_helper.hpp"
 
 using namespace melon;
+
+////////////////////////////////////////////////////////////////////////////////
+// views::reverse wraps like graph_all: ref view for lvalues, owning view for
+// rvalues, and the result is a graph_view
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename G>
+using trivial_subgraph_t = decltype(views::reverse(std::declval<G>()));
+
+GTEST_TEST(reverse_views, graph_view) {
+    using G = static_digraph;
+
+    static_assert(
+        std::same_as<trivial_subgraph_t<G &>, reverse_view<graph_ref_view<G>>>);
+    static_assert(std::same_as<trivial_subgraph_t<const G &>,
+                               reverse_view<graph_ref_view<const G>>>);
+    static_assert(std::same_as<trivial_subgraph_t<G>,
+                               reverse_view<graph_owning_view<G>>>);
+    static_assert(std::same_as<trivial_subgraph_t<G &&>,
+                               reverse_view<graph_owning_view<G>>>);
+
+    static_assert(graph_view<trivial_subgraph_t<G &>>);
+    static_assert(graph_view<trivial_subgraph_t<const G &>>);
+    static_assert(graph_view<trivial_subgraph_t<G>>);
+    static_assert(graph_view<trivial_subgraph_t<G &&>>);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// reversing swaps out- and in- adjacency and leaves everything else untouched
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(reverse_views, static_graph) {
     std::vector<
@@ -56,26 +88,51 @@ GTEST_TEST(reverse_views, static_graph) {
     }
 }
 
-template <typename G>
-using trivial_subgraph_t = decltype(views::reverse(std::declval<G>()));
+////////////////////////////////////////////////////////////////////////////////
+// the endpoint maps are the wrapped graph's own, swapped -- not synthesised
+////////////////////////////////////////////////////////////////////////////////
 
-GTEST_TEST(reverse_views, graph_view) {
+// regression 2.2: `reverse` spelled its endpoint maps `sources_map()` /
+// `targets_map()`, names no CPO ever looks for, so
+// arc_sources_map(reverse_view) fell back to the synthesised lambda instead of
+// handing back the wrapped graph's *targets* map. Values stayed right -- the
+// fallback calls arc_source, which reverse does swap correctly -- so only the
+// return type tells the two apart.
+GTEST_TEST(reverse_views, endpoint_maps_are_swapped_and_not_synthesised) {
     using G = static_digraph;
 
-    static_assert(std::same_as<trivial_subgraph_t<G &>,
-                               views::reverse<graph_ref_view<G>>>);
-    static_assert(std::same_as<trivial_subgraph_t<const G &>,
-                               views::reverse<graph_ref_view<const G>>>);
-    static_assert(std::same_as<trivial_subgraph_t<G>,
-                               views::reverse<graph_owning_view<G>>>);
-    static_assert(std::same_as<trivial_subgraph_t<G &&>,
-                               views::reverse<graph_owning_view<G>>>);
+    const std::vector<std::pair<unsigned int, unsigned int>> arc_pairs(
+        {{0u, 1u}, {0u, 2u}, {1u, 2u}, {2u, 0u}, {2u, 1u}});
+    const G graph(3, std::views::keys(arc_pairs),
+                  std::views::values(arc_pairs));
 
-    static_assert(graph_view<trivial_subgraph_t<G &>>);
-    static_assert(graph_view<trivial_subgraph_t<const G &>>);
-    static_assert(graph_view<trivial_subgraph_t<G>>);
-    static_assert(graph_view<trivial_subgraph_t<G &&>>);
+    const auto reverse_graph = views::reverse(graph);
+    using R = std::remove_cvref_t<decltype(reverse_graph)>;
+
+    // the members exist under the names the CPOs probe, ...
+    static_assert(melon::cpo::has_member_arc_sources_map<R>);
+    static_assert(melon::cpo::has_member_arc_targets_map<R>);
+    // ... and they hand back the wrapped graph's own maps, crosswise
+    static_assert(
+        std::same_as<decltype(arc_sources_map(std::declval<const R &>())),
+                     decltype(arc_targets_map(std::declval<const G &>()))>);
+    static_assert(
+        std::same_as<decltype(arc_targets_map(std::declval<const R &>())),
+                     decltype(arc_sources_map(std::declval<const G &>()))>);
+
+    const auto sources = arc_sources_map(reverse_graph);
+    const auto targets = arc_targets_map(reverse_graph);
+    for(const arc_t<G> a : arcs(graph)) {
+        ASSERT_EQ(sources[a], arc_target(graph, a));
+        ASSERT_EQ(targets[a], arc_source(graph, a));
+        ASSERT_EQ(sources[a], arc_source(reverse_graph, a));
+        ASSERT_EQ(targets[a], arc_target(reverse_graph, a));
+    }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// algorithms consume the reversed view like any graph
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(reverse_views, dijkstra) {
     static_digraph_builder<static_digraph, int> builder(6);
@@ -124,4 +181,38 @@ GTEST_TEST(reverse_views, dijkstra) {
     ASSERT_EQ(alg.current(), std::make_pair(3u, 21));
     alg.advance();
     ASSERT_TRUE(alg.finished());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// copying a mutable lvalue view uses the copy constructor
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: `template <typename G> reverse(G &&)` was unconstrained, so for
+// a non-const lvalue of the view type it beat the copy constructor -- it
+// deduces an exact match where the copy constructor needs an added const --
+// and hard-errored on `static_cast<static_digraph &>` inside graph_ref_view.
+// `explicit` masked it: the copy-initialisation spelling `auto r2 = r;` never
+// reaches the template.
+GTEST_TEST(reverse_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0, 1).add_arc(1, 2);
+    auto [graph] = builder.build();
+
+    reverse_view view(graph);
+
+    reverse_view from_mutable_lvalue(view);
+    static_assert(std::same_as<decltype(view), decltype(from_mutable_lvalue)>);
+    ASSERT_EQ(from_mutable_lvalue.num_arcs(), num_arcs(graph));
+    ASSERT_TRUE(
+        EQ_RANGES(view.in_neighbors(1u), from_mutable_lvalue.in_neighbors(1u)));
+
+    decltype(view) from_const_lvalue(std::as_const(view));
+    ASSERT_EQ(from_const_lvalue.num_arcs(), num_arcs(graph));
+
+    // reversing a reverse is a different specialization, so the guard leaves it
+    // reachable -- it just needs the template arguments spelled out, since CTAD
+    // always prefers the copy deduction candidate here.
+    reverse_view<views::graph_all_t<decltype(view) &>> nested(view);
+    ASSERT_EQ(nested.num_arcs(), num_arcs(graph));
+    ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0u), nested.out_neighbors(0u)));
 }

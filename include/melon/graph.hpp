@@ -22,25 +22,28 @@ concept has_adl_vertices = requires(const T & t) {
     { vertices(t) } -> std::ranges::input_range;
 };
 
+// `auto`, not `decltype(auto)`: every other range-returning CPO in melon
+// decay-copies, so vertices_range_t was the one range alias that could name a
+// reference type. A graph that stores its vertices in a container returns
+// std::views::all(container) -- a ref_view, no copy -- which is the
+// std::ranges idiom and what melon already requires of arc_targets_map.
 struct vertices_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_vertices<T>)
-            return noexcept(std::declval<const T &>().vertices());
-        else
-            return noexcept(vertices(std::declval<const T &>()));
+        requires has_member_vertices<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(t.vertices())) {
+        return t.vertices();
     }
 
-public:
     template <typename T>
-        requires has_member_vertices<T> || has_adl_vertices<T>
-    constexpr decltype(auto) operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_vertices<T>)
-            return t.vertices();
-        else if constexpr(has_adl_vertices<T>)
-            return vertices(t);
+        requires(!has_member_vertices<T>) && has_adl_vertices<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(vertices(t))) {
+        return vertices(t);
     }
 };
 }  // namespace cpo
@@ -67,30 +70,28 @@ concept has_adl_num_vertices = requires(const T & t) {
 };
 
 struct num_vertices_fn {
-private:
+    // See vertices_fn: one overload per protocol, each carrying its own
+    // noexcept, including the size-of-the-range fallback.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_num_vertices<T>)
-            return noexcept(std::declval<const T &>().num_vertices());
-        else if constexpr(has_adl_num_vertices<T>)
-            return noexcept(num_vertices(std::declval<const T &>()));
-        else
-            return noexcept(
-                std::ranges::size(melon::vertices(std::declval<const T &>())));
+        requires has_member_num_vertices<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(t.num_vertices())) {
+        return t.num_vertices();
     }
 
-public:
     template <typename T>
-        requires has_member_num_vertices<T> || has_adl_num_vertices<T> ||
-                 std::ranges::sized_range<vertices_range_t<T>>
+        requires(!has_member_num_vertices<T>) && has_adl_num_vertices<T>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_num_vertices<T>)
-            return t.num_vertices();
-        else if constexpr(has_adl_num_vertices<T>)
-            return num_vertices(t);
-        else
-            return std::ranges::size(melon::vertices(t));
+        noexcept(noexcept(num_vertices(t))) {
+        return num_vertices(t);
+    }
+
+    template <typename T>
+        requires(!has_member_num_vertices<T>) && (!has_adl_num_vertices<T>) &&
+                std::ranges::sized_range<vertices_range_t<T>>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(std::ranges::size(melon::vertices(t)))) {
+        return std::ranges::size(melon::vertices(t));
     }
 };
 }  // namespace cpo
@@ -111,27 +112,24 @@ concept has_adl_out_arcs = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct out_arcs_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_out_arcs<T>)
-            return noexcept(std::declval<const T &>().out_arcs(
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(out_arcs(std::declval<const T &>(),
-                                     std::declval<const vertex_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_out_arcs<T> || has_adl_out_arcs<T>
+        requires has_member_out_arcs<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_out_arcs<T>)
-            return t.out_arcs(v);
-        else
-            return out_arcs(t, v);
+        noexcept(noexcept(t.out_arcs(v))) {
+        return t.out_arcs(v);
+    }
+
+    template <typename T>
+        requires(!has_member_out_arcs<T>) && has_adl_out_arcs<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(out_arcs(t, v))) {
+        return out_arcs(t, v);
     }
 };
 
@@ -146,27 +144,24 @@ concept has_adl_in_arcs = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct in_arcs_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_in_arcs<T>)
-            return noexcept(std::declval<const T &>().in_arcs(
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(in_arcs(std::declval<const T &>(),
-                                    std::declval<const vertex_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_in_arcs<T> || has_adl_in_arcs<T>
+        requires has_member_in_arcs<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_in_arcs<T>)
-            return t.in_arcs(v);
-        else
-            return in_arcs(t, v);
+        noexcept(noexcept(t.in_arcs(v))) {
+        return t.in_arcs(v);
+    }
+
+    template <typename T>
+        requires(!has_member_in_arcs<T>) && has_adl_in_arcs<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(in_arcs(t, v))) {
+        return in_arcs(t, v);
     }
 };
 }  // namespace cpo
@@ -258,8 +253,8 @@ public:
                           !can_join_incidence<T, out_arcs_fn>)
             return join_incidence(t, in_arcs_fn{});
         else {
-            if constexpr(detail::_range_rank<out_arcs_range_t<T>>() >
-                         detail::_range_rank<in_arcs_range_t<T>>())
+            if constexpr(detail::range_rank<out_arcs_range_t<T>>() >
+                         detail::range_rank<in_arcs_range_t<T>>())
                 return join_incidence(t, out_arcs_fn{});
             else
                 return join_incidence(t, in_arcs_fn{});
@@ -295,34 +290,31 @@ concept has_sized_out_arcs = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct out_degree_fn {
-private:
+    // See vertices_fn: one overload per protocol, each carrying its own
+    // noexcept, including the size-of-the-range fallback.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_out_degree<T>)
-            return noexcept(std::declval<const T &>().out_degree(
-                std::declval<const vertex_t<T> &>()));
-        else if constexpr(has_adl_out_degree<T>)
-            return noexcept(out_degree(std::declval<const T &>(),
-                                       std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(std::ranges::size(
-                melon::out_arcs(std::declval<const T &>(),
-                                std::declval<const vertex_t<T> &>())));
-    }
-
-public:
-    template <typename T>
-        requires has_member_out_degree<T> || has_adl_out_degree<T> ||
-                 has_sized_out_arcs<T>
+        requires has_member_out_degree<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_out_degree<T>)
-            return t.out_degree(v);
-        else if constexpr(has_adl_out_degree<T>)
-            return out_degree(t, v);
-        else
-            return std::ranges::size(melon::out_arcs(t, v));
+        noexcept(noexcept(t.out_degree(v))) {
+        return t.out_degree(v);
+    }
+
+    template <typename T>
+        requires(!has_member_out_degree<T>) && has_adl_out_degree<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(out_degree(t, v))) {
+        return out_degree(t, v);
+    }
+
+    template <typename T>
+        requires(!has_member_out_degree<T>) &&
+                (!has_adl_out_degree<T>) && has_sized_out_arcs<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(std::ranges::size(melon::out_arcs(t, v)))) {
+        return std::ranges::size(melon::out_arcs(t, v));
     }
 };
 
@@ -342,34 +334,31 @@ concept has_sized_in_arcs = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct in_degree_fn {
-private:
+    // See vertices_fn: one overload per protocol, each carrying its own
+    // noexcept, including the size-of-the-range fallback.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_in_degree<T>)
-            return noexcept(std::declval<const T &>().in_degree(
-                std::declval<const vertex_t<T> &>()));
-        else if constexpr(has_adl_in_degree<T>)
-            return noexcept(in_degree(std::declval<const T &>(),
-                                      std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(std::ranges::size(
-                melon::in_arcs(std::declval<const T &>(),
-                               std::declval<const vertex_t<T> &>())));
-    }
-
-public:
-    template <typename T>
-        requires has_member_in_degree<T> || has_adl_in_degree<T> ||
-                 has_sized_in_arcs<T>
+        requires has_member_in_degree<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_in_degree<T>)
-            return t.in_degree(v);
-        else if constexpr(has_adl_in_degree<T>)
-            return in_degree(t, v);
-        else
-            return std::ranges::size(melon::in_arcs(t, v));
+        noexcept(noexcept(t.in_degree(v))) {
+        return t.in_degree(v);
+    }
+
+    template <typename T>
+        requires(!has_member_in_degree<T>) && has_adl_in_degree<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(in_degree(t, v))) {
+        return in_degree(t, v);
+    }
+
+    template <typename T>
+        requires(!has_member_in_degree<T>) &&
+                (!has_adl_in_degree<T>) && has_sized_in_arcs<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(std::ranges::size(melon::in_arcs(t, v)))) {
+        return std::ranges::size(melon::in_arcs(t, v));
     }
 };
 }  // namespace cpo
@@ -391,30 +380,28 @@ concept has_adl_num_arcs = requires(const T & t) {
 };
 
 struct num_arcs_fn {
-private:
+    // See vertices_fn: one overload per protocol, each carrying its own
+    // noexcept, including the size-of-the-range fallback.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_num_arcs<T>)
-            return noexcept(std::declval<const T &>().num_arcs());
-        else if constexpr(has_adl_num_arcs<T>)
-            return noexcept(num_arcs(std::declval<const T &>()));
-        else
-            return noexcept(
-                std::ranges::size(arcs_fn{}(std::declval<const T &>())));
+        requires has_member_num_arcs<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(t.num_arcs())) {
+        return t.num_arcs();
     }
 
-public:
     template <typename T>
-        requires has_member_num_arcs<T> || has_adl_num_arcs<T> ||
-                 std::ranges::sized_range<arcs_range_t<T>>
+        requires(!has_member_num_arcs<T>) && has_adl_num_arcs<T>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_num_arcs<T>)
-            return t.num_arcs();
-        else if constexpr(has_adl_num_arcs<T>)
-            return num_arcs(t);
-        else
-            return std::ranges::size(arcs_fn{}(t));
+        noexcept(noexcept(num_arcs(t))) {
+        return num_arcs(t);
+    }
+
+    template <typename T>
+        requires(!has_member_num_arcs<T>) && (!has_adl_num_arcs<T>) &&
+                std::ranges::sized_range<arcs_range_t<T>>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(std::ranges::size(arcs_fn{}(t)))) {
+        return std::ranges::size(arcs_fn{}(t));
     }
 };
 }  // namespace cpo
@@ -435,27 +422,24 @@ concept has_adl_arc_source = requires(const T & t, const arc_t<T> & a) {
 };
 
 struct arc_source_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_arc_source<T>)
-            return noexcept(std::declval<const T &>().arc_source(
-                std::declval<const arc_t<T> &>()));
-        else
-            return noexcept(arc_source(std::declval<const T &>(),
-                                       std::declval<const arc_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_arc_source<T> || has_adl_arc_source<T>
+        requires has_member_arc_source<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_arc_source<T>)
-            return t.arc_source(a);
-        else
-            return arc_source(t, a);
+        noexcept(noexcept(t.arc_source(a))) {
+        return t.arc_source(a);
+    }
+
+    template <typename T>
+        requires(!has_member_arc_source<T>) && has_adl_arc_source<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const arc_t<T> & a) const
+        noexcept(noexcept(arc_source(t, a))) {
+        return arc_source(t, a);
     }
 };
 
@@ -470,27 +454,24 @@ concept has_adl_arc_target = requires(const T & t, const arc_t<T> & a) {
 };
 
 struct arc_target_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_arc_target<T>)
-            return noexcept(std::declval<const T &>().arc_target(
-                std::declval<const arc_t<T> &>()));
-        else
-            return noexcept(arc_target(std::declval<const T &>(),
-                                       std::declval<const arc_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_arc_target<T> || has_adl_arc_target<T>
+        requires has_member_arc_target<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_arc_target<T>)
-            return t.arc_target(a);
-        else
-            return arc_target(t, a);
+        noexcept(noexcept(t.arc_target(a))) {
+        return t.arc_target(a);
+    }
+
+    template <typename T>
+        requires(!has_member_arc_target<T>) && has_adl_arc_target<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const arc_t<T> & a) const
+        noexcept(noexcept(arc_target(t, a))) {
+        return arc_target(t, a);
     }
 };
 }  // namespace cpo
@@ -510,6 +491,16 @@ template <typename T>
 concept has_adl_arcs_entries = requires(const T & t) {
     { arcs_entries(t) } -> std::ranges::input_range;
 };
+
+// "Does this graph carry its *own* arcs_entries?", as opposed to one the CPO
+// below synthesises from arcs() and the endpoint accessors. A forwarding view
+// has to forward exactly this case: forwarding the synthesised one too would
+// rebuild a transform over a transform, and forwarding neither is what used to
+// make `graph<graph_ref_view<G>>` false for a graph whose arcs_entries is its
+// only arc protocol.
+template <typename T>
+concept has_own_arcs_entries =
+    has_member_arcs_entries<T> || has_adl_arcs_entries<T>;
 
 template <typename T>
     requires requires(const T & t, const arc_t<T> & a) {
@@ -597,28 +588,27 @@ public:
         else if constexpr(can_join_out_arcs_entries<T> &&
                           !can_join_in_arcs_entries<T>) {
             if constexpr(can_list_arcs_entries<T> &&
-                         detail::_range_rank<arcs_range_t<T>>() >=
-                             detail::_range_rank<out_arcs_range_t<T>>())
+                         detail::range_rank<arcs_range_t<T>>() >=
+                             detail::range_rank<out_arcs_range_t<T>>())
                 return list_arcs_entries(t);
             else
                 return join_out_arcs_entries(t);
         } else if constexpr(!can_join_out_arcs_entries<T> &&
                             can_join_in_arcs_entries<T>) {
             if constexpr(can_list_arcs_entries<T> &&
-                         detail::_range_rank<arcs_range_t<T>>() >=
-                             detail::_range_rank<in_arcs_range_t<T>>())
+                         detail::range_rank<arcs_range_t<T>>() >=
+                             detail::range_rank<in_arcs_range_t<T>>())
                 return list_arcs_entries(t);
             else
                 return join_in_arcs_entries(t);
         } else {
             if constexpr(can_list_arcs_entries<T> &&
-                         detail::_range_rank<arcs_range_t<T>>() >=
-                             std::max(
-                                 detail::_range_rank<out_arcs_range_t<T>>(),
-                                 detail::_range_rank<in_arcs_range_t<T>>()))
+                         detail::range_rank<arcs_range_t<T>>() >=
+                             std::max(detail::range_rank<out_arcs_range_t<T>>(),
+                                      detail::range_rank<in_arcs_range_t<T>>()))
                 return list_arcs_entries(t);
-            else if constexpr(detail::_range_rank<out_arcs_range_t<T>>() >=
-                              detail::_range_rank<in_arcs_range_t<T>>())
+            else if constexpr(detail::range_rank<out_arcs_range_t<T>>() >=
+                              detail::range_rank<in_arcs_range_t<T>>())
                 return join_out_arcs_entries(t);
             else
                 return join_in_arcs_entries(t);
@@ -847,24 +837,22 @@ concept has_adl_create_vertex = requires(T & t) {
 };
 
 struct create_vertex_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_create_vertex<T>)
-            return noexcept(std::declval<T &>().create_vertex());
-        else
-            return noexcept(create_vertex(std::declval<T &>()));
+        requires has_member_create_vertex<T>
+    constexpr auto operator() [[nodiscard]] (T & t) const
+        noexcept(noexcept(t.create_vertex())) {
+        return t.create_vertex();
     }
 
-public:
     template <typename T>
-        requires has_member_create_vertex<T> || has_adl_create_vertex<T>
+        requires(!has_member_create_vertex<T>) && has_adl_create_vertex<T>
     constexpr auto operator() [[nodiscard]] (T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_create_vertex<T>)
-            return t.create_vertex();
-        else
-            return create_vertex(t);
+        noexcept(noexcept(create_vertex(t))) {
+        return create_vertex(t);
     }
 };
 
@@ -877,63 +865,55 @@ concept has_adl_remove_vertex =
     requires(T & t, const vertex_t<T> & v) { remove_vertex(t, v); };
 
 struct remove_vertex_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_remove_vertex<T>)
-            return noexcept(std::declval<T &>().remove_vertex(
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(remove_vertex(std::declval<T &>(),
-                                          std::declval<const vertex_t<T> &>()));
+        requires has_member_remove_vertex<T>
+    constexpr auto operator()(T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(t.remove_vertex(v))) {
+        return t.remove_vertex(v);
     }
 
-public:
     template <typename T>
-        requires has_member_remove_vertex<T> || has_adl_remove_vertex<T>
-    constexpr auto operator() [[nodiscard]] (T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_remove_vertex<T>)
-            return t.remove_vertex(v);
-        else
-            return remove_vertex(t, v);
+        requires(!has_member_remove_vertex<T>) && has_adl_remove_vertex<T>
+    constexpr auto operator()(T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(remove_vertex(t, v))) {
+        return remove_vertex(t, v);
     }
 };
 
 template <typename T>
 concept has_member_is_valid_vertex =
     requires(const T & t, const vertex_t<T> & v) {
-        { t.is_valid_vertex(v) } -> std::convertible_to<vertex_t<T>>;
+        { t.is_valid_vertex(v) } -> std::convertible_to<bool>;
     };
 
 template <typename T>
 concept has_adl_is_valid_vertex = requires(const T & t, const vertex_t<T> & v) {
-    { is_valid_vertex(t, v) } -> std::convertible_to<vertex_t<T>>;
+    { is_valid_vertex(t, v) } -> std::convertible_to<bool>;
 };
 
 struct is_valid_vertex_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_is_valid_vertex<T>)
-            return noexcept(std::declval<const T &>().is_valid_vertex(
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(
-                is_valid_vertex(std::declval<const T &>(),
-                                std::declval<const vertex_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_is_valid_vertex<T> || has_adl_is_valid_vertex<T>
+        requires has_member_is_valid_vertex<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_is_valid_vertex<T>)
-            return t.is_valid_vertex(v);
-        else
-            return is_valid_vertex(t, v);
+        noexcept(noexcept(t.is_valid_vertex(v))) {
+        return t.is_valid_vertex(v);
+    }
+
+    template <typename T>
+        requires(!has_member_is_valid_vertex<T>) && has_adl_is_valid_vertex<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        noexcept(noexcept(is_valid_vertex(t, v))) {
+        return is_valid_vertex(t, v);
     }
 };
 
@@ -948,29 +928,24 @@ concept has_adl_create_arc = requires(T & t, const vertex_t<T> & v) {
 };
 
 struct create_arc_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_create_arc<T>)
-            return noexcept(std::declval<T &>().create_arc(
-                std::declval<const vertex_t<T> &>(),
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(create_arc(std::declval<T &>(),
-                                       std::declval<const vertex_t<T> &>(),
-                                       std::declval<const vertex_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_create_arc<T> || has_adl_create_arc<T>
+        requires has_member_create_arc<T>
     constexpr auto operator() [[nodiscard]] (T & t, const vertex_t<T> & u,
                                              const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_create_arc<T>)
-            return t.create_arc(u, v);
-        else
-            return create_arc(t, u, v);
+        noexcept(noexcept(t.create_arc(u, v))) {
+        return t.create_arc(u, v);
+    }
+
+    template <typename T>
+        requires(!has_member_create_arc<T>) && has_adl_create_arc<T>
+    constexpr auto operator() [[nodiscard]] (T & t, const vertex_t<T> & u,
+                                             const vertex_t<T> & v) const
+        noexcept(noexcept(create_arc(t, u, v))) {
+        return create_arc(t, u, v);
     }
 };
 
@@ -983,61 +958,54 @@ concept has_adl_remove_arc =
     requires(T & t, const arc_t<T> & a) { remove_arc(t, a); };
 
 struct remove_arc_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_remove_arc<T>)
-            return noexcept(std::declval<T &>().remove_arc(
-                std::declval<const arc_t<T> &>()));
-        else
-            return noexcept(remove_arc(std::declval<T &>(),
-                                       std::declval<const arc_t<T> &>()));
+        requires has_member_remove_arc<T>
+    constexpr auto operator()(T & t, const arc_t<T> & a) const
+        noexcept(noexcept(t.remove_arc(a))) {
+        return t.remove_arc(a);
     }
 
-public:
     template <typename T>
-        requires has_member_remove_arc<T> || has_adl_remove_arc<T>
-    constexpr auto operator() [[nodiscard]] (T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_remove_arc<T>)
-            return t.remove_arc(a);
-        else
-            return remove_arc(t, a);
+        requires(!has_member_remove_arc<T>) && has_adl_remove_arc<T>
+    constexpr auto operator()(T & t, const arc_t<T> & a) const
+        noexcept(noexcept(remove_arc(t, a))) {
+        return remove_arc(t, a);
     }
 };
 
 template <typename T>
 concept has_member_is_valid_arc = requires(const T & t, const arc_t<T> & a) {
-    { t.is_valid_arc(a) } -> std::convertible_to<arc_t<T>>;
+    { t.is_valid_arc(a) } -> std::convertible_to<bool>;
 };
 
 template <typename T>
 concept has_adl_is_valid_arc = requires(const T & t, const arc_t<T> & a) {
-    { is_valid_arc(t, a) } -> std::convertible_to<arc_t<T>>;
+    { is_valid_arc(t, a) } -> std::convertible_to<bool>;
 };
 
 struct is_valid_arc_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_is_valid_arc<T>)
-            return noexcept(std::declval<const T &>().is_valid_arc(
-                std::declval<const arc_t<T> &>()));
-        else
-            return noexcept(is_valid_arc(std::declval<const T &>(),
-                                         std::declval<const arc_t<T> &>()));
-    }
-
-public:
-    template <typename T>
-        requires has_member_is_valid_arc<T> || has_adl_is_valid_arc<T>
+        requires has_member_is_valid_arc<T>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const arc_t<T> & a) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_is_valid_arc<T>)
-            return t.is_valid_arc(a);
-        else
-            return is_valid_arc(t, a);
+        noexcept(noexcept(t.is_valid_arc(a))) {
+        return t.is_valid_arc(a);
+    }
+
+    template <typename T>
+        requires(!has_member_is_valid_arc<T>) && has_adl_is_valid_arc<T>
+    constexpr auto operator()
+        [[nodiscard]] (const T & t, const arc_t<T> & a) const
+        noexcept(noexcept(is_valid_arc(t, a))) {
+        return is_valid_arc(t, a);
     }
 };
 
@@ -1054,29 +1022,25 @@ concept has_adl_change_arc_source =
     };
 
 struct change_arc_source_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_change_arc_source<T>)
-            return noexcept(std::declval<T &>().change_arc_source(
-                std::declval<const arc_t<T> &>(),
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(change_arc_source(
-                std::declval<T &>(), std::declval<const arc_t<T> &>(),
-                std::declval<const vertex_t<T> &>()));
+        requires has_member_change_arc_source<T>
+    constexpr auto operator()(T & t, const arc_t<T> & a,
+                              const vertex_t<T> & v) const
+        noexcept(noexcept(t.change_arc_source(a, v))) {
+        return t.change_arc_source(a, v);
     }
 
-public:
     template <typename T>
-        requires has_member_change_arc_source<T> || has_adl_change_arc_source<T>
-    constexpr auto operator()
-        [[nodiscard]] (T & t, const arc_t<T> & a, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_change_arc_source<T>)
-            return t.change_arc_source(a, v);
-        else
-            return change_arc_source(t, a, v);
+        requires(!has_member_change_arc_source<T>) &&
+                has_adl_change_arc_source<T>
+    constexpr auto operator()(T & t, const arc_t<T> & a,
+                              const vertex_t<T> & v) const
+        noexcept(noexcept(change_arc_source(t, a, v))) {
+        return change_arc_source(t, a, v);
     }
 };
 
@@ -1093,29 +1057,25 @@ concept has_adl_change_arc_target =
     };
 
 struct change_arc_target_fn {
-private:
+    // One overload per protocol, each carrying the noexcept of the expression
+    // directly beside it. The private is_noexcept() this replaces re-ran the
+    // same `if constexpr` in a second place, which is how undirected_graph.hpp
+    // came to measure an overload its operator() never called.
     template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_change_arc_target<T>)
-            return noexcept(std::declval<T &>().change_arc_target(
-                std::declval<const arc_t<T> &>(),
-                std::declval<const vertex_t<T> &>()));
-        else
-            return noexcept(change_arc_target(
-                std::declval<T &>(), std::declval<const arc_t<T> &>(),
-                std::declval<const vertex_t<T> &>()));
+        requires has_member_change_arc_target<T>
+    constexpr auto operator()(T & t, const arc_t<T> & a,
+                              const vertex_t<T> & v) const
+        noexcept(noexcept(t.change_arc_target(a, v))) {
+        return t.change_arc_target(a, v);
     }
 
-public:
     template <typename T>
-        requires has_member_change_arc_target<T> || has_adl_change_arc_target<T>
-    constexpr auto operator()
-        [[nodiscard]] (T & t, const arc_t<T> & a, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_change_arc_target<T>)
-            return t.change_arc_target(a, v);
-        else
-            return change_arc_target(t, a, v);
+        requires(!has_member_change_arc_target<T>) &&
+                has_adl_change_arc_target<T>
+    constexpr auto operator()(T & t, const arc_t<T> & a,
+                              const vertex_t<T> & v) const
+        noexcept(noexcept(change_arc_target(t, a, v))) {
+        return change_arc_target(t, a, v);
     }
 };
 }  // namespace cpo
@@ -1131,115 +1091,145 @@ inline constexpr cpo::change_arc_target_fn change_arc_target{};
 inline constexpr cpo::change_arc_source_fn change_arc_source{};
 }  // namespace cust
 
+// The probes below take `G & g` where the operation mutates and `const G & g`
+// where it does not, matching both the CPO they call and the `const T & t`
+// every other concept in this header uses. They used to declare a parameter of
+// type `G` by value, which is a different declaration for an array or function
+// type and reads as though the concept needed a copy.
 template <typename G>
-concept has_vertex_creation = graph<G> && requires(G g) {
+concept has_vertex_creation = graph<G> && requires(G & g) {
     { melon::create_vertex(g) } -> std::same_as<vertex_t<G>>;
 };
+
+// "Can this graph answer whether a handle is still live?" -- separate from
+// has_vertex_removal, which additionally demands remove_vertex. A read-only
+// view over a mutable graph forwards the question without forwarding the
+// mutation, so views::subgraph has to ask this one; asking has_vertex_removal
+// silently dropped the underlying graph's answer.
 template <typename G>
-concept has_vertex_removal = graph<G> && requires(G g, vertex_t<G> v) {
-    melon::remove_vertex(g, v);
-    { melon::is_valid_vertex(g, v) } -> std::convertible_to<bool>;
-};
+concept has_is_valid_vertex =
+    graph<G> && requires(const G & g, const vertex_t<G> & v) {
+        { melon::is_valid_vertex(g, v) } -> std::convertible_to<bool>;
+    };
+template <typename G>
+concept has_is_valid_arc =
+    graph<G> && requires(const G & g, const arc_t<G> & a) {
+        { melon::is_valid_arc(g, a) } -> std::convertible_to<bool>;
+    };
 
 template <typename G>
-concept has_arc_creation = graph<G> && requires(G g, vertex_t<G> v) {
+concept has_vertex_removal =
+    has_is_valid_vertex<G> &&
+    requires(G & g, const vertex_t<G> & v) { melon::remove_vertex(g, v); };
+
+template <typename G>
+concept has_arc_creation = graph<G> && requires(G & g, const vertex_t<G> & v) {
     { melon::create_arc(g, v, v) } -> std::same_as<arc_t<G>>;
 };
 template <typename G>
-concept has_arc_removal = graph<G> && requires(G g, arc_t<G> a) {
-    remove_arc(g, a);
-    { melon::is_valid_arc(g, a) } -> std::convertible_to<bool>;
-};
+concept has_arc_removal =
+    has_is_valid_arc<G> &&
+    requires(G & g, const arc_t<G> & a) { melon::remove_arc(g, a); };
 
 template <typename G>
 concept has_change_arc_source =
-    graph<G> && requires(G g, arc_t<G> a, vertex_t<G> s) {
+    graph<G> && requires(G & g, const arc_t<G> & a, const vertex_t<G> & s) {
         melon::change_arc_source(g, a, s);
     };
 template <typename G>
 concept has_change_arc_target =
-    graph<G> && requires(G g, arc_t<G> a, vertex_t<G> t) {
+    graph<G> && requires(G & g, const arc_t<G> & a, const vertex_t<G> & t) {
         melon::change_arc_target(g, a, t);
     };
 
 namespace cpo {
 template <typename T>
 concept has_member_arc_sources_map = requires(const T & t) {
-    { t.arc_sources_map() } -> input_mapping_of<arc_t<T>, vertex_t<T>>;
+    { t.arc_sources_map() } -> mapping_of<arc_t<T>, vertex_t<T>>;
 };
 
 template <typename T>
 concept has_adl_arc_sources_map = requires(const T & t) {
-    { arc_sources_map(t) } -> input_mapping_of<arc_t<T>, vertex_t<T>>;
+    { arc_sources_map(t) } -> mapping_of<arc_t<T>, vertex_t<T>>;
 };
 
-struct arc_sources_map_fn {
-private:
-    template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_arc_sources_map<T>)
-            return noexcept(std::declval<const T &>().arc_sources_map());
-        else if constexpr(has_adl_arc_sources_map<T>)
-            return noexcept(arc_sources_map(std::declval<const T &>()));
-        else
-            return noexcept(melon::arc_source(
-                std::declval<const T &>(), std::declval<const arc_t<T> &>()));
-    }
+// The fallback branch of both endpoint-map CPOs, parameterised on which
+// endpoint it reads -- the two used to be the same four lines twice, differing
+// only in the CPO name, the way list_incidence_endpoints below is already
+// written. Named so each overload can measure the expression it actually
+// evaluates: the old is_noexcept measured melon::arc_source / arc_target
+// instead, but the map built here only calls those later.
+template <typename T, typename EndPoint>
+[[nodiscard]] inline constexpr auto endpoint_map(const T & t,
+                                                 EndPoint end_point_fn) {
+    // The graph goes in by address and the tag by value: capturing either by
+    // reference would capture a reference parameter, whose lifetime ends when
+    // this function returns while the map it builds outlives it. Same reason
+    // as join_incidence.
+    return maps::map([g = std::addressof(t), end_point_fn](const arc_t<T> & a) {
+        return end_point_fn(*g, a);
+    });
+}
 
+struct arc_sources_map_fn {
 public:
     template <typename T>
-        requires has_member_arc_sources_map<T> || has_adl_arc_sources_map<T> ||
-                 has_arc_source<T>
+        requires has_member_arc_sources_map<T>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_arc_sources_map<T>)
-            return t.arc_sources_map();
-        else if constexpr(has_adl_arc_sources_map<T>)
-            return arc_sources_map(t);
-        else
-            return views::map([g = std::addressof(t)](const arc_t<T> & a) {
-                return melon::arc_source(*g, a);
-            });
+        noexcept(noexcept(t.arc_sources_map())) {
+        return t.arc_sources_map();
+    }
+
+    template <typename T>
+        requires(!has_member_arc_sources_map<T>) && has_adl_arc_sources_map<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(arc_sources_map(t))) {
+        return arc_sources_map(t);
+    }
+
+    template <typename T>
+        requires(!has_member_arc_sources_map<T>) &&
+                (!has_adl_arc_sources_map<T>) && has_arc_source<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(endpoint_map(t, arc_source_fn{}))) {
+        return endpoint_map(t, arc_source_fn{});
     }
 };
 
 template <typename T>
 concept has_member_arc_targets_map = requires(const T & t) {
-    { t.arc_targets_map() } -> input_mapping_of<arc_t<T>, vertex_t<T>>;
+    { t.arc_targets_map() } -> mapping_of<arc_t<T>, vertex_t<T>>;
 };
 
 template <typename T>
 concept has_adl_arc_targets_map = requires(const T & t) {
-    { arc_targets_map(t) } -> input_mapping_of<arc_t<T>, vertex_t<T>>;
+    { arc_targets_map(t) } -> mapping_of<arc_t<T>, vertex_t<T>>;
 };
 
+// See endpoint_map above: this CPO differs from arc_sources_map_fn only in the
+// endpoint tag it hands that helper.
 struct arc_targets_map_fn {
-private:
-    template <typename T>
-    static constexpr bool is_noexcept() {
-        if constexpr(has_member_arc_targets_map<T>)
-            return noexcept(std::declval<const T &>().arc_targets_map());
-        else if constexpr(has_adl_arc_targets_map<T>)
-            return noexcept(arc_targets_map(std::declval<const T &>()));
-        else
-            return noexcept(melon::arc_target(
-                std::declval<const T &>(), std::declval<const arc_t<T> &>()));
-    }
-
 public:
     template <typename T>
-        requires has_member_arc_targets_map<T> || has_adl_arc_targets_map<T> ||
-                 has_arc_target<T>
+        requires has_member_arc_targets_map<T>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_arc_targets_map<T>)
-            return t.arc_targets_map();
-        else if constexpr(has_adl_arc_targets_map<T>)
-            return arc_targets_map(t);
-        else
-            return views::map([g = std::addressof(t)](const arc_t<T> & a) {
-                return melon::arc_target(*g, a);
-            });
+        noexcept(noexcept(t.arc_targets_map())) {
+        return t.arc_targets_map();
+    }
+
+    template <typename T>
+        requires(!has_member_arc_targets_map<T>) && has_adl_arc_targets_map<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(arc_targets_map(t))) {
+        return arc_targets_map(t);
+    }
+
+    template <typename T>
+        requires(!has_member_arc_targets_map<T>) &&
+                (!has_adl_arc_targets_map<T>) && has_arc_target<T>
+    constexpr auto operator() [[nodiscard]] (const T & t) const
+        noexcept(noexcept(endpoint_map(t, arc_target_fn{}))) {
+        return endpoint_map(t, arc_target_fn{});
     }
 };
 }  // namespace cpo
@@ -1248,6 +1238,13 @@ inline namespace cust {
 inline constexpr cpo::arc_sources_map_fn arc_sources_map{};
 inline constexpr cpo::arc_targets_map_fn arc_targets_map{};
 }  // namespace cust
+
+template <typename G>
+concept has_arc_sources_map =
+    requires(const G & g) { melon::arc_sources_map(g); };
+template <typename G>
+concept has_arc_targets_map =
+    requires(const G & g) { melon::arc_targets_map(g); };
 
 namespace cpo {
 template <typename T, typename ValueType>

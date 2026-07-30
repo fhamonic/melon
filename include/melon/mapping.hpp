@@ -7,35 +7,52 @@
 #include <type_traits>
 #include <utility>
 
+#include "melon/detail/movable_box.hpp"
+
 namespace melon {
 
+namespace detail {
+
+// Syntactic entry point: `m[k]` on an lvalue map with an rvalue key -- the
+// exact expression the mapped_* aliases below evaluate, so the probe and the
+// aliases cannot disagree on either operand's value category. (The public
+// `mapping` concept adds const-readability on top; this loose form is what
+// the aliases must be constrained on to stay usable for write-only maps.)
 template <typename Map, typename Key>
-concept mapping = requires(Map m, Key k) { m[k]; };
+concept subscriptable_with =
+    requires(Map & m, Key && k) { m[std::forward<Key>(k)]; };
+
+}  // namespace detail
 
 template <typename Map, typename Key>
-    requires mapping<Map, Key>
-using mapped_reference_t = decltype(std::declval<Map>()[std::declval<Key>()]);
+    requires detail::subscriptable_with<Map, Key>
+using mapped_reference_t = decltype(std::declval<Map &>()[std::declval<Key>()]);
 
 template <typename Map, typename Key>
-    requires mapping<Map, Key>
+    requires detail::subscriptable_with<Map, Key>
 using mapped_const_reference_t =
-    decltype(std::declval<std::add_const_t<Map>>()[std::declval<Key>()]);
+    decltype(std::declval<const Map &>()[std::declval<Key>()]);
 
 template <typename Map, typename Key>
-    requires mapping<Map, Key>
+    requires detail::subscriptable_with<Map, Key>
 using mapped_value_t = std::decay_t<mapped_const_reference_t<Map, Key>>;
 
+// A mapping is *readable through a const access*: mapped_value_t goes through
+// mapped_const_reference_t, so its substitution fails for maps whose
+// subscript cannot be offered const -- std::map's inserting operator[] being
+// the canonical case. Such maps are used through maps::mapping_all, whose
+// views subscript via at() on a const base.
 template <typename Map, typename Key>
-concept input_mapping =
-    mapping<Map, Key> && !std::same_as<mapped_value_t<Map, Key>, void>;
+concept mapping = detail::subscriptable_with<Map, Key> &&
+                  !std::same_as<mapped_value_t<Map, Key>, void>;
 
 template <typename Map, typename Key, typename Value>
-concept input_mapping_of =
+concept mapping_of =
     mapping<Map, Key> && std::same_as<mapped_value_t<Map, Key>, Value>;
 
 template <typename Map, typename Key>
 concept output_mapping =
-    input_mapping<Map, Key> &&
+    mapping<Map, Key> &&
     requires(Map map, Key key, mapped_value_t<Map, Key> value) {
         {
             map[key] = value
@@ -53,7 +70,7 @@ concept output_mapping_of =
 // to model the concept.
 template <typename Map, typename Key>
 concept contiguous_mapping =
-    input_mapping<Map, Key> && std::integral<Key> && requires(Map & m) {
+    mapping<Map, Key> && std::integral<Key> && requires(Map & m) {
         {
             m.data()
         } -> std::convertible_to<
@@ -93,67 +110,6 @@ constexpr decltype(auto) mapping_subscript(Map & m, Key && k) {
                       "this key; it must provide operator[](key), "
                       "operator()(key) or at(key).");
 }
-
-// std::ranges-style movable-box: makes a non-assignable Map (typically a
-// capturing lambda) assignable through destroy + reconstruct, so that the
-// views owning one stay std::movable. The reconstruct path is only enabled
-// when the move cannot throw, so a failed assignment can never leave the
-// box destroyed.
-template <typename T>
-    requires std::move_constructible<T> && std::is_object_v<T>
-class movable_box {
-private:
-    [[no_unique_address]] T _value;
-
-public:
-    constexpr movable_box()
-        requires std::default_initializable<T>
-    = default;
-    constexpr movable_box(T && t) noexcept(
-        std::is_nothrow_move_constructible_v<T>)
-        : _value(std::move(t)) {}
-    constexpr movable_box(const T & t)
-        requires std::copy_constructible<T>
-        : _value(t) {}
-
-    constexpr movable_box(const movable_box &) = default;
-    constexpr movable_box(movable_box &&) = default;
-
-    constexpr movable_box & operator=(movable_box && o) noexcept(
-        std::movable<T> ? std::is_nothrow_move_assignable_v<T> : true)
-        requires std::movable<T> || std::is_nothrow_move_constructible_v<T>
-    {
-        if constexpr(std::movable<T>) {
-            _value = std::move(o._value);
-        } else {
-            if(this != std::addressof(o)) {
-                std::destroy_at(std::addressof(_value));
-                std::construct_at(std::addressof(_value), std::move(o._value));
-            }
-        }
-        return *this;
-    }
-    constexpr movable_box & operator=(const movable_box & o) noexcept(
-        std::copyable<T> ? std::is_nothrow_copy_assignable_v<T> : false)
-        requires std::copyable<T> || (std::copy_constructible<T> &&
-                                      std::is_nothrow_move_constructible_v<T>)
-    {
-        if constexpr(std::copyable<T>) {
-            _value = o._value;
-        } else {
-            if(this != std::addressof(o)) {
-                T tmp(o._value);
-                std::destroy_at(std::addressof(_value));
-                std::construct_at(std::addressof(_value), std::move(tmp));
-            }
-        }
-        return *this;
-    }
-
-    constexpr T & operator*() & noexcept { return _value; }
-    constexpr const T & operator*() const & noexcept { return _value; }
-    constexpr T && operator*() && noexcept { return std::move(_value); }
-};
 
 }  // namespace detail
 
@@ -265,7 +221,10 @@ concept can_mapping_owning_view =
 
 }  // namespace detail
 
-namespace views {
+// Mapping views live in melon::maps, graph views in melon::views. They are
+// two different abstractions that happen to share the word "view": maps::map
+// sitting next to views::reverse read as though it transformed a graph.
+namespace maps {
 
 struct mapping_all_fn {
 private:
@@ -370,6 +329,31 @@ public:
     }
 };
 
-}  // namespace views
+}  // namespace maps
+
+// The relation an algorithm constructor's requires-clause states about a
+// mapping argument: "this argument can become the stored member" -- through
+// maps::mapping_all, producing the view types CTAD deduces. Stored member
+// types are always mapping views (the algorithms' class heads require it, the
+// std::ranges adaptor rule), so there is no direct-construction fallback: a
+// caller who wants value ownership spells mapping_owning_view. Naming the
+// relation is what lets the constructors be constrained: unconstrained,
+// std::is_constructible answered true for argument lists whose member
+// initialisers then hard-errored outside the immediate context.
+template <typename M, typename Stored>
+concept mapping_storable_as =
+    requires(M && m) { maps::mapping_all(std::forward<M>(m)); } &&
+    std::constructible_from<Stored, maps::mapping_all_t<M>>;
+
+namespace detail {
+
+// The construction mapping_storable_as promises.
+template <typename Stored, typename M>
+    requires mapping_storable_as<M, Stored>
+[[nodiscard]] constexpr Stored store_mapping(M && m) {
+    return Stored(maps::mapping_all(std::forward<M>(m)));
+}
+
+}  // namespace detail
 
 }  // namespace melon

@@ -96,11 +96,11 @@ public:
         return _arcs_structs[a].arc_pair.second;
     }
     auto arc_sources_map() const noexcept {
-        return melon::views::map(
+        return melon::maps::map(
             [this](const arc a) -> vertex { return arc_source(a); });
     }
     auto arc_targets_map() const noexcept {
-        return melon::views::map(
+        return melon::maps::map(
             [this](const arc a) -> vertex { return arc_target(a); });
     }
     auto out_neighbors(const vertex & u) const noexcept {

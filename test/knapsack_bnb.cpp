@@ -7,6 +7,10 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// knapsack_bnb selects the value-maximal subset of items within the budget
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(knapsack_bnb, test) {
     std::vector<std::size_t> items = {0u, 1u, 2u, 3u, 4u};
     std::vector<int> values = {10, 7, 1, 3, 2};
@@ -20,6 +24,10 @@ GTEST_TEST(knapsack_bnb, test) {
     ASSERT_EQ(alg.solution_value(), 12);
     ASSERT_EQ(alg.solution_cost(), 14);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// moved-in ranges and a lambda cost map yield the same solution
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(knapsack_bnb, test2) {
     std::vector<std::size_t> items = {0u, 1u, 2u, 3u, 4u};

@@ -12,10 +12,19 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// static_map<K, bool> packs bits yet still models a copyable random-access
+// range and an output mapping
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(std::copyable<static_map<std::size_t, bool>>);
 static_assert(std::ranges::random_access_range<static_map<std::size_t, bool>>);
 static_assert(
     output_mapping_of<static_map<std::size_t, bool>, std::size_t, bool>);
+
+////////////////////////////////////////////////////////////////////////////////
+// construction sizes the bit storage and fills it uniformly
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(static_map_bool, empty_constructor) {
     static_map<std::size_t, bool> map;
@@ -62,6 +71,10 @@ GTEST_TEST(static_map_bool, size_init_constructor) {
     // ASSERT_TRUE(
     //     std::ranges::all_of(std::views::values(std::as_const(map3)), test2));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// operator[] reads and writes individual bits
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(static_map_bool, accessor_uniform_read) {
     static_map<std::size_t, bool> map(5, false);
@@ -138,6 +151,57 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
     // ASSERT_TRUE(std::ranges::equal(std::views::values(map), datas));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// iterators -- const_iterator included -- are genuinely random access
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: iterator_base<I> used to name `iterator` instead of `I` in the
+// bodies of post-increment, post-decrement, operator+ and operator-.
+// const_iterator satisfied std::random_access_iterator all the same, so the
+// breakage only surfaced as a hard error deep inside whichever algorithm used
+// those ops.
+GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
+    using map_type = static_filter_map<std::size_t>;
+    static_assert(std::random_access_iterator<map_type::iterator>);
+    static_assert(std::random_access_iterator<map_type::const_iterator>);
+
+    map_type map(70, false);
+    map[0] = true;
+    map[3] = true;
+    map[65] = true;
+    const map_type & cmap = map;
+
+    auto it = cmap.begin();
+    ASSERT_TRUE(*it);
+
+    const auto post_inc = it++;  // operator++(int)
+    ASSERT_TRUE(*post_inc);
+    ASSERT_FALSE(*it);
+
+    const auto post_dec = it--;  // operator--(int)
+    ASSERT_FALSE(*post_dec);
+    ASSERT_TRUE(*it);
+
+    ASSERT_TRUE(*(it + 3));        // operator+(iterator, n)
+    ASSERT_TRUE(*(3 + it));        // operator+(n, iterator)
+    ASSERT_TRUE(*((it + 5) - 2));  // operator-(iterator, n)
+    ASSERT_TRUE(it[3]);            // operator[](n)
+    ASSERT_TRUE(*(cmap.begin() + 65));
+    ASSERT_EQ((cmap.begin() + 65) - cmap.begin(), 65);
+
+    // the same set on the mutable iterator, which always worked
+    auto mit = map.begin();
+    ASSERT_TRUE(*(mit++));   // yields index 0, leaves mit on index 1
+    ASSERT_FALSE(*(mit--));  // yields index 1, leaves mit back on index 0
+    ASSERT_TRUE(*(mit + 3));
+    ASSERT_TRUE(*(3 + mit));
+    ASSERT_TRUE(*((mit + 5) - 2));
+    ASSERT_TRUE(mit[3]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// filter() yields exactly the keys whose bit is set
+
 GTEST_TEST(static_map_bool, filter) {
     const std::size_t num_bools = 153;
     static_filter_map<std::size_t> map(num_bools, false);
@@ -162,6 +226,48 @@ GTEST_TEST(static_map_bool, filter) {
 
     ASSERT_TRUE(EQ_MULTISETS(
         map.filter(std::views::iota(int{0}, int{num_bools})), indices));
+}
+
+GTEST_TEST(static_filter_map, filter_on_empty_map) {
+    static_filter_map<std::size_t> map;
+    const std::vector<std::size_t> none;
+    ASSERT_EQ(map.size(), 0);
+    ASSERT_TRUE(EQ_RANGES(
+        map.filter(std::views::iota(std::size_t{0}, std::size_t{0})), none));
+}
+
+GTEST_TEST(static_filter_map, filter_matches_reference_over_sizes_and_ranges) {
+    std::default_random_engine engine(20240728u);
+    auto coin = std::bind(std::uniform_int_distribution<>(0, 3), engine);
+
+    for(const std::size_t size :
+        {std::size_t{0}, std::size_t{1}, std::size_t{2}, std::size_t{63},
+         std::size_t{64}, std::size_t{65}, std::size_t{127}, std::size_t{128},
+         std::size_t{129}, std::size_t{192}}) {
+        static_filter_map<std::size_t> map(size, false);
+        std::vector<bool> reference(size, false);
+        for(std::size_t i = 0; i < size; ++i) {
+            const bool b = (coin() == 0);
+            map[i] = b;
+            reference[i] = b;
+        }
+
+        for(const std::size_t lo :
+            {std::size_t{0}, std::size_t{1}, std::size_t{63}, std::size_t{64},
+             std::size_t{65}, size / 2, size}) {
+            for(const std::size_t hi :
+                {std::size_t{0}, std::size_t{1}, std::size_t{63},
+                 std::size_t{64}, std::size_t{65}, size / 2, size}) {
+                if(lo > hi) continue;
+                std::vector<std::size_t> expected;
+                for(std::size_t i = lo; i < std::min(hi, size); ++i)
+                    if(reference[i]) expected.emplace_back(i);
+                ASSERT_TRUE(
+                    EQ_RANGES(map.filter(std::views::iota(lo, hi)), expected))
+                    << "size=" << size << " lo=" << lo << " hi=" << hi;
+            }
+        }
+    }
 }
 
 GTEST_TEST(static_map_bool, filter_bench) {
@@ -226,13 +332,16 @@ GTEST_TEST(static_map_bool, filter_bench) {
         }
     }
 }
-// ####################### regression: filter() scan bounds ####################
 
-// When the size is an exact multiple of the span width, end_it._p addresses
-// one span past the last allocated one. The span-skipping loop used to accept
-// cursor._p == end_it._p and dereference it, reading past the buffer. A single
-// set bit early on is what exposes it: nothing later stops the scan before it
-// runs off the end.
+////////////////////////////////////////////////////////////////////////////////
+// the filter() bit scan never reads outside the allocated buffer
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: when the size is an exact multiple of the span width, end_it._p
+// addresses one span past the last allocated one. The span-skipping loop used
+// to accept cursor._p == end_it._p and dereference it, reading past the
+// buffer. A single set bit early on is what exposes it: nothing later stops
+// the scan before it runs off the end.
 GTEST_TEST(static_filter_map, filter_scan_stays_inside_the_buffer) {
     for(const std::size_t num_bools : {std::size_t{64}, std::size_t{128},
                                        std::size_t{192}, std::size_t{256}}) {
@@ -258,40 +367,6 @@ GTEST_TEST(static_filter_map, filter_scan_stays_inside_the_buffer) {
     }
 }
 
-GTEST_TEST(static_filter_map, filter_matches_reference_over_sizes_and_ranges) {
-    std::default_random_engine engine(20240728u);
-    auto coin = std::bind(std::uniform_int_distribution<>(0, 3), engine);
-
-    for(const std::size_t size :
-        {std::size_t{0}, std::size_t{1}, std::size_t{2}, std::size_t{63},
-         std::size_t{64}, std::size_t{65}, std::size_t{127}, std::size_t{128},
-         std::size_t{129}, std::size_t{192}}) {
-        static_filter_map<std::size_t> map(size, false);
-        std::vector<bool> reference(size, false);
-        for(std::size_t i = 0; i < size; ++i) {
-            const bool b = (coin() == 0);
-            map[i] = b;
-            reference[i] = b;
-        }
-
-        for(const std::size_t lo :
-            {std::size_t{0}, std::size_t{1}, std::size_t{63}, std::size_t{64},
-             std::size_t{65}, size / 2, size}) {
-            for(const std::size_t hi :
-                {std::size_t{0}, std::size_t{1}, std::size_t{63},
-                 std::size_t{64}, std::size_t{65}, size / 2, size}) {
-                if(lo > hi) continue;
-                std::vector<std::size_t> expected;
-                for(std::size_t i = lo; i < std::min(hi, size); ++i)
-                    if(reference[i]) expected.emplace_back(i);
-                ASSERT_TRUE(
-                    EQ_RANGES(map.filter(std::views::iota(lo, hi)), expected))
-                    << "size=" << size << " lo=" << lo << " hi=" << hi;
-            }
-        }
-    }
-}
-
 // Bounds outside [0, size] must be clamped rather than turned into span
 // pointers outside the allocation.
 GTEST_TEST(static_filter_map, filter_clamps_out_of_range_bounds) {
@@ -306,64 +381,14 @@ GTEST_TEST(static_filter_map, filter_clamps_out_of_range_bounds) {
     ASSERT_TRUE(EQ_RANGES(map.filter(std::views::iota(69, 200)), {69}));
 }
 
-GTEST_TEST(static_filter_map, filter_on_empty_map) {
-    static_filter_map<std::size_t> map;
-    const std::vector<std::size_t> none;
-    ASSERT_EQ(map.size(), 0);
-    ASSERT_TRUE(EQ_RANGES(
-        map.filter(std::views::iota(std::size_t{0}, std::size_t{0})), none));
-}
+////////////////////////////////////////////////////////////////////////////////
+// filter() takes its bit-scan fast path for every value category of the range
+////////////////////////////////////////////////////////////////////////////////
 
-// ################ regression: const_iterator random access ###################
-
-// iterator_base<I> used to name `iterator` instead of `I` in the bodies of
-// post-increment, post-decrement, operator+ and operator-. const_iterator
-// satisfied std::random_access_iterator all the same, so the breakage only
-// surfaced as a hard error deep inside whichever algorithm used those ops.
-GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
-    using map_type = static_filter_map<std::size_t>;
-    static_assert(std::random_access_iterator<map_type::iterator>);
-    static_assert(std::random_access_iterator<map_type::const_iterator>);
-
-    map_type map(70, false);
-    map[0] = true;
-    map[3] = true;
-    map[65] = true;
-    const map_type & cmap = map;
-
-    auto it = cmap.begin();
-    ASSERT_TRUE(*it);
-
-    const auto post_inc = it++;  // operator++(int)
-    ASSERT_TRUE(*post_inc);
-    ASSERT_FALSE(*it);
-
-    const auto post_dec = it--;  // operator--(int)
-    ASSERT_FALSE(*post_dec);
-    ASSERT_TRUE(*it);
-
-    ASSERT_TRUE(*(it + 3));        // operator+(iterator, n)
-    ASSERT_TRUE(*(3 + it));        // operator+(n, iterator)
-    ASSERT_TRUE(*((it + 5) - 2));  // operator-(iterator, n)
-    ASSERT_TRUE(it[3]);            // operator[](n)
-    ASSERT_TRUE(*(cmap.begin() + 65));
-    ASSERT_EQ((cmap.begin() + 65) - cmap.begin(), 65);
-
-    // the same set on the mutable iterator, which always worked
-    auto mit = map.begin();
-    ASSERT_TRUE(*(mit++));   // yields index 0, leaves mit on index 1
-    ASSERT_FALSE(*(mit--));  // yields index 1, leaves mit back on index 0
-    ASSERT_TRUE(*(mit + 3));
-    ASSERT_TRUE(*(3 + mit));
-    ASSERT_TRUE(*((mit + 5) - 2));
-    ASSERT_TRUE(mit[3]);
-}
-
-// ############ regression: filter() fast path for lvalue ranges ##############
-
-// The dispatch tested `std::same_as<R, iota_view<K, K>>` on the *deduced* type
-// of a forwarding reference, which is iota_view<K, K> & for an lvalue. Passing
-// a named range silently fell back to the generic filter/transform pipeline.
+// regression: the dispatch tested `std::same_as<R, iota_view<K, K>>` on the
+// *deduced* type of a forwarding reference, which is iota_view<K, K> & for an
+// lvalue. Passing a named range silently fell back to the generic
+// filter/transform pipeline.
 namespace {
 template <typename T>
 struct is_intrusive_view : std::false_type {};

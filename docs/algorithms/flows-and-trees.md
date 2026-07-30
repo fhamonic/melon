@@ -46,6 +46,15 @@ Dinitz's algorithm: rank the vertices by BFS, then push blocking flows through t
 | `flow_value()` | the value of the flow — the sum over the source's out-arcs |
 | `minimum_cut()` | the arcs of a minimum cut, as a range |
 
+!!! warning "Set the terminals before running"
+
+    The two-argument constructor `dinitz(graph, capacity)` builds the working
+    maps but leaves the terminals unset — it exists so you can pick them later,
+    and change them, without paying for the maps again. `run()`,
+    `flow_value()` and `minimum_cut()` all read them, so call `set_source` and
+    `set_target` first, or use the four-argument constructor. The same applies
+    to `edmonds_karp`.
+
 `set_source`, `set_target` and `reset()` chain, so a series of *s*–*t* computations on one graph reuses all the allocations:
 
 ```cpp

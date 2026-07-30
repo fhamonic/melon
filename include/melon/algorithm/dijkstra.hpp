@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
+#include <optional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -24,7 +25,7 @@ namespace melon {
 
 // clang-format off
 template <typename Traits>
-concept dijkstra_trait = semiring<typename Traits::semiring> &&
+concept dijkstra_traits = semiring<typename Traits::semiring> &&
     updatable_priority_queue<typename Traits::heap> && requires() {
     { Traits::store_distances } -> std::convertible_to<bool>;
     { Traits::store_paths } -> std::convertible_to<bool>;
@@ -38,7 +39,7 @@ struct dijkstra_default_traits {
         updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, ValueType>,
                              typename semiring::less_t,
                              vertex_map_t<Graph, std::size_t>,
-                             views::element_map<1>, views::element_map<0>>;
+                             maps::element_map<1>, maps::element_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -51,9 +52,16 @@ struct dijkstra_default_traits {
 // yields a wrong distance instead of an error -- it is a property of the
 // mapped values, which no concept can check.
 // O((m + n) log n) with the default binary heap.
-template <outward_incidence_graph Graph, input_mapping<arc_t<Graph>> LengthMap,
-          dijkstra_trait Traits>
-    requires has_vertex_map<Graph>
+// graph_view / mapping_view on the stored members, like the view adaptors
+// (transform_view<V> requires view<V>): the constructors always route through
+// graph_all / mapping_all, so a non-view member type was a legal spelling
+// whose constructor could never run -- and a raw container member silently
+// deep-copied. Value ownership is spelled graph_owning_view /
+// mapping_owning_view.
+template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
+          dijkstra_traits Traits = dijkstra_default_traits<
+              Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class dijkstra
     : public algorithm_view_interface<dijkstra<Graph, LengthMap, Traits>> {
 private:
@@ -85,10 +93,19 @@ private:
                                         length_type> _distances_map;
 
 public:
+    // Constrained on the storability of each argument into its member, so that
+    // std::is_constructible answers what construction actually does: the old
+    // unconstrained template said yes to a raw length map aimed at a view-typed
+    // member and then hard-errored in the mem-initializer, outside the
+    // immediate context. The store_* helpers also admit raw storage into
+    // explicitly spelled member types, which the unconditional mapping_all
+    // wrap used to reject.
     template <typename G, typename M>
-    [[nodiscard]] constexpr dijkstra(G && g, M && l)
-        : _graph(views::graph_all(std::forward<G>(g)))
-        , _length_map(views::mapping_all(std::forward<M>(l)))
+        requires graph_storable_as<G, Graph> &&
+                     mapping_storable_as<M, LengthMap>
+    constexpr dijkstra(G && g, M && l)
+        : _graph(detail::store_graph<Graph>(std::forward<G>(g)))
+        , _length_map(detail::store_mapping<LengthMap>(std::forward<M>(l)))
         , _heap(typename Traits::semiring::less_t(),
                 create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
@@ -97,20 +114,42 @@ public:
         , _distances_map(_graph) {}
 
     template <typename G, typename M>
-    [[nodiscard]] constexpr dijkstra(G && g, M && l, const vertex & s)
+        requires graph_storable_as<G, Graph> &&
+                 mapping_storable_as<M, LengthMap>
+    constexpr dijkstra(G && g, M && l, const vertex & s)
         : dijkstra(std::forward<G>(g), std::forward<M>(l)) {
         add_source(s);
     }
 
+    // Constrained on the delegate it forwards to, so the tag overload is
+    // exactly as constructible as the constructor it names.
     template <typename... Args>
-    [[nodiscard]] constexpr dijkstra(Traits, Args &&... args)
+        requires std::constructible_from<dijkstra, Args...>
+    constexpr dijkstra(Traits, Args &&... args)
         : dijkstra(std::forward<Args>(args)...) {}
 
-    [[nodiscard]] constexpr dijkstra(const dijkstra &) = default;
-    [[nodiscard]] constexpr dijkstra(dijkstra &&) = default;
+    constexpr dijkstra(const dijkstra &) = default;
+    constexpr dijkstra(dijkstra &&) = default;
 
     constexpr dijkstra & operator=(const dijkstra &) = default;
     constexpr dijkstra & operator=(dijkstra &&) = default;
+
+    // The graph the algorithm runs over. An algorithm owns its view rather
+    // than adapting it, so this is the std::ranges::owning_view shape --
+    // references, ref-qualified -- and not the filter_view shape the graph
+    // *views* use. Returning a copy here would also put traversal_forest back
+    // where it started: it reaches its sources through base(), and an owned
+    // graph view is move-only.
+    [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
+    [[nodiscard]] constexpr const Graph & base() const & noexcept {
+        return _graph;
+    }
+    [[nodiscard]] constexpr Graph && base() && noexcept {
+        return std::move(_graph);
+    }
+    [[nodiscard]] constexpr const Graph && base() const && noexcept {
+        return std::move(_graph);
+    }
 
     // None of the four below are noexcept: they push into the heap (which
     // allocates) and run the user's length map, semiring and comparator.
@@ -119,9 +158,12 @@ public:
         _vertex_status_map.fill(PRE_HEAP);
         return *this;
     }
+    // Strict precondition, like every add_source in the family: the vertex
+    // must be untouched. `!= IN_HEAP` used to admit a *settled* vertex, and
+    // re-processing one silently corrupts stored paths and distances.
     constexpr dijkstra & add_source(
         const vertex & s, const length_type & dist = Traits::semiring::zero) {
-        assert(_vertex_status_map[s] != IN_HEAP);
+        assert(_vertex_status_map[s] == PRE_HEAP);
         _heap.push(std::make_pair(s, dist));
         _vertex_status_map[s] = IN_HEAP;
         if constexpr(Traits::store_paths) {
@@ -131,7 +173,8 @@ public:
         return *this;
     }
 
-    [[nodiscard]] constexpr bool finished() const noexcept {
+    [[nodiscard]] constexpr bool finished() const
+        noexcept(noexcept(_heap.empty())) {
         return _heap.empty();
     }
 
@@ -146,9 +189,8 @@ public:
         if constexpr(Traits::store_distances) _distances_map[t] = st_dist;
         _vertex_status_map[t] = POST_HEAP;
         auto && out_arcs_range = melon::out_arcs(_graph, t);
-        prefetch_range(out_arcs_range);
-        prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
-        prefetch_mapped_values(out_arcs_range, _length_map);
+        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
+                                 _length_map);
         _heap.pop();
         for(const arc & a : out_arcs_range) {
             const vertex & w = melon::arc_target(_graph, a);
@@ -177,23 +219,35 @@ public:
         }
     }
 
-    constexpr void run() {
-        while(!finished()) advance();
-    }
-
-    [[nodiscard]] constexpr bool reached(const vertex & u) const noexcept {
+    [[nodiscard]] constexpr bool reached(const vertex & u) const
+        noexcept(noexcept(_vertex_status_map[u] != PRE_HEAP)) {
         return _vertex_status_map[u] != PRE_HEAP;
     }
-    [[nodiscard]] constexpr bool visited(const vertex & u) const noexcept {
+    // A view of the reached state, like breadth_first_search's and
+    // depth_first_search's. It refers into the algorithm, as every melon map
+    // view refers into what it names: it is valid while this object lives and
+    // stays put, exactly the contract mapping_ref_view carries.
+    // Derived rather than stored: reachedness here is a status enum, so this
+    // hands back a computed map instead of a reference to one.
+    [[nodiscard]] constexpr auto reached_map() const {
+        return maps::map([this](const vertex & u) { return reached(u); });
+    }
+    [[nodiscard]] constexpr bool visited(const vertex & u) const
+        noexcept(noexcept(_vertex_status_map[u] == POST_HEAP)) {
         return _vertex_status_map[u] == POST_HEAP;
     }
-    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const noexcept
+    [[nodiscard]] constexpr arc pred_arc(const vertex & u) const
         requires(Traits::store_paths)
     {
-        assert(reached(u));
-        return _pred_arcs_map[u].value();
+        // Not .value(): a source's predecessor arc is a reset optional, and
+        // asking for it is a precondition violation, not an exceptional
+        // condition -- assert so a debug build names the caller's mistake.
+        // (This used to be noexcept as well, which turned the throw into a
+        // silent std::terminate.)
+        assert(reached(u) && _pred_arcs_map[u].has_value());
+        return *_pred_arcs_map[u];
     }
-    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const noexcept
+    [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const
         requires(Traits::store_paths)
     {
         assert(reached(u) && _pred_arcs_map[u].has_value());
@@ -207,7 +261,8 @@ public:
         assert(reached(u) && !visited(u));
         return _heap.priority(u);
     }
-    [[nodiscard]] constexpr length_type dist(const vertex & u) const noexcept
+    [[nodiscard]] constexpr length_type dist(const vertex & u) const
+        noexcept(noexcept(_distances_map[u]))
         requires(Traits::store_distances)
     {
         assert(visited(u));
@@ -222,26 +277,32 @@ private:
         using intrusive_iterator_base<dijkstra,
                                       vertex>::intrusive_iterator_base;
 
-        constexpr const reference operator*() const {
+        // Returns a plain prvalue, not a `const` one: a const prvalue
+        // inhibits moves and makes std::iterator_traits disagree with the
+        // `reference` typedef right above, which is a
+        // std::indirectly_readable hazard.
+        constexpr reference operator*() const {
             return this->_structure->_pred_arcs_map[this->_cursor].value();
         }
-        constexpr path_iterator & operator++() noexcept {
+        constexpr path_iterator & operator++() {
             this->_cursor = this->_structure->pred_vertex(this->_cursor);
             return *this;
         }
-        constexpr path_iterator operator++(int) noexcept {
+        constexpr path_iterator operator++(int) {
             path_iterator it(*this);
             operator++();
             return it;
         }
         [[nodiscard]] constexpr friend bool operator==(
-            const path_iterator & it, std::default_sentinel_t) noexcept {
+            const path_iterator & it, std::default_sentinel_t) {
             return !it._structure->_pred_arcs_map[it._cursor].has_value();
         }
     };
 
 public:
-    [[nodiscard]] constexpr auto path_to(const vertex & t) const noexcept
+    [[nodiscard]] constexpr auto path_to(const vertex & t) const
+        noexcept(noexcept(std::ranges::subrange(path_iterator(this, t),
+                                                std::default_sentinel)))
         requires(Traits::store_paths)
     {
         assert(reached(t));
@@ -250,30 +311,24 @@ public:
     }
 };
 
-template <
-    typename Graph, typename LengthMap,
-    typename Traits = dijkstra_default_traits<
-        Graph, mapped_value_t<views::mapping_all_t<LengthMap>, arc_t<Graph>>>>
-dijkstra(Graph &&,
-         LengthMap &&) -> dijkstra<views::graph_all_t<Graph>,
-                                   views::mapping_all_t<LengthMap>, Traits>;
+// No Traits parameter: the class template's own default computes it, so the
+// deduced type and the explicitly written `dijkstra<G, LM>` agree.
+template <typename Graph, typename LengthMap>
+dijkstra(Graph &&, LengthMap &&)
+    -> dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>>;
 
-template <
-    typename Graph, typename LengthMap,
-    typename Traits = dijkstra_default_traits<
-        Graph, mapped_value_t<views::mapping_all_t<LengthMap>, arc_t<Graph>>>>
+template <typename Graph, typename LengthMap>
 dijkstra(Graph &&, LengthMap &&, const vertex_t<Graph> &)
-    -> dijkstra<views::graph_all_t<Graph>, views::mapping_all_t<LengthMap>,
-                Traits>;
+    -> dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>>;
 
 template <typename Graph, typename LengthMap, typename Traits>
 dijkstra(Traits, Graph &&,
          LengthMap &&) -> dijkstra<views::graph_all_t<Graph>,
-                                   views::mapping_all_t<LengthMap>, Traits>;
+                                   maps::mapping_all_t<LengthMap>, Traits>;
 
 template <typename Graph, typename LengthMap, typename Traits>
 dijkstra(Traits, Graph &&, LengthMap &&, const vertex_t<Graph> &)
-    -> dijkstra<views::graph_all_t<Graph>, views::mapping_all_t<LengthMap>,
+    -> dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>,
                 Traits>;
 
 }  // namespace melon

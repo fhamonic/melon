@@ -20,7 +20,7 @@ Requires `outward_adjacency_graph` and `has_vertex_map` — arcs are never inspe
 | `store_pred_vertices` | `false` | enables `pred_vertex(v)` |
 | `store_pred_arcs` | `false` | enables `pred_arc(v)`; requires `outward_incidence_graph` |
 | `store_distances` | `false` | enables `dist(v)` — the number of hops |
-| `store_traversal_range` | `false` | enables `traversal()`, the vertices reached so far |
+| `store_traversal_range` | `false` | enables `traversal()`, a `std::span<const vertex>` of the vertices reached so far |
 
 ```cpp
 struct bfs_traits {
@@ -46,7 +46,11 @@ for(auto && v : vertices(graph))
     configuration is also the fastest, and asking for one extra map is what
     opts you out of it.
 
-Other members: `reset()`, `add_source(v)`, `reached(v)`, `reached_map()`.
+    The two implementations expose the same members with the same signatures,
+    including honouring `store_traversal_range`, so which one you get is a
+    performance detail and never a source-visible one.
+
+Other members: `reset()`, `add_source(v)`, `reached(v)`, `reached_map()`, `base()`.
 
 ## `depth_first_search`
 

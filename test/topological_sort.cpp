@@ -1,13 +1,21 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include "melon/algorithm/topological_sort.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/container/static_forward_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
 
 using namespace melon;
+
+////////////////////////////////////////////////////////////////////////////////
+// the sort yields every vertex of a DAG in a topological order, one
+// advance() at a time
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(topological_sort, no_arcs_graph) {
     static_digraph_builder<static_digraph> builder(2);
@@ -67,6 +75,10 @@ GTEST_TEST(topological_sort, test) {
     ASSERT_TRUE(alg.finished());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// the algorithm is an input range over the sorted order
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(topological_sort, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(6);
 
@@ -92,7 +104,10 @@ GTEST_TEST(topological_sort, algorithm_iterator) {
         ++cpt;
     }
 }
-// ########################### traits: store_rank #############################
+
+////////////////////////////////////////////////////////////////////////////////
+// store_ranks: rank() is the longest-path level of a vertex, gated on its flag
+////////////////////////////////////////////////////////////////////////////////
 
 // The flag used to be called store_distances and assigned _dist_map[w] from
 // whichever predecessor happened to bring w's in-degree to zero, which is an
@@ -189,12 +204,15 @@ GTEST_TEST(topological_sort, rank_strictly_increases_along_every_arc) {
     ASSERT_EQ(alg.rank(8u), 5);
 }
 
-// ################# regression: reached() was always false ###################
+////////////////////////////////////////////////////////////////////////////////
+// reached() tells the sorted vertices apart from those stuck on a cycle
+////////////////////////////////////////////////////////////////////////////////
 
-// _reached_map was filled with false and read by reached(), but nothing ever
-// wrote true to it. Every accessor guarded by assert(reached(u)) -- rank(),
-// pred_vertex(), pred_arc() -- therefore fired in a debug build, which no
-// test noticed because none of the three flags was ever switched on.
+// Regression: _reached_map was filled with false and read by reached(), but
+// nothing ever wrote true to it. Every accessor guarded by
+// assert(reached(u)) -- rank(), pred_vertex(), pred_arc() -- therefore fired
+// in a debug build, which no test noticed because none of the three flags was
+// ever switched on.
 GTEST_TEST(topological_sort, reached_marks_the_sorted_vertices) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(0, 3);
@@ -223,7 +241,9 @@ GTEST_TEST(topological_sort, reached_is_false_on_a_cycle) {
     ASSERT_FALSE(alg.reached(3u));
 }
 
-// ################## what the predecessor maps actually mean ##################
+////////////////////////////////////////////////////////////////////////////////
+// the predecessor chain walks a critical (longest) path of length rank(w)
+////////////////////////////////////////////////////////////////////////////////
 
 // Not a traversal artefact, unlike DFS: Kahn's queue is FIFO, so it dequeues
 // in non-decreasing rank order, and the predecessor that finally brings w's
@@ -284,4 +304,168 @@ GTEST_TEST(topological_sort, pred_chain_walks_a_longest_path) {
             path,
             [&](const auto & a) { return alg.rank(arc_target(graph, a)); }),
         {1, 2, 3, 4, 5}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the critical-path accessors are gated on store_critical_paths
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+template <typename A>
+concept has_pred_arc = requires(
+    const A & a, const vertex_t<static_digraph> & u) { a.pred_arc(u); };
+template <typename A>
+concept has_pred_vertex = requires(
+    const A & a, const vertex_t<static_digraph> & u) { a.pred_vertex(u); };
+template <typename A>
+concept has_critical_path_to = requires(
+    const A & a, const vertex_t<static_digraph> & u) { a.critical_path_to(u); };
+}  // namespace
+
+GTEST_TEST(topological_sort, critical_path_accessors_are_gated) {
+    static_digraph_builder<static_digraph> builder(2);
+    builder.add_arc(0, 1);
+    auto [graph] = builder.build();
+
+    using with_paths = topological_sort<graph_ref_view<static_digraph>,
+                                        topological_sort_pred_traits>;
+    using without = decltype(topological_sort(graph));
+
+    static_assert(has_pred_arc<with_paths>);
+    static_assert(has_pred_vertex<with_paths>);
+    static_assert(has_critical_path_to<with_paths>);
+    // control: the default traits withdraw all three, so the negatives below
+    // cannot be passing on a misspelled member name
+    static_assert(!has_pred_arc<without>);
+    static_assert(!has_pred_vertex<without>);
+    static_assert(!has_critical_path_to<without>);
+    // ranks are a separate flag and must not come along
+    static_assert(!has_rank<without>);
+}
+
+GTEST_TEST(topological_sort, critical_path_to_a_source_is_empty) {
+    // Sources carry an empty _pred_arcs_map entry, which is what stops the
+    // path iterator; asking one for its critical path yields nothing rather
+    // than walking off the start of the order.
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0, 2).add_arc(1, 2);
+    auto [graph] = builder.build();
+
+    topological_sort<graph_ref_view<static_digraph>,
+                     topological_sort_pred_traits>
+        alg(graph);
+    alg.run();
+
+    ASSERT_TRUE(EMPTY(alg.critical_path_to(0u)));
+    ASSERT_TRUE(EMPTY(alg.critical_path_to(1u)));
+    ASSERT_EQ(alg.rank(0u), 0);
+    ASSERT_FALSE(EMPTY(alg.critical_path_to(2u)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// pred_vertex() also works on graphs that cannot map an arc to its source
+////////////////////////////////////////////////////////////////////////////////
+
+// When the graph cannot map an arc back to its source, pred_vertex reads the
+// separate _pred_vertices_map instead of calling arc_source -- a branch no
+// test reached, because every graph the suite uses here models has_arc_source.
+// static_forward_digraph does not.
+GTEST_TEST(topological_sort, critical_paths_without_arc_source) {
+    static_assert(!has_arc_source<static_forward_digraph>);
+
+    // 0 -> 2, 1 -> 2, 2 -> 3
+    std::vector<unsigned int> sources = {0, 1, 2};
+    std::vector<unsigned int> targets = {2, 2, 3};
+    static_forward_digraph graph(4, sources, targets);
+
+    topological_sort<graph_ref_view<static_forward_digraph>,
+                     topological_sort_pred_traits>
+        alg(graph);
+    alg.run();
+
+    ASSERT_EQ(alg.rank(3u), 2);
+    ASSERT_EQ(alg.pred_vertex(3u), 2u);
+    ASSERT_EQ(alg.pred_vertex(2u), 1u);
+
+    int steps = 0;
+    for(auto u = 3u; alg.rank(u) != 0; u = alg.pred_vertex(u)) {
+        ASSERT_EQ(arc_target(graph, alg.pred_arc(u)), u);
+        ++steps;
+    }
+    ASSERT_EQ(steps, alg.rank(3u));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// reset() re-seeds the queue and rebuilds the optional state
+////////////////////////////////////////////////////////////////////////////////
+
+// Regression: the run decrements every remaining in-degree to zero, so
+// clearing the queue and the reached map was not enough to restart: nothing
+// re-seeded the start vertices, and reset() left an object that reported
+// finished() immediately and yielded nothing. reset() now goes through
+// push_start_vertices().
+GTEST_TEST(topological_sort, reset_re_seeds_the_queue) {
+    static_digraph_builder<static_digraph> builder(5);
+    builder.add_arc(0, 1).add_arc(0, 2).add_arc(1, 3).add_arc(2, 3).add_arc(3,
+                                                                            4);
+    auto [graph] = builder.build();
+
+    topological_sort<graph_ref_view<static_digraph>,
+                     topological_sort_pred_traits>
+        alg(graph);
+
+    const auto collect = [&alg]() {
+        std::vector<vertex_t<static_digraph>> order;
+        for(auto && v : alg) order.push_back(v);
+        return order;
+    };
+
+    const auto first = collect();
+    ASSERT_EQ(first.size(), 5u);
+
+    alg.reset();
+    ASSERT_FALSE(alg.finished());
+
+    const auto second = collect();
+    ASSERT_EQ(second, first);
+
+    // the optional state is rebuilt too, not merely the queue
+    for(const auto & v : vertices(graph)) ASSERT_TRUE(alg.reached(v));
+    ASSERT_EQ(alg.rank(0u), 0);
+    ASSERT_EQ(alg.rank(3u), 2);
+    ASSERT_EQ(alg.rank(4u), 3);
+    int arcs_on_path = 0;
+    for(auto && a : alg.critical_path_to(4u)) {
+        (void)a;
+        ++arcs_on_path;
+    }
+    ASSERT_EQ(arcs_on_path, alg.rank(4u));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// regression: copying a mutable lvalue must pick the copy constructor, not
+// the greedy single-argument constructor
+////////////////////////////////////////////////////////////////////////////////
+
+// The unconstrained `topological_sort(G &&)` beat the copy constructor for a
+// non-const lvalue and tried to build the algorithm out of itself.
+GTEST_TEST(topological_sort,
+           copying_a_mutable_lvalue_uses_the_copy_constructor) {
+    static_digraph_builder<static_digraph> builder(4);
+    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    auto [graph] = builder.build();
+
+    topological_sort alg(graph);
+    alg.advance();
+
+    topological_sort from_mutable_lvalue(alg);
+    static_assert(std::same_as<decltype(alg), decltype(from_mutable_lvalue)>);
+    ASSERT_EQ(from_mutable_lvalue.current(), alg.current());
+
+    from_mutable_lvalue.run();
+    ASSERT_TRUE(from_mutable_lvalue.finished());
+    ASSERT_FALSE(alg.finished());  // an independent copy
+
+    decltype(alg) from_const_lvalue(std::as_const(alg));
+    ASSERT_EQ(from_const_lvalue.current(), alg.current());
 }

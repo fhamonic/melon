@@ -4,10 +4,15 @@
 #include <concepts>
 #include <cstdint>
 
-#include "melon/utility/bounded_value.hpp"
-#include "melon/utility/rational.hpp"
+#include "melon/numeric/bounded_value.hpp"
+#include "melon/numeric/rational.hpp"
 
 using namespace melon;
+using namespace melon::numeric;
+
+////////////////////////////////////////////////////////////////////////////////
+// a rational is built from a numerator and a denominator, defaulting to 0/1
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(rational, constructors) {
     rational<int> zero;
@@ -22,6 +27,10 @@ GTEST_TEST(rational, constructors) {
     ASSERT_EQ(r.num(), 3);
     ASSERT_EQ(r.den(), 4);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// arithmetic is exact, for rational and mixed scalar operands alike
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(rational, arithmetic) {
     rational a(1, 2);
@@ -45,6 +54,10 @@ GTEST_TEST(rational, scalar_mixed_arithmetic) {
     ASSERT_TRUE(1 - half == half);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// comparisons see through unnormalized representations
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(rational, comparisons) {
     ASSERT_TRUE(rational(1, 2) < rational(2, 3));
     ASSERT_TRUE(rational(2, 3) > rational(1, 2));
@@ -59,12 +72,48 @@ GTEST_TEST(rational, equivalence_of_unnormalized_fractions) {
     ASSERT_TRUE(rational(0, 4) == rational(0, 7));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// normalize() reduces to lowest terms, and requires a mutable object
+// (regression: it used to be const over mutable members)
+////////////////////////////////////////////////////////////////////////////////
+
 GTEST_TEST(rational, normalize) {
     rational r(6, 4);
     r.normalize();
     ASSERT_EQ(r.num(), 3);
     ASSERT_EQ(r.den(), 2);
 }
+
+// _num/_den were `mutable` and normalize() was `const`, so a const rational
+// could be rewritten under its owner and two threads reading a shared const
+// rational raced -- num()/den() hand out const references into that state.
+namespace {
+template <typename R>
+concept normalizable = requires(R & r) { r.normalize(); };
+}  // namespace
+
+static_assert(normalizable<rational<int, int>>);
+static_assert(!normalizable<const rational<int, int>>);
+
+GTEST_TEST(rational, normalize_requires_a_mutable_object) {
+    rational r(6, 4);
+    r.normalize();
+    ASSERT_EQ(r.num(), 3);
+    ASSERT_EQ(r.den(), 2);
+
+    // reading a const rational leaves it untouched
+    const rational cr(6, 4);
+    ASSERT_EQ(cr.num(), 6);
+    ASSERT_EQ(cr.den(), 4);
+    ASSERT_TRUE(cr == rational(3, 2));  // comparison normalizes nothing
+    ASSERT_EQ(cr.num(), 6);
+    ASSERT_EQ(cr.den(), 4);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// make_rational moves the sign to the numerator and preserves the operand
+// types (regression: its auto return type deduction used to be inconsistent)
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(rational, make_rational_normalizes_signs) {
     auto r = make_rational(1, -2);
@@ -75,19 +124,6 @@ GTEST_TEST(rational, make_rational_normalizes_signs) {
     ASSERT_EQ(z.num(), 1);
     ASSERT_EQ(z.den(), 0);
 }
-
-GTEST_TEST(rational, bounded_value_components) {
-    auto a = bounded_value<int8_t, -10, 21>(5);
-    auto b = bounded_value<int8_t, -1, 15>(15);
-
-    auto r = rational(a, b);
-    ASSERT_EQ(r.num().value(), 5);
-    ASSERT_EQ(r.den().value(), 15);
-    ASSERT_TRUE(r == rational(1, 3));
-    ASSERT_TRUE(r + r == rational(2, 3));
-}
-
-// ############ regression: make_rational return type deduction ################
 
 // `-a` / `-b` are integer promoted, so the sign-flipping branch deduced
 // rational<int, int> while the other two deduced rational<short, short>:
@@ -130,30 +166,46 @@ GTEST_TEST(rational, make_rational_normalizes_sign_and_keeps_operand_types) {
     ASSERT_EQ(mixed.den(), 4L);
 }
 
-// ############### regression: normalize() through const ######################
+////////////////////////////////////////////////////////////////////////////////
+// rational composes with bounded_value components
+////////////////////////////////////////////////////////////////////////////////
 
-// _num/_den were `mutable` and normalize() was `const`, so a const rational
-// could be rewritten under its owner and two threads reading a shared const
-// rational raced -- num()/den() hand out const references into that state.
-namespace {
-template <typename R>
-concept normalizable = requires(R & r) { r.normalize(); };
-}  // namespace
+GTEST_TEST(rational, bounded_value_components) {
+    auto a = bounded_value<int8_t, -10, 21>(5);
+    auto b = bounded_value<int8_t, -1, 15>(15);
 
-static_assert(normalizable<rational<int, int>>);
-static_assert(!normalizable<const rational<int, int>>);
+    auto r = rational(a, b);
+    ASSERT_EQ(r.num().value(), 5);
+    ASSERT_EQ(r.den().value(), 15);
+    ASSERT_TRUE(r == rational(1, 3));
+    ASSERT_TRUE(r + r == rational(2, 3));
+}
 
-GTEST_TEST(rational, normalize_requires_a_mutable_object) {
-    rational r(6, 4);
-    r.normalize();
-    ASSERT_EQ(r.num(), 3);
-    ASSERT_EQ(r.den(), 2);
+////////////////////////////////////////////////////////////////////////////////
+// regression (2.8): rational hygiene -- no leaked macro, const-correct
+// conversion operator
+////////////////////////////////////////////////////////////////////////////////
 
-    // reading a const rational leaves it untouched
-    const rational cr(6, 4);
-    ASSERT_EQ(cr.num(), 6);
-    ASSERT_EQ(cr.den(), 4);
-    ASSERT_TRUE(cr == rational(3, 2));  // comparison normalizes nothing
-    ASSERT_EQ(cr.num(), 6);
-    ASSERT_EQ(cr.den(), 4);
+// DEFINE_RATIONAL_OPERATOR was never #undef'd, so an unprefixed function-like
+// macro leaked out of rational.hpp into every TU that included it -- and
+// therefore into every TU including all.hpp.
+#ifdef DEFINE_RATIONAL_OPERATOR
+#error "DEFINE_RATIONAL_OPERATOR escaped rational.hpp"
+#endif
+
+// The converting operator was non-const. Named explicitly rather than through
+// static_cast, which would pick the (non-explicit, already const-correct)
+// converting *constructor* and prove nothing.
+template <typename R, typename Target>
+concept has_const_conversion_operator =
+    requires(const R & r) { r.template operator Target(); };
+
+static_assert(
+    has_const_conversion_operator<rational<int, int>, rational<long, long>>);
+
+GTEST_TEST(rational, converting_a_const_rational) {
+    const rational<int, int> r(3, 4);
+    const auto wide = r.operator rational<long, long>();
+    ASSERT_EQ(wide.num(), 3L);
+    ASSERT_EQ(wide.den(), 4L);
 }

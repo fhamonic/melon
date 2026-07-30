@@ -168,7 +168,7 @@ Removal concepts include the validity query, because after a removal the only wa
 Constrain on the least you need, and the diagnostic does the rest:
 
 ```cpp
-template <inward_incidence_graph G, input_mapping<arc_t<G>> WeightMap>
+template <inward_incidence_graph G, mapping<arc_t<G>> WeightMap>
     requires has_vertex_map<G, double>
 auto compute_potentials(const G & g, const WeightMap & w) {
     auto potential = create_vertex_map<double>(g, 0.0);

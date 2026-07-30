@@ -7,11 +7,19 @@
 
 using namespace melon;
 
+////////////////////////////////////////////////////////////////////////////////
+// every shipped semiring models the semiring concept
+////////////////////////////////////////////////////////////////////////////////
+
 static_assert(semiring<shortest_path_semiring<int>>);
 static_assert(semiring<shortest_path_semiring<double>>);
 static_assert(semiring<most_reliable_path_semiring<double>>);
 static_assert(semiring<max_capacity_path_semiring<int>>);
 static_assert(semiring<minimum_spanning_tree_semiring<int>>);
+
+////////////////////////////////////////////////////////////////////////////////
+// the concept rejects a type missing any of the four members
+////////////////////////////////////////////////////////////////////////////////
 
 // The concept is what the algorithm traits check, so it must reject a type
 // missing any of the four members.
@@ -25,6 +33,10 @@ struct no_less {
 static_assert(!semiring<no_less>);
 static_assert(!semiring<int>);
 
+////////////////////////////////////////////////////////////////////////////////
+// zero is neutral for plus, and infty absorbing under less
+////////////////////////////////////////////////////////////////////////////////
+
 // zero is the neutral element of plus, and infty the absorbing one under less:
 // no reachable path length may ever compare less than zero, nor infty less than
 // anything. These are the two properties every melon shortest-path-like
@@ -34,6 +46,10 @@ constexpr bool is_neutral_and_absorbing(typename S::value_type v) {
     return S::plus(S::zero, v) == v && S::plus(v, S::zero) == v &&
            !S::less(v, S::zero) && !S::less(S::infty, v);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// each semiring encodes its own optimisation criterion
+////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(shortest_path_semiring, sums_lengths_and_takes_the_smallest) {
     using S = shortest_path_semiring<int>;

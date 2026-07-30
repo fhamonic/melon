@@ -5,6 +5,7 @@ Every accessor in melon — `melon::vertices`, `melon::out_arcs`, `melon::arc_ta
 1. **Two ways to provide one.** A CPO accepts a member function (`g.out_arcs(v)`) or a free function found by ADL (`out_arcs(g, v)`). The member is preferred. You never specialize anything inside `namespace melon`.
 2. **They cannot be hijacked by ADL at the call site.** `vertices(g)` inside a `using namespace melon;` scope resolves to the CPO, which then does the lookup itself.
 3. **Several of them fall back.** When a graph does not provide a function directly, the CPO synthesizes it from what the graph *does* provide — which is why a structure with three members is already a `graph`.
+4. **They all return by value.** Every range-returning CPO decay-copies, so `vertices_range_t<G>`, `arcs_range_t<G>` and friends are never reference types. Return a *view*, not a reference to a container: if your graph stores its vertices in a `std::vector`, return `std::views::all(_vertices)` — a `std::ranges::ref_view`, which copies nothing. Returning `const std::vector<vertex> &` would be copied by the CPO on every call. The same rule is why `arc_targets_map()` returns a `mapping_ref_view` rather than a `const static_map &`.
 
 ## The full table
 
@@ -32,8 +33,8 @@ Every accessor in melon — `melon::vertices`, `melon::out_arcs`, `melon::arc_ta
 | `in_degree(g, v)` | `std::ranges::size(in_arcs(g, v))` when sized |
 | `out_neighbors(g, v)` | `out_arcs(g, v)` transformed by `arc_target` |
 | `in_neighbors(g, v)` | `in_arcs(g, v)` transformed by `arc_source` |
-| `arc_sources_map(g)` | `views::map` over `arc_source` |
-| `arc_targets_map(g)` | `views::map` over `arc_target` |
+| `arc_sources_map(g)` | `maps::map` over `arc_source` |
+| `arc_targets_map(g)` | `maps::map` over `arc_target` |
 
 ### Data
 
@@ -104,4 +105,4 @@ template <typename T> auto create_vertex_map(const their_graph & g, const T & d)
 
 Nothing is added to `namespace melon`; ADL from the argument type finds them. The map factories are templates called with an explicit template argument — `create_vertex_map<T>(g)` — which ADL supports because a function template of that name is visible in `melon`.
 
-See [Bringing your own graph](../graphs/custom-graphs.md) for complete, compiling examples and the rules the ranges must respect — including the one trap: `graph_ref_view`, which every algorithm wraps its argument in, forwards the accessors listed above but **not** `arcs_entries`, so a type whose only route to `arcs_entries` is its own member will satisfy `graph` on its own and fail once wrapped.
+See [Bringing your own graph](../graphs/custom-graphs.md) for complete, compiling examples and the rules the ranges must respect. `graph_ref_view`, which every algorithm wraps its argument in, forwards every read-only accessor in the tables above — `arcs_entries` included — so a type stays a `graph` once wrapped whichever protocol it provides. It does not forward the mutating CPOs: a view is read-only by construction.

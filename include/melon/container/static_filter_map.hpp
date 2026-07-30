@@ -5,6 +5,7 @@
 #include <cassert>
 #include <memory>
 #include <ranges>
+#include <stdexcept>
 #include <vector>
 
 #include "melon/detail/intrusive_view.hpp"
@@ -238,7 +239,9 @@ private:
 
 public:
     static_filter_map() : _data(nullptr), _size(0) {};
-    static_filter_map(size_type size)
+    // explicit, like static_map's: `static_filter_map m = 10;` reads as a
+    // value, not as a request for ten default-initialised bits.
+    explicit static_filter_map(size_type size)
         : _data(std::make_unique_for_overwrite<span_type[]>(num_spans(size)))
         , _size(size) {};
 
@@ -273,14 +276,42 @@ public:
         return const_iterator(_data.get() + _size / N, _size & span_index_mask);
     }
 
+    // See static_map's: cbegin/cend, empty and swap, which every standard
+    // container has and neither of these two did.
+    const_iterator cbegin() const noexcept {
+        return const_iterator(_data.get(), 0);
+    }
+    const_iterator cend() const noexcept {
+        return const_iterator(_data.get() + _size / N, _size & span_index_mask);
+    }
+
     size_type size() const noexcept { return _size; }
-    // See static_map::reset -- this discards the current contents.
+    [[nodiscard]] bool empty() const noexcept { return _size == 0; }
+
+    void swap(static_filter_map & other) noexcept {
+        std::swap(_data, other._data);
+        std::swap(_size, other._size);
+    }
+    friend void swap(static_filter_map & a, static_filter_map & b) noexcept {
+        a.swap(b);
+    }
+    // See static_map::reset -- this discards the current contents, except at
+    // the same size, where it is a no-op.
     void reset(size_type n) {
         if(n == _size) return;
         _data = std::make_unique_for_overwrite<span_type[]>(num_spans(n));
         _size = n;
     }
 
+    // Both overloads, like std::vector<bool>::at and like static_map's: the
+    // const-only one made a checked *write* impossible. const_reference is
+    // `bool` here, again as in std::vector<bool>, so the const overload hands
+    // back a value and the mutable one the proxy.
+    [[nodiscard]] reference at(const size_type i) {
+        if(static_cast<size_type>(i) >= size())
+            throw std::out_of_range("Invalid key.");
+        return reference(_data.get() + i / N, i & span_index_mask);
+    }
     [[nodiscard]] const_reference at(const size_type i) const {
         if(static_cast<size_type>(i) >= size())
             throw std::out_of_range("Invalid key.");

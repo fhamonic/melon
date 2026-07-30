@@ -8,6 +8,11 @@
 #include <type_traits>
 
 namespace melon {
+// bounded_value, const_value, rational and integer live in melon::numeric:
+// at namespace scope `melon::integer` and `melon::const_value` are generic
+// enough to collide with a user's own, and `integer` is not even one -- it is
+// a rational with a unit denominator.
+namespace numeric {
 
 namespace detail {
 
@@ -128,18 +133,50 @@ struct bounded_value_base_base {};
 
 template <typename CRTP, typename T, T Min, T Max, typename PS>
 class bounded_value_base : public bounded_value_base_base {
+private:
+    // Whether negating the *range* stays inside T. Min > numeric_limits<T>::
+    // min() also gives Max >= Min > min(), so one check covers both bounds.
+    static constexpr bool negation_is_representable =
+        std::signed_integral<T> && (Min != std::numeric_limits<T>::min());
+
 public:
     using value_type = T;
     using promotion_strategy_t = PS;
 
+    // static_cast, not reinterpret_cast: this is a derived-to-base downcast
+    // along a real inheritance path, which reinterpret_cast does not perform
+    // (it is undefined behaviour, and would be wrong outright if CRTP ever
+    // gained a second base).
     constexpr value_type value() const {
-        return reinterpret_cast<const CRTP &>(*this).value();
+        return static_cast<const CRTP &>(*this).value();
     }
     constexpr operator T() const { return value(); }
 
-    constexpr auto operator-() const {
+    // Constrained rather than fixed, because there is nothing to fix: the
+    // negation of an unsigned range is not an unsigned range. For unsigned T,
+    // -Max wraps to a huge value and `bounded_value<T, -Max, -Min, PS>` names
+    // bounds that bracket nothing; for signed T with Min ==
+    // numeric_limits<T>::min(), -Min is not representable and the template-id
+    // is ill-formed, so the class failed to compile at the point of use.
+    constexpr auto operator-() const
+        requires negation_is_representable
+    {
         return bounded_value<T, -Max, -Min, PS>(-value());
     }
+
+    // Deleted, not merely absent. Leaving it out is not enough: `operator T()`
+    // above is implicit, so `-x` would quietly convert to T and use the
+    // built-in negation -- wrapping around for unsigned T, and throwing away
+    // the bound tracking that is the whole point of the class. Deleting it
+    // makes `-x` name this overload and say so.
+    //
+    // If you do want it, the intent has to be spelled out: widen first with
+    // .bound<...>(), subtract from a zero-valued bounded_value (binary
+    // operator- goes through the promotion strategy and gets honest bounds),
+    // or cast to T and accept plain integer semantics.
+    constexpr void operator-() const
+        requires(!negation_is_representable)
+    = delete;
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
     constexpr auto operator<(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
@@ -304,7 +341,15 @@ public:
     using value_type = T;
     using promotion_strategy_t = PS;
 
-    constexpr bounded_value(T v) {}
+    // Deliberately discards v: this specialization holds a single compile-time
+    // value, so there is nothing to store. It stays implicit and one-argument
+    // because it is what lets `rational`'s const_value<int, 1> denominator be
+    // written `_den(1)`. The assert is the only thing standing between a
+    // caller and a silently ignored argument.
+    constexpr bounded_value(T v) {
+        assert(v == V);
+        (void)v;
+    }
     constexpr bounded_value() = default;
     constexpr bounded_value(const bounded_value &) = default;
     constexpr bounded_value(bounded_value &&) = default;
@@ -328,4 +373,5 @@ public:
 template <typename T, T V, typename PS = default_promotion_strategy>
 using const_value = bounded_value<T, V, V, PS>;
 
+}  // namespace numeric
 }  // namespace melon
