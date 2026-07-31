@@ -16,7 +16,10 @@
 
 namespace melon {
 
-template <std::ranges::range ItemRange,
+// random_access_range, not range: is_dominated() orders iterators with `<`,
+// which only random-access iterators provide -- with a plain range the error
+// surfaces inside the member instead of at the constraint.
+template <std::ranges::random_access_range ItemRange,
           mapping_view<std::ranges::range_value_t<ItemRange>> ValueMap,
           mapping_view<std::ranges::range_value_t<ItemRange>> CostMap>
     requires std::is_arithmetic_v<mapped_value_t<
@@ -225,7 +228,7 @@ public:
         return true;
     }
 
-    auto solution_items() const {
+    [[nodiscard]] auto solution_items() const {
         return std::views::transform(_best_sol, [this](auto && p) {
             return std::make_pair(
                 *_permuted_items[static_cast<std::size_t>(
@@ -234,14 +237,14 @@ public:
         });
     }
 
-    auto solution_value() const {
+    [[nodiscard]] auto solution_value() const {
         Value sum = 0;
         for(auto && [it, count] : _best_sol)
             sum += it->first * static_cast<Value>(count);
         return sum;
     }
 
-    auto solution_cost() const {
+    [[nodiscard]] auto solution_cost() const {
         Cost sum = 0;
         for(auto && [it, count] : _best_sol)
             sum += it->second * static_cast<Cost>(count);

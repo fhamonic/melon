@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <ranges>
+#include <type_traits>
 
 #include "melon/detail/not_self.hpp"
+#include "melon/detail/specialization_of.hpp"
 #include "melon/graph.hpp"
 #include "melon/views/graph_view.hpp"
 
@@ -41,6 +43,11 @@ public:
     constexpr explicit reverse_view(G && g)
         : _graph(views::graph_all(std::forward<G>(g))) {}
 
+    // The std adaptor shape (transform_view &co.): default-constructible
+    // exactly when the wrapped view is.
+    reverse_view()
+        requires std::default_initializable<Graph>
+    = default;
     constexpr reverse_view(const reverse_view &) = default;
     constexpr reverse_view(reverse_view &&) = default;
 
@@ -161,9 +168,20 @@ namespace views {
 // (reverse_view / views::reverse).
 struct reverse_fn : graph_adaptor_closure<reverse_fn> {
     template <typename G>
-        requires requires(G && g) { reverse_view(std::forward<G>(g)); }
+        requires(!melon::detail::specialization_of<std::remove_cvref_t<G>,
+                                                   reverse_view>) &&
+                requires(G && g) { reverse_view(std::forward<G>(g)); }
     [[nodiscard]] constexpr auto operator()(G && g) const {
         return reverse_view(std::forward<G>(g));
+    }
+    // std::views::reverse's unwrap rule: reversing a reverse_view hands back
+    // the graph it adapts instead of wrapping twice.
+    template <typename G>
+        requires melon::detail::specialization_of<std::remove_cvref_t<G>,
+                                                  reverse_view> &&
+                 requires(G && g) { std::forward<G>(g).base(); }
+    [[nodiscard]] constexpr auto operator()(G && g) const {
+        return std::forward<G>(g).base();
     }
 };
 

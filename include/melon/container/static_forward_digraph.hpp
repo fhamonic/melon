@@ -30,19 +30,21 @@ public:
     // then read the member rather than the parameter -- after forwarding,
     // `targets` may legitimately be empty. It only ever worked because
     // static_map's range constructor copies.
-    static_forward_digraph(const std::size_t & num_vertices, S && sources,
+    static_forward_digraph(const std::size_t & num_vertices_, S && sources,
                            T && targets)
-        : _out_arc_begin(num_vertices, 0)
+        : _out_arc_begin(num_vertices_, 0)
         , _arc_target(std::forward<T>(targets)) {
         assert(std::ranges::all_of(
-            sources, [n = num_vertices](auto && v) { return v < n; }));
+            sources, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::all_of(
-            _arc_target, [n = num_vertices](auto && v) { return v < n; }));
+            _arc_target, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::is_sorted(sources));
         for(auto && s : sources) ++_out_arc_begin[s];
+        // arc{0}, not 0: exclusive_scan accumulates in the init value's type,
+        // and an int accumulator is signed-overflow UB past INT_MAX arcs.
         std::exclusive_scan(_out_arc_begin.data(),
-                            _out_arc_begin.data() + num_vertices,
-                            _out_arc_begin.data(), 0);
+                            _out_arc_begin.data() + num_vertices_,
+                            _out_arc_begin.data(), arc{0});
     }
 
     static_forward_digraph() = default;

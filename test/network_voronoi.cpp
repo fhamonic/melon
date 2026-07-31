@@ -214,3 +214,89 @@ GTEST_TEST(network_voronoi, default_traits_spelling_runs) {
                                    std::pair<int, vertex_t<static_digraph>>>>{
                  {0u, {0, 0u}}, {3u, {0, 3u}}, {2u, {1, 3u}}, {1u, {2, 0u}}}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// store_distances / store_clusters expose per-vertex accessors after the run
+////////////////////////////////////////////////////////////////////////////////
+
+// Iteration yields each (vertex, (distance, kernel)) once and then forgets it;
+// the storing traits keep them for per-vertex lookup, like dijkstra's
+// store_distances.
+namespace {
+struct network_voronoi_storing_traits
+    : network_voronoi_default_traits<static_digraph, int> {
+    static constexpr bool store_distances = true;
+    static constexpr bool store_clusters = true;
+};
+}  // namespace
+
+static_assert(network_voronoi_traits<network_voronoi_storing_traits>);
+
+// regression: the default traits hardcoded cluster_id_t = unsigned int, so a
+// graph with wider vertex ids silently truncated its kernel ids (std::pair's
+// forwarding constructor bypasses the braced-init narrowing check). A cluster
+// id names a kernel vertex, so it is the graph's vertex type.
+static_assert(std::same_as<
+              network_voronoi_default_traits<static_digraph, int>::cluster_id_t,
+              vertex_t<static_digraph>>);
+
+// dist()/cluster() require their flag: the default traits store neither.
+namespace {
+template <typename Alg>
+concept has_dist_accessor =
+    requires(const Alg & a, vertex_t<static_digraph> v) { a.dist(v); };
+template <typename Alg>
+concept has_cluster_accessor =
+    requires(const Alg & a, vertex_t<static_digraph> v) { a.cluster(v); };
+using default_traits_alg =
+    network_voronoi<traits_default::G, traits_default::LM>;
+}  // namespace
+static_assert(!has_dist_accessor<default_traits_alg>);
+static_assert(!has_cluster_accessor<default_traits_alg>);
+
+GTEST_TEST(network_voronoi, stored_distances_and_clusters) {
+    static_digraph_builder<static_digraph, int> builder(6);
+
+    builder.add_arc(0, 1, 7)
+        .add_arc(0, 2, 9)
+        .add_arc(0, 5, 14)
+        .add_arc(1, 0, 7)
+        .add_arc(1, 2, 10)
+        .add_arc(1, 3, 15)
+        .add_arc(2, 0, 9)
+        .add_arc(2, 1, 10)
+        .add_arc(2, 3, 12)
+        .add_arc(2, 5, 2)
+        .add_arc(3, 1, 15)
+        .add_arc(3, 2, 12)
+        .add_arc(3, 4, 6)
+        .add_arc(4, 3, 6)
+        .add_arc(4, 5, 9)
+        .add_arc(5, 0, 14)
+        .add_arc(5, 2, 2)
+        .add_arc(5, 4, 9);
+
+    auto [graph, length_map] = builder.build();
+
+    std::vector<vertex_t<static_digraph>> kernels = {0u, 3u, 5u};
+
+    network_voronoi alg(network_voronoi_storing_traits{}, graph, length_map,
+                        kernels);
+    static_assert(has_dist_accessor<decltype(alg)>);
+    static_assert(has_cluster_accessor<decltype(alg)>);
+    alg.run();
+
+    ASSERT_EQ(alg.dist(0u), 0);
+    ASSERT_EQ(alg.dist(1u), 7);
+    ASSERT_EQ(alg.dist(2u), 2);
+    ASSERT_EQ(alg.dist(3u), 0);
+    ASSERT_EQ(alg.dist(4u), 6);
+    ASSERT_EQ(alg.dist(5u), 0);
+
+    ASSERT_EQ(alg.cluster(0u), 0u);
+    ASSERT_EQ(alg.cluster(1u), 0u);
+    ASSERT_EQ(alg.cluster(2u), 5u);
+    ASSERT_EQ(alg.cluster(3u), 3u);
+    ASSERT_EQ(alg.cluster(4u), 3u);
+    ASSERT_EQ(alg.cluster(5u), 5u);
+}

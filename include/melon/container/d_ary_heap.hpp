@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <functional>
+#include <ranges>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -36,6 +39,9 @@ public:
     using value_type = Entry;
     using size_type = std::size_t;
     using priority_type = mapped_value_t<EntryPriorityMap, Entry>;
+    // std::priority_queue::value_compare's analogue, named for what the
+    // comparator actually orders here: mapped priorities, not entries.
+    using priority_compare = PriorityComparator;
 
 protected:
     std::vector<value_type> _heap_array;
@@ -82,6 +88,18 @@ public:
     constexpr void clear() noexcept { _heap_array.clear(); }
 
 protected:
+    // Not public on the base: updatable_d_ary_heap adds two maps of its own,
+    // and an inherited base-only swap would silently leave them behind. Each
+    // derived class wraps this and swaps its extra state.
+    constexpr void swap_members(d_ary_heap_base & other) noexcept(
+        std::is_nothrow_swappable_v<std::vector<value_type>> &&
+        std::is_nothrow_swappable_v<PriorityComparator> &&
+        std::is_nothrow_swappable_v<EntryPriorityMap>) {
+        std::ranges::swap(_heap_array, other._heap_array);
+        std::ranges::swap(_priority_cmp, other._priority_cmp);
+        std::ranges::swap(_entry_priority_map, other._entry_priority_map);
+    }
+
     [[nodiscard]] static constexpr size_type parent_of(
         const size_type i) noexcept {
         return (i - sizeof(value_type)) / (sizeof(value_type) * D) *
@@ -225,6 +243,20 @@ public:
         _heap_array.emplace_back();
         heap_push(size_type(n * sizeof(value_type)), std::move(p));
     }
+    template <typename... Args>
+        requires std::constructible_from<value_type, Args...>
+    void emplace(Args &&... args) {
+        push(value_type(std::forward<Args>(args)...));
+    }
+    template <std::ranges::input_range R>
+        requires std::convertible_to<std::ranges::range_reference_t<R>,
+                                     value_type>
+    void push_range(R && range) {
+        if constexpr(std::ranges::sized_range<R>)
+            _heap_array.reserve(_heap_array.size() + std::ranges::size(range));
+        for(auto && e : range)
+            push(static_cast<value_type>(std::forward<decltype(e)>(e)));
+    }
     // const&, the std::priority_queue shape: the caller decides whether to
     // copy. The reference is into the heap array, so it is invalidated by
     // push(), pop(), promote() and demote() -- copy first when the entry is
@@ -274,6 +306,15 @@ public:
         : base_class(std::forward<PC>(priority_cmp),
                      std::forward<EPM>(entry_priority_map)) {}
 
+    constexpr void swap(d_ary_heap & other) noexcept(
+        noexcept(this->swap_members(other))) {
+        base_class::swap_members(other);
+    }
+    friend constexpr void swap(d_ary_heap & a,
+                               d_ary_heap & b) noexcept(noexcept(a.swap(b))) {
+        a.swap(b);
+    }
+
 private:
     void heap_move(const size_type i, value_type && p) {
         assert((i / sizeof(value_type)) < base_class::_heap_array.size());
@@ -320,6 +361,39 @@ public:
         : base_class(std::forward<PC>(priority_cmp))
         , _entry_id_map()
         , _heap_index_map(std::forward<HIM>(heap_index_map)) {}
+
+    // The two maps used to be default-constructed unconditionally, so a
+    // stateful priority or id map could never reach the heap -- the
+    // external-priority test was the commented-out corpse of this.
+    template <typename PC, typename HIM, typename EPM>
+    updatable_d_ary_heap(PC && priority_cmp, HIM && heap_index_map,
+                         EPM && entry_priority_map)
+        : base_class(std::forward<PC>(priority_cmp),
+                     std::forward<EPM>(entry_priority_map))
+        , _entry_id_map()
+        , _heap_index_map(std::forward<HIM>(heap_index_map)) {}
+
+    template <typename PC, typename HIM, typename EPM, typename EIM>
+    updatable_d_ary_heap(PC && priority_cmp, HIM && heap_index_map,
+                         EPM && entry_priority_map, EIM && entry_id_map)
+        : base_class(std::forward<PC>(priority_cmp),
+                     std::forward<EPM>(entry_priority_map))
+        , _entry_id_map(std::forward<EIM>(entry_id_map))
+        , _heap_index_map(std::forward<HIM>(heap_index_map)) {}
+
+    constexpr void swap(updatable_d_ary_heap & other) noexcept(
+        noexcept(this->swap_members(other)) &&
+        std::is_nothrow_swappable_v<EntryIdMap> &&
+        std::is_nothrow_swappable_v<IndicesMap>) {
+        base_class::swap_members(other);
+        std::ranges::swap(_entry_id_map, other._entry_id_map);
+        std::ranges::swap(_heap_index_map, other._heap_index_map);
+    }
+    friend constexpr void swap(
+        updatable_d_ary_heap & a,
+        updatable_d_ary_heap & b) noexcept(noexcept(a.swap(b))) {
+        a.swap(b);
+    }
 
 protected:
     void heap_move(const size_type i, value_type && p) {

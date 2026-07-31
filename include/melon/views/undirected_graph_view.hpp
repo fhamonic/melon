@@ -74,6 +74,17 @@ public:
         return melon::incidence(_wrapped(), u);
     }
 
+    // degree was the one accessor of the protocol this interface did not
+    // forward: a graph with an O(1) member fell back to sizing the incidence
+    // range through the view -- or lost degree outright where that range is
+    // not sized.
+    [[nodiscard]] constexpr decltype(auto) degree(const vertex & u) const
+        noexcept(noexcept(melon::degree(std::declval<const G &>(), u)))
+        requires has_degree<G>
+    {
+        return melon::degree(_wrapped(), u);
+    }
+
     // See graph_forwarding_interface: the default value goes in by const
     // reference, like the CPO that forwards it here.
     template <typename T>

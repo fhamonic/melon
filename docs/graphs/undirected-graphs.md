@@ -27,16 +27,8 @@ The optional refinements are:
 | --- | --- | --- |
 | `has_num_edges<G>` | `melon::num_edges(g)` | free when `edges(g)` is sized |
 | `has_incidence<G>` | `melon::incidence(g, v)` | a range of `(edge, other endpoint)` pairs |
+| `has_degree<G>` | `melon::degree(g, v)` | via a member or ADL `degree`, or derived when `incidence(g, v)` is sized |
 | `has_edge_map<G, T>` | `create_edge_map<T>(g)` | yields `edge_map_t<G, T>` |
-
-`melon::degree(g, v)` also exists, and is derived from `incidence(g, v)` when that range is sized.
-
-!!! warning "`has_degree` is currently unusable"
-
-    The `has_degree` concept as written checks `melon::degree(g)` with the
-    vertex argument missing, so it is never satisfied — including for graphs
-    that do answer `degree(g, v)`. Constrain on `has_incidence` and call
-    `degree` directly, or count with `std::ranges::distance(incidence(g, v))`.
 
 ## Incidence, not adjacency
 
@@ -76,7 +68,7 @@ The view requires its argument to be both an `outward_incidence_graph` and an `i
 
 Two properties make it cheap to use:
 
-- **Edges keep the arc identifiers.** `edge_t<undirect<G>>` is `arc_t<G>`, and `edges(ug)` is `arcs(g)`. An arc map built on the digraph is therefore already a valid edge map on the view — which is why the snippet below passes `cost_map`, built by the digraph builder, straight to Kruskal.
+- **Edges keep the arc identifiers.** `edge_t<undirect_view<G>>` is `arc_t<G>`, and `edges(ug)` is `arcs(g)`. An arc map built on the digraph is therefore already a valid edge map on the view — which is why the snippet below passes `cost_map`, built by the digraph builder, straight to Kruskal.
 - **Nothing is copied.** The view holds a reference and rewrites no adjacency; `incidence(ug, v)` is the concatenation of the underlying out- and in-incidences.
 
 ```cpp
@@ -97,7 +89,7 @@ Because the incidence range is a concatenation of two ranges of different types,
 | [`kruskal`](../algorithms/flows-and-trees.md#kruskal) | `kruskal(ugraph, cost_map)` — minimum spanning forest, as a range of edges |
 | [`connected_components`](../algorithms/traversals.md#connected-components) | `connected_components(ugraph)` — a range of ranges of vertices |
 
-`weakly_connected_components(g)` is a convenience wrapper that undirects a digraph and runs `connected_components` on it; it requires `g` to be both outward- and inward-adjacent.
+`weakly_connected_components(g)` is a convenience wrapper that undirects a digraph and runs `connected_components` on it; it requires `g` to be both an outward- and an inward-incidence graph — what `views::undirect` itself needs.
 
 ```cpp
 for(auto && component : weakly_connected_components(graph)) {

@@ -17,11 +17,13 @@ concept graph = has_vertices<T> && has_arcs<T> &&
 and refined by capability concepts — `outward_incidence_graph`, `inward_adjacency_graph`, `has_arc_source`, `has_vertex_map<G, T>`, `has_arc_creation`, and so on. Every algorithm states exactly the capabilities it needs in its template signature:
 
 ```cpp
-template <outward_incidence_graph Graph,
-          mapping_view<arc_t<Graph>> LengthMap, dijkstra_traits Traits>
-    requires has_vertex_map<Graph>
+template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
+          dijkstra_traits Traits>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class dijkstra;
 ```
+
+The template-parameter constraints (`graph_view`, `mapping_view`) say what the stored members *are* — stored members are always views, one of the 1.0 rulings — while the capabilities the algorithm needs sit in the requires-clause.
 
 Two things follow. First, instantiating an algorithm with a structure that cannot support it fails at *compile time*, at the call site, with a diagnostic naming the missing requirement — not with a wall of errors from three headers down. Second, and more importantly, nothing about that signature mentions a melon type. Any structure of yours that satisfies `outward_incidence_graph` runs melon's Dijkstra, with no adapter, no wrapper, and no copy of your data into a "real" graph first. [Bringing your own graph](../graphs/custom-graphs.md) shows how few functions that takes.
 
@@ -59,7 +61,7 @@ The [mapping concepts](../graphs/mappings.md) (`mapping`, `output_mapping`, `con
 
 ## Algorithms are ranges you can step
 
-An algorithm in melon is not a function that runs to completion and returns a result. It is an object that satisfies `algorithmic_generator` — `finished()`, `current()`, `advance()` — and therefore [behaves as an input range](../algorithms/index.md):
+An algorithm in melon is not a function that runs to completion and returns a result. It is an object that satisfies `algorithmic_generator` — `finished()`, `current()`, `advance()` — and therefore [behaves as an input range](../algorithms/index.md), through `algorithm_view_interface`. The full lifecycle is the named `traversal_algorithm` / `rooted_traversal_algorithm` contract: `reset()` restores the constructor's state, `run()` drains and returns the algorithm, and `add_source` requires the vertex to be untouched — see [The 1.0 contract](../contract.md).
 
 ```cpp
 // consume it as a range, in the order the algorithm settles vertices
@@ -74,7 +76,7 @@ while(!alg.finished()) {
 }
 ```
 
-Early exit costs nothing and needs no visitor, no exception thrown through the algorithm, and no callback. Two searches can be advanced in lockstep — which is precisely how `bidirectional_dijkstra` and `competing_dijkstras` are built. And because the object is a range, the rest of the standard library applies: `std::views::filter`, `std::views::take`, `std::ranges::find_if`.
+The held object is move-only: a copy is a compile error, and starting over is `reset()` or a second construction. Early exit costs nothing and needs no visitor, no exception thrown through the algorithm, and no callback. Two searches can be advanced in lockstep — which is precisely how `bidirectional_dijkstra` and `competing_dijkstras` are built. And because the object is a range, the rest of the standard library applies: `std::views::filter`, `std::views::take`, `std::ranges::find_if`.
 
 Where a result genuinely needs the full run, the algorithm still exposes `run()` and dedicated accessors — `dinitz::minimum_cut()`, `dijkstra::path_to(t)`, `biobjective_dijkstra::pareto_front(v)`.
 
@@ -103,7 +105,7 @@ The same principle drives the [views](../views/graphs.md): `views::reverse(g)`, 
 
 **melon is a good fit if** you write graph or network-optimization code in modern C++ and want algorithms that work directly on *your* data structure; if you need to run the same algorithm over a graph, its reverse, and a filtered subgraph without duplicating memory; or if you are looking for a maintained replacement for LEMON that compiles under C++23.
 
-**Know the limits.** melon is a young, single-maintainer library. Its API is not frozen until 1.0.0 ships, and the [roadmap](https://github.com/fhamonic/melon#roadmap) — network simplex, Laplacian solvers, planar map intersection, JSON serialization, tree and bipartite graph concepts — is a list of things that do not exist yet, not of things being polished. Everything under `melon/experimental/` carries no stability guarantee at all. There is no MSVC support; on Windows the supported toolchain is MinGW-w64. And the price of concept-based genericity is C++23 fluency: ranges, concepts, CTAD, and the diagnostics that come with them.
+**Know the limits.** melon is a young, single-maintainer library. Its API is frozen for the 1.x series as of 1.0.0, but the [roadmap](https://github.com/fhamonic/melon#roadmap) — network simplex, Laplacian solvers, planar map intersection, JSON serialization, tree and bipartite graph concepts — is a list of things that do not exist yet, not of things being polished. Everything under `melon/experimental/` carries no stability guarantee at all. There is no MSVC support; on Windows the supported toolchain is MinGW-w64. And the price of concept-based genericity is C++23 fluency: ranges, concepts, CTAD, and the diagnostics that come with them.
 
 **Stay with the incumbents if** you need the breadth of Boost.Graph's algorithm catalogue (planarity testing, matching, isomorphism, min-cost flow — melon has none of these yet), if you are pinned to an older standard, or if you build with MSVC.
 

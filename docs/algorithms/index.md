@@ -6,7 +6,7 @@ Most graph libraries express "do something at each step of a traversal" with a v
 
 ```cpp
 template <typename A>
-concept algorithmic_generator = requires(A alg) {
+concept algorithmic_generator = requires(A & alg) {
     { alg.finished() } -> std::convertible_to<bool>;
     alg.current();
     alg.advance();
@@ -42,10 +42,12 @@ while(!forward.finished() && !backward.finished()) {
 
 !!! note "Pipelines see the algorithm, not a copy"
 
-    In the third example the pipeline holds a *reference* to the temporary
-    algorithm, so iterating `far` advances that search. An algorithm is a
-    range but deliberately **not** a `std::ranges::view` — it carries the
-    whole search state, which is too heavy to copy silently. If you are
+    An algorithm is a range but deliberately **not** a `std::ranges::view` —
+    it carries the whole search state, which is too heavy to copy silently.
+    So the `std` adaptors wrap a `ref_view` around an lvalue algorithm and
+    *move* an rvalue: in the third example the temporary is moved into the
+    pipeline, which then owns it. Either way there is one search and no deep
+    copy of its state — iterating `far` advances it. If you are
     unsure what gets copied and what gets referenced when composing melon
     objects, [Ownership and mapping views](../views/ownership.md) is the
     chapter that spells out the rules once, for everything.
@@ -79,7 +81,7 @@ An algorithm is a range exactly when it derives from `algorithm_view_interface`,
 
 The rest produce a single answer rather than a sequence, so they expose `run()` and dedicated accessors instead: [`bidirectional_dijkstra`](shortest-paths.md#bidirectional_dijkstra), [`edmonds_karp`](flows-and-trees.md#edmonds_karp), [`dinitz`](flows-and-trees.md#dinitz), [`knapsack_bnb`](others.md#knapsack) and [`unbounded_knapsack_bnb`](others.md#knapsack).
 
-Even the range-shaped ones offer `run()` — `while(!finished()) advance();` — for when you want the side effects and the accessors but not the values. It returns the algorithm, like `reset()`, so a run and a query chain: `alg.run().dist(t)`. The exceptions are the three whose `run()` means something else: `dinitz` and `edmonds_karp` are not generators at all, and `bidirectional_dijkstra::run()` returns the distance it computed.
+Even the range-shaped ones offer `run()` — `while(!finished()) advance();` — for when you want the side effects and the accessors but not the values. It returns the algorithm, like `reset()`, so a run and a query chain: `alg.run().dist(t)`. The exceptions are the two that are not generators at all, `dinitz` and `edmonds_karp`; `bidirectional_dijkstra` follows the family shape — `run()` returns the algorithm, and the point-query answer is read through `dist()` afterwards.
 
 `finished()` and `current()` are `const` on every generator, so a `const` reference to an algorithm is enough to inspect where it stands; `advance()`, `run()` and `reset()` are the mutating half. Algorithms are **move-only**: `std::copyable` is `false` for every one of them, over every graph, because an algorithm carries the whole search state and copying it is never the cheap operation the syntax suggests. Moving is always available and always sound, mid-traversal included — the algorithms that cache incidence ranges rebase those cursors as part of the move. See [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound). Where `current()` hands back a window onto the algorithm's own buffer — the component of `strongly_connected_components` or `connected_components`, the tree of `traversal_forest` — that window is read-only, since the next `advance()` rewrites it. Where it hands back a single handle it hands back a *value*, never a reference into that buffer.
 
@@ -97,7 +99,7 @@ auto owned = std::move(alg).base();   // move it out of a finished algorithm
 
 That is how `traversal_forest` reaches its sources without storing a second copy of the graph, and it is why `base()` here does not return a copy the way a *view*'s does — see [Ownership](../views/ownership.md).
 
-`reached_map()` hands back a mapping over the same information `reached(v)` answers one vertex at a time, for passing to anything that takes a map. Some algorithms store that map (`breadth_first_search`, `depth_first_search`, `topological_sort`, `connected_components`) and some compute it from a status map (`dijkstra`, `network_voronoi`, `strongly_connected_components`); either way the result is a *view into the algorithm*, valid while it lives and stays put, exactly like every other melon map view.
+`reached_map()` hands back a mapping over the same information `reached(v)` answers one vertex at a time, for passing to anything that takes a map. Some algorithms store that map (`breadth_first_search`, `depth_first_search`, `topological_sort`, `connected_components`) and some compute it from a status map (`dijkstra`, `network_voronoi`, `strongly_connected_components`, `biobjective_dijkstra`, `traversal_forest`). Like every result-map accessor it is a ref-qualified pair: from an lvalue algorithm the result is a *view into the algorithm*, valid while it lives and stays put; from an expiring one — `std::move(alg).reached_map()` — the backing map moves into the returned object, which then outlives the algorithm. Extraction is terminal, like `std::move(alg).base()`; see [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
 
 ## Construction and deduction
 
@@ -120,6 +122,11 @@ alg.add_source(s2, 10.0);   // start s2 at a nonzero distance
 alg.run();
 ```
 
+`add_source` has a strict precondition: the vertex must be untouched — not
+reached, not already in the heap — and it is asserted in debug builds.
+Re-adding a settled vertex would re-process it and silently corrupt stored
+paths and distances.
+
 `reset()` returns the object to its initial state, keeping the graph and the maps, so a loop over many sources allocates once:
 
 ```cpp
@@ -130,9 +137,15 @@ for(auto && s : terminals) {
 }
 ```
 
+These `reset()` / `run()` / `add_source` semantics are not a per-class
+convention: they are the named concepts `melon::traversal_algorithm` and
+`rooted_traversal_algorithm` (`melon/utility/algorithmic_generator.hpp`),
+statically asserted for every algorithm in the library.
+[The 1.0 contract](../contract.md) states them in full.
+
 ## Traits
 
-The second (or, for the multi-map algorithms, last) template parameter of most algorithms is a **traits** type that selects the data structures and what gets recorded. It is passed as a *first constructor argument*, which is what makes the deduction work:
+Most algorithms take a **traits** template parameter — usually the last one, and defaulted; `bentley_ottmann` is the exception, taking it first — that selects the data structures and what gets recorded. It is passed as a *first constructor argument*, which is what makes the deduction work:
 
 ```cpp
 struct my_traits : dijkstra_default_traits<static_digraph, double> {

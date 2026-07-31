@@ -54,6 +54,36 @@ GTEST_TEST(alias_method_sampler, statistics) {
     ASSERT_NEAR(count_map[16], 0.125, 0.05);
 }
 
+// regression: weights that do not sum to one silently built a garbage table;
+// like std::discrete_distribution, they are now normalized by their sum.
+GTEST_TEST(alias_method_sampler, unnormalized_weights_are_normalized) {
+    std::vector<int> vec = {2, 4, 8, 16, 16};
+    // Same distribution as above, scaled by 8: weights 4, 2, 1, 1/2, 1/2.
+    alias_method_sampler sampler(vec, [](const int & i) { return 8.0 / i; });
+
+    std::unordered_map<int, double> count_map;
+    for(auto && i : vec) count_map[i] = 0.0;
+
+    std::mt19937 rng(180);
+    for(int i = 0; i < 10000; ++i) count_map[sampler(rng)] += 1e-4;
+
+    ASSERT_NEAR(count_map[2], 0.5, 0.05);
+    ASSERT_NEAR(count_map[4], 0.25, 0.05);
+    ASSERT_NEAR(count_map[8], 0.125, 0.05);
+    ASSERT_NEAR(count_map[16], 0.125, 0.05);
+}
+
+// An integer prob map must fail melon's floating_point constraint, not
+// libstdc++'s static_assert inside <random>.
+namespace int_prob {
+template <typename Prob>
+concept valid_prob = requires {
+    typename alias_method_sampler<std::views::all_t<std::vector<int> &>, Prob>;
+};
+}  // namespace int_prob
+static_assert(int_prob::valid_prob<double>);
+static_assert(!int_prob::valid_prob<int>);
+
 ////////////////////////////////////////////////////////////////////////////////
 // regression (2.3): the Traits default lives on the class, not the deduction
 // guide

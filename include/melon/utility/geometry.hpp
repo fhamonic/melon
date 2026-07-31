@@ -1,6 +1,8 @@
 #pragma once
 
+#include <concepts>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 #include "melon/numeric/rational.hpp"
@@ -26,15 +28,19 @@ concept cartesian_line = requires(const T & t) {
 struct cartesian {
     struct point_xy_comparator {
         using is_transparent = void;
-        [[nodiscard]] constexpr bool operator()(
-            const cartesian_point auto & p1,
-            const cartesian_point auto & p2) const noexcept {
+        // Conditional: the coordinates' == and < are user operators.
+        [[nodiscard]] constexpr bool operator()(const cartesian_point auto & p1,
+                                                const cartesian_point auto & p2)
+            const noexcept(noexcept(std::get<0>(p1) == std::get<0>(p2)) &&
+                           noexcept(std::get<1>(p1) < std::get<1>(p2)) &&
+                           noexcept(std::get<0>(p1) < std::get<0>(p2))) {
             if(std::get<0>(p1) == std::get<0>(p2))
                 return std::get<1>(p1) < std::get<1>(p2);
             return std::get<0>(p1) < std::get<0>(p2);
         }
     };
-    static constexpr auto segment_to_line(const cartesian_segment auto & s) {
+    [[nodiscard]] static constexpr auto segment_to_line(
+        const cartesian_segment auto & s) {
         const auto a =
             std::get<1>(std::get<1>(s)) - std::get<1>(std::get<0>(s));
         const auto b =
@@ -43,45 +49,35 @@ struct cartesian {
             a * std::get<0>(std::get<0>(s)) + b * std::get<1>(std::get<0>(s));
         return std::make_tuple(a, b, c);
     }
-    // static constexpr auto lines_intersection(const cartesian_line auto & A,
-    //                                          const cartesian_line auto & B) {
-    //     const auto determinant =
-    //         std::get<0>(A) * std::get<1>(B) - std::get<1>(A) *
-    //         std::get<0>(B);
-    //     return determinant == 0
-    //                ? std::nullopt
-    //                : std::make_optional(std::make_tuple(
-    //                      rational(std::get<2>(A) * std::get<1>(B) -
-    //                                   std::get<2>(B) * std::get<1>(A),
-    //                               determinant),
-    //                      rational(std::get<0>(A) * std::get<2>(B) -
-    //                                   std::get<0>(B) * std::get<2>(A),
-    //                               determinant)));
-    // }
-    // static constexpr auto line_slope(const cartesian_line auto & l) {
-    //     return rational(std::get<1>(l) != 0 ? std::get<0>(l) : 1,
-    //                     -std::get<1>(l));  // (1/0) represents infinity
-    // }
-    static constexpr auto intersecting_lines_intersection(
+    [[nodiscard]] static constexpr auto intersecting_lines_intersection(
         const cartesian_line auto & A, const cartesian_line auto & B,
         const auto & determinant) {
-        return std::make_tuple((std::get<2>(A) * std::get<1>(B) -
-                                std::get<2>(B) * std::get<1>(A)) /
-                                   determinant,
-                               (std::get<0>(A) * std::get<2>(B) -
-                                std::get<0>(B) * std::get<2>(A)) /
-                                   determinant);
+        const auto x_num =
+            std::get<2>(A) * std::get<1>(B) - std::get<2>(B) * std::get<1>(A);
+        const auto y_num =
+            std::get<0>(A) * std::get<2>(B) - std::get<0>(B) * std::get<2>(A);
+        // Integral coordinates: `/` truncates (executed: (1, 1/3) came back
+        // as (1, 0)), so divide through an exact rational instead. Rational
+        // and floating-point coordinates keep the plain division, whose own
+        // semantics are already exact resp. deliberately inexact.
+        if constexpr(std::integral<
+                         std::remove_cvref_t<decltype(determinant)>>) {
+            return std::make_tuple(numeric::make_rational(x_num, determinant),
+                                   numeric::make_rational(y_num, determinant));
+        } else {
+            return std::make_tuple(x_num / determinant, y_num / determinant);
+        }
     }
 
-    static constexpr auto intersecting_lines_intersection(
+    [[nodiscard]] static constexpr auto intersecting_lines_intersection(
         const cartesian_line auto & A, const cartesian_line auto & B) {
         return intersecting_lines_intersection(
             A, B,
             std::get<0>(A) * std::get<1>(B) - std::get<1>(A) * std::get<0>(B));
     }
 
-    static constexpr auto lines_intersection(const cartesian_line auto & A,
-                                             const cartesian_line auto & B) {
+    [[nodiscard]] static constexpr auto lines_intersection(
+        const cartesian_line auto & A, const cartesian_line auto & B) {
         const auto determinant =
             std::get<0>(A) * std::get<1>(B) - std::get<1>(A) * std::get<0>(B);
         return determinant == 0
@@ -89,24 +85,33 @@ struct cartesian {
                    : std::make_optional(
                          intersecting_lines_intersection(A, B, determinant));
     }
-    static constexpr auto line_slope(const cartesian_line auto & l) {
-        return std::get<0>(l) / -std::get<1>(l);
+    [[nodiscard]] static constexpr auto line_slope(
+        const cartesian_line auto & l) {
+        // Integral coordinates: a vertical line divided by zero -- UB -- and
+        // every other slope truncated. make_rational is exact and collapses
+        // the zero denominator to its 1/0 infinity sentinel.
+        if constexpr(std::integral<
+                         std::remove_cvref_t<decltype(std::get<0>(l))>>) {
+            return numeric::make_rational(std::get<0>(l), -std::get<1>(l));
+        } else {
+            return std::get<0>(l) / -std::get<1>(l);
+        }
     }
-    static constexpr bool point_on_line(const cartesian_point auto & p,
-                                        const cartesian_line auto & l) {
+    [[nodiscard]] static constexpr bool point_on_line(
+        const cartesian_point auto & p, const cartesian_line auto & l) {
         return std::get<0>(l) * std::get<0>(p) +
                    std::get<1>(l) * std::get<1>(p) ==
                std::get<2>(l);
     }
-    static constexpr auto point_on_segment(const cartesian_point auto & p,
-                                           const cartesian_segment auto & s) {
+    [[nodiscard]] static constexpr auto point_on_segment(
+        const cartesian_point auto & p, const cartesian_segment auto & s) {
         if(!point_on_line(p, segment_to_line(s))) return false;
         const point_xy_comparator cmp;
         const auto & [s_min, s_max] =
             std::minmax(std::get<0>(s), std::get<1>(s), cmp);
         return !cmp(p, s_min) && !cmp(s_max, p);
     }
-    static constexpr auto segments_intersection(
+    [[nodiscard]] static constexpr auto segments_intersection(
         const cartesian_segment auto & A, const cartesian_segment auto & B) {
         const auto intersection_opt =
             lines_intersection(segment_to_line(A), segment_to_line(B));
@@ -130,7 +135,7 @@ struct cartesian {
                    ? std::nullopt
                    : intersection_opt;
     }
-    static constexpr auto aligned_segments_overlap(
+    [[nodiscard]] static constexpr auto aligned_segments_overlap(
         const cartesian_segment auto & A, const cartesian_segment auto & B) {
         const point_xy_comparator cmp;
         const auto & [A_min, A_max] =
@@ -144,7 +149,7 @@ struct cartesian {
                          std::make_tuple(std::max(A_min, B_min, cmp),
                                          std::min(A_max, B_max, cmp)));
     }
-    static constexpr auto colinear_segments_overlap(
+    [[nodiscard]] static constexpr auto colinear_segments_overlap(
         const cartesian_segment auto & A, const cartesian_segment auto & B) {
         const auto lA = segment_to_line(A);
         const auto lB = segment_to_line(B);
@@ -154,8 +159,8 @@ struct cartesian {
                    ? std::nullopt
                    : aligned_segments_overlap(A, B);
     }
-    static constexpr auto segments_overlap(const cartesian_segment auto & A,
-                                           const cartesian_segment auto & B) {
+    [[nodiscard]] static constexpr auto segments_overlap(
+        const cartesian_segment auto & A, const cartesian_segment auto & B) {
         const auto lA = segment_to_line(A);
         const auto lB = segment_to_line(B);
 

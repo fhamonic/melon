@@ -3,13 +3,15 @@
 #include <algorithm>
 #include <bit>
 #include <cassert>
+#include <concepts>
+#include <iterator>
 #include <memory>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
-#include "melon/detail/intrusive_view.hpp"
+#include "melon/detail/specialization_of.hpp"
 
 namespace melon {
 
@@ -30,33 +32,6 @@ private:
     }
 
 public:
-    // Branchless version
-    // class reference {
-    // private:
-    //     span_type * _p;
-    //     size_type _local_index;
-
-    // public:
-    //     reference(span_type * p, size_type index)
-    //         : _p(p), _local_index(index) {}
-    //     reference(const reference &) = default;
-
-    //     operator bool() const noexcept { return (*_p >> _local_index) & 1; }
-    //     reference & operator=(bool b) noexcept {
-    //         *_p ^= (((*_p >> _local_index) & 1) ^ b) << _local_index;
-    //         return *this;
-    //     }
-    //     reference & operator=(const reference & other) noexcept {
-    //         return *this = bool(other);
-    //     }
-    //     bool operator==(const reference & x) const noexcept {
-    //         return bool(*this) == bool(x);
-    //     }
-    //     bool operator<(const reference & x) const noexcept {
-    //         return !bool(*this) && bool(x);
-    //     }
-    // };
-
     class reference {
     private:
         span_type * _p;
@@ -193,6 +168,11 @@ public:
 
     class iterator : public iterator_base<iterator> {
     public:
+        // Both spellings, like std::vector<bool>'s iterator: the C++20
+        // concept is satisfied with a proxy reference, while the Cpp17
+        // category keeps the precedent std::vector<bool> set for legacy
+        // category dispatch.
+        using iterator_concept = std::random_access_iterator_tag;
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = iterator_base<iterator>::difference_type;
         using value_type = bool;
@@ -212,9 +192,10 @@ public:
     };
 
     class const_iterator : public iterator_base<const_iterator> {
-        friend static_filter_map;
-
     public:
+        // See iterator: dereferencing yields a prvalue bool, which the C++20
+        // concept accepts and the Cpp17 requirements would not.
+        using iterator_concept = std::random_access_iterator_tag;
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = iterator_base<const_iterator>::difference_type;
         using value_type = bool;
@@ -341,91 +322,138 @@ public:
                   b ? ~span_type(0) : span_type(0));
     }
 
+    // Enumerates, in increasing key order, the set keys of a span of [0,
+    // size()). Nameable, storable, trivially copyable, and a forward
+    // iterator, unlike the lambda-holding intrusive_view it replaces, whose
+    // type could be neither named nor default-constructed and whose iterator
+    // was input-only.
+    //
+    // Two measured decisions, both about the length of the dependency chain
+    // the per-set-bit loop is bound by. The hot cursor is (span pointer, bit
+    // offset), not a key index: an index-based increment must rebuild the
+    // span pointer on every set bit, which measured 2x on dense scans. And
+    // the range ends at std::default_sentinel rather than being common:
+    // exact equality with an end iterator needs a clamp in the increment --
+    // countr_zero may land at or beyond the end key inside the last span --
+    // and those two extra compares per set bit measured 1.5x. Pipe through
+    // std::views::common if an iterator-pair range is required.
+    class filter_iterator {
+    public:
+        using iterator_concept = std::forward_iterator_tag;
+        // input, not forward: operator* returns a prvalue key, which a Cpp17
+        // forward iterator may not do. Same split as iota_view's iterator.
+        using iterator_category = std::input_iterator_tag;
+        using value_type = K;
+        using difference_type = std::ptrdiff_t;
+
+    private:
+        const span_type * _p;
+        size_type _local_index;
+        const span_type * _data;
+        const span_type * _end_p;
+        size_type _end_local;
+
+    public:
+        constexpr filter_iterator(const span_type * data, size_type index,
+                                  size_type end_index) noexcept
+            : _p(data + index / N)
+            , _local_index(index & span_index_mask)
+            , _data(data)
+            , _end_p(data + end_index / N)
+            , _end_local(end_index & span_index_mask) {}
+        constexpr filter_iterator() = default;
+        constexpr filter_iterator(const filter_iterator &) = default;
+        constexpr filter_iterator(filter_iterator &&) = default;
+        constexpr filter_iterator & operator=(const filter_iterator &) =
+            default;
+        constexpr filter_iterator & operator=(filter_iterator &&) = default;
+
+        [[nodiscard]] constexpr K operator*() const noexcept {
+            return static_cast<K>(static_cast<size_type>(_p - _data) * N +
+                                  _local_index);
+        }
+        constexpr filter_iterator & operator++() noexcept {
+            span_type shifted = span_type{0};
+            if(++_local_index != N) shifted = (*_p) >> _local_index;
+            if(shifted == span_type{0}) {
+                _local_index = 0;
+                // One past the last span the scan may dereference: _end_p
+                // itself when the end key is span-aligned, else _end_p + 1.
+                // Reading past it would overrun the allocation.
+                const span_type * const end_span_p =
+                    _end_p + (_end_local != size_type{0});
+                do {
+                    // Exhaustion leaves the cursor at end_span_p with a zero
+                    // offset, which the sentinel test below accepts.
+                    if(++_p >= end_span_p) [[unlikely]]
+                        return *this;
+                } while(*_p == span_type{0});
+                shifted = *_p;
+            }
+            _local_index += static_cast<size_type>(std::countr_zero(shifted));
+            return *this;
+        }
+        constexpr filter_iterator operator++(int) noexcept {
+            filter_iterator tmp = *this;
+            ++*this;
+            return tmp;
+        }
+        // Position equality between iterators of the same filter range;
+        // comparing across ranges is undefined, as for any two containers'
+        // iterators.
+        [[nodiscard]] constexpr friend bool operator==(
+            const filter_iterator & x, const filter_iterator & y) noexcept {
+            assert(x._data == y._data);
+            return x._p == y._p && x._local_index == y._local_index;
+        }
+        // The end test the scan itself uses: at or past the end key. The
+        // cursor may legitimately sit beyond it -- on a set bit past the end
+        // key inside the last span, or on end_span_p after exhaustion.
+        [[nodiscard]] constexpr friend bool operator==(
+            const filter_iterator & x, std::default_sentinel_t) noexcept {
+            return x._p > x._end_p ||
+                   (x._p == x._end_p && x._local_index >= x._end_local);
+        }
+    };
+
     template <std::ranges::viewable_range R>
-    auto filter(R && r) const {
+    [[nodiscard]] auto filter(R && r) const {
         // remove_cvref_t, not R: R is the deduced type of a forwarding
-        // reference, so it is iota_view<K, K> & for an lvalue and the
+        // reference, so it is e.g. iota_view<K, K> & for an lvalue and the
         // bit-scanning fast path below was only ever reached for rvalues.
-        if constexpr(std::same_as<std::remove_cvref_t<R>,
-                                  std::ranges::iota_view<K, K>>) {
-            // Clamp both bounds into [0, _size] so that every span pointer
-            // formed below stays inside the allocation.
-            const K end_key = std::clamp(
-                *std::ranges::end(r), static_cast<K>(0), static_cast<K>(_size));
-            const K begin_key =
-                std::clamp(*std::ranges::begin(r), static_cast<K>(0), end_key);
-            // Both keys are now in [0, _size], so indexing in the unsigned
-            // span-index type is value-preserving.
-            const size_type end_index = static_cast<size_type>(end_key);
-            const size_type begin_index = static_cast<size_type>(begin_key);
+        using range_type = std::remove_cvref_t<R>;
+        // Any common iota_view over an integral type, not iota_view<K, K>
+        // exactly: the near-miss iota(0, n) -- int literals against a map
+        // keyed by an unsigned type -- silently enumerated through the
+        // generic branch below, 10-50x slower. (views::take and views::drop
+        // of an iota_view collapse back to an iota_view, so clipped ranges
+        // stay on this path too.)
+        if constexpr(detail::specialization_of<range_type,
+                                               std::ranges::iota_view> &&
+                     std::ranges::common_range<range_type> &&
+                     std::integral<std::ranges::range_value_t<range_type>>) {
+            const auto raw_begin = *std::ranges::begin(r);
+            const auto raw_end = *std::ranges::end(r);
+            using bound_type = std::remove_const_t<decltype(raw_end)>;
+            // Clamp both bounds into [0, _size] before they become span
+            // indices -- in the iota's own type first, so a negative signed
+            // bound never reaches the unsigned cast.
+            const size_type end_index =
+                raw_end <= bound_type{0}
+                    ? size_type{0}
+                    : std::min(static_cast<size_type>(raw_end), _size);
+            const size_type begin_index =
+                raw_begin <= bound_type{0}
+                    ? size_type{0}
+                    : std::min(static_cast<size_type>(raw_begin), end_index);
 
-            //*
-            const_iterator begin_it(_data.get() + begin_index / N,
-                                    begin_index & span_index_mask);
-            const const_iterator end_it(_data.get() + end_index / N,
-                                        end_index & span_index_mask);
-
-            // First span holding no in-range bit, i.e. one past the last span
-            // the scan may dereference. This is NOT end_it._p: when end_index
-            // is a multiple of N, end_it._p is already one past the last span
-            // and reading it overruns the buffer.
-            const span_type * const end_span_p =
-                _data.get() + num_spans(end_index);
-
-            auto next_it = [end_span_p](const_iterator cursor) {
-                span_type shifted;
-                if(++cursor._local_index == N) goto find_next_span;
-                shifted = (*cursor._p) >> cursor._local_index;
-                if(shifted == span_type{0}) {
-                find_next_span:
-                    cursor._local_index = 0;
-                    do {
-                        if(++cursor._p >= end_span_p) [[unlikely]]
-                            return cursor;
-                    } while(*cursor._p == span_type{0});
-                    shifted = *cursor._p;
-                }
-                cursor._local_index +=
-                    static_cast<size_type>(std::countr_zero(shifted));
-                return cursor;
-            };
-
-            // An empty range dereferences nothing: begin_it is already >=
-            // end_it, so the condition below rejects it straight away.
-            if(begin_index < end_index && !*begin_it)
-                begin_it = next_it(begin_it);
-
-            return intrusive_view(
-                begin_it,
-                [data = _data.get()](const const_iterator & cursor) -> K {
-                    return static_cast<K>(
-                        static_cast<size_type>(cursor._p - data) *
-                            size_type(N) +
-                        cursor._local_index);
-                },
-                std::move(next_it),
-                [end_it](const const_iterator & cursor) -> bool {
-                    return cursor < end_it;
-                });
-            /*/
-            auto next_index = [this, end_index](K i) {
-                for(;;) {
-                    const size_type offset = i & span_index_mask;
-                    i += static_cast<size_type>(std::countr_zero(
-                             _data[i / N] &
-                             ((~static_cast<span_type>(1)) << offset))) -
-                         offset;
-                    if((i >= end_index || at(i))) [[likely]]
-                        return i;
-                }
-            };
-
-            if(!at(begin_index)) begin_index = next_index(begin_index);
-
-            return intrusive_view(
-                begin_index, std::identity{}, std::move(next_index),
-                [end_index](const K & i) -> bool { return i < end_index; });
-            //*/
+            filter_iterator first(_data.get(), begin_index, end_index);
+            // The iterator's increment scans from the key *after* its
+            // current one, so the first set key must be found here: advance
+            // iff the begin bit itself is off. An empty range (begin ==
+            // end) dereferences nothing.
+            if(begin_index < end_index && !operator[](begin_index)) ++first;
+            return std::ranges::subrange(first, std::default_sentinel);
         } else {
             // forward, not r: passed as an lvalue, an rvalue container was
             // wrapped in a ref_view of a temporary dead at the semicolon;

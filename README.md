@@ -4,7 +4,7 @@ MELON stands for Modern and Efficient Library for Optimization in Networks.
 The goal of this project is to provide a graph library using modern C ++ functionalities in order to be more user-friendly than the [Boost.Graph library](https://www.boost.org/doc/libs/release/libs/graph/) while being as performant as the [LEMON Graph library](https://lemon.cs.elte.hu/trac/lemon) which is unfortunately not maintained and does not compile with C++ 20 and above.
 Implemented data structures and algorithms are often benchmarked in the repository https://github.com/fhamonic/melon_benchmark and shown to outperform both Boost.Graph and LEMON!
 
-Work in progress.
+**Version 1.0.0** — the first stable release: dependency-free, header-only, with the whole public API frozen for the 1.x series (see [API stability](#api-stability)).
 
 [![C/C++ CI](https://github.com/fhamonic/melon/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/fhamonic/melon/actions/workflows/c-cpp.yml)
 [![Generic badge](https://img.shields.io/badge/C++-23-blue.svg?style=flat&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/23)
@@ -26,19 +26,21 @@ configuration below is tested by CI on every commit; MSVC is not supported
 |   MSVC           |     --          | not supported           |
 
 
-### As a local Conan package (latest commit)
+### As a local Conan package (recommended)
 
 ```
-git clone 
+git clone https://github.com/fhamonic/melon
 cd melon
 conan create . -u -b=missing -pr=<your_conan_profile>
 ```
 
 Then add the dependency to melon in your project `conanfile.txt` or `conanfile.py`.
 
-### As a Conan center package (latest release, still depending on range-v3)
+### As a Conan center package
 
-Just add `melon/1.0.0-alpha.1` to your project `conanfile.txt` or `conanfile.py`.
+The published `melon/1.0.0-alpha.1` package predates 1.0 and still depends on
+range-v3 (1.0 is dependency-free); prefer the repository route above until
+the 1.0.0 package lands on Conan Center.
 
 ### Using CMAKE subdirectory
 
@@ -57,7 +59,7 @@ Import the library and link it to your CMake targets with
 ```cmake
 add_subdirectory(dependencies/melon)
 ...
-target_link_libraries(<your_target> INTERFACE melon)
+target_link_libraries(<your_target> PRIVATE melon::melon)
 ```
 
 ## API stability
@@ -68,10 +70,16 @@ exceptions that carry **no stability guarantee** and may change or disappear
 in any release:
 
 - `melon/detail/` — implementation details, as well as any symbol in a
-  `detail`/`__detail` namespace or prefixed with `__`;
+  `detail` namespace;
 - `melon/experimental/` — work-in-progress data structures. These live in
   `namespace melon::experimental`, so nothing reaches the stable `melon`
   namespace by accident.
+
+The design decisions the guarantee rests on — algorithms are move-only,
+stored members are always views, mappings are read through const access, one
+lifecycle contract for every algorithm — are stated as binding rulings in
+[The 1.0 contract](https://fhamonic.github.io/melon/contract/) chapter of the
+documentation.
 
 ## Documentation
 
@@ -129,5 +137,5 @@ Algorithms:
 
 Utility:
 - JSON serialization
-- SVG / Graphviz printer
+- SVG printer (the Graphviz printer ships since 1.0)
 

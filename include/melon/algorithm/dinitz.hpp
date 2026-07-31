@@ -67,16 +67,9 @@ public:
         set_target(t);
     }
 
-    // The relocation policy is depth_first_search's: the per-vertex cursors
-    // are re-askable -- out_arcs(_graph, v) / in_arcs(_graph, v) for exactly
-    // the vertex they are stored under -- so after the members relocate,
-    // _rebase_cursors() aims them at the *new* _graph and the _consumed
-    // counters put them back where they were.
-    //
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // Hand-written for the same reason as depth_first_search's move: a
-    // memberwise move leaves the cached cursors' ranges pointing at the
-    // moved-from object's _graph member.
+    // Hand-written because a memberwise move leaves the cached cursors' ranges
+    // pointing at the moved-from object's _graph member.
     constexpr dinitz(const dinitz &) = delete;
     constexpr dinitz(dinitz && o)
         : _graph(std::move(o._graph))
@@ -92,7 +85,6 @@ public:
     }
 
     constexpr dinitz & operator=(const dinitz &) = delete;
-    // See the move constructor.
     constexpr dinitz & operator=(dinitz && o) {
         if(this == std::addressof(o)) return *this;
         _graph = std::move(o._graph);
@@ -109,10 +101,6 @@ public:
     }
 
 private:
-    // See depth_first_search::_rebase_stack. Every vertex's cursor is
-    // rebased, including ones the current phase never seeded: rebasing a
-    // default-constructed cursor merely re-points it at a fresh range, and
-    // bfs_rank_vertices() re-seeds every cursor it will read anyway.
     constexpr void _rebase_cursors() {
         if constexpr(!borrowed_graph<Graph>) {
             if constexpr(!std::ranges::borrowed_range<out_arcs_range_t<Graph>>)
@@ -125,12 +113,6 @@ private:
     }
 
 public:
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -167,9 +149,11 @@ private:
         _vertex_rank_map[_t] = 0;
         _bfs_queue.resize(0);
         _bfs_queue.push_back(_t);
-        auto current = _bfs_queue.begin();
-        while(current != _bfs_queue.end()) {
-            const vertex & u = *current;
+        // By value, not by reference: the callers pass _bfs_queue elements,
+        // and the push_backs below reallocate _bfs_queue mid-call in the
+        // no-reserve arm -- a reference parameter dangles inside the running
+        // call.
+        const auto visit = [this](const vertex u) {
             for(auto && a : in_arcs(_graph, u)) {
                 const vertex v = arc_source(_graph, a);
                 if(_vertex_rank_map[v] !=
@@ -188,7 +172,18 @@ private:
                 _vertex_rank_map[v] = _vertex_rank_map[u] + 1;
                 _bfs_queue.push_back(v);
             }
-            ++current;
+        };
+        // The iterator walk is legal when the constructor reserved _bfs_queue
+        if constexpr(has_num_vertices<Graph>) {
+            auto current = _bfs_queue.begin();
+            while(current != _bfs_queue.end()) {
+                visit(*current);
+                ++current;
+            }
+        } else {
+            for(std::size_t i = 0; i < _bfs_queue.size(); ++i) {
+                visit(_bfs_queue[i]);
+            }
         }
         return _vertex_rank_map[_s] != std::numeric_limits<std::size_t>::max();
     }
@@ -241,9 +236,29 @@ public:
         return sum;
     }
 
+    // The flow carried by `a`: zero after reset(), part of a maximum flow
+    // once run() has converged, and of a valid intermediate flow between the
+    // two -- every blocking-flow phase preserves conservation.
+    [[nodiscard]] constexpr value_t flow(const arc & a) const
+        noexcept(noexcept(_carried_flow_map[a])) {
+        return _carried_flow_map[a];
+    }
+    // A view of the stored flows, reached_map()'s contract: valid while this
+    // object lives and stays put.
+    [[nodiscard]] constexpr auto flows_map() const & noexcept(
+        noexcept(maps::mapping_all(_carried_flow_map))) {
+        return maps::mapping_all(_carried_flow_map);
+    }
+    // The expiring overload moves the stored map into a mapping_owning_view,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards.
+    [[nodiscard]] constexpr auto flows_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_carried_flow_map)))) {
+        return maps::mapping_all(std::move(_carried_flow_map));
+    }
+
     [[nodiscard]] constexpr auto minimum_cut() const {
-        // in_arcs, not out_arcs: the branch has to test the range it then
-        // builds the view over. edmonds_karp tests and uses out_arcs.
         if constexpr(std::ranges::viewable_range<in_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(
                 _bfs_queue, [this](const vertex_t<Graph> & v) {

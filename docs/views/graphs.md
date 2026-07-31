@@ -25,6 +25,27 @@ auto rsub2 = graph | adaptor;                   // same type as rsub
 
 A multi-argument adaptor binds first, like `std::views::filter`: `views::subgraph(vf)` returns a self-contained closure holding a *copy* of the filter, so it is reusable and never dangles; `g | views::subgraph` without the parentheses is a compile error. Custom adaptors get the same behavior by deriving from `views::graph_adaptor_closure` (the melon analogue of `std::ranges::range_adaptor_closure`, whose `operator|` requires a `std::ranges::range` and therefore cannot serve graphs).
 
+That copy is the one place the two spellings differ. An *lvalue* map passed to the **direct call** is stored **by reference** — the same [`maps::mapping_all`](ownership.md) rule every algorithm applies to its map arguments: reference for lvalues, ownership for rvalues — while the **bound closure** cannot hold a reference without dangling, so it always copies. With a writable filter the difference is observable:
+
+```cpp
+auto keep = create_vertex_map<bool>(graph, true);
+
+auto s1 = views::subgraph(graph, keep);   // references keep
+s1.disable_vertex(1u);                    // writes keep[1u]
+
+auto s2 = graph | views::subgraph(keep);  // copies keep
+s2.disable_vertex(1u);                    // writes s2's own copy, keep untouched
+```
+
+Either semantics is spellable in either form; only the lvalue default differs:
+
+| you want | direct call | pipe |
+|---|---|---|
+| the view references your map | `views::subgraph(g, keep)` | `g \| views::subgraph(mapping_ref_view(keep))` |
+| the view owns its own copy | `views::subgraph(g, auto(keep))` | `g \| views::subgraph(keep)` |
+
+`mapping_ref_view(keep)` through the pipe is like piping a `std::ranges::ref_view`: you named the reference, so its lifetime is on you. The same rule splits `induced_subgraph`'s vertex range — ref-viewed by the direct call for an lvalue, copied by the closure.
+
 ## `reverse`
 
 `views::reverse(g)` presents `g` with every arc turned around: what was an out-arc is an in-arc, sources become targets.
@@ -66,9 +87,11 @@ Filtering is **consistent, not merely lazy**: an arc is visible only if its own 
 
 Because `true_map` is an empty type held with `[[no_unique_address]]`, the specializations matter:
 
-- with both filters defaulted, every accessor forwards straight through — an unfiltered `subgraph` costs nothing and adds no `filter_view`;
-- with only an arc filter, only the arc ranges are wrapped;
+- with both filters defaulted, every accessor forwards straight through — an unfiltered `subgraph` costs nothing and adds no `filter_view`. That includes the capabilities: `num_vertices`, `num_arcs`, `out_degree`/`in_degree` and the graph's own `arcs_entries` are forwarded, and the view is [borrowed](ownership.md#borrowed-graphs) exactly when the wrapped view is;
+- with only an arc filter, only the arc ranges are wrapped; `arcs_entries` stays available, filtered — which also makes an arc-filtered subgraph of an entries-only graph a full graph;
 - with a vertex filter, arc ranges also check the far endpoint, which is where the extra `arc_target` lookup per arc comes from.
+
+The flip side: the moment any filter is attached, the sized capabilities go away — `has_out_degree`/`has_in_degree` (and `num_arcs`) are `false` for a filtered subgraph, since a filter can hide arcs a count cannot see. An algorithm constrained on them will reject the filtered view.
 
 ### Filters you can flip
 
@@ -82,7 +105,9 @@ sub.disable_vertex(2u);
 sub.enable_arc(7u);
 ```
 
-`disable_vertex` / `enable_vertex` and `disable_arc` / `enable_arc` are constrained on the filter being an `output_mapping_of<..., bool>`, so they simply do not exist on a view built over `true_map` or a lambda. This is how you get a "graph with elements temporarily switched off" — the pattern flow and branch-and-bound codes want — without rebuilding anything.
+`disable_vertex` / `enable_vertex` and `disable_arc` / `enable_arc` are constrained on the filter being an `output_mapping_of<..., bool>`, so they simply do not exist on a view built over `true_map` or a lambda. All four are non-`const` — the filter is part of the view's value, so flipping it through a `const subgraph_view &` does not compile. This is how you get a "graph with elements temporarily switched off" — the pattern flow and branch-and-bound codes want — without rebuilding anything.
+
+*Whose* map they write depends on how the filter came in: built over an lvalue map in a direct call, the view references **your** map — `disable_vertex` writes it, and your own later writes show through the view — while a filter passed as an rvalue (as above) or through a piped closure is owned by the view, and your map is untouched. See [Pipe syntax](#pipe-syntax) for the full table.
 
 A [`static_filter_map`](../containers/data-structures.md#static_filter_map) is a natural filter here: one bit per element, and `filter()` to enumerate what is on.
 
@@ -98,7 +123,9 @@ for(auto && v : vertices(ind)) { ... }   // 0, 2, 5 — in your order
 for(auto && a : arcs(ind)) { ... }       // only arcs with both ends in the list
 ```
 
-The vertex range is held by the view, so it must outlive it; the boolean map is owned.
+The range follows the same storage rule as a filter map: an lvalue range is ref-viewed — keep it alive, and unchanged, for the view's lifetime, since the boolean filter is built from it once at construction — while an rvalue, or the copy a piped closure holds, is owned by the view.
+
+Unlike `views::subgraph`, an induced subgraph has no `enable_vertex` / `disable_vertex`: the filter and the vertex list are two spellings of one vertex set, and flipping a bit in the filter would desync them — `vertices()` would keep naming a vertex the graph no longer has.
 
 ## `undirect`
 
@@ -128,7 +155,7 @@ arc_source(cd, 5);  // 1
 arc_target(cd, 5);  // 3
 ```
 
-Arc `a` leaves vertex `a / (n - 1)`; self-loops are skipped, so the targets of vertex `u` are the other `n - 1` vertices in order. There is no storage and no allocation, which makes it the right input for a dense problem — a TSP instance, a metric closure — where the arc data lives in a `maps::map` over the endpoint coordinates rather than in a container:
+Arc `a` leaves vertex `a / (n - 1)`; self-loops are skipped, so the targets of vertex `u` are the other `n - 1` vertices in order. `out_degree` and `in_degree` are O(1) `noexcept` members answering the constant `n - 1` — for `in_degree` that member is the only reason the capability exists at all, since `in_arcs` is a concatenation and not sized — and the view is [borrowed](ownership.md#borrowed-graphs). There is no storage and no allocation, which makes it the right input for a dense problem — a TSP instance, a metric closure — where the arc data lives in a `maps::map` over the endpoint coordinates rather than in a container:
 
 ```cpp
 auto dist = [&](auto a) {

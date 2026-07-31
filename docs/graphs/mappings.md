@@ -6,24 +6,26 @@ A **mapping** is melon's abstraction for "data indexed by something" — lengths
 
 ```cpp
 template <typename Map, typename Key>
-concept mapping =
-    requires(Map & m, Key && k) { m[std::forward<Key>(k)]; } &&
-    !std::same_as<mapped_value_t<Map, Key>, void>;
+concept mapping = detail::subscriptable_with<Map, Key> &&
+                  !std::same_as<mapped_value_t<Map, Key>, void>;
 ```
 
-Two requirements: the map is subscriptable by the key, and there is actually a value to read. The second clause carries more than it looks like it does — `mapped_value_t` is defined through a **const access**, so a `mapping` is a map you can *read* from a const object. That consequence is easy to miss and is covered [below](#stdmap-is-not-a-mapping).
+Two requirements: the map is subscriptable by the key — `detail::subscriptable_with` is the named helper for that clause, checking `m[k]` on an lvalue map — and there is actually a value to read. The second clause carries more than it looks like it does — `mapped_value_t` is defined through a **const access**, so a `mapping` is a map you can *read* from a const object. That consequence is easy to miss and is covered [below](#stdmap-is-not-a-mapping).
 
 The associated aliases extract the value type; they are constrained on the subscript alone, so they stay usable on maps that fail the readability clause:
 
 ```cpp
 template <typename Map, typename Key>
+    requires detail::subscriptable_with<Map, Key>
 using mapped_reference_t = decltype(std::declval<Map &>()[std::declval<Key>()]);
 
 template <typename Map, typename Key>
+    requires detail::subscriptable_with<Map, Key>
 using mapped_const_reference_t =
     decltype(std::declval<const Map &>()[std::declval<Key>()]);
 
 template <typename Map, typename Key>
+    requires detail::subscriptable_with<Map, Key>
 using mapped_value_t = std::decay_t<mapped_const_reference_t<Map, Key>>;
 ```
 
@@ -47,7 +49,8 @@ concept output_mapping =
 template <typename Map, typename Key>
 concept contiguous_mapping =
     mapping<Map, Key> && std::integral<Key> && requires(Map & m) {
-        { m.data() } -> std::convertible_to<const mapped_value_t<Map, Key> *>;
+        { m.data() } -> std::convertible_to<
+                            std::add_pointer_t<std::add_const_t<mapped_value_t<Map, Key>>>>;
     };
 ```
 
@@ -85,13 +88,15 @@ Verified against the concepts as written:
 
 `std::map::operator[]` is non-const — it inserts a default-constructed value when the key is absent, so it cannot be offered on a const map. A `mapping` must be readable through a *const* access, so `mapping<std::map<K, V>, K>` is **false**. The same holds for `std::unordered_map`.
 
-That does not stop you passing one to an algorithm: map arguments are routed through [`maps::mapping_all`](#mapping-views), and `mapping_ref_view` falls back to `at()` for const access.
+That does not stop you passing one to an algorithm: map arguments are routed through [`maps::mapping_all`](#mapping-views), whose views dispatch each subscript to `m[k]`, then `m(k)`, then `m.at(k)` — with the constness the wrapped map carries.
 
 ```cpp
 std::map<unsigned int, double> lengths = ...;
 
-for(auto && [v, d] : dijkstra(graph, lengths, s)) { ... }   // fine
+for(auto && [v, d] : dijkstra(graph, std::as_const(lengths), s)) { ... }   // reads via at()
 ```
+
+The constness matters. Wrapping the non-const `lengths` directly also compiles, but the resulting `mapping_ref_view<std::map<...>>` holds a non-const reference — its subscript still finds the inserting `operator[]` first, so a missing key silently default-inserts a value. The `at()` branch, which throws on a missing key instead, engages only for a const-qualified wrapped map: a reference view of a const map, as above, or a `mapping_owning_view` read through const.
 
 Where it does bite is a `static_assert`, or a template of your own constrained on `mapping`. Assert on the wrapped type — that is what the algorithm will actually hold:
 
@@ -100,8 +105,6 @@ static_assert(!mapping<std::map<unsigned int, double>, unsigned int>);
 static_assert(output_mapping_of<maps::mapping_all_t<std::map<unsigned int, double> &>,
                                 unsigned int, double>);
 ```
-
-Note that `at()` throws on a missing key where `operator[]` would have inserted one — which is the behaviour you want inside an algorithm anyway.
 
 ## Maps that come from the graph
 

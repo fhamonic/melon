@@ -19,7 +19,7 @@ alg.solution_value();   // 12
 alg.solution_cost();    // 14
 ```
 
-Branch and bound over items sorted by value/cost ratio, bounded by the fractional (LP) relaxation, and written iteratively rather than recursively. The arguments are a **range of items** plus a value [mapping](../graphs/mappings.md) and a cost mapping over them — so the items need not be integers and the data need not be materialized:
+Branch and bound over items sorted by value/cost ratio, bounded by the fractional (LP) relaxation, and written iteratively rather than recursively. The arguments are a **range of items** — a `std::ranges::random_access_range` — plus a value [mapping](../graphs/mappings.md) and a cost mapping over them — so the items need not be integers and the data need not be materialized:
 
 ```cpp
 auto alg = knapsack_bnb(std::move(items), std::move(values),
@@ -72,7 +72,9 @@ for(auto && [p, intersecting] : bentley_ottmann(ids, segments)) {
 
 The Bentley–Ottmann sweep-line: a range yielding every intersection point together with **all** the segment identifiers passing through it, in lexicographic order of the point. Reporting the full set per point rather than one pair per crossing is what makes degenerate inputs — three or more segments through one point, overlapping collinear segments — come out right.
 
-The arguments are a range of segment identifiers and a mapping from identifier to segment, in the same shape as the knapsack solvers.
+The arguments are a range of segment identifiers — a `forward_range`, stored in the class through `std::views::all` — and a mapping from identifier to segment. The range is kept because `reset()` re-seeds the event queue from it and replays the sweep.
+
+`bentley_ottmann_traits` has a single flag, `report_endpoints` (default `true`), and — alone in the library — the `Traits` parameter comes first in the template parameter list.
 
 ### Exact arithmetic
 
@@ -87,14 +89,16 @@ std::print("({}/{}, {}/{})", std::int64_t(std::get<0>(p).num()),
 
 Fractions are not normalized, so the point `(2, 2)` may be reported as `64/32, 64/32`. Compare with cross-multiplication, not by inspecting the numerator.
 
-!!! warning "Use `numeric::integer<T>`, not a raw integer type"
+!!! note "Raw integer coordinates are exact too"
 
-    `numeric::integer<T>` is `numeric::rational<T, numeric::const_value<int, 1>>` — an integer that
-    participates in melon's exact rational arithmetic. Instantiating the sweep
-    on raw `int` coordinates compiles, and then divides by zero at run time.
-    Feed it `numeric::integer<std::int64_t>`, or a
+    Where the geometry divides — intersection points and slopes — raw integral
+    coordinates are promoted to `numeric::rational`, so `int` segments yield
+    exact rational intersections rather than truncated ones (or a division by
+    zero on vertical lines, as they once produced).
+    `numeric::integer<T>` — that is,
+    `numeric::rational<T, numeric::const_value<int, 1>>` — works as well, and a
     [`bounded_value`](../containers/data-structures.md#other-utilities)
-    if you want the intermediate widening checked.
+    coordinate checks the intermediate widening on top.
 
 The geometric predicates live in `melon/utility/geometry.hpp` behind the `cartesian_point`, `cartesian_segment` and `cartesian_line` concepts, so a point type of yours — any type answering the concept, not just `std::tuple` — works as well.
 
@@ -113,4 +117,4 @@ std::mt19937 rng(42);
 auto item = sampler(rng);
 ```
 
-The probability argument is a callable, and the probabilities are expected to sum to 1. Construction is O(n); each sample afterwards is one uniform integer, one uniform real and one branch. Use it for repeated sampling from a fixed distribution — random-restart heuristics, randomized rounding, Monte-Carlo over a fixed graph.
+The probability argument is a callable yielding non-negative weights; like `std::discrete_distribution`, they need not sum to 1 — the table is normalized by their sum. Construction is O(n); each sample afterwards is one uniform integer, one uniform real and one branch. Use it for repeated sampling from a fixed distribution — random-restart heuristics, randomized rounding, Monte-Carlo over a fixed graph.

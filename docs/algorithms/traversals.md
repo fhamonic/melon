@@ -17,9 +17,9 @@ Requires `outward_adjacency_graph` and `has_vertex_map` — arcs are never inspe
 
 | Flag | Default | Effect |
 | --- | :-: | --- |
-| `store_pred_vertices` | `false` | enables `pred_vertex(v)` |
-| `store_pred_arcs` | `false` | enables `pred_arc(v)`; requires `outward_incidence_graph` |
-| `store_distances` | `false` | enables `dist(v)` — the number of hops |
+| `store_pred_vertices` | `false` | enables `pred_vertex(v)` and `pred_vertices_map()` |
+| `store_pred_arcs` | `false` | enables `pred_arc(v)` and `pred_arcs_map()`; requires `outward_incidence_graph` |
+| `store_distances` | `false` | enables `dist(v)` — the number of hops — and `dists_map()` |
 | `store_traversal_range` | `false` | enables `traversal()`, a `std::span<const vertex>` of the vertices reached so far |
 
 ```cpp
@@ -67,9 +67,9 @@ Same requirements as BFS. The traversal is iterative — an explicit stack of pa
 
 | Flag | Default | Effect |
 | --- | :-: | --- |
-| `store_pred_vertices` | `false` | enables `pred_vertex(v)` |
-| `store_pred_arcs` | `false` | enables `pred_arc(v)`; requires `outward_incidence_graph` |
-| `store_depth` | `false` | enables `depth(v)` — see the warning below |
+| `store_pred_vertices` | `false` | enables `pred_vertex(v)` and `pred_vertices_map()` |
+| `store_pred_arcs` | `false` | enables `pred_arc(v)` and `pred_arcs_map()`; requires `outward_incidence_graph` |
+| `store_depth` | `false` | enables `depth(v)` and `depths_map()` — see the warning below |
 
 !!! warning "`depth(v)` is not a distance"
 
@@ -89,9 +89,9 @@ for(auto && v : topological_sort(graph)) std::print(" {}", v);
 //  0 1 2 3 5 4
 ```
 
-Yields the vertices of a DAG in an order where every arc goes forward. Requires `outward_incidence_graph` and `has_vertex_map`; unlike the searches, it takes no source — it starts from every vertex with no incoming arc and discovers the rest by decrementing in-degrees.
+Yields the vertices of a DAG in an order where every arc goes forward. Requires `outward_incidence_graph`, `has_vertex_map` and `has_num_vertices` — the constructor reserves `num_vertices` and keeps an iterator into that buffer, so the count must be known; unlike the searches, it takes no source — it starts from every vertex with no incoming arc and discovers the rest by decrementing in-degrees.
 
-Traits are `store_pred_vertices`, `store_pred_arcs` and `store_rank`, the last enabling `rank(v)`: the number of arcs on the longest path from a source down to `v`, so that `rank(u) < rank(v)` for every arc `u -> v`. It is a level, not a position in the emitted sequence — vertices that no path orders relative to each other share a rank.
+Traits are `store_ranks` and `store_critical_paths`. `store_ranks` enables `rank(v)`: the number of arcs on the longest path from a source down to `v`, so that `rank(u) < rank(v)` for every arc `u -> v`. It is a level, not a position in the emitted sequence — vertices that no path orders relative to each other share a rank. `store_critical_paths` enables `pred_vertex(v)`, `pred_arc(v)` and `critical_path_to(t)`.
 
 !!! warning
 
@@ -157,7 +157,7 @@ for(auto && component : weakly_connected_components(graph)) {
 }
 ```
 
-It requires the digraph to be both `outward_adjacency_graph` and `inward_adjacency_graph`, since the underlying [`views::undirect`](../views/graphs.md#undirect) must walk both ways.
+It requires the digraph to be both `outward_incidence_graph` and `inward_incidence_graph`, plus `has_vertex_map`, since the underlying [`views::undirect`](../views/graphs.md#undirect) must walk both ways.
 
 ## `traversal_forest`
 

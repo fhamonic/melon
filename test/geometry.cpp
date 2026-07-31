@@ -55,6 +55,33 @@ GTEST_TEST(cartesian, point_xy_comparator_orders_by_x_then_y) {
         requires { typename cartesian::point_xy_comparator::is_transparent; });
 }
 
+// regression: the comparator was unconditionally noexcept over user comparison
+// operators -- a throwing coordinate comparison became std::terminate.
+namespace {
+struct throwing_coordinate {
+    int v = 0;
+    bool operator==(const throwing_coordinate &) const noexcept(false) {
+        return true;
+    }
+    bool operator<(const throwing_coordinate &) const noexcept(false) {
+        return false;
+    }
+};
+}  // namespace
+
+GTEST_TEST(cartesian, point_xy_comparator_noexcept_follows_the_coordinates) {
+    using throwing_point = std::pair<throwing_coordinate, throwing_coordinate>;
+    static_assert(cartesian_point<throwing_point>);
+    static_assert(!noexcept(cartesian::point_xy_comparator{}(
+        std::declval<const throwing_point &>(),
+        std::declval<const throwing_point &>())));
+    // Positive control.
+    static_assert(noexcept(cartesian::point_xy_comparator{}(
+        std::declval<const std::pair<int, int> &>(),
+        std::declval<const std::pair<int, int> &>())));
+    SUCCEED();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // segment_to_line yields the supporting line a.x + b.y = c of a segment
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,6 +167,40 @@ GTEST_TEST(cartesian, lines_intersection_rejects_parallel_lines) {
     ASSERT_FALSE(cartesian::lines_intersection(l1, parallel).has_value());
     // Colinear lines have no single intersection point either.
     ASSERT_FALSE(cartesian::lines_intersection(l1, same).has_value());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// integral coordinates divide exactly through rationals instead of truncating
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: plain integer coordinates satisfy cartesian_point too, and `/`
+// truncated their intersections -- (1, 1/3) came back as (1, 0).
+GTEST_TEST(cartesian, integral_coordinates_intersect_exactly) {
+    using ipoint = std::pair<int, int>;
+    using isegment = std::pair<ipoint, ipoint>;
+    const auto la = cartesian::segment_to_line(isegment{{0, 0}, {3, 1}});
+    const auto lb = cartesian::segment_to_line(isegment{{1, 0}, {1, 1}});
+
+    const auto i = cartesian::lines_intersection(la, lb);
+    ASSERT_TRUE(i.has_value());
+    ASSERT_EQ(std::get<0>(i.value()), 1);
+    ASSERT_EQ(std::get<1>(i.value()), R(1, 3));
+}
+
+// regression: line_slope on an integral vertical line divided by zero; it now
+// yields make_rational's 1/0 infinity sentinel, like the rational-coordinate
+// path always did.
+GTEST_TEST(cartesian, integral_vertical_line_slope_is_the_infinity_sentinel) {
+    using ipoint = std::pair<int, int>;
+    using isegment = std::pair<ipoint, ipoint>;
+    const auto vertical = cartesian::segment_to_line(isegment{{3, 0}, {3, 9}});
+
+    const auto slope = cartesian::line_slope(vertical);
+    ASSERT_EQ(slope.num(), 1);
+    ASSERT_EQ(slope.den(), 0);
+
+    const auto diagonal = cartesian::segment_to_line(isegment{{0, 0}, {4, 2}});
+    ASSERT_EQ(cartesian::line_slope(diagonal), R(1, 2));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -16,6 +16,9 @@ using namespace melon;
 GTEST_TEST(consumable_view, test_std_iota_view) {
     auto v = std::views::iota(0, 9);
     auto r = consumable_view(v);
+    std::vector<int> took;
+    for(; !r.empty(); r.advance()) took.push_back(r.current());
+    ASSERT_TRUE(EQ_RANGES(took, {0, 1, 2, 3, 4, 5, 6, 7, 8}));
 }
 
 GTEST_TEST(consumable_view, test_vector_manual_loop) {
@@ -259,6 +262,60 @@ GTEST_TEST(consumable_input_view, reseeds_from_an_externally_held_range) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// a default-constructed cursor is *disengaged*: it supports destruction and
+// assignment only, and re-seeding engages it. The state exists so per-vertex
+// cursor maps can default-construct their slots even when the range -- a
+// filter_view over a capturing lambda, every filtered subgraph's incidence
+// shape -- cannot be default-constructed. dinitz over any filtered subgraph
+// was unconstructible without it.
+////////////////////////////////////////////////////////////////////////////////
+
+namespace disengaged_probes {
+inline constexpr auto pred = [threshold = 2u](const unsigned int i) {
+    return i > threshold;
+};
+using filtered = decltype(std::views::filter(
+    std::declval<std::vector<unsigned int> &>(), pred));
+static_assert(!std::default_initializable<filtered>);
+static_assert(!std::ranges::borrowed_range<filtered>);
+}  // namespace disengaged_probes
+
+GTEST_TEST(consumable_input_view, default_constructed_is_assignment_only) {
+    using namespace disengaged_probes;
+    static_assert(std::default_initializable<consumable_input_view<filtered>>);
+
+    std::vector<unsigned int> v = {3u, 1u, 4u, 1u};
+    consumable_input_view<filtered> cv;
+    cv = std::views::filter(v, pred);
+    std::vector<unsigned int> took;
+    for(; !cv.empty(); cv.advance()) took.push_back(cv.current());
+    ASSERT_TRUE(EQ_RANGES(took, {3u, 4u}));
+}
+
+// Copying or moving a disengaged cursor must yield another disengaged cursor:
+// static_map and std::vector relocate their slots wholesale, so a reseek
+// through the (absent) range would fault before any slot is ever seeded.
+GTEST_TEST(consumable_input_view, disengaged_cursor_survives_relocation) {
+    using namespace disengaged_probes;
+
+    consumable_input_view<filtered> a;
+    consumable_input_view<filtered> b(std::move(a));
+    consumable_input_view<filtered> c(b);
+    consumable_input_view<filtered> d;
+    d = std::move(c);
+
+    // the relocated cursor is still assignable and usable
+    std::vector<unsigned int> v = {5u, 2u, 7u};
+    d = std::views::filter(v, pred);
+    ASSERT_FALSE(d.empty());
+    ASSERT_EQ(d.current(), 5u);
+    d.advance();
+    ASSERT_EQ(d.current(), 7u);
+    d.advance();
+    ASSERT_TRUE(d.empty());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // the single-pass cursor iterator is a C++20 input iterator and advertises no
 // Cpp17 category
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,3 +333,41 @@ static_assert(std::input_iterator<consumable_it>);
 static_assert(std::same_as<typename consumable_it::iterator_concept,
                            std::input_iterator_tag>);
 static_assert(!advertises_cpp17_category_cv<consumable_it>);
+
+////////////////////////////////////////////////////////////////////////////////
+// consumable_iterator forwards noexcept-ness instead of claiming it
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: increment and both comparisons were unconditionally noexcept
+// while forwarding into an arbitrary wrapped iterator -- a throwing increment
+// became std::terminate.
+namespace {
+struct throwing_iterator {
+    using value_type = int;
+    using difference_type = std::ptrdiff_t;
+    int operator*() const noexcept(false) { return 0; }
+    throwing_iterator & operator++() noexcept(false) { return *this; }
+    void operator++(int) noexcept(false) {}
+    bool operator==(const throwing_iterator &) const noexcept(false) {
+        return true;
+    }
+};
+}  // namespace
+
+GTEST_TEST(consumable_iterator, noexcept_follows_the_wrapped_iterator) {
+    static_assert(std::input_iterator<throwing_iterator>);
+    using CI = consumable_iterator<throwing_iterator, throwing_iterator>;
+    static_assert(!noexcept(++std::declval<CI &>()));
+    static_assert(!noexcept(std::declval<CI &>()++));
+    static_assert(
+        !noexcept(std::declval<const CI &>() == std::declval<const CI &>()));
+    static_assert(!noexcept(std::declval<const CI &>() ==
+                            std::declval<const throwing_iterator &>()));
+
+    // Positive control: nothrow wrapped iterators keep the guarantee.
+    using PI = consumable_iterator<const int *, const int *>;
+    static_assert(noexcept(++std::declval<PI &>()));
+    static_assert(
+        noexcept(std::declval<const PI &>() == std::declval<const PI &>()));
+    SUCCEED();
+}

@@ -2,7 +2,7 @@
 
 ## Maximum flow
 
-Both maximum-flow algorithms take a digraph and a capacity per arc, and both require `outward_incidence_graph`, `inward_incidence_graph`, `has_vertex_map` and `has_arc_map` — the residual network is walked in both directions, so `static_forward_digraph` is not accepted.
+Both maximum-flow algorithms take a digraph and a capacity per arc, and both require `outward_incidence_graph`, `inward_incidence_graph`, `has_vertex_map` and `has_arc_map` — the residual network is walked in both directions, so `static_forward_digraph` is not accepted. The capacity map's value type must have a `std::numeric_limits` specialization: a type without one has no usable infinity, and it is rejected at the constraint.
 
 They are not [ranges](index.md): `run()` computes the flow, and the results are read afterwards.
 
@@ -44,6 +44,8 @@ Dinitz's algorithm: rank the vertices by BFS, then push blocking flows through t
 | `reset()` | zero the flow, keep the graph and capacities |
 | `run()` | compute a maximum flow |
 | `flow_value()` | the value of the flow — the sum over the source's out-arcs |
+| `flow(a)` | the flow carried by the arc `a` |
+| `flows_map()` | a read-only view of the per-arc flows, for bulk reads and composition |
 | `minimum_cut()` | the arcs of a minimum cut, as a range |
 
 !!! warning "Set the terminals before running"
@@ -68,9 +70,16 @@ for(auto && [s, t] : pairs) {
 !!! warning
 
     `flow_value()` sums the flow on the arcs leaving the source, so it is only
-    the maximum flow value after `run()` has converged. There is no
-    per-arc flow accessor in the public interface yet — if you need the flow
-    decomposition rather than the value and the cut, this is currently a gap.
+    the maximum flow value after `run()` has converged. `flow(a)` and
+    `flows_map()` read the same state: zero after `reset()`, a maximum flow
+    once `run()` has converged, and a valid (conserved, capacity-feasible)
+    intermediate flow in between. Like every melon map view, `flows_map()`
+    refers into the algorithm — it is valid while the algorithm lives and
+    stays put. To keep the flows and discard the algorithm, extract them from
+    an expiring object — `std::move(alg).flows_map()` moves the stored map
+    into an owning view; see
+    [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
+    Extraction is terminal: call nothing else on the algorithm afterwards.
 
 ## Minimum spanning tree
 
@@ -106,8 +115,8 @@ Since `views::undirect` keeps the arc identifiers as edge identifiers, the cost 
     There is no separate Prim implementation: running [`dijkstra`](shortest-paths.md#semirings)
     with `minimum_spanning_tree_semiring` and `store_paths = true` performs
     Prim's traversal, and `pred_arc(v)` gives the tree edges. Kruskal is
-    usually what you want — it is a range, it handles forests, and it does not
-    need `has_vertex_map` — but the Prim route wins on dense graphs and gives
+    usually what you want — it is a range and it handles forests — but the
+    Prim route wins on dense graphs and gives
     you the tree rooted where you chose.
 
 ## What is missing

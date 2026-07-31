@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <type_traits>
 
@@ -39,15 +41,18 @@ public:
     constexpr reference operator*() { return *(*_it); }
     constexpr reference operator*() const { return *(*_it); }
 
-    constexpr void operator++(int) noexcept { ++(*_it); }
-    constexpr consumable_iterator & operator++() noexcept {
+    // Conditional, not unconditional: these forward into an arbitrary wrapped
+    // iterator, whose increment and comparison may throw.
+    constexpr void operator++(int) noexcept(noexcept(++(*_it))) { ++(*_it); }
+    constexpr consumable_iterator & operator++() noexcept(noexcept(++(*_it))) {
         ++(*_it);
         return *this;
     }
 
     [[nodiscard]] constexpr friend bool operator==(
         const consumable_iterator & it1,
-        const consumable_iterator & it2) noexcept
+        const consumable_iterator & it2) noexcept(noexcept((*it1._it) ==
+                                                           (*it2._it)))
         requires std::equality_comparable<Iterator>
     {
         return (*it1._it) == (*it2._it);
@@ -55,7 +60,8 @@ public:
 
     [[nodiscard]] constexpr friend bool operator==(
         const consumable_iterator & iterator,
-        const Sentinel & sentinel) noexcept {
+        const Sentinel & sentinel) noexcept(noexcept((*iterator._it) ==
+                                                     sentinel)) {
         return (*iterator._it) == sentinel;
     }
 };
@@ -81,7 +87,16 @@ protected:
     // several standard views (filter_view above all) only expose end() on a
     // non-const object, and an algorithm's finished() has to be answerable
     // from a const one. Nothing here ever mutates _range through it.
-    mutable R _range;
+    //
+    // An optional, so that the cursor is default-constructible even when R is
+    // not -- a filter_view over a capturing lambda, which is what every
+    // filtered subgraph's incidence range is. Algorithms keep these cursors in
+    // per-vertex maps (dinitz), and static_map default-constructs its slots: a
+    // non-default-constructible cursor made dinitz over any filtered subgraph
+    // unconstructible. A default-constructed cursor is *disengaged*: it only
+    // supports destruction and assignment, which is the contract those maps
+    // need -- every slot is re-seeded through operator=(Rng &&) before use.
+    mutable std::optional<R> _range;
     std::ranges::iterator_t<R> _it;
     // How far _it has walked. It exists because _it may refer *back* into
     // _range: a std::ranges::filter_view iterator -- which is what every
@@ -101,10 +116,13 @@ protected:
     std::size_t _consumed = 0;
 
     // Puts _it back where _consumed says it should be, against the _range this
-    // object now owns.
+    // object now owns. A no-op on a disengaged cursor, so that copying or
+    // moving one yields another disengaged cursor instead of dereferencing an
+    // empty optional.
     constexpr void _reseek() {
+        if(!_range.has_value()) return;
         _it = std::ranges::next(
-            std::ranges::begin(_range),
+            std::ranges::begin(*_range),
             static_cast<std::ranges::range_difference_t<R>>(_consumed));
     }
 
@@ -117,7 +135,7 @@ public:
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     explicit consumable_input_view(Rng && r)
         : _range(std::views::all(std::forward<Rng>(r)))
-        , _it(std::ranges::begin(_range)) {}
+        , _it(std::ranges::begin(*_range)) {}
 
     // A cursor already `consumed` elements into a freshly obtained copy of
     // the range: the relocation shape. An algorithm moving a directly-held
@@ -184,8 +202,11 @@ public:
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     constexpr consumable_input_view & operator=(Rng && r) {
-        _range = std::views::all(std::forward<Rng>(r));
-        _it = std::ranges::begin(_range);
+        // emplace, not assignment: it only needs R move-constructible, which
+        // every view is, where optional's converting assignment would also
+        // demand assignability.
+        _range.emplace(std::views::all(std::forward<Rng>(r)));
+        _it = std::ranges::begin(*_range);
         _consumed = 0;
         return *this;
     }
@@ -202,11 +223,14 @@ public:
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     constexpr void rebase(Rng && r) {
-        _range = std::views::all(std::forward<Rng>(r));
+        _range.emplace(std::views::all(std::forward<Rng>(r)));
         _reseek();
     }
 
-    [[nodiscard]] bool empty() const { return _it == std::ranges::end(_range); }
+    [[nodiscard]] bool empty() const {
+        assert(_range.has_value());
+        return _it == std::ranges::end(*_range);
+    }
     void advance() {
         ++_it;
         ++_consumed;
@@ -219,7 +243,8 @@ public:
                                    std::ranges::sentinel_t<R>>(_it);
     }
     [[nodiscard]] constexpr auto end() const {
-        return std::ranges::end(_range);
+        assert(_range.has_value());
+        return std::ranges::end(*_range);
     }
 };
 
@@ -343,7 +368,7 @@ public:
         if constexpr(std::ranges::borrowed_range<R>) {
             base::_it = _begin;
         } else {
-            base::_it = std::ranges::begin(base::_range);
+            base::_it = std::ranges::begin(*base::_range);
             base::_consumed = 0;
         }
     }

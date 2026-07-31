@@ -155,6 +155,7 @@ GTEST_TEST(bounded_value, conversions_test) {
 
     auto a = A(5);
     B b = a;
+    ASSERT_EQ(b.value(), 5);
 
     static_assert(std::constructible_from<A::value_type, A>);
     static_assert(std::convertible_to<std::pair<A, A>, std::pair<B, B>>);

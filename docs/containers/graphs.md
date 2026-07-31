@@ -122,10 +122,43 @@ auto [graph, length_map, name_map] = builder.build();
 
 - `add_arc` returns the builder, so calls chain.
 - `build()` returns a `std::tuple` — with no properties it is a one-element tuple, so the idiom stays `auto [graph] = builder.build();`.
+- Both are ref-qualified: `build()` on an lvalue builder copies the property vectors, `std::move(builder).build()` — or a whole chain started from a temporary, `static_digraph_builder<G, P>(n).add_arc(…).build()` — moves them out and leaves the builder moved-from. `build()` is not idempotent either way: it sorts in place.
 - The property maps are `std::vector<Property>`, which is an `output_mapping` and a `contiguous_mapping`; nothing else is required of them.
 - The builder works for any `G` constructible from `(num_vertices, sources, targets)` — `static_forward_digraph` as well as `static_digraph`.
 
 **`build()` sorts the arcs** by source, then by target, and permutes the property maps along with them. An arc's final identifier is its rank in that order, not the order you called `add_arc` in. `length_map[a]` is always correct for arc `a`; what you must not do is remember an insertion index and use it as an arc later.
+
+## Rebuilding as a static_digraph
+
+`make_static_digraph` rebuilds any outward-incidence graph as a `static_digraph`, renumbering the vertices `0..n-1` and translating any maps you pass onto the new identifiers. It returns the builder's tuple shape:
+
+```cpp
+#include "melon/utility/make_static_digraph.hpp"
+
+// compact a mutable_digraph after removals: holes closed, identifiers dense
+auto [sg] = make_static_digraph(g);
+
+// choose the new vertex order and carry maps across
+auto [sg, new_weights, new_lengths] = make_static_digraph(
+    g, by_degree_cmp, std::tie(weight_map), std::tie(length_map));
+```
+
+Everything after the graph is optional. The second argument is a strict weak order on the old vertices — new vertex 0 is the smallest under it (`std::less` by default); the comparator is taken by value, so a stateful one is copied. The last two are tuples of vertex maps and arc maps; each comes back as a `static_map` over the new handles, in the same position of the returned tuple. Any [mapping](../graphs/mappings.md) can go in — the maps are only read, so `std::tie` / `std::forward_as_tuple` pass them without copying, and `std::make_tuple` hands the call ownership of a map you no longer need. The vertex and arc counts must fit `static_digraph`'s handle type, asserted in debug builds.
+
+The two use cases it exists for:
+
+- **Compacting.** A `mutable_digraph` accumulates holes as it edits; once the topology settles, one call produces the dense, cache-friendly structure the algorithms run fastest on.
+- **Reordering.** The vertex order of a `static_digraph` is its memory layout. Renumbering along a better order (by degree, by BFS discovery, by geometric proximity) is a locality optimization the comparator expresses directly.
+
+!!! warning "Every identifier changes"
+
+    Like the builder, the rebuild renumbers vertices *and* arcs. The maps you
+    pass in are translated for you; a vertex or arc identifier you stored
+    anywhere else refers to the old graph only. The correspondence is not
+    returned — if you need it, pass it in as data: a vertex map holding each
+    vertex's own identifier comes back as the new-to-old table.
+
+It requires `outward_incidence_graph` (the rebuild walks `out_arcs` and `arc_target`) and `has_vertex_map` — the concepts remove the overload otherwise. Arcs are emitted grouped by new source in the order the old graph lists them, which satisfies the sorted-sources precondition of `static_digraph`'s constructor; within one source they are *not* sorted by target the way the builder sorts them.
 
 ## Generating a graph
 
@@ -134,14 +167,16 @@ auto [graph, length_map, name_map] = builder.build();
 ```cpp
 #include "melon/utility/erdos_renyi.hpp"
 
-auto graph = erdos_renyi<static_digraph>(1000, 0.01);
+std::mt19937 gen{42};
+auto graph = erdos_renyi<static_digraph>(1000, 0.01, gen);   // reproducible
+auto quick = erdos_renyi<static_digraph>(1000, 0.01);        // seeded from random_device
 ```
 
-It uses a static `std::mt19937` seeded from `std::random_device`, so the sequence is not reproducible across runs and the generator is not thread-safe. For a controlled experiment, build the arcs yourself with your own engine and feed the builder.
+The three-argument overload takes your generator by reference — the caller owns the seed, so it is the reproducible form and the one safe to call concurrently (each thread with its own generator). The two-argument convenience overload seeds a *local* engine from `std::random_device` per call: thread-safe, but not reproducible.
 
 ## Printing a graph
 
-`graphviz_printer<G>` renders a graph to a DOT stream, with optional per-vertex and per-arc labels, positions, sizes and colors. Every setter takes a [mapping](../graphs/mappings.md), so a lambda wrapped in `maps::map` is enough and no map has to be materialized.
+`graphviz_printer<G>` renders a graph to a DOT stream, with optional per-vertex and per-arc labels, positions, sizes and colors. Every setter takes a [mapping](../graphs/mappings.md), so a lambda wrapped in `maps::map` is enough and no map has to be materialized. The constructor is `explicit`, references the graph, and refuses a temporary one (the rvalue overload is deleted — the printer would dangle).
 
 ```cpp
 #include <iterator>
@@ -178,6 +213,6 @@ Colors are `(r, g, b)` triples of `unsigned char`; vertex positions are `(x, y)`
 
 - Topology fixed, both directions needed → **`static_digraph`**.
 - Topology fixed, forward traversal only, memory tight → **`static_forward_digraph`**.
-- Topology changes → **`mutable_digraph`**.
+- Topology changes → **`mutable_digraph`**; once it settles, [compact it](#rebuilding-as-a-static_digraph).
 - Topology is a *restriction* of another graph → do not build anything, use [`views::subgraph`](../views/graphs.md#subgraph).
 - Topology is implicit (a complete graph, a grid) → [`views::complete_digraph`](../views/graphs.md#complete_digraph), or [your own type](../graphs/custom-graphs.md).

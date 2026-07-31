@@ -25,6 +25,8 @@
 #include "melon/algorithm/competing_dijkstras.hpp"
 #include "melon/algorithm/depth_first_search.hpp"
 #include "melon/algorithm/dijkstra.hpp"
+#include "melon/algorithm/dinitz.hpp"
+#include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/knapsack_bnb.hpp"
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
@@ -456,6 +458,98 @@ GTEST_TEST(api_review, subgraph_sees_removals_in_the_graph_underneath) {
     EXPECT_TRUE(sg.is_valid_vertex(b));
 }
 
+// subgraph dropped arcs_entries the same way graph_forwarding_interface once
+// did (views_do_not_drop_arcs_entries above): a filterless subgraph of an
+// entries-only graph stopped modeling `graph` at all, and a graph with its
+// own arcs_entries got the synthesized fallback. And since an entry names the
+// arc and both endpoints -- everything the filters need -- a *filtered*
+// subgraph filters the base's own entries too, which is the only possible
+// protocol for a graph with no endpoint accessors. (An arc-filtered subgraph
+// of such a graph is therefore a full `graph` again; a vertex-filtered one
+// still is not, because `arcs` itself has no entries-based fallback -- with
+// no incidence to join, has_arcs cannot hold.)
+GTEST_TEST(api_review, subgraph_keeps_arcs_entries) {
+    using EOSub =
+        decltype(views::subgraph(std::declval<entries_only_digraph &>()));
+    static_assert(melon::graph<EOSub>);
+    static_assert(melon::cpo::has_own_arcs_entries<EOSub>);
+    using EOArcFiltered = decltype(views::subgraph(
+        std::declval<entries_only_digraph &>(), std::declval<maps::true_map>(),
+        std::declval<static_map<unsigned, bool> &>()));
+    static_assert(melon::graph<EOArcFiltered>);
+
+    using MD = mutable_digraph;
+    using MDSub = decltype(views::subgraph(std::declval<MD &>()));
+    static_assert(
+        std::same_as<decltype(melon::arcs_entries(std::declval<const MD &>())),
+                     decltype(melon::arcs_entries(
+                         std::declval<const MDSub &>()))>);
+
+    entries_only_digraph g{{{0u, 1u}, {1u, 2u}, {2u, 0u}}};
+    auto vfilter = static_map<unsigned, bool>(3u, true);
+    auto afilter = static_map<unsigned, bool>(3u, true);
+    auto sub = views::subgraph(g, vfilter, afilter);
+
+    afilter[0u] = false;  // drops arc 0
+    vfilter[2u] = false;  // drops arcs 1 and 2, both touching vertex 2
+    EXPECT_TRUE(std::ranges::empty(melon::arcs_entries(sub)));
+
+    vfilter[2u] = true;
+    std::vector<unsigned> kept;
+    for(auto && [a, ends] : melon::arcs_entries(sub)) kept.push_back(a);
+    EXPECT_EQ(kept, (std::vector<unsigned>{1u, 2u}));
+}
+
+// The counts a filter cannot change forward with the base's noexcept; the
+// moment a filter could change the answer, the member must vanish rather than
+// lie (and mutable_digraph's non-sized arcs range means no fallback resurrects
+// it).
+GTEST_TEST(api_review, subgraph_forwards_what_no_filter_can_change) {
+    using MD = mutable_digraph;
+    using MDSub = decltype(views::subgraph(std::declval<MD &>()));
+    static_assert(melon::has_num_arcs<MD>);
+    static_assert(melon::has_num_arcs<MDSub>);
+
+    using MDFiltered = decltype(views::subgraph(
+        std::declval<MD &>(), std::declval<maps::true_map>(),
+        std::declval<arc_map_t<MD, bool> &>()));
+    static_assert(!melon::has_num_arcs<MDFiltered>);
+
+    using SD = static_digraph;
+    using SDSub = decltype(views::subgraph(std::declval<SD &>()));
+    static_assert(melon::has_out_degree<SDSub> && melon::has_in_degree<SDSub>);
+    static_assert(noexcept(std::declval<const SDSub &>().num_arcs()));
+    SUCCEED();
+}
+
+// borrowed_graph.hpp names subgraph's captured-`this` filters as the reason it
+// cannot be borrowed -- but with no filters every range forwards straight
+// through, so the view is borrowed exactly when the wrapped one is. What that
+// buys downstream: a traversal over subgraph(g) relocates memberwise and
+// nothrow again, like a traversal over g itself, instead of running the
+// cursor-rebase loop.
+GTEST_TEST(api_review, filterless_subgraph_is_borrowed) {
+    using SD = static_digraph;
+    using RefSub = decltype(views::subgraph(std::declval<SD &>()));
+    static_assert(melon::borrowed_graph<RefSub>);
+    // An owning subgraph embeds the graph: its ranges point into the view.
+    using OwnSub = decltype(views::subgraph(std::declval<SD>()));
+    static_assert(!melon::borrowed_graph<OwnSub>);
+    // A filter puts `this` back into every range.
+    using Filtered = decltype(views::subgraph(
+        std::declval<SD &>(), std::declval<maps::true_map>(),
+        std::declval<arc_map_t<SD, bool> &>()));
+    static_assert(!melon::borrowed_graph<Filtered>);
+
+    using MD = mutable_digraph;
+    using DFSDirect = decltype(depth_first_search(std::declval<MD &>()));
+    using DFSSub =
+        decltype(depth_first_search(views::subgraph(std::declval<MD &>())));
+    static_assert(std::is_nothrow_move_constructible_v<DFSDirect>);
+    static_assert(std::is_nothrow_move_constructible_v<DFSSub>);
+    SUCCEED();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // noexcept specifications are honest in both directions
 ////////////////////////////////////////////////////////////////////////////////
@@ -540,6 +634,92 @@ GTEST_TEST(api_review, cpo_noexcept_follows_the_branch_it_takes) {
     auto throwing_view = graph_ref_view(thrower);
     static_assert(noexcept(honest_view.vertices()));
     static_assert(!noexcept(throwing_view.vertices()));
+    SUCCEED();
+}
+
+// current() returns the vertex by value, and the copy that return performs is
+// part of what its noexcept must measure: with a throwing-copy vertex type a
+// nothrow claim turns the first throw into std::terminate. BFS, DFS and
+// topological_sort only measured reaching the element; dijkstra carried no
+// specification at all -- three spellings in one family, now all the
+// competing_dijkstras one.
+namespace {
+struct throwing_copy_vertex {
+    unsigned id = 0;
+    throwing_copy_vertex() = default;
+    throwing_copy_vertex(unsigned i) : id(i) {}
+    throwing_copy_vertex(const throwing_copy_vertex & o) noexcept(false)
+        : id(o.id) {}
+    throwing_copy_vertex(throwing_copy_vertex &&) noexcept = default;
+    throwing_copy_vertex & operator=(const throwing_copy_vertex &) noexcept(
+        false) {
+        return *this;
+    }
+    throwing_copy_vertex & operator=(throwing_copy_vertex &&) noexcept =
+        default;
+    bool operator==(const throwing_copy_vertex &) const = default;
+};
+
+template <typename T>
+struct throwing_vertex_map {
+    std::vector<T> data;
+    decltype(auto) operator[](const throwing_copy_vertex & v) {
+        return data[v.id];
+    }
+    decltype(auto) operator[](const throwing_copy_vertex & v) const {
+        return data[v.id];
+    }
+};
+
+struct throwing_vertex_graph {
+    auto vertices() const noexcept {
+        return std::views::transform(
+            std::views::iota(0u, 2u),
+            [](unsigned i) noexcept { return throwing_copy_vertex{i}; });
+    }
+    auto arcs() const noexcept { return std::views::iota(0u, 1u); }
+    throwing_copy_vertex arc_source(unsigned) const noexcept { return {0u}; }
+    throwing_copy_vertex arc_target(unsigned) const noexcept { return {1u}; }
+    auto out_arcs(const throwing_copy_vertex & v) const noexcept {
+        return std::views::iota(0u, v.id == 0u ? 1u : 0u);
+    }
+    auto in_arcs(const throwing_copy_vertex & v) const noexcept {
+        return std::views::iota(0u, v.id == 1u ? 1u : 0u);
+    }
+    template <typename T>
+    auto create_vertex_map() const {
+        return throwing_vertex_map<T>{std::vector<T>(2)};
+    }
+    template <typename T>
+    auto create_vertex_map(const T & d) const {
+        return throwing_vertex_map<T>{std::vector<T>(2, d)};
+    }
+};
+}  // namespace
+
+GTEST_TEST(api_review, current_noexcept_measures_the_returned_copy) {
+    using TG = views::graph_all_t<throwing_vertex_graph &>;
+    static_assert(!std::is_nothrow_copy_constructible_v<throwing_copy_vertex>);
+    static_assert(
+        !noexcept(std::declval<const depth_first_search<TG> &>().current()));
+    static_assert(
+        !noexcept(std::declval<const breadth_first_search<TG> &>().current()));
+    static_assert(
+        !noexcept(std::declval<const topological_sort<TG> &>().current()));
+
+    // Positive control: a nothrow-copy vertex keeps the guarantee, and
+    // dijkstra -- the family member with no specification at all -- now
+    // reports it like the rest.
+    using G = views::graph_all_t<static_digraph &>;
+    using L =
+        maps::mapping_all_t<static_map<arc_t<static_digraph>, unsigned> &>;
+    static_assert(
+        noexcept(std::declval<const depth_first_search<G> &>().current()));
+    static_assert(
+        noexcept(std::declval<const breadth_first_search<G> &>().current()));
+    static_assert(
+        noexcept(std::declval<const topological_sort<G> &>().current()));
+    static_assert(noexcept(std::declval<const dijkstra<G, L> &>().current()));
     SUCCEED();
 }
 
@@ -758,6 +938,162 @@ GTEST_TEST(api_review, reached_map_accompanies_reached) {
     ts.run();
     for(const auto & v : melon::vertices(g))
         EXPECT_EQ(ts.reached_map()[v], ts.reached(v));
+}
+
+// The reached()/reached_map() rule generalised: every per-key accessor over a
+// stored map is accompanied by a pluralised *s_map() view of that map --
+// flow()/flows_map() on the flow algorithms, dist()/dists_map(),
+// cluster()/clusters_map(), component_id()/component_ids_map(), and the
+// pred/depth accessors on the traversals. dijkstra's pred maps stay
+// deliberately unexposed: they store std::optional<arc>, not the arc that
+// pred_arc() answers, and path_to() already covers that use.
+namespace {
+struct full_bfs_traits {
+    static constexpr bool store_pred_vertices = true;
+    static constexpr bool store_pred_arcs = true;
+    static constexpr bool store_distances = true;
+    static constexpr bool store_traversal_range = false;
+};
+struct full_dfs_traits {
+    static constexpr bool store_pred_vertices = true;
+    static constexpr bool store_pred_arcs = true;
+    static constexpr bool store_depth = true;
+};
+struct distance_dijkstra_traits
+    : dijkstra_default_traits<graph_ref_view<static_digraph>, double> {
+    static constexpr bool store_distances = true;
+};
+struct full_voronoi_traits
+    : network_voronoi_default_traits<graph_ref_view<static_digraph>, double> {
+    static constexpr bool store_distances = true;
+    static constexpr bool store_clusters = true;
+};
+struct ids_scc_traits {
+    static constexpr bool store_component_ids = true;
+};
+}  // namespace
+
+GTEST_TEST(api_review, stored_maps_are_exposed_as_map_views) {
+    using RV = graph_ref_view<static_digraph>;
+    using LM = maps::mapping_all_t<std::vector<double> &>;
+    using CM = maps::mapping_all_t<std::vector<int> &>;
+    using V = vertex_t<static_digraph>;
+    using A = arc_t<static_digraph>;
+
+    static_assert(requires(const dinitz<RV, CM> & alg, const A & a) {
+        { alg.flow(a) } -> std::convertible_to<int>;
+        { alg.flows_map()[a] } -> std::convertible_to<int>;
+    });
+    static_assert(requires(const edmonds_karp<RV, CM> & alg, const A & a) {
+        { alg.flow(a) } -> std::convertible_to<int>;
+        { alg.flows_map()[a] } -> std::convertible_to<int>;
+    });
+    static_assert(requires(
+        const dijkstra<RV, LM, distance_dijkstra_traits> & alg, const V & v) {
+        { alg.dists_map()[v] } -> std::convertible_to<double>;
+    });
+    static_assert(requires(
+        const network_voronoi<RV, LM, full_voronoi_traits> & alg, const V & v) {
+        { alg.dists_map()[v] } -> std::convertible_to<double>;
+        { alg.clusters_map()[v] } -> std::convertible_to<V>;
+    });
+    static_assert(requires(
+        const breadth_first_search<RV, full_bfs_traits> & alg, const V & v) {
+        { alg.pred_vertices_map()[v] } -> std::convertible_to<V>;
+        { alg.pred_arcs_map()[v] } -> std::convertible_to<A>;
+        { alg.dists_map()[v] } -> std::convertible_to<int>;
+    });
+    static_assert(requires(const depth_first_search<RV, full_dfs_traits> & alg,
+                           const V & v) {
+        { alg.pred_vertices_map()[v] } -> std::convertible_to<V>;
+        { alg.pred_arcs_map()[v] } -> std::convertible_to<A>;
+        { alg.depths_map()[v] } -> std::convertible_to<int>;
+    });
+    static_assert(
+        requires(const strongly_connected_components<RV, ids_scc_traits> & alg,
+                 const V & v) {
+            { alg.component_ids_map()[v] } -> std::convertible_to<V>;
+        });
+
+    // And the view agrees with the accessor at runtime.
+    static_digraph_builder<static_digraph, int> b(4);
+    b.add_arc(0u, 1u, 3).add_arc(0u, 2u, 2).add_arc(1u, 3u, 2).add_arc(2u, 3u,
+                                                                       3);
+    auto [g, capacity] = b.build();
+    auto alg = dinitz(g, capacity, 0u, 3u);
+    alg.run();
+    for(const auto & a : melon::arcs(g))
+        EXPECT_EQ(alg.flows_map()[a], alg.flow(a));
+}
+
+// Map accessors follow std::views::all's ref-or-owning split: an lvalue
+// algorithm hands out a mapping_ref_view, an expiring one moves the stored
+// map into a mapping_owning_view -- so `std::move(alg).flows_map()` extracts
+// the result and outlives the algorithm. Computed reached_map()s (dijkstra,
+// network_voronoi, strongly_connected_components, biobjective_dijkstra) have
+// no stored bool map; their expiring overload instead moves the backing map
+// (status enums, component indices, Pareto fronts) into the returned lambda
+// map, so extraction works uniformly across the family.
+namespace {
+// A concept, not an inline requires-expression: template substitution is
+// what turns an invalid body into false -- a non-dependent
+// requires-expression checks its body as plain code and hard-errors.
+template <typename A>
+concept extractable_reached_map =
+    requires(A && alg) { std::move(alg).reached_map(); };
+}  // namespace
+
+GTEST_TEST(api_review, expiring_map_accessors_extract_the_stored_map) {
+    using RV = graph_ref_view<static_digraph>;
+    using LM = maps::mapping_all_t<std::vector<double> &>;
+    using CM = maps::mapping_all_t<std::vector<int> &>;
+
+    // The type split, on dinitz's flows_map.
+    static_assert(std::same_as<
+                  decltype(std::declval<const dinitz<RV, CM> &>().flows_map()),
+                  mapping_ref_view<const arc_map_t<RV, int>>>);
+    static_assert(
+        std::same_as<decltype(std::declval<dinitz<RV, CM> &&>().flows_map()),
+                     mapping_owning_view<arc_map_t<RV, int>>>);
+
+    // Every reached_map() supports extraction -- the stored ones by moving
+    // the map into a mapping_owning_view, the computed ones by moving their
+    // backing map into the returned lambda map.
+    static_assert(extractable_reached_map<dijkstra<RV, LM>>);
+    static_assert(extractable_reached_map<network_voronoi<RV, LM>>);
+    static_assert(extractable_reached_map<strongly_connected_components<RV>>);
+    static_assert(extractable_reached_map<breadth_first_search<RV>>);
+    static_assert(extractable_reached_map<depth_first_search<RV>>);
+    static_assert(extractable_reached_map<topological_sort<RV>>);
+
+    // And the owning view survives the algorithm it was extracted from.
+    static_digraph_builder<static_digraph, int> b(4);
+    b.add_arc(0u, 1u, 3).add_arc(0u, 2u, 2).add_arc(1u, 3u, 2).add_arc(2u, 3u,
+                                                                       3);
+    auto [g, capacity] = b.build();
+    using alg_t = decltype(dinitz(g, capacity, 0u, 3u));
+    auto alg = std::make_unique<alg_t>(g, capacity, 0u, 3u);
+    alg->run();
+    std::vector<int> expected;
+    for(const auto & a : melon::arcs(g)) expected.push_back(alg->flow(a));
+    auto owned = std::move(*alg).flows_map();
+    alg.reset();
+    for(const auto & a : melon::arcs(g))
+        EXPECT_EQ(owned[a], expected[a]) << "arc " << a;
+
+    // A computed extraction survives its algorithm too: dijkstra's expiring
+    // reached_map() owns the moved status map through its lambda.
+    std::vector<double> lengths(melon::num_arcs(g), 1.0);
+    using dij_t = decltype(dijkstra(g, lengths, 0u));
+    auto dij = std::make_unique<dij_t>(g, lengths, 0u);
+    dij->run();
+    std::vector<bool> expected_reached;
+    for(const auto & v : melon::vertices(g))
+        expected_reached.push_back(dij->reached(v));
+    auto owned_reached = std::move(*dij).reached_map();
+    dij.reset();
+    for(const auto & v : melon::vertices(g))
+        EXPECT_EQ(owned_reached[v], expected_reached[v]) << "vertex " << v;
 }
 
 // vertices/edges were the only CPOs returning decltype(auto), so their range

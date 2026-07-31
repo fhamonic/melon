@@ -25,7 +25,9 @@ template <typename Q>
 concept updatable_priority_queue = priority_queue<Q> &&
     requires(Q q, typename Q::id_type i, typename Q::priority_type p) {
     { q.contains(i) } -> std::convertible_to<bool>;
-    { q.priority(i) } -> std::same_as<typename Q::priority_type>;
+    // convertible_to for the same reason as top() above: priority() may
+    // return by value or by const reference.
+    { q.priority(i) } -> std::convertible_to<typename Q::priority_type>;
     q.promote(i, p);
     q.demote(i, p);
 };

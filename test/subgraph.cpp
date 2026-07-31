@@ -90,6 +90,80 @@ GTEST_TEST(subgraph_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// an lvalue filter map is *referenced* by the direct call and *copied* by the
+// piped closure -- and either semantics is spellable in either form
+////////////////////////////////////////////////////////////////////////////////
+
+// Ruled a documented divergence, not a bug. The direct call follows the
+// library-wide mapping_all rule -- an lvalue map is stored by reference, like
+// every algorithm's length map and like the graph argument itself -- while a
+// bound closure must copy or dangle (see adaptor_partial). Converging would
+// mean deep-copying lvalue maps in the direct call, trading this divergence
+// for a worse one against every other map-taking entry point. The four cells
+// below pin both defaults and both overrides so neither can drift silently.
+namespace filter_map_semantics {
+using G = static_digraph;
+using M = vertex_map_t<G, bool>;
+
+using direct_lvalue_t =
+    decltype(views::subgraph(std::declval<G &>(), std::declval<M &>()));
+using piped_lvalue_t =
+    decltype(std::declval<G &>() | views::subgraph(std::declval<M &>()));
+using piped_ref_t =
+    decltype(std::declval<G &>() |
+             views::subgraph(mapping_ref_view(std::declval<M &>())));
+using direct_rvalue_t =
+    decltype(views::subgraph(std::declval<G &>(), std::declval<M>()));
+
+static_assert(std::same_as<direct_lvalue_t,
+                           subgraph_view<graph_ref_view<G>, mapping_ref_view<M>,
+                                         maps::true_map>>);
+static_assert(
+    std::same_as<piped_lvalue_t,
+                 subgraph_view<graph_ref_view<G>, mapping_owning_view<M>,
+                               maps::true_map>>);
+// the overrides land exactly on the other spelling's default
+static_assert(std::same_as<piped_ref_t, direct_lvalue_t>);
+static_assert(std::same_as<direct_rvalue_t, piped_lvalue_t>);
+}  // namespace filter_map_semantics
+
+GTEST_TEST(subgraph_views, lvalue_filter_direct_call_references_pipe_copies) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0u, 1u).add_arc(1u, 2u);
+    auto [graph] = std::move(builder).build();
+
+    {  // direct call: the view writes the caller's map...
+        auto keep = create_vertex_map<bool>(graph, true);
+        auto sub = views::subgraph(graph, keep);
+        sub.disable_vertex(1u);
+        ASSERT_FALSE(keep[1u]);
+        // ...and reads it, so later writes to the map show through the view
+        keep[1u] = true;
+        ASSERT_TRUE(sub.is_valid_vertex(1u));
+    }
+    {  // piped: the closure decay-copied the map and the view owns the copy
+        auto keep = create_vertex_map<bool>(graph, true);
+        auto sub = graph | views::subgraph(keep);
+        sub.disable_vertex(1u);
+        ASSERT_TRUE(keep[1u]);
+        ASSERT_FALSE(sub.is_valid_vertex(1u));
+    }
+    {  // reference through the pipe: spell it, and its lifetime, explicitly
+        auto keep = create_vertex_map<bool>(graph, true);
+        auto sub = graph | views::subgraph(mapping_ref_view(keep));
+        sub.disable_vertex(1u);
+        ASSERT_FALSE(keep[1u]);
+    }
+    {  // a self-contained direct call: hand it a prvalue
+        auto keep = create_vertex_map<bool>(graph, true);
+        auto sub = views::subgraph(graph, auto(keep));
+        sub.disable_vertex(1u);
+        ASSERT_TRUE(keep[1u]);
+        ASSERT_FALSE(sub.is_valid_vertex(1u));
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // an unfiltered subgraph forwards every accessor of the wrapped graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -448,3 +522,26 @@ GTEST_TEST(subgraph_views, induced_subgraph_over_an_rvalue_graph) {
     ASSERT_FALSE(view.is_valid_vertex(3u));
     ASSERT_TRUE(EQ_RANGES(view.vertices(), keep));
 }
+
+// The same two rules split induced_subgraph's *vertex range* the same way:
+// the direct call ref-views an lvalue range (the caller keeps it alive, and
+// unchanged -- the boolean filter was built from it once, at construction),
+// the piped closure copies it into the view. Type pins only: mutating the
+// referenced range is not a supported pattern, so there is no behavioral
+// difference to exercise.
+namespace induced_range_semantics {
+using G = static_digraph;
+using R = std::vector<unsigned int>;
+
+using direct_lvalue_t =
+    decltype(views::induced_subgraph(std::declval<G &>(), std::declval<R &>()));
+using piped_lvalue_t = decltype(std::declval<G &>() |
+                                views::induced_subgraph(std::declval<R &>()));
+
+static_assert(std::same_as<direct_lvalue_t,
+                           induced_subgraph_view<graph_ref_view<G>,
+                                                 std::ranges::ref_view<R>>>);
+static_assert(std::same_as<piped_lvalue_t,
+                           induced_subgraph_view<graph_ref_view<G>,
+                                                 std::ranges::owning_view<R>>>);
+}  // namespace induced_range_semantics

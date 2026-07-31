@@ -8,7 +8,10 @@ namespace melon {
 template <typename S, typename T>
 class intrusive_iterator_base {
 public:
-    using iterator_category = std::forward_iterator_tag;
+    // operator*() returns a prvalue, which Cpp17ForwardIterator forbids
+    // (*it must be reference); the C++20 concept has no such requirement.
+    using iterator_concept = std::forward_iterator_tag;
+    using iterator_category = std::input_iterator_tag;
     using value_type = std::decay_t<T>;
     using reference = T;
     using pointer = void;

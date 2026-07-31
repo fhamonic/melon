@@ -71,6 +71,21 @@ GTEST_TEST(undirected_graph_ref_view, forwards_every_cpo) {
     ASSERT_EQ(emap[0u], 4);
 }
 
+// regression: degree was the one accessor of the protocol the forwarding
+// interface did not forward. The fixture's incidence range is deliberately
+// unsized, so the CPO's sized-incidence fallback cannot answer either and the
+// views lost degree outright.
+GTEST_TEST(undirected_graph_ref_view, forwards_degree) {
+    static_assert(has_degree<triangle>);
+    static_assert(has_degree<ref_view>);
+    static_assert(has_degree<owning_view>);
+
+    triangle g;
+    ref_view view(g);
+    for(const auto & v : melon::vertices(view))
+        ASSERT_EQ(melon::degree(view, v), melon::degree(g, v));
+}
+
 // Shallow constness: the view is a handle, so a const view still hands out the
 // underlying graph as a mutable reference.
 GTEST_TEST(undirected_graph_ref_view, is_shallow_const) {

@@ -10,8 +10,8 @@ namespace melon::experimental {
 
 namespace cpo {
 template <typename T>
-concept has_member_vertex_coordinates = requires(
-    const T & t, const vertex_t<T> & v) { t.vertex_coordinates(v, v); };
+concept has_member_vertex_coordinates =
+    requires(const T & t, const vertex_t<T> & v) { t.vertex_coordinates(v); };
 
 template <typename T>
 concept has_adl_vertex_coordinates =
@@ -51,7 +51,7 @@ inline constexpr cpo::vertex_coordinates_fn vertex_coordinates{};
 
 template <typename T>
 using vertex_coordinates_t = decltype(melon::experimental::vertex_coordinates(
-    std::declval<const vertex_t<T> &>()));
+    std::declval<const T &>(), std::declval<const vertex_t<T> &>()));
 
 template <typename T>
 concept has_vertex_coordinates =
@@ -434,9 +434,13 @@ concept has_adl_create_face_map = requires(const T & t, const ValueType & d) {
     } -> output_mapping_of<face_t<T>, ValueType>;
 };
 
+// Parameterised on ValueType for the same reason as create_vertex_map_fn in
+// graph.hpp: the public name must be a variable template, invisible to ADL,
+// or has_adl_create_face_map finds it and depends on itself.
+template <typename ValueType>
 struct create_face_map_fn {
 private:
-    template <typename ValueType, typename T>
+    template <typename T>
     static constexpr bool is_noexcept() {
         if constexpr(has_member_create_face_map<T, ValueType>)
             return noexcept(std::declval<const T &>()
@@ -446,24 +450,37 @@ private:
                 create_face_map<ValueType>(std::declval<const T &>()));
     }
 
+    // The default-value overload has to probe the call it actually makes;
+    // see is_noexcept_default() on create_vertex_map_fn in graph.hpp.
+    template <typename T>
+    static constexpr bool is_noexcept_default() {
+        if constexpr(has_member_create_face_map<T, ValueType>)
+            return noexcept(
+                std::declval<const T &>().template create_face_map<ValueType>(
+                    std::declval<const ValueType &>()));
+        else
+            return noexcept(create_face_map<ValueType>(
+                std::declval<const T &>(), std::declval<const ValueType &>()));
+    }
+
 public:
-    template <typename ValueType, typename T>
+    template <typename T>
         requires has_member_create_face_map<T, ValueType> ||
                  has_adl_create_face_map<T, ValueType>
     constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<ValueType, T>()) {
+        noexcept(is_noexcept<T>()) {
         if constexpr(has_member_create_face_map<T, ValueType>)
             return t.template create_face_map<ValueType>();
         else
             return create_face_map<ValueType>(t);
     }
 
-    template <typename ValueType, typename T>
+    template <typename T>
         requires has_member_create_face_map<T, ValueType> ||
                  has_adl_create_face_map<T, ValueType>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const ValueType & d) const
-        noexcept(is_noexcept<ValueType, T>()) {
+        noexcept(is_noexcept_default<T>()) {
         if constexpr(has_member_create_face_map<T, ValueType>)
             return t.template create_face_map<ValueType>(d);
         else
@@ -473,26 +490,8 @@ public:
 }  // namespace cpo
 
 inline namespace cust {
-template <typename ValueType, typename T>
-    requires requires(const T & t) {
-        cpo::create_face_map_fn{}.template operator()<ValueType>(t);
-    }
-inline constexpr auto create_face_map(const T & t) noexcept(
-    noexcept(cpo::create_face_map_fn{}.template operator()<ValueType>(
-        std::declval<const T &>()))) {
-    return cpo::create_face_map_fn{}.template operator()<ValueType>(t);
-}
-
-template <typename ValueType, typename T>
-    requires requires(const T & t, const ValueType & d) {
-        cpo::create_face_map_fn{}.template operator()<ValueType>(t, d);
-    }
-inline constexpr auto
-create_face_map(const T & t, const ValueType & d) noexcept(
-    noexcept(cpo::create_face_map_fn{}.template operator()<ValueType>(
-        std::declval<const T &>(), std::declval<ValueType &>()))) {
-    return cpo::create_face_map_fn{}.template operator()<ValueType>(t, d);
-}
+template <typename ValueType>
+inline constexpr cpo::create_face_map_fn<ValueType> create_face_map{};
 }  // namespace cust
 
 template <typename T, typename ValueType>

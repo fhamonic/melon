@@ -83,7 +83,7 @@ Almost every algorithm needs per-vertex scratch space, so it requires `has_verte
     }
 ```
 
-`static_map<K, V>` is melon's flat array for integral keys; it satisfies [`contiguous_mapping`](mappings.md#reading-writing-prefetching), so algorithms that prefetch will. For non-integral identifiers, return a hash map — anything modelling `output_mapping_of<key, T>` is accepted.
+`static_map<K, V>` is melon's flat array for integral keys; it satisfies [`contiguous_mapping`](mappings.md#writing-prefetching), so algorithms that prefetch will. For non-integral identifiers, return a hash map — anything modelling `output_mapping_of<key, T>` is accepted.
 
 Both overloads of each factory are required by the concept, and the value-initialized one must actually honour its argument: melon relies on `create_vertex_map<bool>(g, false)` producing a map that reads `false` everywhere.
 

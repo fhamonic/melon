@@ -216,3 +216,31 @@ GTEST_TEST(reverse_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     ASSERT_EQ(nested.num_arcs(), num_arcs(graph));
     ASSERT_TRUE(EQ_RANGES(graph.out_neighbors(0u), nested.out_neighbors(0u)));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// std::views::reverse alignment: the factory unwraps a double reverse, and
+// the view is default-constructible exactly when the wrapped view is
+////////////////////////////////////////////////////////////////////////////////
+
+static_assert(std::default_initializable<
+              reverse_view<views::graph_all_t<static_digraph>>>);
+static_assert(!std::default_initializable<
+              reverse_view<views::graph_all_t<static_digraph &>>>);
+
+GTEST_TEST(reverse_views, double_reverse_unwraps) {
+    static_digraph_builder<static_digraph> builder(2);
+    builder.add_arc(0u, 1u);
+    auto [graph] = builder.build();
+
+    auto once = views::reverse(graph);
+    auto twice = views::reverse(once);
+    static_assert(
+        std::same_as<decltype(twice), graph_ref_view<static_digraph>>);
+    ASSERT_TRUE(EQ_RANGES(out_neighbors(twice, 0u), out_neighbors(graph, 0u)));
+
+    // over an rvalue chain the base moves out through base() &&
+    auto owned = views::reverse(views::reverse(std::move(graph)));
+    static_assert(
+        std::same_as<decltype(owned), graph_owning_view<static_digraph>>);
+    ASSERT_EQ(num_arcs(owned), 1u);
+}
