@@ -17,18 +17,13 @@
 
 namespace melon {
 
-// A traits concept, like the dijkstra family's: without it a misspelled flag
-// in a user traits struct silently fell back to nothing instead of failing
-// the constraint.
-// clang-format off
 template <typename Traits>
-concept breadth_first_search_traits = requires() {
+concept breadth_first_search_traits = requires {
     { Traits::store_pred_vertices } -> std::convertible_to<bool>;
     { Traits::store_pred_arcs } -> std::convertible_to<bool>;
     { Traits::store_distances } -> std::convertible_to<bool>;
     { Traits::store_traversal_range } -> std::convertible_to<bool>;
 };
-// clang-format on
 
 struct breadth_first_search_default_traits {
     static constexpr bool store_pred_vertices = false;
@@ -61,7 +56,7 @@ private:
     static_assert(!Traits::store_pred_arcs || outward_incidence_graph<Graph>,
                   "storing predecessor arcs requires outward_incidence_graph.");
 
-    // size_type, not int: the fallback is an index into _queue and was being
+    // size_type, not int: the fallback cursor is an index into _queue and is
     // compared against _queue.size().
     using cursor = std::conditional_t<has_num_vertices<Graph>,
                                       typename std::vector<vertex>::iterator,
@@ -116,15 +111,12 @@ public:
         : breadth_first_search(std::forward<Args>(args)...) {}
 
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // Both moves stay defaulted, and that is the whole relocation story here:
-    // with has_num_vertices the cursor is an iterator *into* _queue, whose
-    // buffer transfers with the move, and the constructor's reserve() keeps it
-    // stable across the push_backs. It is the *copy* that could not be
-    // defaulted -- it handed the new object an iterator into the source's
-    // buffer, at a capacity only as large as the source's size, so finished()
-    // compared iterators from two different vectors and advance() read freed
-    // memory (ASan: heap-use-after-free). Deleting copy retires the
-    // hand-written rebase that fixed it.
+    // Both moves stay defaulted: with has_num_vertices the cursor is an
+    // iterator *into* _queue, whose buffer transfers with the move, and the
+    // constructor's reserve() keeps it stable across the push_backs. A copy
+    // cannot be defaulted -- it would hand the new object an iterator into the
+    // source's buffer, so finished() would compare iterators from two different
+    // vectors and advance() would read freed memory.
     constexpr breadth_first_search(const breadth_first_search &) = delete;
     constexpr breadth_first_search(breadth_first_search &&) = default;
 
@@ -133,10 +125,6 @@ public:
     constexpr breadth_first_search & operator=(breadth_first_search &&) =
         default;
 
-    // The graph the traversal was built over. Lets a composing algorithm keep a
-    // single copy of the graph view instead of storing its own alongside --
-    // see traversal_forest, where the duplicate made an owned graph impossible
-    // to use at all.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -158,6 +146,9 @@ public:
         _reached_map.fill(false);
         return *this;
     }
+    // Strict precondition: the vertex must not have been reached. Re-seeding
+    // one queues it twice, overrunning the reserve _queue_current's stability
+    // depends on.
     constexpr breadth_first_search & add_source(const vertex & s) {
         assert(!_reached_map[s]);
         _queue.push_back(s);
@@ -178,8 +169,8 @@ public:
     }
 
 private:
-    // What advance() walks with. Kept separate from current() so that making
-    // the public accessor return by value costs the hot loop nothing.
+    // What advance() walks with, kept separate from current() so that the
+    // public accessor returning by value costs the hot loop nothing.
     [[nodiscard]] constexpr const vertex & _current_ref() const noexcept {
         if constexpr(has_num_vertices<Graph>) {
             return *_queue_current;
@@ -189,13 +180,9 @@ private:
     }
 
 public:
-    // By value, like depth_first_search::current() and
-    // topological_sort::current(). A reference into _queue -- which the next
-    // advance() writes into -- was the odd one out, and callers reaching it
-    // through the range interface got a copy anyway.
-    //
-    // See competing_dijkstras::current(): the noexcept measures the copy the
-    // by-value return performs, not just reaching the element.
+    // By value: a reference into _queue would name storage the next advance()
+    // writes into. The noexcept measures the copy the by-value return performs,
+    // not just reaching the element.
     [[nodiscard]] constexpr vertex current() const
         noexcept(noexcept(vertex(_current_ref()))) {
         assert(!finished());
@@ -239,15 +226,15 @@ public:
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & noexcept(
         noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
     }
-    // The expiring overload moves the stored map into a mapping_owning_view,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards. Same for the trait-gated
-    // expiring overloads below.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards. Same for the
+    // trait-gated expiring overloads below.
     [[nodiscard]] constexpr auto reached_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_reached_map)))) {
         return maps::mapping_all(std::move(_reached_map));
@@ -313,13 +300,9 @@ public:
     {
         return maps::mapping_all(std::move(_dist_map._map));
     }
-    // std::span<const vertex> in both specialisations. This one used to return
-    // a subrange of _queue's own iterators and the branchless one a span, so
-    // the same member of the same class template had two return types and the
-    // window was writable through one of them -- the read-only rule
-    // strongly_connected_components::current() and
-    // connected_components::current() already follow. _queue is contiguous, so
-    // a span spells both cursor shapes.
+    // std::span<const vertex> in both specialisations: _queue is contiguous, so
+    // one return type spells both cursor shapes, and the window stays read-only
+    // -- the next advance() writes into it.
     [[nodiscard]] constexpr std::span<const vertex> traversal() const noexcept
         requires(Traits::store_traversal_range)
     {
@@ -380,8 +363,8 @@ public:
 
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // The three cursors are raw pointers into the _queue buffer, which the
-    // unique_ptr hands over on a move -- so, as in the generic specialisation,
-    // only the copy ever needed a hand-written reallocate-and-reoffset body.
+    // unique_ptr hands over on a move; a copy would leave them pointing into
+    // the source's buffer.
     constexpr breadth_first_search(const breadth_first_search &) = delete;
     constexpr breadth_first_search(breadth_first_search &&) = default;
 
@@ -390,10 +373,6 @@ public:
     constexpr breadth_first_search & operator=(breadth_first_search &&) =
         default;
 
-    // The graph the traversal was built over. Lets a composing algorithm keep a
-    // single copy of the graph view instead of storing its own alongside --
-    // see traversal_forest, where the duplicate made an owned graph impossible
-    // to use at all.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -411,6 +390,8 @@ public:
         _reached_map.fill(false);
         return *this;
     }
+    // Strict precondition: the vertex must not have been reached. Re-seeding
+    // one queues it twice, overrunning the num_vertices + 1 buffer.
     constexpr breadth_first_search & add_source(const vertex & s) {
         assert(!_reached_map[s]);
         _queue_traversal_begin = _queue_current;
@@ -425,9 +406,8 @@ public:
         return _queue_current == _queue_traversal_end;
     }
 
-    // By value, like the generic specialisation above and every other
-    // algorithm's current(). The noexcept measures the copy the by-value
-    // return performs, not just the dereference.
+    // The noexcept measures the copy the by-value return performs, not just the
+    // dereference.
     [[nodiscard]] constexpr vertex current() const
         noexcept(noexcept(vertex(*_queue_current))) {
         assert(!finished());
@@ -435,8 +415,8 @@ public:
     }
     constexpr void advance() {
         assert(!finished());
-        // Straight off the buffer, which never reallocates here: current()
-        // returns a copy now, and this is the hot loop.
+        // Straight off the buffer, which never reallocates here; this is the
+        // hot loop.
         const vertex & u = *_queue_current;
         ++_queue_current;
         for(auto && w : out_neighbors(_graph, u)) {
@@ -449,20 +429,18 @@ public:
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & noexcept(
         noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
     }
-    // See the generic specialisation's expiring overload: mapping_owning_view
-    // out of an expiring algorithm, and extraction is terminal.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_reached_map)))) {
         return maps::mapping_all(std::move(_reached_map));
     }
-    // Guarded on store_traversal_range like the generic specialisation's. It
-    // used to be unconditional here, so the flag was silently ignored by
-    // whichever specialisation a graph happened to select: the same class
-    // template offered a different member set for the same Traits.
     [[nodiscard]] constexpr std::span<const vertex> traversal() const noexcept
         requires(Traits::store_traversal_range)
     {

@@ -6,6 +6,11 @@
 
 namespace melon {
 
+// DiscriminatingT takes no part in the type; it exists so that two disabled
+// maps of the same Graph and Type are still *distinct* empty types. Two
+// [[no_unique_address]] members of the same type may not share an address, so
+// giving them the same DiscriminatingT costs a byte of padding in every
+// algorithm holding a pair of them (bidirectional_dijkstra).
 template <bool Cond, typename Graph, typename Type,
           typename DiscriminatingT = int>
 struct vertex_map_if {
@@ -20,13 +25,12 @@ struct vertex_map_if<true, Graph, Type, DiscriminatingT> {
     constexpr vertex_map_if(Graph & g) : _map(create_vertex_map<Type>(g)) {}
 
     // `const Type &`, not `Type &&`: Type is a class template parameter, so
-    // the latter was a plain rvalue reference and a named default value could
-    // not be passed.
+    // `Type &&` is a plain rvalue reference and rejects a named default value.
     constexpr vertex_map_if(Graph & g, const Type & v)
         : _map(create_vertex_map<Type>(g, v)) {}
 
-    // decltype(auto), not auto: the const overload used to decay-copy the
-    // mapped value while the mutable one returned a reference.
+    // decltype(auto), not auto: `auto` decay-copies, so the two overloads would
+    // disagree on whether a subscript yields a reference into the map.
     constexpr decltype(auto) operator[](const vertex_t<Graph> & v) const {
         return _map[v];
     }

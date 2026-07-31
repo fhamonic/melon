@@ -434,9 +434,9 @@ concept has_adl_create_face_map = requires(const T & t, const ValueType & d) {
     } -> output_mapping_of<face_t<T>, ValueType>;
 };
 
-// Parameterised on ValueType for the same reason as create_vertex_map_fn in
-// graph.hpp: the public name must be a variable template, invisible to ADL,
-// or has_adl_create_face_map finds it and depends on itself.
+// Parameterised on ValueType so that the public name is a variable template,
+// invisible to ADL: a function-shaped name would be found by
+// has_adl_create_face_map, which then depends on itself.
 template <typename ValueType>
 struct create_face_map_fn {
 private:
@@ -450,8 +450,8 @@ private:
                 create_face_map<ValueType>(std::declval<const T &>()));
     }
 
-    // The default-value overload has to probe the call it actually makes;
-    // see is_noexcept_default() on create_vertex_map_fn in graph.hpp.
+    // The default-value overload probes the call it actually makes: the two
+    // overloads can differ in noexcept-ness.
     template <typename T>
     static constexpr bool is_noexcept_default() {
         if constexpr(has_member_create_face_map<T, ValueType>)

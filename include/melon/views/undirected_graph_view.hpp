@@ -21,11 +21,6 @@ concept undirected_graph_view =
 
 namespace detail {
 
-// The ten members undirected_graph_ref_view and undirected_graph_owning_view
-// each used to spell out in full. Same arrangement as
-// detail::graph_forwarding_interface: the derived class supplies
-// `const G & _forwarding_base() const` and befriends this, and nothing else.
-// There is no direction policy here -- an undirected graph has none.
 template <typename Derived, typename G>
 class undirected_graph_forwarding_interface
     : public undirected_graph_view_base {
@@ -74,10 +69,9 @@ public:
         return melon::incidence(_wrapped(), u);
     }
 
-    // degree was the one accessor of the protocol this interface did not
-    // forward: a graph with an O(1) member fell back to sizing the incidence
-    // range through the view -- or lost degree outright where that range is
-    // not sized.
+    // Forwarded rather than left to the CPO: the fallback sizes the incidence
+    // range through the view, throwing away an O(1) member, and disappears
+    // altogether where that range is not sized.
     [[nodiscard]] constexpr decltype(auto) degree(const vertex & u) const
         noexcept(noexcept(melon::degree(std::declval<const G &>(), u)))
         requires has_degree<G>
@@ -85,8 +79,6 @@ public:
         return melon::degree(_wrapped(), u);
     }
 
-    // See graph_forwarding_interface: the default value goes in by const
-    // reference, like the CPO that forwards it here.
     template <typename T>
         requires has_vertex_map<G>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept(
@@ -160,7 +152,6 @@ public:
     constexpr undirected_graph_ref_view & operator=(
         undirected_graph_ref_view &&) = default;
 
-    // See graph_ref_view: std::ranges::ref_view::base().
     [[nodiscard]] constexpr G & base() const noexcept {
         return *_undirected_graph;
     }
@@ -170,14 +161,17 @@ template <typename UndirectedGraph>
 undirected_graph_ref_view(UndirectedGraph &)
     -> undirected_graph_ref_view<UndirectedGraph>;
 
-// See graph_ref_view's specialisation.
+// A bare pointer to a graph that lives elsewhere: relocating the view cannot
+// invalidate a range obtained through it. undirected_graph_owning_view is
+// deliberately left false -- it embeds the graph, so its ranges point into the
+// view.
 template <typename G>
 inline constexpr bool enable_borrowed_graph<undirected_graph_ref_view<G>> =
     true;
 
-// See graph_owning_view for the is_object_v conjunct: without it the class
-// was a legal type for a reference argument whose constructor then
-// hard-errored.
+// is_object_v alongside move_constructible, as in graph_owning_view: without
+// it the class is a legal *type* for a reference argument whose only
+// constructor then hard-errors.
 template <undirected_graph G>
     requires std::move_constructible<G> && std::is_object_v<G>
 class undirected_graph_owning_view
@@ -211,8 +205,6 @@ public:
     constexpr undirected_graph_owning_view & operator=(
         undirected_graph_owning_view &&) = default;
 
-    // See graph_owning_view: the four overloads of
-    // std::ranges::owning_view::base().
     [[nodiscard]] constexpr G & base() & noexcept { return _undirected_graph; }
     [[nodiscard]] constexpr const G & base() const & noexcept {
         return _undirected_graph;
@@ -237,13 +229,13 @@ concept can_undirected_graph_owning_view =
     requires { undirected_graph_owning_view{std::declval<UndirectedGraph>()}; };
 }  // namespace detail
 
-// Derives the same closure base as the directed adaptors: its operator|
-// is constrained on invocability, so `ug | views::undirected_graph_all`
-// works for exactly the operands the call form accepts.
 struct undirected_graph_all_fn
     : views::graph_adaptor_closure<undirected_graph_all_fn> {
 private:
-    // See graph_all_fn::pass_through.
+    // constructible_from as well as the view concept, which only asks for
+    // movable: without it an lvalue owning view -- copy constructor deleted --
+    // takes this branch and hard-errors inside the body, outside the immediate
+    // context, so the candidate cannot even be removed.
     template <typename UndirectedGraph>
     static constexpr bool pass_through =
         undirected_graph_view<std::decay_t<UndirectedGraph>> &&
@@ -256,7 +248,9 @@ private:
                 std::decay_t<UndirectedGraph>, UndirectedGraph>;
         else if constexpr(detail::can_undirected_graph_ref_view<
                               UndirectedGraph>)
-            // See graph_all_fn::is_noexcept.
+            // Measured, not assumed: the converting constructor's
+            // static_cast<G &> can be made throwing by a user conversion
+            // operator, so an unconditional `true` is a terminate-bomb.
             return noexcept(
                 undirected_graph_ref_view{std::declval<UndirectedGraph>()});
         else

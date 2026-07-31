@@ -43,8 +43,14 @@ struct biobjective_dijkstra_default_traits {
 // pairs, discarding dominated ones as they appear. Iterating yields the
 // non-dominated labels in order of increasing blue cost -- a vertex is
 // therefore produced once per label it keeps, not once overall -- and
-// pareto_front(v) exposes the front accumulated so far for a vertex. Same
-// non-negativity requirement as melon::dijkstra, on both maps.
+// pareto_front(v) exposes the front accumulated so far for a vertex.
+// Two preconditions on the mapped values, uncheckable by any concept. The
+// first is melon::dijkstra's, on both maps: a length must never improve a cost
+// when combined. The second is what makes the pruning sound: both plus
+// operations must preserve dominance under extension -- if one label dominates
+// another at a vertex, extending both along the same arc must keep it
+// dominating. Otherwise a discarded label was on the true Pareto front and the
+// output is silently incomplete.
 // Cost is output-sensitive: the number of Pareto-optimal labels can grow
 // exponentially with the size of the graph, so there is no polynomial bound.
 template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
@@ -104,12 +110,6 @@ public:
     constexpr biobjective_dijkstra & operator=(biobjective_dijkstra &&) =
         default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -153,10 +153,9 @@ public:
     }
 
 private:
-    // Private, like every other algorithm's relaxation step: a public relax()
-    // let callers push arbitrary labels behind the traversal's back -- the
-    // same encapsulation hole as strongly_connected_components' removed
-    // push_tarjan. Sources enter through add_source().
+    // Private: a public relax() would let callers push arbitrary labels behind
+    // the traversal's back, breaking the invariant that every heap entry was
+    // non-dominated when inserted. Sources enter through add_source().
     void relax(const vertex & v, const label & l) {
         auto & labels = _pareto_front_map[v];
         auto it = labels.upper_bound(l);
@@ -191,8 +190,8 @@ public:
         return _heap.empty();
     }
 
-    // See competing_dijkstras::current(): the noexcept measures the copy the
-    // return performs, not just the top() call.
+    // The noexcept measures the copy the by-value return performs, not just the
+    // top() call.
     [[nodiscard]] constexpr auto current() const
         noexcept(noexcept(typename heap::value_type(_heap.top()))) {
         assert(!finished());
@@ -232,18 +231,17 @@ public:
         return std::views::all(_pareto_front_map[v]);
     }
 
-    // reached()/reached_map(), like every rooted algorithm in the family: a
-    // vertex is reached once it holds at least one non-dominated label.
+    // A vertex is reached once it holds at least one non-dominated label.
     [[nodiscard]] constexpr bool reached(const vertex & v) const
         noexcept(noexcept(_pareto_front_map[v].empty())) {
         return !_pareto_front_map[v].empty();
     }
-    // Derived, like dijkstra's: valid while this object lives and stays put.
+    // Derived, not stored: valid while this object lives and stays put.
     [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & v) { return reached(v); });
     }
-    // See dijkstra::reached_map's expiring overload: no stored bool map, so
-    // the Pareto fronts move into the lambda -- self-contained, terminal.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
         return maps::map(
             [front_map = std::move(_pareto_front_map)](const vertex & v) {
@@ -252,8 +250,6 @@ public:
     }
 };
 
-// No Traits parameter: see competing_dijkstras' guide for why defaulting it
-// here made the deduced type differ from the spelled-out one.
 template <typename Graph, typename BlueLengthMap, typename RedLengthMap>
 biobjective_dijkstra(Graph &&, BlueLengthMap &&, RedLengthMap &&)
     -> biobjective_dijkstra<views::graph_all_t<Graph>,

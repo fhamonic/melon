@@ -16,8 +16,6 @@ namespace melon {
 
 class mutable_digraph {
 private:
-    // Private, like every other container's: vertex_t<T> / arc_t<T> are the
-    // supported way to name a graph's handle types.
     using vertex = unsigned int;
     using arc = unsigned int;
 
@@ -118,10 +116,10 @@ public:
         , _num_vertices(0)
         , _num_arcs(0) {};
     constexpr mutable_digraph(const mutable_digraph & graph) = default;
-    // Hand-written moves, like static_map's: the vectors empty on move but
-    // the defaulted member-wise move kept the counts and list heads, so a
-    // moved-from graph claimed vertices its vectors no longer held. The
-    // scalars go back to the default-constructed (empty) state.
+    // Hand-written moves: the vectors empty on move, but a defaulted
+    // member-wise move keeps the counts and list heads, so a moved-from graph
+    // claims vertices its vectors no longer hold. The scalars go back to the
+    // default-constructed (empty) state instead.
     constexpr mutable_digraph(mutable_digraph && graph) noexcept
         : _vertices(std::move(graph._vertices))
         , _arcs(std::move(graph._arcs))
@@ -328,6 +326,10 @@ private:
     }
 
 public:
+    // Both removals push the freed id onto a free list, and create_vertex /
+    // create_arc pop from it: a handle held across a removal can silently
+    // come back valid while denoting a different vertex or arc. is_valid_*
+    // cannot see the difference -- it only tests the filter bit.
     constexpr void remove_vertex(const vertex v) noexcept {
         assert(is_valid_vertex(v));
         remove_incident_arcs(v);
@@ -397,8 +399,8 @@ public:
         ss.first_out_arc = a;
     }
 
-    template <typename T>
     // None of the four below are noexcept: they allocate.
+    template <typename T>
     [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map() const {
         return static_map<vertex, T>(_vertices.size());
     }

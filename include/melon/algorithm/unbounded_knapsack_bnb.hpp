@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <future>
 #include <memory>
@@ -16,6 +17,13 @@
 
 namespace melon {
 
+// Preconditions on the mapped values, uncheckable by any concept but asserted
+// where reset() reads each item: values must be non-negative, costs strictly
+// positive, and the budget non-negative. A zero cost divides by zero in the
+// take-count below, and a negative value or cost makes the ratio bound
+// unsound, so in release builds run() answers with a suboptimal solution
+// instead of failing.
+//
 // random_access_range, not range: is_dominated() orders iterators with `<`,
 // which only random-access iterators provide -- with a plain range the error
 // surfaces inside the member instead of at the constraint.
@@ -57,8 +65,8 @@ private:
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
-        // guards the goto: with no feasible item it jumped into the loop body
-        // and dereferenced end (the bounded twin always had this check)
+        // Guards the goto: with no feasible item, jumping into the loop body
+        // dereferences end.
         if(it == end) return _best_sol;
         std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
@@ -95,7 +103,8 @@ private:
         _best_sol.resize(0);
         auto it = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
-        // same empty guard as iterative_bnb's
+        // Guards the goto: with no feasible item, jumping into the loop body
+        // dereferences end.
         if(it == end) return _best_sol;
         std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
@@ -130,7 +139,8 @@ private:
 
 public:
     // Constrained on what the mem-initializers actually do, so
-    // std::is_constructible answers honestly -- see dijkstra's constructor.
+    // std::is_constructible answers what construction actually does instead of
+    // hard-erroring outside the immediate context.
     template <std::ranges::viewable_range IR, mapping_for<ValueMap> VM,
               mapping_for<CostMap> CM, std::convertible_to<Cost> B>
         requires std::constructible_from<ItemRange, std::views::all_t<IR>>
@@ -152,6 +162,10 @@ private:
             if(it == item_it) continue;
             const Value i_value = _value_map[i];
             const Cost i_cost = _cost_map[i];
+            // Not covered by reset()'s identical assert: that one fires only
+            // as its loop reaches each item, and this scan runs ahead of it
+            // to divide by the cost of every item.
+            assert(i_cost > static_cast<Cost>(0));
             if(i_cost == item_cost && i_value == item_value)
                 return (it < item_it);
             if(i_cost > item_cost) continue;
@@ -164,10 +178,10 @@ private:
 public:
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Moves stay defaulted: _best_sol holds iterators into _value_cost_pairs,
-    // whose buffer transfers with the move. Only the copy needed a rebase --
-    // and, like its bounded twin, it was still missing the requires-clause that
-    // keeps std::copyable honest, so for a move-only ItemRange the trait
-    // answered true and the copy hard-errored inside the mem-initializer.
+    // whose buffer transfers with the move. A copy would have to rebase them,
+    // and could not be declared honestly -- for a move-only ItemRange
+    // std::copyable would answer true and the copy hard-error in the
+    // mem-initializer.
     unbounded_knapsack_bnb(const unbounded_knapsack_bnb &) = delete;
     unbounded_knapsack_bnb(unbounded_knapsack_bnb &&) = default;
 
@@ -175,6 +189,7 @@ public:
     unbounded_knapsack_bnb & operator=(unbounded_knapsack_bnb &&) = default;
 
     unbounded_knapsack_bnb & reset() {
+        assert(_budget >= static_cast<Cost>(0));
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
         if constexpr(std::ranges::sized_range<ItemRange>) {
@@ -185,8 +200,10 @@ public:
         for(auto it = _items_range.begin(); it != _items_range.end(); ++it) {
             const auto & i = *it;
             const Value value = _value_map[i];
+            assert(value >= static_cast<Value>(0));
             if(value == static_cast<Value>(0)) continue;
             const Cost cost = _cost_map[i];
+            assert(cost > static_cast<Cost>(0));
             if(cost > _budget) continue;
             if(is_dominated(it)) continue;
             _permuted_items.emplace_back(it);
@@ -201,8 +218,8 @@ public:
     }
 
     // Re-derives through reset(): the item filter built there depends on the
-    // budget, so only assigning _budget kept newly-affordable items excluded
-    // and run() returned a wrong optimum after a raise.
+    // budget, so assigning _budget alone would leave newly-affordable items
+    // excluded and run() would answer a wrong optimum after a raise.
     unbounded_knapsack_bnb & set_budget(Cost b) {
         _budget = b;
         return reset();
@@ -218,8 +235,8 @@ public:
         std::jthread t([this](std::stop_token stoken) {
             return iterative_bnb_timeout(stoken);
         });
-        // C++23 should allow to call jthread from future and prevent launching
-        // the supplementary thread for join
+        // The extra thread exists only to make the join waitable: jthread has
+        // no timed join, so the wait_for below needs a future to wait on.
         auto future = std::async(std::launch::async, &std::jthread::join, &t);
         if(future.wait_for(timeout) == std::future_status::timeout) {
             t.request_stop();

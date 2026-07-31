@@ -25,6 +25,11 @@ concept cartesian_line = requires(const T & t) {
     { std::get<2>(t) };
 };
 
+// Exact for integral and rational coordinates, but nothing here widens: the
+// line coefficients are degree 2 in the input coordinates and the intersection
+// numerators degree 3, so an integral coordinate type must have room for that
+// or the results are silently wrong. Coordinates of a few thousand already
+// exceed int32.
 struct cartesian {
     struct point_xy_comparator {
         using is_transparent = void;
@@ -56,10 +61,11 @@ struct cartesian {
             std::get<2>(A) * std::get<1>(B) - std::get<2>(B) * std::get<1>(A);
         const auto y_num =
             std::get<0>(A) * std::get<2>(B) - std::get<0>(B) * std::get<2>(A);
-        // Integral coordinates: `/` truncates (executed: (1, 1/3) came back
-        // as (1, 0)), so divide through an exact rational instead. Rational
-        // and floating-point coordinates keep the plain division, whose own
-        // semantics are already exact resp. deliberately inexact.
+        // Integral coordinates: `/` truncates, turning (1, 1/3) into (1, 0),
+        // so divide through an exact rational instead -- callers get a
+        // rational-coordinate point back. Rational and floating-point
+        // coordinates keep the plain division, exact resp. deliberately
+        // inexact.
         if constexpr(std::integral<
                          std::remove_cvref_t<decltype(determinant)>>) {
             return std::make_tuple(numeric::make_rational(x_num, determinant),
@@ -87,9 +93,10 @@ struct cartesian {
     }
     [[nodiscard]] static constexpr auto line_slope(
         const cartesian_line auto & l) {
-        // Integral coordinates: a vertical line divided by zero -- UB -- and
-        // every other slope truncated. make_rational is exact and collapses
-        // the zero denominator to its 1/0 infinity sentinel.
+        // Integral coordinates: plain division would be UB on a vertical line
+        // and would truncate every other slope. make_rational is exact and
+        // collapses the zero denominator to its 1/0 infinity sentinel, which
+        // orders above every finite slope.
         if constexpr(std::integral<
                          std::remove_cvref_t<decltype(std::get<0>(l))>>) {
             return numeric::make_rational(std::get<0>(l), -std::get<1>(l));

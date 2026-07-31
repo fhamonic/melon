@@ -41,9 +41,6 @@ public:
         return n * (n - 1);
     }
 
-    // Present on every container in the library; this view was the one graph
-    // type that could not be asked whether a handle it produced is one of its
-    // own.
     [[nodiscard]] constexpr bool is_valid_vertex(
         const vertex u) const noexcept {
         return u < _vertices_end;
@@ -144,6 +141,10 @@ private:
     };
 
 public:
+    // The first subrange is empty for u == 0 only by unsigned wraparound: its
+    // cursor starts at arc(-1) and the sentinel test above is `>=`, not `!=`.
+    // Tightening that test, or making arc signed, turns in_arcs(0) into a walk
+    // from -1 that never reaches its bound.
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(u < _vertices_end);
         const auto increment = static_cast<arc>(_vertices_end - 1);

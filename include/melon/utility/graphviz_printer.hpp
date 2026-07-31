@@ -6,6 +6,7 @@
 #include "melon/detail/stdlib_check.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <format>
 #include <functional>
@@ -58,11 +59,8 @@ private:
     double _page_height;
 
 public:
-    // explicit: a graph is not a printer, and the implicit conversion made
-    // every function taking a graphviz_printer accept a bare graph.
     // The rvalue overload is deleted because _graph is a reference_wrapper:
-    // binding a temporary left the printer pointing at a dead graph (the
-    // mapping_ref_view bindable-test precedent).
+    // binding a temporary leaves the printer pointing at a destroyed graph.
     explicit graphviz_printer(const G &&) = delete;
     explicit graphviz_printer(const G & g)
         : _graph(g)
@@ -186,9 +184,10 @@ public:
     }
 
     // Takes and returns the output iterator, std::format_to's own contract:
-    // discarding the returned iterator broke positional iterators (a char *
-    // overwrote its first characters on every call). Stateful inserters like
-    // back_insert_iterator masked it.
+    // every write must go through the iterator format_to gave back, or a
+    // positional iterator such as a bare char * rewrites the same characters
+    // on each call. Stateful inserters like back_insert_iterator hide the
+    // mistake, so it survives testing with std::back_inserter.
     template <std::output_iterator<const char &> OS>
     OS print(OS output) const {
         double min_x, max_x, min_y, max_y;
@@ -204,6 +203,11 @@ public:
             }
             scale = std::min(_page_width / (max_x - min_x),
                              _page_height / (max_y - min_y));
+            // All positions coincident makes both extents zero and the scale
+            // infinite; scale * 0 then writes pos="nan,nan" for every vertex.
+            // A single zero extent is fine: the other axis's finite ratio
+            // wins the min.
+            assert(std::isfinite(scale));
         } else
             scale = 1;
         auto scale_x = [&](double x) { return scale * (x - min_x); };
@@ -229,9 +233,9 @@ public:
 
         output = std::format_to(output, "digraph {{size=\"{},{}\";\n",
                                 _page_width, _page_height);
-        // "graph", the dot keyword -- a member rename once hit this string
-        // literal, emitting a spurious node named _graph and losing the
-        // graph attributes.
+        // "graph" here is the dot keyword, not the _graph member: renaming
+        // through this string literal emits a spurious node and drops the
+        // graph-wide attributes.
         output = std::format_to(
             output,
             "graph [pad=\"0.2,0.1\" bgcolor=transparent overlap=scale]\n");

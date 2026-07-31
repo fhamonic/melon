@@ -13,9 +13,8 @@ namespace melon {
 template <typename Iterator, typename Sentinel>
 class consumable_iterator {
 public:
-    // iterator_concept, not iterator_category: `*it++` is ill-formed here
-    // (post-increment returns void), so the Cpp17 category the old typedef
-    // promised was a lie. See algorithm_iterator for the full rationale.
+    // iterator_concept, not iterator_category: post-increment returns void, so
+    // `*it++` is ill-formed and no Cpp17 category is honestly meetable.
     using iterator_concept = std::input_iterator_tag;
     using value_type = std::iter_value_t<Iterator>;
     using reference = std::iter_reference_t<Iterator>;
@@ -69,15 +68,10 @@ public:
 // A cursor that walks a range once. It holds exactly what one traversal needs
 // -- the range and an iterator when it has to own the range, an iterator and a
 // sentinel when the range is borrowed -- and deliberately nothing that would
-// let it start over.
-//
-// This is the shape algorithms want when they keep one cursor per vertex or per
-// stack frame (dinitz's two vertex maps, depth_first_search::_stack,
-// strongly_connected_components::_dfs_stack). None of them ever restarts a
-// cursor in place: when they re-seed, they do it through operator=(R &) with a
-// range they can always ask the graph for again, e.g.
-// `_remaining_out_arcs[u] = out_arcs(_graph, u)`. Paying for a remembered
-// begin() there would cost an iterator per vertex and buy nothing.
+// let it start over. Algorithms keeping one cursor per vertex or per stack
+// frame re-seed through operator=(Rng &&) with a range they can ask the graph
+// for again, e.g. `_remaining_out_arcs[u] = out_arcs(_graph, u)`; remembering
+// begin() instead would cost an iterator per vertex and buy nothing.
 //
 // See consumable_view below for the variant that can restart itself.
 template <std::ranges::range R>
@@ -91,28 +85,25 @@ protected:
     // An optional, so that the cursor is default-constructible even when R is
     // not -- a filter_view over a capturing lambda, which is what every
     // filtered subgraph's incidence range is. Algorithms keep these cursors in
-    // per-vertex maps (dinitz), and static_map default-constructs its slots: a
-    // non-default-constructible cursor made dinitz over any filtered subgraph
-    // unconstructible. A default-constructed cursor is *disengaged*: it only
-    // supports destruction and assignment, which is the contract those maps
-    // need -- every slot is re-seeded through operator=(Rng &&) before use.
+    // per-vertex maps and static_map default-constructs its slots, so without
+    // the optional a cursor over any filtered subgraph cannot be stored in one
+    // at all. A default-constructed cursor is *disengaged*: it only supports
+    // destruction and assignment, which is the contract those maps need --
+    // every slot is re-seeded through operator=(Rng &&) before use.
     mutable std::optional<R> _range;
     std::ranges::iterator_t<R> _it;
     // How far _it has walked. It exists because _it may refer *back* into
     // _range: a std::ranges::filter_view iterator -- which is what every
     // subgraph's incidence range yields -- holds a pointer to its parent view.
-    // The defaulted copy and move therefore handed the new object an iterator
-    // aimed at the *old* _range, which is a use-after-free as soon as the
-    // original dies. That is not only a copy problem: these cursors live inside
-    // a std::vector (depth_first_search::_stack) and a static_map (dinitz's two
-    // per-vertex maps), so a plain reallocation moves them and a DFS over a
-    // filtered subgraph faulted with no copy anywhere in the program.
+    // A defaulted copy or move would hand the new object an iterator aimed at
+    // the *old* _range, a use-after-free as soon as the original dies. Copying
+    // is not the only way in: these cursors live inside a std::vector and a
+    // static_map, so a plain reallocation relocates them too. Every special
+    // member therefore re-derives _it from _consumed instead of copying it.
     //
-    // Only this specialisation pays for it. The borrowed one below keeps an
-    // iterator and a sentinel that are independent of any range object, so it
-    // needs no counter and is left exactly as it was -- which is what every
-    // melon container lands on (16 bytes, no branch in advance()). Here the
-    // cursor already carries the filter_view itself: 48 bytes becomes 56.
+    // Only this specialisation pays for the counter; the borrowed one below
+    // keeps an iterator and a sentinel that are independent of any range
+    // object.
     std::size_t _consumed = 0;
 
     // Puts _it back where _consumed says it should be, against the _range this
@@ -127,22 +118,22 @@ protected:
     }
 
 public:
-    // Constrained away from the class itself: as an unconstrained
-    // single-argument template it bound a non-const lvalue of the class type
-    // better than the copy constructor, so direct-initialising a copy tried to
-    // build a range out of one. Same trap, and same fix, as d_ary_heap_base.
+    // Constrained away from the class itself: unconstrained, this
+    // single-argument template binds a non-const lvalue of the class type
+    // better than the copy constructor, so direct-initialising a copy tries to
+    // build a range out of one.
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     explicit consumable_input_view(Rng && r)
         : _range(std::views::all(std::forward<Rng>(r)))
         , _it(std::ranges::begin(*_range)) {}
 
-    // A cursor already `consumed` elements into a freshly obtained copy of
-    // the range: the relocation shape. An algorithm moving a directly-held
-    // cursor cannot use the move constructor -- its reseek walks the *old*
-    // range, whose predicates may read a graph member that was moved away an
-    // instant earlier -- so it builds the successor from the new graph's
-    // range and the old cursor's consumed() instead.
+    // A cursor already `consumed` elements into a freshly obtained copy of the
+    // range: the relocation shape. An algorithm moving a directly-held cursor
+    // cannot use the move constructor -- its reseek walks the *old* range,
+    // whose predicates may read a graph member that was moved away an instant
+    // earlier -- so it builds the successor from the new graph's range and the
+    // old cursor's consumed() instead.
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     explicit consumable_input_view(Rng && r, std::size_t consumed)
@@ -150,8 +141,6 @@ public:
         _reseek();
     }
 
-    // How far this cursor has walked; pairs with the (range, consumed)
-    // constructor above.
     [[nodiscard]] constexpr std::size_t consumed() const noexcept {
         return _consumed;
     }
@@ -193,12 +182,9 @@ public:
         return *this;
     }
 
-    // A forwarding reference, not `R &`. The re-seeding idiom this class
-    // exists for -- `_remaining_out_arcs[u] = out_arcs(_graph, u)`, named in
-    // the comment above -- is a *prvalue*, which never bound to `R &`. It only
-    // ever compiled because the borrowed specialisation below happened to have
-    // a non-explicit converting constructor; where the range is a filter_view
-    // (any subgraph) dinitz did not compile at all.
+    // A forwarding reference, not `R &`: the re-seeding idiom this class
+    // exists for, `_remaining_out_arcs[u] = out_arcs(_graph, u)`, hands over a
+    // prvalue, which does not bind to `R &`.
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     constexpr consumable_input_view & operator=(Rng && r) {
@@ -212,14 +198,14 @@ public:
     }
 
     // Re-aims the cursor at a freshly obtained copy of the same logical range,
-    // keeping how far it has walked -- where operator=(Rng &&) above restarts
+    // keeping how far it has walked, where operator=(Rng &&) above restarts
     // from the beginning. This is what an algorithm's copy/move uses to point
-    // relocated frames back at its *own* graph: the _consumed counter already
-    // re-derives _it after this object relocates; rebase() is the missing half
-    // for when the *graph* relocates and the cached range must be re-asked
-    // for. The caller promises `r` enumerates the same elements in the same
-    // order as the range this cursor was walking -- the multi-pass guarantee
-    // every melon incidence range documents.
+    // relocated frames back at its *own* graph: _consumed covers this object
+    // relocating, rebase() covers the *graph* relocating, after which the
+    // cached range must be asked for again. Precondition: `r` enumerates the
+    // same elements in the same order as the range this cursor was walking --
+    // the multi-pass guarantee every melon incidence range documents. Violate
+    // it and the cursor silently resumes at the wrong element.
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     constexpr void rebase(Rng && r) {
@@ -259,9 +245,9 @@ protected:
     [[no_unique_address]] std::ranges::sentinel_t<R> _sentinel;
 
 public:
-    // See the primary template -- including the `explicit`, which that one
-    // carried and this one did not, so whether a range implicitly converted to
-    // a cursor depended on whether it happened to be borrowed.
+    // See the primary template, including the `explicit`: whether a range
+    // converts to a cursor must not depend on whether it happens to be
+    // borrowed.
     template <typename Rng>
         requires(!std::same_as<std::remove_cvref_t<Rng>, consumable_input_view>)
     explicit consumable_input_view(Rng && r)
@@ -363,7 +349,6 @@ public:
         return *this;
     }
 
-    // Puts the cursor back at the start of the range already held.
     constexpr void rewind() {
         if constexpr(std::ranges::borrowed_range<R>) {
             base::_it = _begin;

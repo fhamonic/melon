@@ -17,8 +17,7 @@ template <typename T, template <typename...> typename Primary>
 concept specialization_of = is_specialization_of<T, Primary>::value;
 
 // How cheap a range is to walk, used by the arcs / arcs_entries CPOs to pick
-// between otherwise-equivalent fallbacks. No leading underscore: it is the only
-// name in melon::detail that had one, and the convention here is a plain name.
+// between otherwise-equivalent fallbacks.
 template <typename T>
 inline constexpr int range_rank() {
     if constexpr(specialization_of<T, std::ranges::iota_view>)

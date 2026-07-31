@@ -19,16 +19,11 @@
 
 namespace melon {
 
-// A traits concept, like the dijkstra family's: without it a misspelled flag
-// in a user traits struct silently fell back to nothing instead of failing
-// the constraint.
-// clang-format off
 template <typename Traits>
-concept topological_sort_traits = requires() {
+concept topological_sort_traits = requires {
     { Traits::store_ranks } -> std::convertible_to<bool>;
     { Traits::store_critical_paths } -> std::convertible_to<bool>;
 };
-// clang-format on
 
 struct topological_sort_default_traits {
     static constexpr bool store_ranks = false;
@@ -37,9 +32,8 @@ struct topological_sort_default_traits {
 
 // has_num_vertices is a real requirement, not an accident: the constructor
 // reserves num_vertices(_graph) and _queue_current is an iterator into _queue
-// whose stability depends on that reserve. It used to be left implicit, so a
-// graph without it got a hard error inside the constructor rather than a
-// constraint failure.
+// whose stability depends on that reserve. Spelled out so a graph without it
+// fails the constraint instead of hard-erroring inside the constructor.
 template <graph_view Graph,
           topological_sort_traits Traits = topological_sort_default_traits>
     requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
@@ -132,21 +126,15 @@ public:
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Moves stay defaulted: _queue_current is an iterator into _queue, whose
     // buffer transfers with the move, and the constructor's reserve() keeps it
-    // stable across the push_backs. Only the copy needed a rebase -- it handed
-    // the new object an iterator into the source's buffer, at a capacity only
-    // as large as the source's size, so the copy walked off the end.
+    // stable across the push_backs. A copy cannot be defaulted -- it would hand
+    // the new object an iterator into the source's buffer, which the copy then
+    // walks off the end of.
     constexpr topological_sort(const topological_sort &) = delete;
     constexpr topological_sort(topological_sort &&) = default;
 
     constexpr topological_sort & operator=(const topological_sort &) = delete;
     constexpr topological_sort & operator=(topological_sort &&) = default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -159,7 +147,6 @@ public:
     }
 
 public:
-    // Rebuilds the remaining in-degrees and re-seeds the queue.
     constexpr topological_sort & reset() {
         push_start_vertices();
         return *this;
@@ -170,8 +157,8 @@ public:
         return _queue_current == _queue.end();
     }
 
-    // See competing_dijkstras::current(): the noexcept measures the copy the
-    // by-value return performs, not just the dereference.
+    // The noexcept measures the copy the by-value return performs, not just the
+    // dereference.
     [[nodiscard]] constexpr vertex current() const
         noexcept(noexcept(vertex(*_queue_current))) {
         assert(!finished());
@@ -199,18 +186,14 @@ public:
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
-    // A view of the reached state, like breadth_first_search's and
-    // depth_first_search's. It refers into the algorithm, as every melon map
-    // view refers into what it names: it is valid while this object lives and
-    // stays put, exactly the contract mapping_ref_view carries.
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & noexcept(
         noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
     }
-    // The expiring overload moves the stored map into a mapping_owning_view,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_reached_map)))) {
         return maps::mapping_all(std::move(_reached_map));
@@ -218,9 +201,8 @@ public:
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const
         requires(Traits::store_critical_paths)
     {
-        // Not .value(): see dijkstra::pred_arc. Asking a start vertex for a
-        // predecessor arc is a precondition violation, not an exceptional
-        // condition.
+        // Not .value(): asking a start vertex for a predecessor arc is a
+        // precondition violation, not an exceptional condition.
         assert(reached(u) && _pred_arcs_map[u].has_value());
         return *_pred_arcs_map[u];
     }
@@ -250,10 +232,9 @@ private:
         using intrusive_iterator_base<topological_sort,
                                       vertex>::intrusive_iterator_base;
 
-        // Returns a plain prvalue, not a `const` one: a const prvalue
-        // inhibits moves and makes std::iterator_traits disagree with the
-        // `reference` typedef right above, which is a
-        // std::indirectly_readable hazard.
+        // A plain prvalue, not a `const` one: a const prvalue inhibits moves
+        // and makes std::iterator_traits disagree with the `reference` typedef
+        // above -- a std::indirectly_readable hazard.
         constexpr reference operator*() const {
             return this->_structure->_pred_arcs_map[this->_cursor].value();
         }

@@ -39,8 +39,6 @@ public:
     using value_type = Entry;
     using size_type = std::size_t;
     using priority_type = mapped_value_t<EntryPriorityMap, Entry>;
-    // std::priority_queue::value_compare's analogue, named for what the
-    // comparator actually orders here: mapped priorities, not entries.
     using priority_compare = PriorityComparator;
 
 protected:
@@ -52,13 +50,11 @@ public:
     constexpr d_ary_heap_base()
         : _heap_array(), _priority_cmp(), _entry_priority_map() {}
 
-    // Constrained away from d_ary_heap_base itself: as an unconstrained
-    // single-argument template this bound a non-const lvalue of the class type
-    // better than the copy constructor (PC && deduces an exact match, the copy
-    // constructor needs a const conversion), so copying a mutable heap tried to
-    // build a comparator out of it.
-    // explicit, like static_map's single-argument constructors (the 2.8 rule):
-    // a comparator is not a heap.
+    // Constrained away from d_ary_heap_base itself: unconstrained, this
+    // template beats the copy constructor for a non-const lvalue of the class
+    // type (PC && is an exact match, the copy constructor needs a const
+    // conversion), so copying a mutable heap would try to build a comparator
+    // out of it. explicit because a comparator is not a heap.
     template <typename PC>
         requires(!std::same_as<std::remove_cvref_t<PC>, d_ary_heap_base>) &&
                     std::constructible_from<PriorityComparator, PC>
@@ -109,9 +105,9 @@ protected:
         const size_type i) noexcept {
         return i * D + sizeof(value_type);
     }
-    template <int I = D>
     // Neither of the two below is noexcept: every comparison goes through
     // the caller's comparator and entry-priority map.
+    template <int I = D>
     [[nodiscard]] size_type minimum_child(const size_type first_child) const {
         if constexpr(I == 1)
             return first_child;
@@ -173,8 +169,7 @@ protected:
 
     // Not constexpr, and neither is anything reaching it: the heap addresses
     // its array by byte offset through reinterpret_cast, which is never a
-    // constant expression. Marking these constexpr only advertised something
-    // no caller could ever use.
+    // constant expression.
     [[nodiscard]] value_type & entry_ref(const size_type i) noexcept {
         assert((i / sizeof(value_type)) < _heap_array.size());
         return *(reinterpret_cast<value_type *>(
@@ -258,9 +253,9 @@ public:
             push(static_cast<value_type>(std::forward<decltype(e)>(e)));
     }
     // const&, the std::priority_queue shape: the caller decides whether to
-    // copy. The reference is into the heap array, so it is invalidated by
-    // push(), pop(), promote() and demote() -- copy first when the entry is
-    // needed across one of those, as dijkstra's advance() does.
+    // copy. The reference is into the heap array, so push(), pop(), promote()
+    // and demote() all invalidate it -- copy the entry out first when it is
+    // needed across one of those.
     [[nodiscard]] const value_type & top() const noexcept {
         assert(!_heap_array.empty());
         return _heap_array.front();
@@ -292,9 +287,8 @@ public:
 
     d_ary_heap() : base_class() {}
 
-    // Forwards the base's single-comparator constructor, which used to be
-    // dead code for this derived class: `d_ary_heap<2, E, Cmp> h(cmp);` did
-    // not compile although the base defines exactly that constructor.
+    // Redeclared, not inherited: without it `d_ary_heap<2, E, Cmp> h(cmp);`
+    // does not compile although the base defines exactly that constructor.
     template <typename PC>
         requires(!std::same_as<std::remove_cvref_t<PC>, d_ary_heap>) &&
                 std::constructible_from<PriorityComparator, PC>
@@ -362,9 +356,6 @@ public:
         , _entry_id_map()
         , _heap_index_map(std::forward<HIM>(heap_index_map)) {}
 
-    // The two maps used to be default-constructed unconditionally, so a
-    // stateful priority or id map could never reach the heap -- the
-    // external-priority test was the commented-out corpse of this.
     template <typename PC, typename HIM, typename EPM>
     updatable_d_ary_heap(PC && priority_cmp, HIM && heap_index_map,
                          EPM && entry_priority_map)
@@ -415,10 +406,10 @@ public:
     // the heap array with it, and contains()'s bounds check is only as good as
     // the garbage it reads.
     //
-    // Not fixed by initialising the map: that is an O(n) fill on every heap
-    // construction, which is exactly what the caller-supplied index map exists
-    // to avoid. Algorithms track reachability themselves (dijkstra's
-    // _vertex_status_map) and only ask about keys they have pushed.
+    // Initialising the map instead would be an O(n) fill on every heap
+    // construction, which is exactly what a caller-supplied index map exists
+    // to avoid. Algorithms track reachability themselves and only ask about
+    // keys they have pushed.
     [[nodiscard]] priority_type priority(const id_type & k) const {
         return base_class::_entry_priority_map[base_class::entry_ref(
             index_of(k))];

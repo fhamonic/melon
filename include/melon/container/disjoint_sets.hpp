@@ -52,8 +52,8 @@ public:
     // output_mapping, so there is no way to enumerate or erase the keys already
     // written into it. A key pushed before a clear() and not pushed again
     // therefore still maps to a component index this object no longer has, and
-    // find() on it is out of range. Push every key you intend to query after
-    // each clear() -- which is what kruskal::reset() does.
+    // find() on it is out of range. Push every key you intend to query again
+    // after each clear().
     constexpr void clear() noexcept {
         _parent_map.resize(0);
         _size_map.resize(0);
@@ -69,6 +69,10 @@ public:
     }
 
 public:
+    // Precondition: `k` was pushed since the last clear(). M is only an
+    // output_mapping, so an unpushed key reads back whatever the caller's map
+    // holds for it -- 0 for a std::unordered_map, uninitialised memory for a
+    // static_map -- and _parent_map is then indexed with that.
     [[nodiscard]] constexpr component_type find(const key_type & k) {
         component_type c = _component_map[k];
         while(_parent_map[c] != c) {
@@ -93,6 +97,6 @@ public:
                                         const key_type & k2) {
         return merge(find(k1), find(k2));
     }
-};  // class disjoint_sets
+};
 
 }  // namespace melon

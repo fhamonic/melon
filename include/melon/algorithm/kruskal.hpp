@@ -40,22 +40,16 @@ public:
 
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Moves stay defaulted: _cursor is an iterator into _sorted_edges, whose
-    // buffer transfers with the move. Only the copy needed a rebase -- it
-    // handed the new object an iterator into the source's buffer, so
-    // finished(), comparing it against the copy's own end(), never became true
-    // and advance() walked off the end.
+    // buffer transfers with the move. Any copy would have to rebase it --
+    // an iterator into the source's buffer never compares equal to the new
+    // object's end(), so finished() never becomes true and advance() walks off
+    // the end.
     constexpr kruskal(const kruskal &) = delete;
     constexpr kruskal(kruskal &&) = default;
 
     constexpr kruskal & operator=(const kruskal &) = delete;
     constexpr kruskal & operator=(kruskal &&) = default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr UGraph & base() & noexcept { return _ugraph; }
     [[nodiscard]] constexpr const UGraph & base() const & noexcept {
         return _ugraph;
@@ -68,8 +62,6 @@ public:
     }
 
 private:
-    // The acceptance test reset() and advance() share: take the edge only if
-    // its endpoints sit in distinct components, and merge them if so.
     constexpr bool merge_endpoints_of(const edge & e) {
         auto && [u, v] = edge_endpoints(_ugraph, e);
         const auto cu = _components_sets.find(u);
@@ -80,13 +72,12 @@ private:
     }
 
 public:
-    // Not noexcept: it refills, sorts and re-seeds, all of which allocate and
-    // all of which run the user's cost map. Returns *this like every other
-    // algorithm's reset(); it used to return void.
+    // Not noexcept: it refills, sorts and re-seeds, all of which allocate, and
+    // the sort runs the user's cost map.
     constexpr kruskal & reset() {
-        // resize(0) first, and clear the sets: without it a second reset()
-        // appended the whole edge list again and re-pushed every vertex, so
-        // both grew without bound across runs.
+        // reset() is re-runnable, so the edge list and the component sets must
+        // be emptied first: otherwise a second call appends the whole edge list
+        // again and re-pushes every vertex, and both grow without bound.
         _sorted_edges.resize(0);
         if constexpr(has_num_edges<UGraph>) {
             _sorted_edges.reserve(num_edges(_ugraph));
@@ -97,9 +88,9 @@ public:
         });
         _components_sets.clear();
         for(auto && v : vertices(_ugraph)) _components_sets.push(v);
-        // Seed the cursor through the same test advance() uses. Merging
-        // *_sorted_edges.begin() outright dereferenced end() on a graph with no
-        // edges, and took a cheapest self-loop into the tree.
+        // Seed the cursor through the same acceptance test advance() applies:
+        // merging *_sorted_edges.begin() outright dereferences end() on a graph
+        // with no edges, and takes a cheapest self-loop into the tree.
         _cursor = _sorted_edges.begin();
         if(!finished() && !merge_endpoints_of(*_cursor)) advance();
         return *this;

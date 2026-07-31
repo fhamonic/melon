@@ -47,8 +47,10 @@ struct competing_dijkstras_default_traits {
 // vertex is claimed by whichever colour reaches it first -- blue wins ties.
 // Iterating yields only the vertices blue claims, in order of increasing blue
 // distance, and stops as soon as no blue candidate is left; red vertices are
-// traversed, so that they can block blue, but never produced. Same
-// non-negativity requirement as melon::dijkstra, on both maps.
+// traversed, so that they can block blue, but never produced.
+// Same precondition as melon::dijkstra, on both maps and uncheckable by any
+// concept: an arc length must never improve a distance when combined. Each
+// vertex is claimed once, so a violation silently gives it to the wrong colour.
 // O((m + n) log n) with the default binary heap.
 template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
           mapping_view<arc_t<Graph>> RedLengthMap,
@@ -108,12 +110,6 @@ public:
         delete;
     constexpr competing_dijkstras & operator=(competing_dijkstras &&) = default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -147,11 +143,11 @@ public:
         return *this;
     }
 
-    // Strict precondition, like every add_source in the family: the vertex
-    // must be untouched. Re-adding a settled vertex would re-process it.
-    // Both sources end by restoring the class invariant -- "the heap top, if
-    // any candidate remains, is blue" -- so there is no separate init() step:
-    // a sourced object is ready to iterate, like every other algorithm.
+    // Strict precondition: the vertex must be untouched. Re-seeding a settled
+    // one silently re-processes it and corrupts the claims already made. Both
+    // overloads end by restoring the class invariant -- "the heap top, if any
+    // blue candidate remains, is blue" -- so a sourced object is immediately
+    // ready to iterate.
     competing_dijkstras & add_blue_source(
         const vertex & s, const length_type dist_v = Traits::semiring::zero) {
         assert(_vertex_status_map[s] == PRE_HEAP);
@@ -210,9 +206,8 @@ public:
         return _num_blue_candidates == 0;
     }
 
-    // The noexcept measures the copy the return performs, not just the
-    // top() call: top() hands back a reference, and returning it by value
-    // copy-constructs the entry.
+    // The noexcept measures the copy the by-value return performs, not just the
+    // top() call.
     [[nodiscard]] constexpr auto current() const
         noexcept(noexcept(typename heap::value_type(_heap.top()))) {
         assert(!finished());
@@ -246,7 +241,7 @@ private:
 public:
     constexpr void advance() {
         assert(!finished());
-        // By the class invariant the top is blue here; see settle_red_prefix.
+        // The class invariant leaves a blue vertex on top here.
         const auto [t, t_dist] = _heap.top();
         assert(t_dist.second);
         _vertex_status_map[t] = POST_HEAP;
@@ -264,12 +259,6 @@ public:
     }
 };
 
-// No Traits parameter: the class template's own default computes it, so the
-// deduced type and the explicitly written `competing_dijkstras<G,
-// BlueLengthMap, RedLengthMap>` agree. The guide used to default it over the
-// *deduced* Graph -- a reference type -- while the class computes it over
-// views::graph_all_t<Graph>, so the two named different specialisations of
-// competing_dijkstras_default_traits.
 template <typename Graph, typename BlueLengthMap, typename RedLengthMap>
 competing_dijkstras(Graph &&, BlueLengthMap &&, RedLengthMap &&)
     -> competing_dijkstras<views::graph_all_t<Graph>,

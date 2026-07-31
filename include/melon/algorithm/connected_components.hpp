@@ -47,18 +47,16 @@ public:
         } else {
             _queue_current = 0;
         }
-        // Guarded: advance() reads _remaining_vertices.current(), so on a graph
-        // with no vertices the unconditional call read past the end of an empty
-        // view (an assertion failure in a debug build, silent UB in a release
-        // one). A vertex-less graph is finished() from the start.
+        // Guarded: advance() reads _remaining_vertices.current(), which on a
+        // vertex-less graph reads past the end of an empty view. Such a graph
+        // is finished() from the start.
         if(!finished()) advance();
     }
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // Hand-written for the same reason as depth_first_search's move: a
-    // memberwise move leaves the cached cursor's range pointing at the
-    // moved-from object's _graph member. The queue's buffer transfers, so
-    // _queue_current needs nothing.
+    // Move-only; see the melon::traversal_algorithm concept for the ruling. The
+    // move cannot be defaulted: a memberwise move leaves the cached cursor's
+    // range pointing at the moved-from object's _graph member. The queue's
+    // buffer transfers, so _queue_current needs nothing.
     constexpr connected_components(const connected_components &) = delete;
     constexpr connected_components(connected_components && o)
         : _graph(std::move(o._graph))
@@ -96,12 +94,6 @@ public:
         return *this;
     }
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr UGraph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const UGraph & base() const & noexcept {
         return _graph;
@@ -114,8 +106,8 @@ public:
     }
 
     // Restores the constructor's state, first component included: without the
-    // advance() the queue stayed empty while finished() still said false, so
-    // current() named nothing. _reset_current_vertex() asserts !finished(), so
+    // advance() the queue stays empty while finished() still says false, so
+    // current() names nothing. _reset_current_vertex() asserts !finished(), so
     // it belongs inside the same guard as the advance().
     constexpr connected_components & reset() {
         _remaining_vertices = vertices(_graph);
@@ -133,10 +125,8 @@ public:
         return _remaining_vertices.empty();
     }
 
-    // The component is a window onto _queue, which the next advance()
-    // rewrites -- hand it out read-only, and as std::span<const vertex>, the
-    // type breadth_first_search::traversal() and the other component
-    // algorithms' current() already settled on.
+    // The component is a window onto _queue, which the next advance() rewrites
+    // -- hand it out read-only.
     [[nodiscard]] constexpr std::span<const vertex> current() const noexcept {
         assert(!finished());
         return std::span<const vertex>(_queue.data(), _queue.size());
@@ -181,15 +171,9 @@ public:
         while(!_finished_component()) {
             // By reference only where _queue is reserved to num_vertices and so
             // cannot reallocate; without that reserve the push_backs below
-            // would leave this reference dangling. Same shape as
-            // breadth_first_search::advance().
+            // would leave this reference dangling.
             std::conditional_t<has_num_vertices<UGraph>, const vertex &, vertex>
                 u = _current_vertex();
-            // for(const auto & w : adjacency(_graph, u)) {
-            //     if(_reached_map[w]) continue;
-            //     _queue.push_back(w);
-            //     _reached_map[w] = true;
-            // }
             for(const auto & [a, w] : incidence(_graph, u)) {
                 if(_reached_map[w]) continue;
                 _queue.push_back(w);
@@ -203,18 +187,14 @@ public:
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
-    // A view of the reached state, like breadth_first_search's and
-    // depth_first_search's. It refers into the algorithm, as every melon map
-    // view refers into what it names: it is valid while this object lives and
-    // stays put, exactly the contract mapping_ref_view carries.
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & noexcept(
         noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
     }
-    // The expiring overload moves the stored map into a mapping_owning_view,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_reached_map)))) {
         return maps::mapping_all(std::move(_reached_map));
@@ -226,10 +206,8 @@ connected_components(UGraph &&)
     -> connected_components<views::undirected_graph_all_t<UGraph>>;
 
 // Constrained on what views::undirect actually needs -- the *incidence*
-// concepts -- not on adjacency. The two are independent: a graph with
-// adjacency but no incidence passed this constraint and then hard-errored
-// inside undirect, and one with incidence but no adjacency was rejected
-// although it works.
+// concepts -- not on adjacency. The two are independent: adjacency without
+// incidence hard-errors inside undirect, and incidence without adjacency works.
 template <graph Graph>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
              has_vertex_map<Graph>

@@ -29,8 +29,6 @@ public:
     constexpr movable_box(const T & t)
         requires std::copy_constructible<T>
         : _value(t) {}
-    // Builds the value in place, so a caller holding something merely
-    // *convertible* to T does not have to materialise a T first.
     template <typename... Args>
         requires std::constructible_from<T, Args...>
     constexpr explicit movable_box(std::in_place_t, Args &&... args)
@@ -62,6 +60,10 @@ public:
             _value = o._value;
         } else {
             if(this != std::addressof(o)) {
+                // The temporary is what makes the destroy safe: the copy is
+                // the throwing step, so it must complete before _value dies.
+                // Constructing straight from o._value would leave the box
+                // destroyed if that copy threw.
                 T tmp(o._value);
                 std::destroy_at(std::addressof(_value));
                 std::construct_at(std::addressof(_value), std::move(tmp));

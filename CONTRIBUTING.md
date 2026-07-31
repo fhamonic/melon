@@ -85,10 +85,21 @@ clang-format -i <files you changed>
 - Headers use `#pragma once`.
 - Everything lives directly in `namespace melon`; nothing may be added to a
   nested umbrella namespace.
-- Implementation details go in `melon/detail/` headers and/or `__detail`
-  namespaces with `__`-prefixed names; public headers use `_UpperCamel`
-  template parameters and `__`-prefixed function parameters in the
-  libstdc++ tradition. Match the style of the file you are editing.
+- **No reserved identifiers.** Nothing may contain a double underscore, or a
+  leading underscore followed by an uppercase letter — those are reserved to
+  the implementation in every scope ([lex.name]/3), and melon is not a standard
+  library implementation. Template parameters are plain `UpperCamel` (`Graph`,
+  not `_Graph`), implementation details live in `melon/detail/` headers and the
+  `melon::detail` namespace, CPO function objects are `vertices_fn`, and
+  detection concepts are `has_member_x` / `has_adl_x` / `can_x`. The only
+  double-underscore names in the tree are compiler- and platform-owned
+  (`__builtin_prefetch`, `__GNUC__`, `__cpp_lib_*`) and must stay.
+  - Watch the constructor-parameter trap: when a class template's constructor
+    deduces its own parameter, it may not reuse the class template parameter's
+    name (the leading underscore used to keep them apart). Pick a distinct
+    descriptive name — `Rng` against a stored `R`, `BlueMap` against a stored
+    `BLM`. GCC rejects the clash as `-Wtemplate-body` "shadows template
+    parameter".
 - `melon/detail/` and `melon/experimental/` carry no API stability
   guarantee; everything else is frozen for the 1.x series (see
   [API stability](README.md#api-stability)). Breaking changes to public
@@ -101,6 +112,78 @@ clang-format -i <files you changed>
   in the same change that makes it work.
 - User-visible changes (features, fixes, deprecations) get a line in
   `CHANGELOG.md` under the upcoming release.
+
+## Comments
+
+melon's teaching documentation is prose, under `docs/`, and its API contract is
+stated once in [docs/contract.md](docs/contract.md). Header comments are not a
+second copy of either: the code is meant to be readable on its own, and a
+comment earns its place only by saying something the code cannot. Three kinds
+qualify.
+
+- **Contracts** — preconditions, complexity, and semantic requirements no
+  concept can check (Dijkstra's "an arc length must never improve a distance
+  when combined"). Users read these through jump-to-definition, so state them
+  in the header; keep it to the requirement, the consequence of violating it,
+  and the bound. The motivation and the worked examples belong in `docs/`.
+- **Traps** — decisions that *look* wrong and would be "fixed" by a competent
+  maintainer: a `mutable` member, an `optional` that only exists for
+  default-constructibility, a counter that looks redundant. These must name the
+  invariant *and* the concrete failure that follows from breaking it, or
+  someone will simplify them away. Terse is wrong here; "`// mutable:
+  filter_view end()`" does not survive contact with a maintainer's
+  simplification instinct.
+- **Non-obvious mechanics** — why an overload is constrained the way it is, why
+  a `noexcept` measures what it measures. One or two sentences.
+
+A comment explaining why a specifier is **absent** is a keeper when the reason
+is not visible in the body — `// Not noexcept: emplace_back may reallocate and
+throw. It also sifts through the user's comparator and priority map.` earns its
+place on the second sentence, because a maintainer reading the body sees only
+the first throw source. Nothing distinguishes a deliberate omission from an
+oversight, so these are worth repeating at each site they guard. But an absence
+whose reason *is* right there (`// Not noexcept: it allocates.` over a body that
+plainly allocates) is restatement like any other.
+
+Everything else goes. In particular, **do not narrate history**: "the old
+unconstrained template said yes to…", "this used to admit a settled vertex",
+"this was the one `current()` carrying no specification". That justifies a past
+change to a reviewer, which is what the commit message and `CHANGELOG.md` are
+for, and it rots the moment the old code is gone. State the invariant in the
+present tense instead.
+
+Three more things go, and none is caught by looking at length — these are
+usually one or two tidy, accurate sentences:
+
+- **Restatement.** The comment says what the code says. `// Private, like every
+  other container's` sitting under a `private:` label; a comment naming the
+  type, the parameter, or what `= delete` does; `// Rebuilds the in-degrees and
+  re-seeds the queue` over a call to `push_start_vertices()`. If a reader
+  learns it by looking down one line, it is not documentation.
+- **Reassurance.** A comment that explains why the code as written is correct,
+  without warning against a specific wrong alternative, protects nothing. "No
+  `Traits` parameter: the class template's own default computes it, so the
+  deduced type and the explicitly written `dijkstra<G, LM>` agree" reads as a
+  trap comment but names no failure, so a maintainer minded to add that
+  parameter reads it and proceeds. Either name the failure or drop it.
+- **Anything a test already pins.** The CTAD-agreement property above is
+  enforced by `api_review.deduced_type_equals_the_spelled_out_one`, whose own
+  comment *does* explain the failure. A `static_assert` that fires on the next
+  build is stronger than a paragraph, and it cannot go stale.
+
+Prefer references to compiler-checked things (`// Move-only; see the
+melon::traversal_algorithm concept`) over references to sibling code (`// See
+competing_dijkstras::current()`), which drift silently.
+
+One discriminator covers all of the above: *does the comment name a **mistake**
+— something a reader could do, or wrongly conclude, that the code alone would
+not prevent?* If it only describes what is there, or reassures that what is
+there is right, delete it. A maintainer re-simplifies and breaks an invariant —
+keep it, with the failure named. A user misuses the API — one-line contract
+here, full prose in `docs/`. When genuinely torn, keep it: a borderline keeper
+costs two lines, deleting a real trap costs a bug.
+[`algorithm/dijkstra.hpp`](include/melon/algorithm/dijkstra.hpp) is the
+reference for the resulting density.
 
 ## Versioning
 

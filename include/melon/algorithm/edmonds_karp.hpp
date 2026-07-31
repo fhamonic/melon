@@ -13,9 +13,11 @@
 namespace melon {
 
 // numeric_limits must be genuinely specialized for the capacity type: the
-// primary template's max() returns T{} -- a zero infinity that made the
-// augmenting-path loop spin forever for a conforming custom value type that
-// compiled cleanly.
+// primary template's max() returns T{}, a zero infinity that makes the
+// augmenting-path loop spin forever. Capacities must also be non-negative,
+// which no concept can check: a negative one lets an augmentation exceed the
+// capacity it is bounded by, so run() converges on a non-flow.
+// O(n m^2), independent of the capacity values.
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
              has_vertex_map<Graph> && has_arc_map<Graph> &&
@@ -38,6 +40,8 @@ private:
     vertex_map_t<Graph, arc> _bfs_pred_arc;
 
 public:
+    // Leaves the terminals unset -- run(), flow_value() and minimum_cut() all
+    // read them, so set_source() and set_target() must be called first.
     template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
     constexpr edmonds_karp(G && g, CM && cm)
         : _graph(views::graph_all(std::forward<G>(g)))
@@ -65,12 +69,6 @@ public:
     constexpr edmonds_karp & operator=(const edmonds_karp &) = delete;
     constexpr edmonds_karp & operator=(edmonds_karp &&) = default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -104,11 +102,10 @@ private:
         _bfs_reached_map[_s] = true;
         _bfs_queue.resize(0);
         _bfs_queue.push_back(_s);
-        // Returns true when it reaches _t.
-        // By value, not by reference: the callers pass _bfs_queue elements,
-        // and the push_backs below reallocate _bfs_queue mid-call in the
-        // no-reserve arm -- a reference parameter dangles inside the running
-        // call.
+        // The vertex is taken by value, not by reference: the callers pass
+        // _bfs_queue elements, and the push_backs below reallocate _bfs_queue
+        // mid-call in the no-reserve arm -- a reference parameter dangles
+        // inside the running call.
         const auto visit = [this](const vertex u) {
             for(auto && a : out_arcs(_graph, u)) {
                 const vertex v = arc_target(_graph, a);
@@ -132,9 +129,8 @@ private:
         };
         // The iterator walk is only legal because the constructor reserved
         // num_vertices slots, so visit's push_backs never reallocate under
-        // `current`. Without num_vertices there is no reserve, and a growing
-        // queue relocates -- index, not iterator, the same split as
-        // breadth_first_search's cursor.
+        // `current`. Without num_vertices there is no reserve and a growing
+        // queue relocates, hence the index arm.
         if constexpr(has_num_vertices<Graph>) {
             auto current = _bfs_queue.begin();
             while(current != _bfs_queue.end()) {
@@ -198,16 +194,14 @@ public:
         noexcept(noexcept(_carried_flow_map[a])) {
         return _carried_flow_map[a];
     }
-    // A view of the stored flows, reached_map()'s contract: valid while this
+    // Refers into the algorithm, like every melon map view: valid while this
     // object lives and stays put.
     [[nodiscard]] constexpr auto flows_map() const & noexcept(
         noexcept(maps::mapping_all(_carried_flow_map))) {
         return maps::mapping_all(_carried_flow_map);
     }
-    // The expiring overload moves the stored map into a mapping_owning_view,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards.
+    // Terminal, like std::move(alg).base(): the member left behind is valid but
+    // empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto flows_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_carried_flow_map)))) {
         return maps::mapping_all(std::move(_carried_flow_map));
