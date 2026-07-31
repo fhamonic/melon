@@ -22,13 +22,12 @@
 
 namespace melon {
 
-// clang-format off
 template <typename Traits>
-concept bidirectional_dijkstra_traits = semiring<typename Traits::semiring> &&
-    updatable_priority_queue<typename Traits::heap> && requires() {
-    { Traits::store_paths } -> std::convertible_to<bool>;
-};
-// clang-format on
+concept bidirectional_dijkstra_traits =
+    semiring<typename Traits::semiring> &&
+    updatable_priority_queue<typename Traits::heap> && requires {
+        { Traits::store_paths } -> std::convertible_to<bool>;
+    };
 
 template <typename Graph, typename ValueType>
 struct bidirectional_dijkstra_default_traits {
@@ -42,6 +41,16 @@ struct bidirectional_dijkstra_default_traits {
     static constexpr bool store_paths = true;
 };
 
+// One Dijkstra forward from the sources and one backward from the targets,
+// stopping once no unexplored path can beat the best meeting found so far.
+// Only the s-t distance and the path through that meeting vertex are exposed.
+// Two preconditions on the mapped values, uncheckable by any concept: the
+// first is melon::dijkstra's, an arc length must never improve a distance when
+// combined; the second is the stopping criterion's, plus must be monotone in
+// both arguments, since plus(u1_dist, u2_dist) over the two frontier tops is
+// taken as a lower bound on every path not yet seen. Either violation silently
+// returns a suboptimal dist() instead of an error.
+// O((m + n) log n) with the default binary heap.
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           bidirectional_dijkstra_traits Traits =
               bidirectional_dijkstra_default_traits<
@@ -52,10 +61,9 @@ class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-    // Keyed on the *arc*, like dijkstra and network_voronoi, and like this
-    // class's own default Traits above: LengthMap is constrained as
-    // mapping_view<arc_t<Graph>>, so keying on the vertex only ever worked
-    // because every melon container spells both handles unsigned int.
+    // Keyed on the *arc*, as LengthMap is constrained as
+    // mapping_view<arc_t<Graph>>: keying on the vertex still compiles wherever
+    // a graph spells both handles unsigned int, and breaks on every other one.
     using length_type = mapped_value_t<LengthMap, arc>;
 
     using heap = Traits::heap;
@@ -129,12 +137,6 @@ public:
     constexpr bidirectional_dijkstra & operator=(bidirectional_dijkstra &&) =
         default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -154,6 +156,9 @@ public:
         _st_dist = Traits::semiring::infty;
         return *this;
     }
+    // Strict precondition: the vertex must be untouched in the direction being
+    // seeded. Re-seeding a settled one silently corrupts the stored paths and
+    // the meeting distance.
     bidirectional_dijkstra & add_source(
         const vertex & s, const length_type dist = Traits::semiring::zero) {
         assert(_vertex_status_map[s].first == PRE_HEAP);
@@ -172,10 +177,8 @@ public:
     }
 
 public:
-    // Returns *this like every run() in the family; the computed distance is
-    // read through dist() afterwards. Idempotent: the loop below resumes from
-    // the member state and immediately re-derives the same stopping
-    // condition, so a second call is a no-op.
+    // Idempotent: the loop resumes from the member state and re-derives the
+    // same stopping condition, so a second call is a no-op.
     constexpr bidirectional_dijkstra & run() {
         while(!_forward_heap.empty() && !_reverse_heap.empty()) {
             // Copies, not reference bindings: top() returns a reference into
@@ -298,9 +301,9 @@ public:
     [[nodiscard]] constexpr arc pred_arc(const vertex & u) const
         requires(Traits::store_paths)
     {
-        // See dijkstra::pred_arc: .value() would throw for the source, whose
-        // optional add_source() resets, where the caller has simply violated
-        // a precondition.
+        // Asserted rather than left to .value(): the source's own optional is
+        // empty, so walking past it is a caller precondition violation, not an
+        // exceptional condition.
         assert(_vertex_status_map[u].first != PRE_HEAP &&
                _forward_pred_arcs_map[u].has_value());
         return *_forward_pred_arcs_map[u];
@@ -331,10 +334,9 @@ private:
             bidirectional_dijkstra,
             std::optional<arc>>::intrusive_iterator_base;
 
-        // Returns a plain prvalue, not a `const` one: a const prvalue
-        // inhibits moves and makes std::iterator_traits disagree with the
-        // `reference` typedef right above, which is a
-        // std::indirectly_readable hazard.
+        // A plain prvalue, not a `const` one: a const prvalue inhibits moves
+        // and makes std::iterator_traits disagree with the `reference` typedef
+        // above -- a std::indirectly_readable hazard.
         constexpr reference operator*() const { return this->_cursor.value(); }
         constexpr forward_path_iterator & operator++() {
             this->_cursor = this->_structure->_forward_pred_arcs_map[arc_source(
@@ -361,10 +363,9 @@ private:
             bidirectional_dijkstra,
             std::optional<arc>>::intrusive_iterator_base;
 
-        // Returns a plain prvalue, not a `const` one: a const prvalue
-        // inhibits moves and makes std::iterator_traits disagree with the
-        // `reference` typedef right above, which is a
-        // std::indirectly_readable hazard.
+        // A plain prvalue, not a `const` one: a const prvalue inhibits moves
+        // and makes std::iterator_traits disagree with the `reference` typedef
+        // above -- a std::indirectly_readable hazard.
         constexpr reference operator*() const { return this->_cursor.value(); }
         constexpr reverse_path_iterator & operator++() {
             this->_cursor = this->_structure->_reverse_pred_arcs_map[arc_target(
@@ -408,9 +409,6 @@ public:
     }
 };
 
-// No Traits parameter: the class template's own default computes it, so the
-// deduced type and the explicitly written `bidirectional_dijkstra<G, LM>`
-// agree.
 template <typename Graph, typename LengthMap>
 bidirectional_dijkstra(Graph &&, LengthMap &&)
     -> bidirectional_dijkstra<views::graph_all_t<Graph>,

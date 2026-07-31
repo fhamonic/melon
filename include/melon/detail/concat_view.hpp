@@ -58,9 +58,9 @@ private:
                                    std::ranges::forward_range<SecondBase>,
                                std::forward_iterator_tag,
                                std::input_iterator_tag>;
-        // No iterator_category: over input-only bases the post-increment
-        // returns void, so the Cpp17 input category it used to advertise was
-        // unmeetable. iterator_concept above is what C++20 code reads.
+        // No iterator_category: over input-only bases post-increment returns
+        // void, so no Cpp17 category is meetable. iterator_concept above is
+        // what C++20 code reads.
         using difference_type = std::ptrdiff_t;
         using value_type =
             std::common_type_t<std::ranges::range_value_t<FirstBase>,

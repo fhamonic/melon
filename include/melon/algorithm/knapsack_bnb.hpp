@@ -16,6 +16,13 @@
 
 namespace melon {
 
+// Preconditions on the mapped values, uncheckable by any concept: values and
+// costs must be non-negative and the budget must be non-negative. The bound
+// computeUpperBound() computes is the fractional relaxation, which only
+// dominates the integral optimum under those signs; a negative one prunes the
+// true optimum away, so run() answers with a suboptimal solution instead of
+// failing.
+//
 // random_access_range, not range: the branch-and-bound loops order iterators
 // with `<`, which only random-access iterators provide -- with a plain range
 // the error surfaces inside the members instead of at the constraint.
@@ -131,7 +138,8 @@ private:
 
 public:
     // Constrained on what the mem-initializers actually do, so
-    // std::is_constructible answers honestly -- see dijkstra's constructor.
+    // std::is_constructible answers what construction actually does instead of
+    // hard-erroring outside the immediate context.
     template <std::ranges::viewable_range IR, mapping_for<ValueMap> VM,
               mapping_for<CostMap> CM, std::convertible_to<Cost> B>
         requires std::constructible_from<ItemRange, std::views::all_t<IR>>
@@ -147,11 +155,10 @@ public:
 public:
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Moves stay defaulted: _best_sol holds iterators into _value_cost_pairs,
-    // whose buffer transfers with the move. Only the copy needed a rebase --
-    // and it was the last hand-written copy in the library still missing the
-    // requires-clause that keeps std::copyable honest, so for a move-only
-    // ItemRange the trait answered true and the copy hard-errored inside the
-    // mem-initializer. Deleting it settles both.
+    // whose buffer transfers with the move. A copy would have to rebase them,
+    // and could not be declared honestly -- for a move-only ItemRange
+    // std::copyable would answer true and the copy hard-error in the
+    // mem-initializer.
     knapsack_bnb(const knapsack_bnb &) = delete;
     knapsack_bnb(knapsack_bnb &&) = default;
 
@@ -184,8 +191,8 @@ public:
     }
 
     // Re-derives through reset(): the item filter built there depends on the
-    // budget, so only assigning _budget kept newly-affordable items excluded
-    // and run() returned a wrong optimum after a raise.
+    // budget, so assigning _budget alone would leave newly-affordable items
+    // excluded and run() would answer a wrong optimum after a raise.
     knapsack_bnb & set_budget(Cost b) {
         _budget = b;
         return reset();
@@ -201,8 +208,8 @@ public:
         std::jthread t([this](std::stop_token stoken) {
             return iterative_bnb_timeout(stoken);
         });
-        // C++23 should allow to call jthread from future and prevent launching
-        // the supplementary thread for join
+        // The extra thread exists only to make the join waitable: jthread has
+        // no timed join, so the wait_for below needs a future to wait on.
         auto future = std::async(std::launch::async, &std::jthread::join, &t);
         if(future.wait_for(timeout) == std::future_status::timeout) {
             t.request_stop();

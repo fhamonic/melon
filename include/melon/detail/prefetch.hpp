@@ -35,11 +35,8 @@ constexpr void prefetch_mapped_values(const Keys & keys,
 }
 
 // The preamble every Dijkstra-shaped advance() opens with: warm the incidence
-// range, then each map it is about to subscript with those keys. Written out
-// identically in dijkstra, network_voronoi, competing_dijkstras,
-// biobjective_dijkstra and both flow algorithms. Variadic so a caller naming
-// two length maps says so in one line; each call inlines to exactly the
-// sequence it replaces.
+// range, then each map it is about to subscript with those keys. Variadic so a
+// caller naming two length maps says so in one line.
 template <std::ranges::range Keys, typename... ValueMaps>
     requires(mapping<ValueMaps, std::ranges::range_value_t<Keys>> && ...)
 constexpr void prefetch_keys_and_values(const Keys & keys,

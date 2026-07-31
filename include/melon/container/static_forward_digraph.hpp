@@ -25,11 +25,10 @@ public:
         requires std::convertible_to<std::ranges::range_value_t<S>, vertex> &&
                      std::convertible_to<std::ranges::range_value_t<T>, vertex>
     // Not noexcept: builds two static_maps, i.e. two allocations.
-    // std::forward, not std::move: `targets` is a forwarding reference, so
-    // std::move stole from an lvalue the caller still owns. The checks below
-    // then read the member rather than the parameter -- after forwarding,
-    // `targets` may legitimately be empty. It only ever worked because
-    // static_map's range constructor copies.
+    // std::forward, not std::move: `targets` is a forwarding reference, and
+    // std::move would steal from an lvalue the caller still owns. The checks
+    // below therefore read _arc_target rather than `targets`, which after
+    // forwarding may legitimately be empty and assert vacuously.
     static_forward_digraph(const std::size_t & num_vertices_, S && sources,
                            T && targets)
         : _out_arc_begin(num_vertices_, 0)
@@ -78,9 +77,9 @@ public:
         return std::views::iota(static_cast<arc>(0),
                                 static_cast<arc>(num_arcs()));
     }
-    // See static_digraph::out_arcs: cast both ends to `arc`, or the ternary's
-    // common type is num_arcs()'s std::size_t and the range is a non-common
-    // 16-byte iota instead of a common 8-byte one.
+    // Cast both ends to `arc`, or the ternary's common type is num_arcs()'s
+    // std::size_t and the range is a non-common 16-byte iota instead of a
+    // common 8-byte one.
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::iota(
@@ -92,7 +91,6 @@ public:
         assert(is_valid_arc(a));
         return _arc_target[a];
     }
-    // See static_digraph's twin: constexpr and noexcept, like it.
     [[nodiscard]] constexpr auto arc_targets_map() const noexcept {
         return mapping_ref_view(_arc_target);
     }

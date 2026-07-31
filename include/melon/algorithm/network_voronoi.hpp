@@ -22,23 +22,22 @@
 
 namespace melon {
 
-// clang-format off
 template <typename Traits>
-concept network_voronoi_traits = semiring<typename Traits::semiring> &&
-    updatable_priority_queue<typename Traits::heap> && requires() {
-    { Traits::store_cluster_adjacency } -> std::convertible_to<bool>;
-    { Traits::store_distances } -> std::convertible_to<bool>;
-    { Traits::store_clusters } -> std::convertible_to<bool>;
-};
-// clang-format on
+concept network_voronoi_traits =
+    semiring<typename Traits::semiring> &&
+    updatable_priority_queue<typename Traits::heap> && requires {
+        { Traits::store_cluster_adjacency } -> std::convertible_to<bool>;
+        { Traits::store_distances } -> std::convertible_to<bool>;
+        { Traits::store_clusters } -> std::convertible_to<bool>;
+    };
 
 template <typename Graph, typename ValueType>
 struct network_voronoi_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     // The graph's own vertex type, not a hardcoded unsigned int: a cluster id
-    // names the kernel vertex, and a 64-bit vertex id was silently truncated
-    // into the 32-bit id (std::pair's forwarding constructor bypasses the
-    // braced-init narrowing check, so it never even warned).
+    // names the kernel vertex, so a narrower id truncates a wider vertex
+    // handle silently -- std::pair's forwarding constructor bypasses the
+    // braced-init narrowing check, so no warning fires.
     using cluster_id_t = vertex_t<Graph>;
     using entry = std::pair<ValueType, cluster_id_t>;
     struct entry_cmp {
@@ -64,8 +63,10 @@ struct network_voronoi_default_traits {
 // vertex reachable from the kernels given to set_kernels() is assigned to the
 // nearest one. Iterating yields (vertex, (distance, kernel)) pairs in order of
 // increasing distance, each vertex exactly once, where the second member
-// identifies the cell the vertex fell into. Same non-negativity requirement as
-// melon::dijkstra.
+// identifies the cell the vertex fell into.
+// Same precondition as melon::dijkstra, uncheckable by any concept: an arc
+// length must never improve a distance when combined. Each vertex settles
+// once, so a violation silently assigns it to the wrong cell.
 // O((m + n) log n) with the default binary heap.
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           network_voronoi_traits Traits = network_voronoi_default_traits<
@@ -132,12 +133,6 @@ public:
     constexpr network_voronoi & operator=(const network_voronoi &) = delete;
     constexpr network_voronoi & operator=(network_voronoi &&) = default;
 
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -154,6 +149,11 @@ public:
         _vertex_status_map.fill(PRE_HEAP);
         return *this;
     }
+    // Strict precondition: the kernels must be untouched, so seed before
+    // iterating and reset() in between. Re-seeding a settled vertex silently
+    // corrupts the cell assignment, and neither weaker check catches it: a
+    // completed sweep leaves the heap empty and every reached vertex
+    // POST_HEAP, so `!= IN_HEAP` and the emptiness assert both pass.
     template <std::ranges::input_range KR>
         requires std::convertible_to<std::ranges::range_value_t<KR>,
                                      vertex_t<Graph>>
@@ -161,10 +161,10 @@ public:
         assert(_heap.empty());
         for(auto && k : kernels) {
             // One conversion to vertex up front: the constraint only promises
-            // convertibility, and pushing `k` itself let a wider id type flow
-            // unconverted into the heap entry.
+            // convertibility, so pushing `k` itself would let a wider id type
+            // flow unconverted into the heap entry.
             const vertex v = static_cast<vertex>(k);
-            assert(_vertex_status_map[v] != IN_HEAP);
+            assert(_vertex_status_map[v] == PRE_HEAP);
             _heap.push(std::make_pair(v, entry_t{Traits::semiring::zero, v}));
             _vertex_status_map[v] = IN_HEAP;
         }
@@ -176,8 +176,8 @@ public:
         return _heap.empty();
     }
 
-    // See competing_dijkstras::current(): the noexcept measures the copy the
-    // return performs, not just the top() call.
+    // The noexcept measures the copy the by-value return performs, not just the
+    // top() call.
     [[nodiscard]] constexpr auto current() const
         noexcept(noexcept(typename heap::value_type(_heap.top()))) {
         assert(!finished());
@@ -215,16 +215,13 @@ public:
         noexcept(noexcept(_vertex_status_map[u] != PRE_HEAP)) {
         return _vertex_status_map[u] != PRE_HEAP;
     }
-    // A view of the reached state, like breadth_first_search's and
-    // depth_first_search's. It refers into the algorithm, as every melon map
-    // view refers into what it names: it is valid while this object lives and
-    // stays put, exactly the contract mapping_ref_view carries.
-    // See dijkstra::reached_map: computed, not stored.
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & u) { return reached(u); });
     }
-    // See dijkstra::reached_map's expiring overload: no stored bool map, so
-    // the status map moves into the lambda -- self-contained, terminal.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
         return maps::map(
             [status_map = std::move(_vertex_status_map)](const vertex & u) {
@@ -235,9 +232,8 @@ public:
         noexcept(noexcept(_vertex_status_map[u] == POST_HEAP)) {
         return _vertex_status_map[u] == POST_HEAP;
     }
-    // Per-vertex accessors after the sweep settled `u`, trait-gated like
-    // dijkstra's dist(): iteration yields each (vertex, (distance, kernel))
-    // once and then forgets it, so lookups need the stored maps.
+    // Iteration yields each (vertex, (distance, kernel)) once and then forgets
+    // it, so per-vertex lookups need the maps these traits enable.
     [[nodiscard]] constexpr length_type dist(const vertex & u) const
         noexcept(noexcept(_distances_map[u]))
         requires(Traits::store_distances)
@@ -252,10 +248,10 @@ public:
         assert(visited(u));
         return _clusters_map[u];
     }
-    // Views of the stored maps, reached_map()'s contract: valid while this
-    // object lives and stays put. Unlike dist() and cluster() they cannot
-    // assert per read, so vertices not yet visited still hold indeterminate
-    // values -- read them once the vertices of interest are out.
+    // reached_map()'s contract: valid while this object lives and stays put.
+    // Unlike dist() and cluster() they cannot assert per read, so vertices not
+    // yet visited still hold indeterminate values -- read them once the
+    // vertices of interest are out.
     [[nodiscard]] constexpr auto dists_map() const & noexcept(
         noexcept(maps::mapping_all(_distances_map._map)))
         requires(Traits::store_distances)
@@ -268,10 +264,8 @@ public:
     {
         return maps::mapping_all(_clusters_map._map);
     }
-    // The expiring overloads move the stored maps into mapping_owning_views,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards.
+    // Terminal, like std::move(alg).base(): the member left behind is valid but
+    // empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto dists_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_distances_map._map))))
         requires(Traits::store_distances)
@@ -286,8 +280,6 @@ public:
     }
 };
 
-// No Traits parameter: the class template's own default computes it, so the
-// deduced type and the explicitly written `network_voronoi<G, LM>` agree.
 template <typename Graph, typename LengthMap>
 network_voronoi(Graph &&, LengthMap &&)
     -> network_voronoi<views::graph_all_t<Graph>,

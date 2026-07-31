@@ -15,16 +15,18 @@ namespace numeric {
 template <typename NumT, typename DenT>
 struct rational;
 
-// The return type is spelled out rather than deduced: `-a` / `-b` are integer
-// promoted, so the sign-flipping branch would otherwise deduce a different
-// specialization than the other two (rational<int, int> vs rational<short,
-// short>) and the function would not compile at all for narrow types.
+// Normalizes the sign into the numerator, so den() >= 0 -- the invariant the
+// cross-multiplying comparisons below rely on.
 // A zero denominator is *deliberately* collapsed to the 1/0 sentinel, which
 // compares greater than every finite rational -- that is what makes
 // `operator/` total, and division by a zero rational is how it arises. It is
 // not an error path: the numerator is discarded, so make_rational(5, 0) and
 // make_rational(-5, 0) are the same value. Callers that need to tell the
 // sentinel apart must test den() == 0 themselves.
+// The return type is spelled out rather than deduced: `-a` / `-b` are integer
+// promoted, so the sign-flipping branch would deduce a different
+// specialization than the other two (rational<int, int> vs rational<short,
+// short>) and the function would not compile for narrow types.
 // Defined before the class: operator/ is a hidden friend whose body names
 // make_rational through ordinary lookup at the definition context.
 template <typename T1, typename T2>
@@ -41,12 +43,12 @@ template <typename T1, typename T2>
 // "Number-like" for the mixed-operand operators: a built-in arithmetic type
 // or a bounded_value. Deliberately a closed trait-based set rather than a
 // requires-expression probing `n * a`: probing runs overload resolution, and
-// ADL can drag these very scalar operators back in (any type whose associated
-// classes include a rational -- a std::map<tuple<rational, ...>, _>::iterator
-// in bentley_ottmann's tests -- makes the constraint re-enter itself with the
-// same arguments, a hard error). Traits do no lookup, so they cannot recurse
-// -- and they still keep std::string and iterators out, which construction
-// alone would not (rational<std::string> is a constructible *type*).
+// ADL drags these very scalar operators back in -- any type whose associated
+// classes include a rational (a std::map<tuple<rational, ...>, _>::iterator,
+// say) makes the constraint re-enter itself with the same arguments, a hard
+// error. Traits do no lookup, so they cannot recurse -- and they still keep
+// std::string and iterators out, which testing constructibility alone would
+// not, since rational<std::string> is a constructible *type*.
 template <typename T>
 concept rational_scalar_operand =
     std::is_arithmetic_v<T> || std::derived_from<T, bounded_value_base_base>;
@@ -54,10 +56,10 @@ concept rational_scalar_operand =
 template <typename NumT, typename DenT = const_value<int, 1>>
 struct rational {
 private:
-    // Not mutable: normalize() rewrites both, so with `mutable` + a const
-    // normalize() a const rational could be changed under the caller and two
-    // threads reading a shared const rational raced. num()/den() hand out
-    // const references straight into these.
+    // Not mutable, and normalize() is not const: it rewrites both members,
+    // which num()/den() hand out const references into, so a const normalize()
+    // would change a rational under its caller and race between two threads
+    // reading a shared const one.
     [[no_unique_address]] NumT _num;
     [[no_unique_address]] DenT _den;
 
@@ -72,7 +74,13 @@ public:
     constexpr rational(NumT n)
         requires std::constructible_from<DenT, int>
         : _num(n), _den(1) {}
-    constexpr rational(NumT n, DenT d) : _num(n), _den(d) { assert(_den >= 0); }
+    // 0/0 is rejected rather than admitted as a second sentinel: cross
+    // multiplication makes it compare equal to every rational, and
+    // normalize() divides by zero on it.
+    constexpr rational(NumT n, DenT d) : _num(n), _den(d) {
+        assert(_den >= 0);
+        assert(_num != 0 || _den != 0);
+    }
 
     template <typename N, typename D>
         requires(std::constructible_from<NumT, N> &&
@@ -98,6 +106,11 @@ public:
     [[nodiscard]] constexpr const DenT & den() const { return _den; }
 
     constexpr void normalize() {
+        // Not covered by the constructor's identical assert: the compound
+        // assignments write the members directly, so `zero *= the 1/0
+        // sentinel` reaches here with a 0/0, and std::gcd(0, 0) == 0 makes
+        // both divisions below divide by zero.
+        assert(_num != 0 || _den != 0);
         const auto & g = std::gcd(_num, _den);
         _num /= g;
         _den /= g;
@@ -116,8 +129,14 @@ public:
         return rational(-_num, _den);
     }
 
-    // Hidden friends, the ADL-hygiene shape: the old namespace-scope operator
-    // templates were candidates for *every* unqualified `a op b` in melon,
+    // Arithmetic is exact but never reduced: results keep the product of the
+    // operands' denominators, so a chain of operations on plain integral
+    // components grows them multiplicatively until they overflow, silently.
+    // Call normalize() along the way, or use components that track their own
+    // bounds (bounded_value), when the chain is long.
+    //
+    // Hidden friends, the ADL-hygiene shape: namespace-scope operator
+    // templates would be candidates for *every* unqualified `a op b` in melon,
     // rational or not. The first parameter anchors on this specialization, so
     // for mixed-specialization operands overload resolution prefers the left
     // operand's friend (exact on arg1) and the candidate sets never tie.
@@ -193,12 +212,10 @@ public:
         return numeric::rational(a) / r;
     }
 
-    // == and <=> replace the six macro-generated relationals; the compiler
-    // rewrites !=, <, <=, > and >= from them, including the argument-swapped
-    // scalar forms. Cross-multiplication keeps order because den() >= 0 is a
-    // class invariant (asserted in the constructor, preserved by normalize()
-    // and make_rational). weak_ordering, not strong: unnormalized
-    // representations make 1/2 and 2/4 equivalent, not equal.
+    // Cross-multiplication keeps order because den() >= 0 is a class invariant
+    // (asserted in the constructor, preserved by normalize() and
+    // make_rational). weak_ordering, not strong: unnormalized representations
+    // make 1/2 and 2/4 equivalent, not equal.
     template <typename N2, typename D2>
     [[nodiscard]] friend constexpr bool operator==(
         const rational & r1, const rational<N2, D2> & r2) {

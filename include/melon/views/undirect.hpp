@@ -11,9 +11,9 @@
 
 namespace melon {
 
-// graph_view, not graph: see reverse_view -- the constructor routes through
-// views::graph_all, so the stored type is always a view, and a non-view
-// argument made the class a legal type whose constructor hard-errored.
+// graph_view, not graph: the constructor routes through views::graph_all, so
+// the stored type is always a view -- a non-view argument would make the class
+// a legal *type* whose constructor hard-errors in the mem-initializer.
 template <graph_view Graph>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
 class undirect_view : public undirected_graph_view_base {
@@ -23,19 +23,19 @@ private:
 
     Graph _graph;
 
-    // What incidence() captures. Its lambdas used to capture `this` (which is
-    // what `[&]` does to reach a member), so the ranges they return refer back
-    // into the undirect_view object -- and relocating it left reading freed
-    // memory, although enable_borrowed_graph below promised the opposite. A
-    // copy of the view has no such tie; the graph it names lives elsewhere.
+    // What incidence() captures. A lambda capturing `this` (which is what `[&]`
+    // does to reach a member) makes the ranges it returns refer back into the
+    // undirect_view object, so relocating the view leaves them reading freed
+    // memory while enable_borrowed_graph below promises the opposite. A copy of
+    // the wrapped view has no such tie; the graph it names lives elsewhere.
     //
     // The branch is the trait's own condition -- borrowed *and* copyable --
     // not copy_constructible alone. The copy only buys anything where the
     // trait ends up true, and there the wrapped view is a handle (a
     // graph_ref_view is one pointer). A copyable non-borrowed view -- a
-    // filtered subgraph carrying its filter maps by value -- was deep-copied
-    // into both lambdas on every call, buying a borrowedness the trait
-    // (correctly) refused to report; capturing `this` there is free.
+    // filtered subgraph carrying its filter maps by value -- would be
+    // deep-copied into both lambdas on every call, buying a borrowedness the
+    // trait (correctly) refuses to report; capturing `this` there is free.
     static constexpr bool _lambdas_capture_a_copy =
         enable_borrowed_graph<Graph> && std::copy_constructible<Graph>;
 
@@ -62,8 +62,6 @@ public:
     constexpr explicit undirect_view(G && g)
         : _graph(views::graph_all(std::forward<G>(g))) {}
 
-    // The std adaptor shape (transform_view &co.): default-constructible
-    // exactly when the wrapped view is.
     undirect_view()
         requires std::default_initializable<Graph>
     = default;
@@ -73,8 +71,6 @@ public:
     constexpr undirect_view & operator=(const undirect_view &) = default;
     constexpr undirect_view & operator=(undirect_view &&) = default;
 
-    // The adaptor shape, like std::ranges::filter_view: a copy of the adapted
-    // directed view from a const lvalue, moved out of an rvalue.
     [[nodiscard]] constexpr Graph base() const &
         requires std::copy_constructible<Graph>
     {
@@ -82,10 +78,6 @@ public:
     }
     [[nodiscard]] constexpr Graph base() && { return std::move(_graph); }
 
-    // Conditional, like num_arcs / num_edges below: this member was the one
-    // that carried no specification at all, silently dropping a guarantee
-    // static_digraph does give. Constrained on has_num_vertices, the concept
-    // graph.hpp already defines, rather than an inline requires-expression.
     [[nodiscard]] constexpr decltype(auto) num_vertices() const
         noexcept(noexcept(melon::num_vertices(_graph)))
         requires has_num_vertices<Graph>
@@ -118,10 +110,6 @@ public:
 
     // Not noexcept: builds a concat of two transform_views over the wrapped
     // graph's incidence ranges, each of which may allocate or throw.
-    //
-    // The lambdas capture _capture() by value rather than `this`: see the
-    // helper. Same size for the borrowed case -- a graph_ref_view is one
-    // pointer, exactly what `this` was -- and one indirection shorter.
     [[nodiscard]] constexpr decltype(auto) incidence(const vertex & u) const
         requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
     {
@@ -183,9 +171,6 @@ inline constexpr bool enable_borrowed_graph<undirect_view<G>> =
 
 namespace views {
 
-// The adaptor object under the class's old name: views::undirect(g) and
-// g | views::undirect build exactly the same undirect_view<...>. See
-// views::reverse.
 struct undirect_fn : graph_adaptor_closure<undirect_fn> {
     template <typename G>
         requires requires(G && g) { undirect_view(std::forward<G>(g)); }

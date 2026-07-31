@@ -21,13 +21,10 @@ namespace melon {
 
 // Rebuilds any outward-incidence graph as a static_digraph whose vertices are
 // renumbered 0..n-1 in the order vertex_cmp induces, and translates the given
-// vertex and arc maps onto the new handles. Returns the
-// static_digraph_builder shape -- one flat tuple, structured-binding ready:
-//   auto [g, dist, length] =
-//       make_static_digraph(old_g, cmp, std::tie(dist), std::tie(length));
-// The maps are read through const access only (the `mapping` concept's
-// contract), so pass cheap reference tuples with std::tie / forward_as_tuple,
-// or std::make_tuple to hand over ownership.
+// vertex and arc maps onto the new handles. Returns one flat tuple, the
+// static_digraph_builder shape: the graph, then the translated vertex maps,
+// then the translated arc maps. The input maps are only read, so the tuples
+// may hold references (std::tie, forward_as_tuple) as well as values.
 template <typename G, typename Cmp = std::less<vertex_t<G>>,
           typename... VertexMap, typename... ArcMap>
     requires outward_incidence_graph<G> && has_vertex_map<G> &&
@@ -51,8 +48,6 @@ template <typename G, typename Cmp = std::less<vertex_t<G>>,
     std::ranges::sort(new_to_old_vertex, vertex_cmp);
 
     const std::size_t n = new_to_old_vertex.size();
-    // The new handles must be addressable by static_digraph's vertex type,
-    // same ceiling rule as complete_digraph's num_arcs.
     assert(n <= std::numeric_limits<new_vertex>::max());
 
     auto old_to_new_vertex = melon::create_vertex_map<new_vertex>(graph);
@@ -96,9 +91,6 @@ template <typename G, typename Cmp = std::less<vertex_t<G>>,
         return new_map;
     };
 
-    // Indeterminately sequenced arguments, but they touch disjoint state --
-    // the graph reads sources/targets, the translations read the maps -- so
-    // the order does not matter (the builder's build() has the same shape).
     return std::apply(
         [&](const VertexMap &... vertex_map) {
             return std::apply(

@@ -15,9 +15,9 @@ namespace detail {
 
 // Syntactic entry point: `m[k]` on an lvalue map with an rvalue key -- the
 // exact expression the mapped_* aliases below evaluate, so the probe and the
-// aliases cannot disagree on either operand's value category. (The public
-// `mapping` concept adds const-readability on top; this loose form is what
-// the aliases must be constrained on to stay usable for write-only maps.)
+// aliases cannot disagree on either operand's value category. The public
+// `mapping` concept adds const-readability on top; the aliases must stay
+// constrained on this looser form to remain usable for write-only maps.
 template <typename Map, typename Key>
 concept subscriptable_with =
     requires(Map & m, Key && k) { m[std::forward<Key>(k)]; };
@@ -93,9 +93,6 @@ concept mapping_view =
 
 namespace detail {
 
-// Single point of dispatch between the three storage protocols a mapping
-// can expose. Constness and value category of `m` are the caller's: each
-// requires-clause tests exactly the expression the branch evaluates.
 template <typename Map, typename Key>
 constexpr decltype(auto) mapping_subscript(Map & m, Key && k) {
     if constexpr(requires { m[std::forward<Key>(k)]; })
@@ -125,15 +122,19 @@ concept can_mapping_ref_view =
 
 }  // namespace detail
 
-// Reference view: shallow const, like std::ranges::ref_view — constness of
-// the access is carried by Map itself (mapping_ref_view<const M> reads
-// const, mapping_ref_view<M> reads mutable, through a const view object).
+// Reference view: shallow const, like std::ranges::ref_view -- constness of the
+// access is carried by Map itself (mapping_ref_view<const M> reads const,
+// mapping_ref_view<M> reads mutable, through a const view object).
 template <typename Map>
     requires std::is_object_v<Map>
 class mapping_ref_view : public mapping_view_base {
 private:
     Map * _map;
 
+    // Rejects rvalues the way std::ranges::ref_view does, and not redundantly
+    // with the constructor's `convertible_to<T, Map &>`: when Map is
+    // const-qualified an rvalue *is* convertible to `Map &`, so without the
+    // deleted overload the view would store the address of a temporary.
     static void bindable_test(Map &);
     static void bindable_test(Map &&) = delete;
 
@@ -221,9 +222,8 @@ concept can_mapping_owning_view =
 
 }  // namespace detail
 
-// Mapping views live in melon::maps, graph views in melon::views. They are
-// two different abstractions that happen to share the word "view": maps::map
-// sitting next to views::reverse read as though it transformed a graph.
+// Mapping views live in melon::maps, graph views in melon::views: two different
+// abstractions that happen to share the word "view".
 namespace maps {
 
 struct mapping_all_fn {
@@ -298,8 +298,8 @@ template <std::size_t... I>
 struct element_map : public mapping_view_base {
 private:
     // std::get is noexcept for tuple/pair/array but *not* for std::variant,
-    // where it throws std::bad_variant_access. An unconditional noexcept on
-    // the chain below turned that throw into std::terminate.
+    // where it throws std::bad_variant_access. An unconditional noexcept on the
+    // chain below turns that throw into std::terminate.
     template <typename T, std::size_t First, std::size_t... Rest>
     static consteval bool chain_is_nothrow() {
         if constexpr(sizeof...(Rest) == 0) {

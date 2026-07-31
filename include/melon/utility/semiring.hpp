@@ -14,12 +14,17 @@ namespace melon {
 // always `std::less`. Whenever `plus` is not addition these take values that
 // read as inverted; each struct below says which.
 //
+// What a model must guarantee, none of it checkable: `plus` associative with
+// `zero` neutral and `infty` absorbing, and `less(plus(a, b), a)` false for
+// every value the mapped range can produce -- that last one is the precondition
+// the label-setting algorithms restate over their own length maps.
+//
 // All four members are structurally required to be static constexpr
 // *variables*, not functions: `{ S::zero } -> same_as<const value_type &>`
 // only holds for an object (a function name would yield a function type), and
 // `S::plus` / `S::less` must be objects of `plus_t` / `less_t` for the same
-// reason -- which is why every model below declares `static constexpr plus_t
-// plus{}` rather than a static member function.
+// reason -- hence `static constexpr plus_t plus{}` in every model below,
+// rather than a static member function.
 // clang-format off
 template <typename S>
 concept semiring = requires(typename S::value_type v) {
@@ -75,9 +80,12 @@ struct max_capacity_path_semiring {
     static constexpr less_t less{};
 };
 
+// Not a semiring: `plus` discards the accumulated value and keeps the last
+// arc's, so combining can improve a value and the requirement above is broken
+// on purpose. Feeding it to dijkstra is what turns that loop into Prim's
+// algorithm, and the resulting dist() is an arc weight, not a path value.
 template <typename T>
 struct minimum_spanning_tree_semiring {
-    // Not an actual semiring but corresponds to the Prim algorithm
     using value_type = T;
     struct plus_t {
         constexpr T operator()(const T &, const T & b) const { return b; }

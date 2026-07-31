@@ -18,10 +18,10 @@ class static_map {
 public:
     using key_type = K;
     using mapped_type = V;
-    // These describe what the iterators below actually yield. They used to
-    // say std::pair<const K, V &> while begin()/end() are plain V pointers,
-    // so std::iterator_traits and std::ranges::range_value_t disagreed with
-    // the container's own typedefs.
+    // value_type is the mapped value, not a key-value pair: the iterators are
+    // plain V pointers, so a pair-shaped value_type would put
+    // std::iterator_traits and std::ranges::range_value_t at odds with the
+    // container's own typedefs.
     using value_type = V;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -40,8 +40,6 @@ public:
     constexpr static_map() noexcept : _data(nullptr), _size(0) {};
     constexpr explicit static_map(const size_type size)
         : _data(std::make_unique_for_overwrite<mapped_type[]>(size))
-        // : _data(reinterpret_cast<mapped_type *>(
-        //       std::malloc(size * sizeof(mapped_type))))
         , _size(size) {};
 
     constexpr static_map(const size_type size, const mapped_type & init_value)
@@ -49,11 +47,11 @@ public:
         std::fill(_data.get(), _data.get() + _size, init_value);
     }
 
-    // Taken by value, not by `IT &&`: as forwarding references these deduced
-    // IT = T & for named iterators (which no longer models
-    // random_access_iterator, silently removing the constructor) and produced
-    // "deduced conflicting types for IT" when the two arguments differed in
-    // value category, e.g. static_map(it, v.end()).
+    // Taken by value, not by `IT &&`: as forwarding references these deduce
+    // IT = T & for a named iterator, which does not model
+    // random_access_iterator and so silently removes the constructor, and
+    // they conflict outright when the two arguments differ in value category,
+    // e.g. static_map(it, v.end()).
     template <std::random_access_iterator IT>
     constexpr static_map(IT it_begin, IT it_end)
         : static_map(static_cast<size_type>(std::distance(it_begin, it_end))) {
@@ -64,11 +62,10 @@ public:
     constexpr explicit static_map(R && r)
         : static_map(std::ranges::begin(r), std::ranges::end(r)) {}
     // Forward ranges too, the way std containers accept forward iterators:
-    // one sizing pass through ranges::distance, then the copy. This is also
-    // what makes static_digraph's forward_range constructor constraint true --
-    // it forwards its endpoint ranges here, and with only the random-access
-    // overload std::constructible_from answered yes for a forward_list while
-    // actual construction hard-errored in the mem-initializer.
+    // one sizing pass through ranges::distance, then the copy. The digraphs'
+    // forward_range constructors forward their endpoint ranges here, so
+    // without this overload std::constructible_from answers yes for a
+    // forward_list while construction hard-errors in the mem-initializer.
     template <std::ranges::forward_range R>
         requires detail::not_self<R, static_map> &&
                  (!std::ranges::random_access_range<R>) &&
@@ -80,10 +77,10 @@ public:
     }
     constexpr static_map(const static_map & other)
         : static_map(other.data(), other.data() + other.size()) {};
-    // Hand-written so the source leaves as a valid *empty* map: defaulted,
-    // the move nulled _data but kept _size, and a moved-from map answered
+    // Hand-written so the source leaves as a valid *empty* map: a defaulted
+    // move nulls _data but keeps _size, and a moved-from map then answers
     // size() == N over a null buffer -- a reachable state, since algorithms
-    // take their graph (whose state this is) by value.
+    // take their graph, whose state this is, by value.
     constexpr static_map(static_map && other) noexcept
         : _data(std::move(other._data)), _size(std::exchange(other._size, 0)) {}
 
@@ -109,10 +106,6 @@ public:
         return _data.get() + _size;
     }
 
-    // cbegin/cend, empty and swap: what every standard container provides and
-    // this one did not. std::ranges::empty and std::ranges::swap already found
-    // an answer through size() and the move operations, but only the members
-    // make `m.empty()` and an ADL `swap(a, b)` work.
     [[nodiscard]] constexpr const_iterator cbegin() const noexcept {
         return _data.get();
     }
@@ -147,13 +140,12 @@ public:
     }
     constexpr void resize(const size_type n) {
         if(n == size()) return;
-        // Allocate before touching _data. Moving _data out first left the map
-        // holding a null buffer and its *old* _size if the allocation threw,
-        // so every subsequent operator[] dereferenced null; this way a throw
-        // leaves the map exactly as it was. std::move, not std::copy: the old
-        // buffer is about to die. (If an element's move assignment throws the
-        // map keeps its old buffer and size, but the elements already moved
-        // from are valid-but-unspecified.)
+        // Allocate before touching _data: moving _data out first leaves the
+        // map holding a null buffer under its *old* _size if the allocation
+        // throws, and every subsequent operator[] dereferences null. This way
+        // a throw leaves the map exactly as it was. (If an element's move
+        // assignment throws, the buffer and size survive but the elements
+        // already moved from are valid-but-unspecified.)
         auto new_data = std::make_unique_for_overwrite<mapped_type[]>(n);
         std::move(_data.get(), _data.get() + std::min(n, _size),
                   new_data.get());
@@ -171,8 +163,6 @@ public:
         assert(static_cast<size_type>(i) < size());
         return _data[static_cast<size_type>(i)];
     }
-    // Both overloads, like operator[] right above: the const-only at() made a
-    // checked *write* impossible, which is the access that most wants checking.
     [[nodiscard]] constexpr mapped_type & at(const key_type i) {
         if(static_cast<size_type>(i) >= size())
             throw std::out_of_range("Invalid key.");

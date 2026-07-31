@@ -23,15 +23,8 @@ concept graph_view = graph<T> && std::movable<T> && enable_graph_view<T>;
 
 namespace detail {
 
-// The sixteen members that graph_ref_view, graph_owning_view and
-// views::reverse each used to spell out in full: three near-identical
-// hundred-line blocks whose only differences were how the wrapped graph is
-// reached and, for reverse, which direction each accessor means.
-//
-// Keeping them apart is what let the 1.0.0 noexcept sweep touch 67 members
-// across four files and still miss one -- num_vertices was the single member of
-// every view carrying no specification at all, three lines above a num_arcs
-// that carried a conditional one. Here there is one definition of each.
+// One definition of each forwarding member, shared by graph_ref_view,
+// graph_owning_view and views::reverse.
 //
 // A derived class supplies `const G & _forwarding_base() const` and befriends
 // this class. Every accessor here forwards straight through; a view that means
@@ -44,8 +37,6 @@ namespace detail {
 template <typename Derived, typename G>
 class graph_forwarding_interface : public graph_view_base {
 private:
-    // Private here, as on every melon graph type: vertex_t<T> / arc_t<T> are
-    // the supported way to name a graph's handle types.
     using vertex = vertex_t<G>;
     using arc = arc_t<G>;
 
@@ -77,14 +68,12 @@ public:
     }
 
     // Forwarded only when the wrapped graph carries its own arcs_entries, not
-    // when the CPO would synthesise one: synthesising it here and forwarding
-    // *that* would stack a transform on a transform for every container in the
-    // library, all of which reach arcs_entries through the fallback.
-    // Without this member at all, `graph<G>` -- which is defined in terms of
-    // arcs_entries -- came back false for every view over a graph whose
-    // arcs_entries is its only arc protocol, so views::graph_all silently
-    // turned such a graph into a non-graph and every algorithm rejected it.
-    // It also downgraded mutable_digraph's own arcs_entries to the fallback.
+    // when the CPO would synthesise one: forwarding a synthesised one stacks a
+    // transform on a transform for every container in the library, all of which
+    // reach arcs_entries through the fallback. The member cannot be dropped
+    // either -- `graph<G>` is defined in terms of arcs_entries, so a view over
+    // a graph whose arcs_entries is its only arc protocol would silently stop
+    // modeling `graph` and every algorithm would reject it.
     [[nodiscard]] constexpr decltype(auto) arcs_entries() const
         noexcept(noexcept(melon::arcs_entries(std::declval<const G &>())))
         requires cpo::has_own_arcs_entries<G>
@@ -94,9 +83,9 @@ public:
 
     // A view is read-only, so it forwards the *question* without forwarding
     // remove_vertex / remove_arc. views::subgraph consults these to decide
-    // whether a handle is still live in the graph underneath it; with them
-    // missing it could only ever consult its own filter, and reported a vertex
-    // removed from a mutable_digraph as valid.
+    // whether a handle is still live in the graph underneath it; without them
+    // it could only consult its own filter, and would report a vertex removed
+    // from a mutable_digraph as valid.
     [[nodiscard]] constexpr decltype(auto) is_valid_vertex(
         const vertex & v) const
         noexcept(noexcept(melon::is_valid_vertex(std::declval<const G &>(), v)))
@@ -176,9 +165,6 @@ public:
         return melon::in_neighbors(_wrapped(), u);
     }
 
-    // The default value goes in by const reference, like the CPO that forwards
-    // it here; by value cost one extra copy per call, which is what four of
-    // these eight signatures used to do across the four view headers.
     template <typename T>
         requires has_vertex_map<G>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept(
@@ -212,8 +198,6 @@ public:
 
 }  // namespace detail
 
-// A handle to a graph that lives elsewhere. Every accessor comes from
-// graph_forwarding_interface; all this class adds is the pointer.
 template <graph G>
     requires std::is_object_v<G>
 class graph_ref_view
@@ -227,11 +211,10 @@ private:
         return *_graph;
     }
 
-    // The std::ranges::ref_view bindable-test, exactly as mapping_ref_view
-    // spells it: convertible_to<T, G &> alone accepted a temporary whose
-    // conversion sequence materialises a G (a type with both operator G&()
-    // and operator G()), leaving _graph aimed at an object that dies at the
-    // end of the full-expression.
+    // The std::ranges::ref_view bindable-test: convertible_to<T, G &> alone
+    // accepts a temporary whose conversion sequence materialises a G (a type
+    // with both operator G&() and operator G()), leaving _graph aimed at an
+    // object that dies at the end of the full-expression.
     static void bindable_test(G &);
     static void bindable_test(G &&) = delete;
 
@@ -265,12 +248,10 @@ graph_ref_view(Graph &) -> graph_ref_view<Graph>;
 template <typename G>
 inline constexpr bool enable_borrowed_graph<graph_ref_view<G>> = true;
 
-// The same accessors over a graph the view owns.
 // is_object_v alongside move_constructible: move_constructible<G &> is true,
-// so without it graph_owning_view<SD &> was a legal *type* whose only
-// constructor then hard-errored -- the class name promised owning while the
-// parameter could not be owned. mapping_owning_view already carries the same
-// conjunct.
+// so without it graph_owning_view<SD &> is a legal *type* whose only
+// constructor then hard-errors -- the class name promises owning while the
+// parameter cannot be owned.
 template <graph G>
     requires std::move_constructible<G> && std::is_object_v<G>
 class graph_owning_view
@@ -298,9 +279,9 @@ public:
     constexpr graph_owning_view & operator=(const graph_owning_view &) = delete;
     constexpr graph_owning_view & operator=(graph_owning_view &&) = default;
 
-    // The four overloads of std::ranges::owning_view::base(): the const &&
-    // one was missing, so `std::move(std::as_const(v)).base()` bound to the
-    // const & overload and handed back an lvalue reference.
+    // The four overloads of std::ranges::owning_view::base(). Without the
+    // const && one, `std::move(std::as_const(v)).base()` binds to the const &
+    // overload and hands back an lvalue reference.
     [[nodiscard]] constexpr G & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const G & base() const & noexcept { return _graph; }
     [[nodiscard]] constexpr G && base() && noexcept {
@@ -420,7 +401,7 @@ public:
 
     // Constrained on melon::graph as well as invocability: without the
     // graph conjunct, piping a non-graph into a bound subgraph closure
-    // re-entered subgraph_fn's *binding* overload and "succeeded" with a
+    // re-enters subgraph_fn's *binding* overload and "succeeds" with a
     // closure over garbage instead of failing at the pipe.
     //
     // Both overloads hand the adaptor *prvalue* copies of the bound
@@ -466,12 +447,12 @@ concept can_graph_owning_view =
 
 struct graph_all_fn : graph_adaptor_closure<graph_all_fn> {
 private:
-    // The constructible_from is what maps::mapping_all_fn already carries and
-    // this one did not: graph_view<> only asks for movable, so an lvalue
-    // graph_owning_view -- whose copy constructor is deleted -- took this
-    // branch and hard-errored inside the body. That happens while *checking*
-    // `requires { views::graph_all(g); }`, i.e. outside the immediate context,
-    // so the candidate could not even be removed.
+    // constructible_from as well as graph_view: graph_view<> only asks for
+    // movable, so without it an lvalue graph_owning_view -- whose copy
+    // constructor is deleted -- takes this branch and hard-errors inside the
+    // body. That happens while *checking* `requires { views::graph_all(g); }`,
+    // i.e. outside the immediate context, so the candidate cannot even be
+    // removed.
     template <typename Graph>
     static constexpr bool pass_through =
         graph_view<std::decay_t<Graph>> &&
@@ -484,17 +465,15 @@ private:
         else if constexpr(detail::can_graph_ref_view<Graph>)
             // Measured, not assumed: graph_ref_view's converting constructor
             // performs a static_cast<G &> that a user conversion operator can
-            // make throwing, so an unconditional `true` was a terminate-bomb.
-            // mapping_all_fn already spells it this way.
+            // make throwing, so an unconditional `true` is a terminate-bomb.
             return noexcept(graph_ref_view{std::declval<Graph>()});
         else
             return noexcept(graph_owning_view{std::declval<Graph>()});
     }
 
 public:
-    // Constrained for the same reason mapping_all_fn is: so that
-    // `requires { views::graph_all(g); }` and graph_all_t<G> answer false
-    // instead of hard-erroring.
+    // Constrained so that `requires { views::graph_all(g); }` and
+    // graph_all_t<G> answer false instead of hard-erroring.
     template <graph Graph>
         requires pass_through<Graph> || detail::can_graph_ref_view<Graph> ||
                  detail::can_graph_owning_view<Graph>

@@ -11,17 +11,11 @@
 
 namespace melon {
 
-// The seven direction-free members -- num_vertices, num_arcs, vertices, arcs
-// and the four create_*_map overloads -- come from
-// detail::graph_forwarding_interface, which graph_ref_view and
-// graph_owning_view share. All that is left here is the eight accessors whose
-// meaning actually crosses over, redeclared so they hide the base's.
 // graph_view, not graph: the constructor routes through views::graph_all, so
-// the stored type is always a view -- naming reverse_view<static_digraph> used
-// to be a legal *type* whose constructor then hard-errored in the
-// mem-initializer. std::ranges pins the precedent: transform_view<V, F>
-// requires view<V>. The deduction guides below only ever produce graph_all_t
-// types, so no factory-built code changes.
+// the stored type is always a view -- a non-view argument would make
+// reverse_view<static_digraph> a legal *type* whose constructor hard-errors in
+// the mem-initializer. std::ranges pins the precedent: transform_view<V, F>
+// requires view<V>.
 template <graph_view Graph>
 class reverse_view
     : public detail::graph_forwarding_interface<reverse_view<Graph>, Graph> {
@@ -43,8 +37,6 @@ public:
     constexpr explicit reverse_view(G && g)
         : _graph(views::graph_all(std::forward<G>(g))) {}
 
-    // The std adaptor shape (transform_view &co.): default-constructible
-    // exactly when the wrapped view is.
     reverse_view()
         requires std::default_initializable<Graph>
     = default;
@@ -56,9 +48,9 @@ public:
 
     // The adaptor shape, like std::ranges::filter_view / transform_view: hand
     // back a *copy* of the adapted view, available from a const lvalue only
-    // when that copy is possible, and move it out of an rvalue. It used to
-    // return `const Graph &`, which is the owning_view shape and belongs to a
-    // view that stores its range for the caller rather than adapting it.
+    // when that copy is possible, and move it out of an rvalue. Not
+    // `const Graph &` -- that is the owning_view shape, which belongs to a view
+    // that stores its range for the caller rather than adapting it.
     [[nodiscard]] constexpr Graph base() const &
         requires std::copy_constructible<Graph>
     {
@@ -161,11 +153,6 @@ inline constexpr bool enable_borrowed_graph<reverse_view<G>> =
 
 namespace views {
 
-// The adaptor object under the class's old name, so every existing call
-// spelling still works: views::reverse(g) and g | views::reverse build
-// exactly the same reverse_view<...> -- the pipe costs nothing by
-// construction. The class/object split is the std::ranges shape
-// (reverse_view / views::reverse).
 struct reverse_fn : graph_adaptor_closure<reverse_fn> {
     template <typename G>
         requires(!melon::detail::specialization_of<std::remove_cvref_t<G>,

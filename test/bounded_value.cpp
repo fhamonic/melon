@@ -162,6 +162,48 @@ GTEST_TEST(bounded_value, conversions_test) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// regression: comparisons and conversions across signedness answer
+// mathematically, through std::cmp_*
+////////////////////////////////////////////////////////////////////////////////
+
+// Plain comparisons converted the negative signed operand to a huge unsigned
+// one: `-10 >= 20u` held, so operator< between int [-10,10] and unsigned
+// [0,20] constant-folded to false for every pair of values, and the
+// conversion constraints accepted int [-10,10] -> unsigned [0,20] -- letting
+// a possibly-negative value into an unsigned-bounded type -- while rejecting
+// the valid widening unsigned [0,20] -> int [-100,100].
+GTEST_TEST(bounded_value, comparisons_across_signedness) {
+    const auto s = bounded_value<int, -10, 10>(-5);
+    const auto u = bounded_value<unsigned, 0u, 20u>(5u);
+    ASSERT_TRUE(s < u);
+    ASSERT_TRUE(s <= u);
+    ASSERT_FALSE(s > u);
+    ASSERT_FALSE(s >= u);
+    ASSERT_FALSE(s == u);
+    ASSERT_TRUE(s != u);
+
+    const auto s2 = bounded_value<int, -10, 10>(5);
+    ASSERT_TRUE(s2 == u);
+    ASSERT_FALSE(s2 != u);
+    ASSERT_FALSE(s2 < u);
+    ASSERT_TRUE(s2 <= u);
+
+    // disjoint ranges still constant-fold, now to the mathematical answer
+    const auto n = bounded_value<int, -10, -1>(-3);
+    ASSERT_TRUE(n < u);
+    ASSERT_TRUE(u > n);
+}
+
+static_assert(!std::is_constructible_v<bounded_value<unsigned, 0u, 20u>,
+                                       bounded_value<int, -10, 10>>);
+static_assert(std::is_constructible_v<bounded_value<int, -100, 100>,
+                                      bounded_value<unsigned, 0u, 20u>>);
+static_assert(std::is_constructible_v<bounded_value<unsigned, 0u, 20u>,
+                                      bounded_value<int, 0, 10>>);
+static_assert(!std::is_constructible_v<bounded_value<int, 0, 10>,
+                                       bounded_value<unsigned, 0u, 20u>>);
+
+////////////////////////////////////////////////////////////////////////////////
 // regression (2.8): value() reaches the CRTP base through a static_cast, not
 // a reinterpret_cast
 ////////////////////////////////////////////////////////////////////////////////

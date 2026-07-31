@@ -26,12 +26,12 @@ private:
 
 private:
     // _bfs owns the only copy of the graph view; base() is how the source
-    // ranges below reach it. There used to be a separate `Graph _graph` member
-    // that _bfs was then constructed *from*, which is why an owned graph never
-    // worked: graph_all on the stored lvalue view has to return it by value,
-    // and graph_owning_view's copy constructor is deleted, so
-    // `traversal_forest(static_digraph{...})` did not compile. Declared first
-    // so it is initialised before _remaining_sources reads it.
+    // ranges below reach it. A separate `Graph _graph` member that _bfs is
+    // constructed *from* makes an owned graph unusable: graph_all on the stored
+    // lvalue view has to return it by value, and graph_owning_view's copy
+    // constructor is deleted, so `traversal_forest(static_digraph{...})` would
+    // not compile. Declared first so it is initialised before
+    // _remaining_sources reads it.
     breadth_first_search<Graph, bfs_traits> _bfs;
     consumable_view<Sources> _remaining_sources;
     // True when _remaining_sources was derived from vertices(_bfs.base()) by
@@ -50,17 +50,16 @@ public:
         : _bfs(std::forward<G>(g))
         , _remaining_sources(vertices(_bfs.base()))
         , _sources_from_base(true) {
-        // Guarded: advance() reads _remaining_sources.current(), so an empty
-        // source range read past the end of an empty view (an assertion failure
-        // in a debug build, silent UB in a release one).
+        // Guarded: advance() reads _remaining_sources.current(), which on an
+        // empty source range reads past the end of an empty view.
         if(!finished()) advance();
     }
 
     // std::forward, not a bare `sources`: the parameter is a named rvalue
-    // reference, hence an lvalue, so std::views::all() handed back a ref_view
-    // where the deduction guide had already committed Sources to
-    // std::views::all_t<S> -- an owning_view for an rvalue range. Passing a
-    // temporary container did not compile at all.
+    // reference, hence an lvalue, so std::views::all() would hand back a
+    // ref_view where the deduction guide has already committed Sources to
+    // std::views::all_t<SR> -- an owning_view for an rvalue range, and a
+    // temporary container would not compile at all.
     template <typename G, std::ranges::range SR>
         requires detail::not_self<G, traversal_forest> && graph_for<G, Graph> &&
                      std::constructible_from<consumable_view<Sources>,
@@ -73,16 +72,13 @@ public:
         if(!finished()) advance();
     }
 
-    // The relocation policy is depth_first_search's, restricted to the one
-    // cursor that can point back into this object (see _sources_from_base):
-    // after the members relocate, the source range is re-derived from the
-    // *new* _bfs.base() and the _consumed counter puts the cursor back where
-    // it was. The inner _bfs carries its own policy.
+    // The relocation policy, restricted to the one cursor that can point back
+    // into this object (see _sources_from_base): after the members relocate,
+    // the source range is re-derived from the *new* _bfs.base() and the
+    // _consumed counter puts the cursor back where it was. The inner _bfs
+    // carries its own policy.
     //
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // This is also the one place the library ever copied an algorithm object
-    // internally -- _bfs, here, so that a traversal_forest could itself be
-    // copied. Nothing needed either.
     constexpr traversal_forest(const traversal_forest &) = delete;
     constexpr traversal_forest(traversal_forest && o)
         : _bfs(std::move(o._bfs))
@@ -128,8 +124,6 @@ public:
         return *this;
     }
 
-    // Delegated: _bfs holds the only copy of the graph view, which is the whole
-    // point of reaching it through base() rather than storing it twice.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _bfs.base(); }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _bfs.base();
@@ -141,11 +135,11 @@ public:
         return std::move(_bfs).base();
     }
 
-    // Rewinds the sources the constructor was given. Assigning vertices(_graph)
-    // here threw a user-supplied source range away, and for the two-argument
-    // form did not even compile: the two ranges' iterators are unrelated types.
-    // The advance() restores the constructor's postcondition, that current()
-    // names the first tree.
+    // Rewinds the sources the constructor was given -- re-deriving them from
+    // the graph would throw a caller-supplied source range away, and for the
+    // two-argument form would not compile, the two ranges' iterators being
+    // unrelated types. The advance() restores the constructor's postcondition,
+    // that current() names the first tree.
     constexpr traversal_forest & reset() {
         _remaining_sources.rewind();
         _bfs.reset();
@@ -177,14 +171,12 @@ public:
         noexcept(noexcept(_bfs.reached(u))) {
         return _bfs.reached(u);
     }
-    // Delegated, like reached() right above.
     [[nodiscard]] constexpr auto reached_map() const & noexcept(
         noexcept(_bfs.reached_map())) {
         return _bfs.reached_map();
     }
-    // Delegated too: the expiring overload forwards to the inner
-    // breadth_first_search's, which moves its stored map into a
-    // mapping_owning_view. Extraction is terminal, like std::move(alg).base().
+    // Terminal, like std::move(alg).base() -- no other member may be called
+    // afterwards.
     [[nodiscard]] constexpr auto reached_map() && noexcept(
         noexcept(std::move(_bfs).reached_map())) {
         return std::move(_bfs).reached_map();

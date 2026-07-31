@@ -11,11 +11,8 @@ namespace melon {
 // The generator is taken by reference so the caller owns the seed: this
 // overload is the only way to get a reproducible random graph, and the only
 // one safe to call concurrently (each thread with its own generator).
-//
-// The distribution is a local, not a function-local `static`. A `static`
-// std::uniform_real_distribution is shared mutable state -- a distribution
-// carries its own -- so concurrent calls raced on it, and a `static` engine
-// made the whole function unseedable.
+// The distribution stays a local for the same reason: it carries state of its
+// own, so a function-local `static` would race between concurrent calls.
 template <typename G, std::uniform_random_bit_generator Generator>
 [[nodiscard]] G erdos_renyi(const std::size_t num_vertices_,
                             const double expected_density, Generator & gen) {
@@ -35,9 +32,9 @@ template <typename G, std::uniform_random_bit_generator Generator>
     return std::get<0>(builder.build());
 }
 
-// Convenience overload: seeds a generator of its own from std::random_device,
-// so successive calls differ. Reach for the three-argument form above whenever
-// the graph has to be reproducible.
+// Seeds a generator of its own from std::random_device, so successive calls
+// differ and neither the sequence nor concurrent use is controllable. Use the
+// three-argument form above whenever the graph has to be reproducible.
 template <typename G>
 [[nodiscard]] G erdos_renyi(const std::size_t num_vertices_,
                             const double expected_density) {

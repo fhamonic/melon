@@ -22,15 +22,10 @@
 
 namespace melon {
 
-// A traits concept, like the dijkstra family's: without it a misspelled flag
-// in a user traits struct silently fell back to nothing instead of failing
-// the constraint.
-// clang-format off
 template <typename Traits>
-concept strongly_connected_components_traits = requires() {
+concept strongly_connected_components_traits = requires {
     { Traits::store_component_ids } -> std::convertible_to<bool>;
 };
-// clang-format on
 
 struct strongly_connected_components_default_traits {
     static constexpr bool store_component_ids = false;
@@ -91,10 +86,9 @@ public:
             _dfs_stack.reserve(num_vertices(_graph));
             _tarjan_stack.reserve(num_vertices(_graph));
         }
-        // Guarded: advance() reads _remaining_vertices.current(), so on a graph
-        // with no vertices the unconditional call read past the end of an empty
-        // view (an assertion failure in a debug build, silent UB in a release
-        // one). A vertex-less graph is finished() from the start.
+        // Guarded: advance() reads _remaining_vertices.current(), which on a
+        // vertex-less graph reads past the end of an empty view. Such a graph
+        // is finished() from the start.
         if(!finished()) advance();
     }
 
@@ -103,17 +97,17 @@ public:
     constexpr strongly_connected_components(Traits, Args &&... args)
         : strongly_connected_components(std::forward<Args>(args)...) {}
 
-    // The relocation policy is depth_first_search's: the cached cursors are
-    // re-askable -- _remaining_vertices from vertices(_graph), each _dfs_stack
-    // frame from the vertex sitting next to it -- so after the members
-    // relocate, _rebase_cursors() aims them at the *new* _graph and the
-    // _consumed counters put them back where they were.
+    // The relocation policy: the cached cursors are re-askable --
+    // _remaining_vertices from vertices(_graph), each _dfs_stack frame from the
+    // vertex sitting next to it -- so after the members relocate,
+    // _rebase_cursors() aims them at the *new* _graph and the _consumed
+    // counters put them back where they were.
     //
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // Hand-written for the same reason as depth_first_search's move: a
-    // memberwise move leaves the cached cursors' ranges pointing at the
-    // moved-from object's _graph member. _component_begin needs nothing --
-    // it is an iterator into _tarjan_stack, whose buffer transfers with it.
+    // Move-only; see the melon::traversal_algorithm concept for the ruling. The
+    // move cannot be defaulted: a memberwise move leaves the cached cursors'
+    // ranges pointing at the moved-from object's _graph member.
+    // _component_begin needs nothing -- it is an iterator into _tarjan_stack,
+    // whose buffer transfers with it.
     constexpr strongly_connected_components(
         const strongly_connected_components &) = delete;
     constexpr strongly_connected_components(strongly_connected_components && o)
@@ -173,9 +167,9 @@ public:
     }
 
 private:
-    // See depth_first_search::_rebase_stack: re-asks the *new* _graph for
-    // each cached cursor's range; the _consumed counters restore positions.
-    // Compiles away when nothing points back at the graph object.
+    // Re-asks the *new* _graph for each cached cursor's range; the _consumed
+    // counters restore their positions. Compiles away when nothing points back
+    // at the graph object.
     constexpr void _rebase_cursors() {
         if constexpr(!borrowed_graph<Graph>) {
             if constexpr(!std::ranges::borrowed_range<vertices_range_t<Graph>>)
@@ -188,12 +182,6 @@ private:
     }
 
 public:
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -206,10 +194,10 @@ public:
     }
 
     // Must restore exactly the state the constructor leaves behind, first
-    // component included. Two things were missing: _index_map, which is what
-    // reached() consults -- leaving it filled made every vertex look already
-    // visited, so the restarted run walked _remaining_vertices to the end and
-    // yielded nothing -- and the advance() that produces the first component.
+    // component included: _index_map is what reached() consults, so a restarted
+    // run that keeps it filled walks _remaining_vertices to the end and yields
+    // nothing, and it is the trailing advance() that produces the first
+    // component.
     constexpr strongly_connected_components & reset() {
         _start_index = 0;
         _index = 0;
@@ -233,10 +221,10 @@ public:
     }
 
     // The component is a window onto _tarjan_stack, which the next advance()
-    // erases from _component_begin onwards -- hand it out read-only, as every
-    // other algorithm's current() does. std::span needs one pointer type, and
-    // _component_begin is a non-const iterator while a const _tarjan_stack
-    // yields const ones, so the element type is spelled out.
+    // erases from _component_begin onwards -- hand it out read-only. std::span
+    // needs one pointer type, and _component_begin is a non-const iterator
+    // while a const _tarjan_stack yields const ones, so the element type is
+    // spelled out.
     [[nodiscard]] constexpr auto current() const noexcept(noexcept(
         std::span<const vertex>(std::to_address(_component_begin),
                                 static_cast<std::size_t>(_tarjan_stack.end() -
@@ -260,16 +248,13 @@ public:
         noexcept(noexcept(_index_map[v] != INVALID_COMPONENT)) {
         return _index_map[v] != INVALID_COMPONENT;
     }
-    // A view of the reached state, like breadth_first_search's and
-    // depth_first_search's. It refers into the algorithm, as every melon map
-    // view refers into what it names: it is valid while this object lives and
-    // stays put, exactly the contract mapping_ref_view carries.
-    // See dijkstra::reached_map: computed, not stored.
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & v) { return reached(v); });
     }
-    // See dijkstra::reached_map's expiring overload: no stored bool map, so
-    // the index map moves into the lambda -- self-contained, terminal.
+    // Terminal, like std::move(alg).base() -- no other member may be called
+    // afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
         return maps::map([index_map = std::move(_index_map)](const vertex & v) {
             return index_map[v] != INVALID_COMPONENT;
@@ -277,8 +262,6 @@ public:
     }
 
 private:
-    // Tarjan's stack push: an implementation detail of advance(), not
-    // something a caller may do behind the traversal's back.
     constexpr void _push_tarjan(const vertex & v) {
         _tarjan_stack.push_back(v);
         _in_tarjan_stack_map[v] = true;
@@ -331,11 +314,6 @@ public:
             }
             const vertex v = _dfs_stack.back().first;
             if(_index_map[v] == _lowlink_map[v]) {
-                // _component_begin =
-                //     --std::ranges::find(std::views::reverse(_tarjan_stack),
-                //                         _dfs_stack.back().first)
-                //           .base();
-
                 for(_component_begin = _tarjan_stack.end() - 1;
                     *_component_begin != v; --_component_begin) {
                     _in_tarjan_stack_map[*_component_begin] = false;
@@ -358,11 +336,9 @@ public:
     // The id of the component u belongs to: dense, in emission order -- the
     // k-th component yielded is id k, reverse topological order of the
     // condensation. Only assigned once the component is popped, so asking
-    // before u's component has been yielded is a precondition violation, the
-    // same contract as dijkstra::pred_arc on an unreached vertex. The
-    // same-component query is component_id(u) == component_id(v) -- there is
-    // no same_component() answering it from the lowlinks, which are not
-    // uniform within a finished component.
+    // before u's component has been yielded is a precondition violation. The
+    // same-component query is component_id(u) == component_id(v); the lowlinks
+    // cannot answer it, as they are not uniform within a finished component.
     [[nodiscard]] constexpr component_num component_id(const vertex & u) const
         requires(Traits::store_component_ids)
     {
@@ -379,10 +355,8 @@ public:
     {
         return maps::mapping_all(_component_id_map._map);
     }
-    // The expiring overload moves the stored map into a mapping_owning_view,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto component_ids_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_component_id_map._map))))
         requires(Traits::store_component_ids)

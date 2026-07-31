@@ -26,17 +26,10 @@ private:
 
 public:
     static_digraph_builder() : _num_vertices(0) {}
-    // Not noexcept: add_arc push_backs and build() allocates. explicit: a
-    // vertex count is not a builder.
     explicit static_digraph_builder(std::size_t num_vertices_)
         : _num_vertices(num_vertices_) {}
 
 private:
-    // The properties are moved, not copied, all the way down. This used to
-    // copy each one four times per add_arc -- into add_arc's by-value
-    // parameter, into push_arc's, into a make_tuple, and finally into
-    // push_back as an lvalue. Only the first remains, which is the by-value
-    // parameter every builder API has.
     template <class Maps, class Properties, std::size_t... Is>
     void add_properties(Maps & maps, Properties && properties,
                         std::index_sequence<Is...>) {
@@ -69,12 +62,9 @@ private:
     }
 
 public:
-    // Ref-qualified so that value category survives a chain: add_arc() used to
-    // return `static_digraph_builder &` unconditionally, which made
-    // `std::move(b).add_arc(u, v)` an *lvalue* and sent the following .build()
-    // to the copying overload. The && overload returns an rvalue reference to
-    // the same object, so `std::move(b).add_arc(...).add_arc(...).build()`
-    // reaches `build() &&` and moves the property vectors out.
+    // Ref-qualified so that value category survives a chain: a single
+    // `static_digraph_builder &` return would make `std::move(b).add_arc(u, v)`
+    // an *lvalue* and send the following .build() to the copying overload.
     //
     // The usual rvalue-builder caveat applies: the reference is to the object
     // the chain started from, so binding it past the end of the full
@@ -105,14 +95,10 @@ public:
             _arc_property_maps);
     }
 
-    // Moves them instead. The two make_tuple arguments are indeterminately
-    // sequenced but touch disjoint members -- G reads _arc_sources /
-    // _arc_targets, the moves take the property vectors -- so the order does
-    // not matter. The endpoint vectors are still copied: they go through
-    // static_map's range constructor, which copies whatever it is given.
-    //
-    // The builder is left in a moved-from state: valid, and to be reset or
-    // destroyed rather than added to.
+    // Moves them instead. The endpoint vectors are still copied: they go
+    // through static_map's range constructor, which copies whatever it is
+    // given. Leaves the builder moved-from: valid, to be destroyed rather than
+    // added to.
     [[nodiscard]] auto build() && {
         sort_arcs();
         return std::apply(

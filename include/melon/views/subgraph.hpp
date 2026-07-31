@@ -11,9 +11,9 @@
 
 namespace melon {
 
-// graph_view, not graph: see reverse_view -- the constructor routes through
-// views::graph_all, so the stored type is always a view, and a non-view
-// argument made the class a legal type whose constructor hard-errored.
+// graph_view, not graph: the constructor routes through views::graph_all, so
+// the stored type is always a view -- a non-view argument would make the class
+// a legal *type* whose constructor hard-errors in the mem-initializer.
 template <graph_view Graph, mapping<vertex_t<Graph>> VertexFilter,
           mapping<arc_t<Graph>> ArcFilter>
     requires std::convertible_to<mapped_value_t<VertexFilter, vertex_t<Graph>>,
@@ -21,8 +21,6 @@ template <graph_view Graph, mapping<vertex_t<Graph>> VertexFilter,
              std::convertible_to<mapped_value_t<ArcFilter, arc_t<Graph>>, bool>
 class subgraph_view : public graph_view_base {
 private:
-    // Private, like every other view's: vertex_t<T> / arc_t<T> are the
-    // supported way to name a graph's handle types.
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
 
@@ -39,9 +37,9 @@ public:
     // constructible_from<Graph, graph_all_t<G>>, whose pass_through branch asks
     // constructible_from<subgraph_view, subgraph_view> for G = subgraph_view:
     // the very question being answered. GCC rejects that outright
-    // ("satisfaction of atomic constraint depends on itself"), so every copy of
-    // an algorithm holding a subgraph_view failed to compile. not_self exists
-    // precisely to cut that off, and only the trailing position lets it.
+    // ("satisfaction of atomic constraint depends on itself"), so copying an
+    // algorithm that holds a subgraph_view fails to compile. Only the trailing
+    // position lets not_self cut that off.
     template <typename G, typename VF = maps::true_map,
               typename AF = maps::true_map>
         requires detail::not_self<G, subgraph_view> && graph_for<G, Graph> &&
@@ -53,8 +51,6 @@ public:
         , _vertex_filter(maps::mapping_all(std::forward<VF>(vertex_filter)))
         , _arc_filter(maps::mapping_all(std::forward<AF>(arc_filter))) {}
 
-    // The std adaptor shape (filter_view &co.): default-constructible exactly
-    // when everything it stores is.
     subgraph_view()
         requires std::default_initializable<Graph> &&
                      std::default_initializable<VertexFilter> &&
@@ -66,9 +62,6 @@ public:
     constexpr subgraph_view & operator=(const subgraph_view &) = default;
     constexpr subgraph_view & operator=(subgraph_view &&) = default;
 
-    // The adaptor shape, like std::ranges::filter_view: a copy of the adapted
-    // view from a const lvalue, moved out of an rvalue. subgraph had no way at
-    // all to hand back the graph underneath it.
     [[nodiscard]] constexpr Graph base() const &
         requires std::copy_constructible<Graph>
     {
@@ -76,11 +69,9 @@ public:
     }
     [[nodiscard]] constexpr Graph base() && { return std::move(_graph); }
 
-    // This file was missed by the noexcept sweep the rest of the views got:
-    // every member below used to be unconditionally noexcept, including the
-    // ones that allocate. The rule is the same one applied elsewhere -- a
-    // member that merely forwards gets a conditional specification, a member
-    // that branches, builds a filter_view or allocates gets none.
+    // The noexcept rule for everything below: a member that merely forwards
+    // gets a conditional specification, a member that branches, builds a
+    // filter_view or allocates gets none.
     [[nodiscard]] constexpr decltype(auto) num_vertices() const
         noexcept(noexcept(melon::num_vertices(_graph)))
         requires has_num_vertices<Graph> &&
@@ -111,14 +102,12 @@ public:
     {
         _vertex_filter[v] = true;
     }
-    // No specification: the body branches and reads a caller-supplied filter.
-    //
     // Asks has_is_valid_vertex, not has_vertex_removal. Graph is whatever
     // views::graph_all produced -- a graph_ref_view -- which forwards the
-    // validity question but deliberately not remove_vertex, so the old guard
-    // was false for every wrapped graph and this branch was dead: a vertex
-    // removed from a mutable_digraph came back valid from its subgraph while
-    // vertices() had already stopped listing it.
+    // validity question but deliberately not remove_vertex, so a removal-based
+    // guard is false for every wrapped graph and leaves this branch dead: a
+    // vertex removed from a mutable_digraph then comes back valid from its
+    // subgraph while vertices() has already stopped listing it.
     //
     // The underlying graph goes first: _vertex_filter is indexed by vertex, so
     // subscripting it with a handle the graph no longer recognises is exactly
@@ -131,10 +120,9 @@ public:
     }
 
     // Non-const, like disable_vertex / enable_vertex: these write the filter,
-    // which is part of the view's value. The `const` also only ever compiled
-    // for a mapping_ref_view filter -- with the mapping_owning_view that
-    // views::subgraph(g, maps::true_map{}, map) produces, a const member cannot
-    // write through it at all.
+    // which is part of the view's value. A const member could only ever write
+    // through a mapping_ref_view filter, never through the mapping_owning_view
+    // that views::subgraph(g, maps::true_map{}, map) produces.
     constexpr void disable_arc(const arc & a) noexcept(
         noexcept(_arc_filter[a] = false))
         requires output_mapping_of<ArcFilter, arc_t<Graph>, bool>
@@ -147,7 +135,9 @@ public:
     {
         _arc_filter[a] = true;
     }
-    // See is_valid_vertex.
+    // The underlying graph goes first, as in is_valid_vertex: subscripting
+    // _arc_filter with a handle the graph no longer recognises is the
+    // out-of-range access the check exists to prevent.
     [[nodiscard]] constexpr bool is_valid_arc(const arc & a) const {
         if constexpr(has_is_valid_arc<Graph>)
             return melon::is_valid_arc(_graph, a) && _arc_filter[a];
@@ -155,7 +145,6 @@ public:
             return _arc_filter[a];
     }
 
-    // Not noexcept: builds a filter_view over a caller-supplied predicate.
     [[nodiscard]] constexpr auto vertices() const {
         if constexpr(std::same_as<VertexFilter, maps::true_map>) {
             return melon::vertices(_graph);
@@ -165,7 +154,6 @@ public:
                 [this](const vertex & v) { return _vertex_filter[v]; });
         }
     }
-    // Not noexcept: see vertices().
     [[nodiscard]] constexpr auto arcs() const
         requires std::same_as<VertexFilter,
                               maps::true_map>  // if false, use the incidence
@@ -181,11 +169,10 @@ public:
         }
     }
 
-    // Forwarded only when the wrapped graph carries its *own* arcs_entries,
-    // exactly as graph_forwarding_interface does: forwarding the synthesised
-    // fallback would stack a transform on a transform. Without this member an
-    // entries-only graph wrapped by a subgraph stopped modeling `graph` at
-    // all, and a graph with its own entries got the fallback.
+    // Forwarded only when the wrapped graph carries its *own* arcs_entries:
+    // forwarding the synthesised fallback would stack a transform on a
+    // transform, and dropping the member makes an entries-only graph stop
+    // modeling `graph` once wrapped.
     [[nodiscard]] constexpr decltype(auto) arcs_entries() const
         noexcept(noexcept(melon::arcs_entries(_graph)))
         requires cpo::has_own_arcs_entries<Graph> &&
@@ -238,7 +225,6 @@ public:
         return melon::arc_targets_map(_graph);
     }
 
-    // Not noexcept: see vertices().
     [[nodiscard]] constexpr auto in_arcs(const vertex & v) const
         requires inward_incidence_graph<Graph>
     {
@@ -258,7 +244,6 @@ public:
                 });
         }
     }
-    // Not noexcept: see vertices().
     [[nodiscard]] constexpr auto out_arcs(const vertex & v) const
         requires outward_incidence_graph<Graph>
     {
@@ -270,7 +255,6 @@ public:
             return std::views::filter(
                 melon::out_arcs(_graph, v),
                 [this](const arc & a) { return _arc_filter[a]; });
-            // return arc_filter.filter(melon::out_arcs(_graph, v));
         } else {
             return std::views::filter(
                 melon::out_arcs(_graph, v), [this](const arc & a) {
@@ -280,7 +264,6 @@ public:
         }
     }
 
-    // Forwarded only when no filter can change the answer.
     [[nodiscard]] constexpr decltype(auto) out_degree(const vertex & v) const
         noexcept(noexcept(melon::out_degree(_graph, v)))
         requires has_out_degree<Graph> &&
@@ -300,7 +283,6 @@ public:
         return melon::in_degree(_graph, v);
     }
 
-    // Not noexcept: see vertices().
     [[nodiscard]] constexpr auto in_neighbors(const vertex & v) const
         requires inward_adjacency_graph<Graph>
     {
@@ -320,7 +302,6 @@ public:
                 [&](const vertex & u) -> bool { return _vertex_filter[u]; });
         }
     }
-    // Not noexcept: see vertices().
     [[nodiscard]] constexpr auto out_neighbors(const vertex & v) const
         requires outward_adjacency_graph<Graph>
     {
@@ -341,10 +322,6 @@ public:
         }
     }
 
-    // None of the four below is noexcept: they allocate. The default value
-    // is taken by const reference, like every other create_*_map in the
-    // library and like the CPO that calls them -- by value cost one extra copy
-    // of the default on every call.
     template <typename T>
         requires has_vertex_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const {
@@ -396,12 +373,11 @@ class induced_subgraph_view
                            mapping_owning_view<vertex_map_t<Graph, bool>>,
                            maps::true_map> {
 private:
-    // The filter used to be spelled `const mapping_owning_view<...>`. A const
-    // member deletes the defaulted assignments, so induced_subgraph failed
-    // std::movable and therefore graph_view: views::graph_all stopped passing
-    // an rvalue through and wrapped the whole thing in a graph_owning_view.
-    // What the const was buying -- a filter the caller cannot poke -- is
-    // restored below by hiding the base's enable/disable instead.
+    // The filter must not be const-qualified here: a const member deletes the
+    // defaulted assignments, so induced_subgraph_view fails std::movable and
+    // therefore graph_view, and views::graph_all stops passing an rvalue
+    // through and wraps the whole thing in a graph_owning_view. A filter the
+    // caller cannot poke comes from hiding the base's enable/disable instead.
     using base_subgraph =
         subgraph_view<Graph, mapping_owning_view<vertex_map_t<Graph, bool>>,
                       maps::true_map>;
@@ -411,8 +387,8 @@ private:
 
     vertices_fn _vertices;
 
-    // Static: it reads no member, and it used to be called on *this from a
-    // mem-initializer, before any base or member existed.
+    // Static: it reads no member, and it runs from a mem-initializer, before
+    // any base or member exists.
     template <typename G, typename VR>
     [[nodiscard]] static constexpr auto construct_vertex_filter(
         const G & g, VR && vertices_range) {
@@ -450,20 +426,14 @@ public:
     constexpr induced_subgraph_view & operator=(induced_subgraph_view &&) =
         default;
 
-    // By reference, not by value: std::views::all_t of an *rvalue* container is
-    // a std::ranges::owning_view, whose copy constructor is deleted, so
-    // returning a copy made vertices() ill-formed for
-    // `induced_subgraph(g, std::vector{...})`. Construction still compiled --
-    // only the concept check failed, silently, and graph<induced_subgraph>
-    // came back false.
     // A ref_view over the stored range, not a copy of it: std::views::all_t of
     // an *rvalue* container is a move-only std::ranges::owning_view, so
-    // returning a copy made vertices() ill-formed for
-    // `induced_subgraph(g, std::vector{...})` -- construction still compiled,
-    // only the concept check failed, silently, and graph<induced_subgraph> came
+    // returning a copy makes vertices() ill-formed for
+    // `induced_subgraph(g, std::vector{...})` -- construction still compiles,
+    // only the concept check fails, silently, and graph<induced_subgraph> comes
     // back false. Returning `const vertices_fn &` does not work either: a const
     // lvalue of a view type is not a viewable_range, so the arcs() fallback in
-    // graph.hpp could no longer transform it. ref_view is both copyable and
+    // graph.hpp can no longer transform it. ref_view is both copyable and
     // borrowed whatever the source range was.
     [[nodiscard]] constexpr auto vertices() const noexcept {
         return std::ranges::ref_view(_vertices);
@@ -476,9 +446,8 @@ induced_subgraph_view(G &&, VR &&)
 
 namespace views {
 
-// The adaptor object under the class's old name. Three spellings, all
-// naming the same subgraph_view<...> type: the direct call
-// views::subgraph(g, vf, af), the bound form g | views::subgraph(vf, af),
+// Three spellings, all naming the same subgraph_view<...> type: the direct
+// call views::subgraph(g, vf, af), the bound form g | views::subgraph(vf, af),
 // and -- since every filter is optional -- the nullary g | views::subgraph().
 // Not itself a closure: `g | views::subgraph` without the parentheses is
 // ill-formed, exactly as `r | std::views::filter` is.
@@ -505,12 +474,11 @@ struct subgraph_fn {
     // filters are decay-*copied* into the closure (adaptor_partial): a
     // closure must be self-contained or it dangles. This is the one place
     // the two spellings diverge -- the direct call above stores an lvalue
-    // map by reference, per the library-wide mapping_all rule. Deliberate:
-    // converging would mean deep-copying lvalue maps in the direct call,
-    // out of step with every other map-taking entry point. Either semantics
-    // is spellable in either form -- mapping_ref_view(m) pipes a reference,
-    // auto(m) passes the direct call a copy; all four cells are pinned in
-    // test/subgraph.cpp and documented in docs/views/graphs.md.
+    // map by reference, per the library-wide mapping_all rule. Converging
+    // them would mean deep-copying lvalue maps in the direct call, out of
+    // step with every other map-taking entry point. Either semantics is
+    // spellable in either form -- mapping_ref_view(m) pipes a reference,
+    // auto(m) passes the direct call a copy; see docs/views/graphs.md.
     template <typename VF = maps::true_map, typename AF = maps::true_map>
         requires(!graph<std::remove_cvref_t<VF>>)
     [[nodiscard]] constexpr auto operator()(

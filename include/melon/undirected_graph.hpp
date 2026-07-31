@@ -20,16 +20,7 @@ concept has_adl_edges = requires(const T & t) {
     { edges(t) } -> std::ranges::input_range;
 };
 
-// `auto`, not `decltype(auto)`: every other range-returning CPO in melon
-// decay-copies, so edges_range_t was the one range alias that could name a
-// reference type. A graph that stores its edges in a container returns
-// std::views::all(container) -- a ref_view, no copy -- which is the
-// std::ranges idiom and what melon already requires of arc_targets_map.
 struct edges_fn {
-    // One overload per protocol, each carrying the noexcept of the expression
-    // directly beside it. The private is_noexcept() this replaces re-ran the
-    // same `if constexpr` in a second place, which is how undirected_graph.hpp
-    // came to measure an overload its operator() never called.
     template <typename T>
         requires has_member_edges<T>
     constexpr auto operator() [[nodiscard]] (const T & t) const
@@ -68,8 +59,6 @@ concept has_adl_num_edges = requires(const T & t) {
 };
 
 struct num_edges_fn {
-    // See vertices_fn: one overload per protocol, each carrying its own
-    // noexcept, including the size-of-the-range fallback.
     template <typename T>
         requires has_member_num_edges<T>
     constexpr auto operator() [[nodiscard]] (const T & t) const
@@ -114,10 +103,6 @@ concept has_adl_edge_endpoints = requires(const T & t, const edge_t<T> & e) {
 };
 
 struct edge_endpoints_fn {
-    // One overload per protocol, each carrying the noexcept of the expression
-    // directly beside it. The private is_noexcept() this replaces re-ran the
-    // same `if constexpr` in a second place, which is how undirected_graph.hpp
-    // came to measure an overload its operator() never called.
     template <typename T>
         requires has_member_edge_endpoints<T>
     constexpr auto operator()
@@ -152,10 +137,6 @@ concept has_adl_incidence = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct incidence_fn {
-    // One overload per protocol, each carrying the noexcept of the expression
-    // directly beside it. The private is_noexcept() this replaces re-ran the
-    // same `if constexpr` in a second place, which is how undirected_graph.hpp
-    // came to measure an overload its operator() never called.
     template <typename T>
         requires has_member_incidence<T>
     constexpr auto operator()
@@ -205,8 +186,6 @@ concept has_sized_incidence = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct degree_fn {
-    // See vertices_fn: one overload per protocol, each carrying its own
-    // noexcept, including the size-of-the-range fallback.
     template <typename T>
         requires has_member_degree<T>
     constexpr auto operator()
@@ -288,13 +267,11 @@ concept has_adl_create_edge_map = requires(const T & t, const ValueType & d) {
 };
 
 // Parameterised on ValueType so that the public name can be a *variable*
-// template rather than a function template, for exactly the reason spelled out
-// on create_vertex_map_fn in graph.hpp: a function template named
+// template rather than a function template: a function template named
 // create_edge_map living in namespace melon is reachable by ADL from
 // has_adl_create_edge_map for every type whose associated namespaces include
-// melon (anything deriving from undirected_graph_view_base, every melon
-// undirected view), which makes the concept depend on itself. Variable
-// templates are not found by ADL, so the loop cannot close.
+// melon (every melon undirected view), which makes the concept depend on
+// itself. Variable templates are not found by ADL, so the loop cannot close.
 template <typename ValueType>
 struct create_edge_map_fn {
 private:
@@ -308,8 +285,6 @@ private:
                 create_edge_map<ValueType>(std::declval<const T &>()));
     }
 
-    // See create_vertex_map_fn::is_noexcept_default in graph.hpp: the
-    // default-value overload has to probe the call it actually makes.
     template <typename T>
     static constexpr bool is_noexcept_default() {
         if constexpr(has_member_create_edge_map<T, ValueType>)
@@ -348,9 +323,6 @@ public:
 }  // namespace cpo
 
 inline namespace cust {
-// A variable template, not a function template: `create_edge_map<T>(g)` reads
-// the same at every call site, but the name is now invisible to ADL. See the
-// comment on create_edge_map_fn.
 template <typename ValueType>
 inline constexpr cpo::create_edge_map_fn<ValueType> create_edge_map{};
 }  // namespace cust

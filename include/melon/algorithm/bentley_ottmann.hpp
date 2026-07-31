@@ -21,12 +21,10 @@
 
 namespace melon {
 
-// clang-format off
 template <typename Traits>
-concept bentley_ottmann_traits = requires() {
+concept bentley_ottmann_traits = requires {
     { Traits::report_endpoints } -> std::convertible_to<bool>;
 };
-// clang-format on
 
 template <typename Segment>
 struct bentley_ottmann_default_traits {
@@ -49,10 +47,21 @@ struct bentley_ottmann_default_traits {
     static constexpr bool report_endpoints = true;
 };
 
-// view / mapping_view on the stored members: see dijkstra's head. The id
-// range is *stored* (all algorithms keep what they run over) so that reset()
-// can re-seed the event queue; forward_range because seeding walks it once
-// per run, not once per object.
+// Precondition no concept can check: the coordinate arithmetic must be exact.
+// The sweep orders segments by where they cross the sweep line and reuses that
+// order across events, so a rounded comparison makes segment_cmp inconsistent
+// -- that is a strict-weak-ordering violation in the underlying tree, which is
+// undefined behaviour, not merely a misreported point. Where the geometry
+// divides, integral coordinates are promoted to numeric::rational; a
+// floating-point coordinate type satisfies the concepts but not this
+// precondition.
+// Degeneracies are supported: an event reports every segment id passing
+// through the point, so three concurrent segments and collinear overlaps come
+// out right.
+// O((n + k) log n) for n segments and k reported points.
+//
+// The id range is *stored* so that reset() can re-seed the event queue;
+// forward_range because seeding walks it once per run, not once per object.
 template <bentley_ottmann_traits Traits, std::ranges::view SegmentIdRange,
           mapping_view<std::ranges::range_value_t<SegmentIdRange>> SegmentMap =
               maps::identity_map>
@@ -64,9 +73,9 @@ private:
     using segment_id_type = std::ranges::range_value_t<SegmentIdRange>;
     using coordinate_system = typename Traits::coordinate_system;
     using segment_type = typename Traits::segment_type;
-    // Two decltypes, not a comma inside one: the comma operator discarded the
-    // first endpoint's type, so common_type was never consulted across the
-    // two and a segment with differing endpoint types took the second's.
+    // Two decltypes, not a comma inside one: the comma operator discards the
+    // first endpoint's type, so common_type is never consulted across the two
+    // and a segment with differing endpoint types silently takes the second's.
     using endpoint_type =
         std::common_type_t<decltype(std::get<0>(std::declval<segment_type>())),
                            decltype(std::get<1>(std::declval<segment_type>()))>;
@@ -88,11 +97,13 @@ private:
     using event_cmp = coordinate_system::point_xy_comparator;
 
     struct segment_entry {
-        // None of these is `const`. Three const members make the two defaulted
-        // assignments below *deleted*, which is exactly the trap that made
-        // induced_subgraph fail std::movable; declaring `= default` on an
-        // operation the compiler has already deleted reads as though the type
-        // were assignable when it is not.
+        // None of these is `const`: const members make the two defaulted
+        // assignments below *deleted*, and `= default` on an operation the
+        // compiler has already deleted reads as though the type were
+        // assignable when it is not.
+        // The crossing is `mutable` because it is a memo, recomputed on the
+        // first comparison at a new event point, and the entries are const
+        // both to segment_cmp and as tree keys.
         mutable sweepline_intersection_type sweepline_intersection;
         line_type line;
         segment_type segment;
@@ -156,12 +167,11 @@ private:
 
     // The two sweep points the tree comparators order against. segment_cmp
     // holds a std::cref to them and std::set carries its comparator with it on
-    // move, so a comparator bound to a plain *member* kept comparing against
-    // the moved-from object (a use-after-free once the source died). Behind a
-    // unique_ptr their address is move-invariant, which is what makes the
-    // defaulted moves below sound; the comparison hot path is unchanged, the
-    // reference_wrapper was already one indirection. Declared before the
-    // trees: their mem-initializers dereference it.
+    // move, so a comparator bound to a plain *member* would keep comparing
+    // against the moved-from object -- a use-after-free once the source dies.
+    // Behind a unique_ptr their address is move-invariant, which is what makes
+    // the defaulted moves below sound. Declared before the trees: their
+    // mem-initializers dereference it.
     struct event_points {
         intersection_type current;
         intersection_type tmp;
@@ -194,18 +204,12 @@ public:
         seed();
     }
 
-    // Constrained on the delegate it forwards to, so the tag overload is
-    // exactly as constructible as the constructor it names.
     template <typename... Args>
         requires std::constructible_from<bentley_ottmann, Args...>
     constexpr bentley_ottmann(Traits, Args &&... args)
         : bentley_ottmann(std::forward<Args>(args)...) {}
 
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // The defaulted moves are sound: the trees' comparators reference the
-    // heap-anchored event points, whose address the move transfers intact.
-    // The moved-from trees keep comparators into the transferred anchor,
-    // which the destroy/assign-only moved-from contract never dereferences.
     constexpr bentley_ottmann(const bentley_ottmann &) = delete;
     constexpr bentley_ottmann(bentley_ottmann &&) = default;
 
@@ -224,7 +228,7 @@ public:
 private:
     void seed() {
         for(auto && s : _segment_ids_range) {
-            // read through the wrapped member, not the constructor parameter:
+            // Read through the wrapped member, not the constructor parameter:
             // the latter need not be subscriptable (a callable, typically).
             const auto & [p1, p2] = _segment_map[s];
             if(_event_cmp(p1, p2)) {
@@ -243,7 +247,6 @@ private:
     }
     void push_segment_endpoint(const endpoint_type & i,
                                const segment_id_type & s, const event_type et) {
-        // auto && [it, inserted] = _events_tree.try_emplace(i);
         auto && [it, inserted] = _events_tree.try_emplace(intersection_type(i));
         it->second.emplace_back(s, et);
     }
@@ -284,8 +287,8 @@ private:
         push_intersection(i);
     }
     // The tree's value_type, not pair<intersection_type, events>: a std::map's
-    // value_type has a const key, so the latter bound every call to a
-    // temporary copying the point *and* the events vector (executed).
+    // value_type has a const key, so the latter binds every call to a
+    // temporary copying the point *and* the events vector.
     void handle_event(const typename events_tree::value_type & e) {
         const auto & [i, evts] = e;
         _event_points->tmp = i;

@@ -15,12 +15,10 @@
 
 namespace melon {
 
-// clang-format off
 template <typename Traits>
-concept alias_method_sampler_traits = requires() {
+concept alias_method_sampler_traits = requires {
     { Traits::heuristic_preprocessing } -> std::convertible_to<bool>;
 };
-// clang-format on
 
 struct alias_method_sampler_default_traits {
     static constexpr bool heuristic_preprocessing = false;
@@ -35,9 +33,8 @@ template <std::ranges::random_access_range ItemRange, std::floating_point Prob,
               alias_method_sampler_default_traits>
 class alias_method_sampler {
 public:
-    // The std distribution convention (std::discrete_distribution's
-    // result_type), spelled as what operator() actually hands back: a
-    // reference into the item range, not a copy.
+    // What operator() hands back is a reference into the item range, not a
+    // copy, so it is valid only while the sampler's items are.
     using result_type = std::ranges::range_reference_t<ItemRange>;
 
 private:
@@ -67,10 +64,8 @@ public:
         auto overfull_end = overfull_buckets.get();
         auto underfull_end = underfull_buckets.get();
 
-        // Two passes: the first stores the raw weights and their sum, the
-        // second scales by n / sum and classifies the buckets. Like
-        // std::discrete_distribution, the weights need not sum to one --
-        // unnormalized weights used to silently build a garbage table.
+        // Like std::discrete_distribution, the weights need not sum to one;
+        // they must be non-negative and not all zero, both asserted.
         Prob weights_sum = Prob{0};
         for(auto && [i, item] : std::views::enumerate(_items)) {
             const Prob w = prob_map(item);
@@ -136,11 +131,9 @@ public:
     constexpr alias_method_sampler & operator=(alias_method_sampler &&) =
         default;
 
-    // The two distributions are locals, not `mutable` members. A distribution
-    // carries its own state, so writing one through a const operator() made
-    // two threads sampling from the same const sampler race -- the same
-    // defect erdos_renyi's function-local statics had, in a per-object form.
-    // Both are trivially constructed from their bounds.
+    // The two distributions are locals, not `mutable` members: a distribution
+    // carries its own state, so writing one through a const operator() would
+    // race between two threads sampling from the same const sampler.
     template <std::uniform_random_bit_generator Generator>
     [[nodiscard]] decltype(auto) operator()(Generator & gen) const {
         std::uniform_int_distribution<index_type> index_distribution(
@@ -153,8 +146,6 @@ public:
     }
 };
 
-// No Traits parameter: the class template's own default supplies it, so the
-// deduced type and the explicitly written `alias_method_sampler<R, P>` agree.
 template <typename Range, typename ProbMap>
 alias_method_sampler(Range &&, ProbMap &&)
     -> alias_method_sampler<

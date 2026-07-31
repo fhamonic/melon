@@ -32,6 +32,11 @@ private:
     }
 
 public:
+    // A proxy, not a bool: it stores a pointer into the map's buffer, so
+    // `auto b = m[i];` deduces this type rather than bool and every later
+    // assignment to `b` writes through into the map. It also dangles the
+    // moment the map is destroyed, moved from or reset(), while still
+    // comparing and converting happily. Spell `bool b = m[i];` to snapshot.
     class reference {
     private:
         span_type * _p;
@@ -168,10 +173,10 @@ public:
 
     class iterator : public iterator_base<iterator> {
     public:
-        // Both spellings, like std::vector<bool>'s iterator: the C++20
-        // concept is satisfied with a proxy reference, while the Cpp17
-        // category keeps the precedent std::vector<bool> set for legacy
-        // category dispatch.
+        // Both spellings: the C++20 concept is satisfied through the proxy
+        // reference, while the Cpp17 category deliberately overstates -- the
+        // std::vector<bool> precedent -- so legacy category dispatch keeps
+        // picking the random-access algorithms.
         using iterator_concept = std::random_access_iterator_tag;
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = iterator_base<iterator>::difference_type;
@@ -193,8 +198,8 @@ public:
 
     class const_iterator : public iterator_base<const_iterator> {
     public:
-        // See iterator: dereferencing yields a prvalue bool, which the C++20
-        // concept accepts and the Cpp17 requirements would not.
+        // Same overstatement as iterator's: dereferencing yields a prvalue
+        // bool, which the C++20 concept accepts and Cpp17 would not.
         using iterator_concept = std::random_access_iterator_tag;
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = iterator_base<const_iterator>::difference_type;
@@ -221,8 +226,8 @@ private:
 
 public:
     static_filter_map() : _data(nullptr), _size(0) {};
-    // explicit, like static_map's: `static_filter_map m = 10;` reads as a
-    // value, not as a request for ten default-initialised bits.
+    // explicit: `static_filter_map m = 10;` reads as a value, not as a
+    // request for ten default-initialised bits.
     explicit static_filter_map(size_type size)
         : _data(std::make_unique_for_overwrite<span_type[]>(num_spans(size)))
         , _size(size) {};
@@ -237,9 +242,9 @@ public:
         std::copy(other._data.get(), other._data.get() + num_spans(other._size),
                   _data.get());
     };
-    // Hand-written for the same reason as static_map's: a defaulted move
-    // nulled _data but kept _size, leaving the source lying about its size
-    // over a null buffer.
+    // Hand-written so the source leaves as a valid *empty* map: a defaulted
+    // move nulls _data but keeps _size, and the moved-from map then answers
+    // size() == N over a null buffer.
     static_filter_map(static_filter_map && other) noexcept
         : _data(std::move(other._data)), _size(std::exchange(other._size, 0)) {}
 
@@ -266,8 +271,6 @@ public:
         return const_iterator(_data.get() + _size / N, _size & span_index_mask);
     }
 
-    // See static_map's: cbegin/cend, empty and swap, which every standard
-    // container has and neither of these two did.
     const_iterator cbegin() const noexcept {
         return const_iterator(_data.get(), 0);
     }
@@ -285,18 +288,15 @@ public:
     friend void swap(static_filter_map & a, static_filter_map & b) noexcept {
         a.swap(b);
     }
-    // See static_map::reset -- this discards the current contents, except at
-    // the same size, where it is a no-op.
+    // Discards the current contents and initialises nothing, except at the
+    // current size, where it is a no-op that preserves them -- operator=
+    // relies on that to avoid reallocating on every same-size assignment.
     void reset(size_type n) {
         if(n == _size) return;
         _data = std::make_unique_for_overwrite<span_type[]>(num_spans(n));
         _size = n;
     }
 
-    // Both overloads, like std::vector<bool>::at and like static_map's: the
-    // const-only one made a checked *write* impossible. const_reference is
-    // `bool` here, again as in std::vector<bool>, so the const overload hands
-    // back a value and the mutable one the proxy.
     [[nodiscard]] reference at(const size_type i) {
         if(static_cast<size_type>(i) >= size())
             throw std::out_of_range("Invalid key.");
@@ -323,20 +323,17 @@ public:
     }
 
     // Enumerates, in increasing key order, the set keys of a span of [0,
-    // size()). Nameable, storable, trivially copyable, and a forward
-    // iterator, unlike the lambda-holding intrusive_view it replaces, whose
-    // type could be neither named nor default-constructed and whose iterator
-    // was input-only.
+    // size()).
     //
-    // Two measured decisions, both about the length of the dependency chain
-    // the per-set-bit loop is bound by. The hot cursor is (span pointer, bit
-    // offset), not a key index: an index-based increment must rebuild the
-    // span pointer on every set bit, which measured 2x on dense scans. And
-    // the range ends at std::default_sentinel rather than being common:
-    // exact equality with an end iterator needs a clamp in the increment --
-    // countr_zero may land at or beyond the end key inside the last span --
-    // and those two extra compares per set bit measured 1.5x. Pipe through
-    // std::views::common if an iterator-pair range is required.
+    // Two shapes that look like premature complication, both about the
+    // dependency chain the per-set-bit loop is bound by. The hot cursor is
+    // (span pointer, bit offset) rather than a key index: an index-based
+    // increment rebuilds the span pointer on every set bit, measured 2x on
+    // dense scans. And the range ends at std::default_sentinel rather than
+    // being common: exact equality with an end iterator needs a clamp in the
+    // increment -- countr_zero may land at or beyond the end key inside the
+    // last span -- and those two extra compares per set bit measured 1.5x.
+    // Pipe through std::views::common if an iterator-pair range is required.
     class filter_iterator {
     public:
         using iterator_concept = std::forward_iterator_tag;
@@ -418,16 +415,16 @@ public:
 
     template <std::ranges::viewable_range R>
     [[nodiscard]] auto filter(R && r) const {
-        // remove_cvref_t, not R: R is the deduced type of a forwarding
-        // reference, so it is e.g. iota_view<K, K> & for an lvalue and the
-        // bit-scanning fast path below was only ever reached for rvalues.
+        // remove_cvref_t, not R: R is a forwarding reference's deduced type,
+        // so it is iota_view<K, K> & for an lvalue argument and the
+        // bit-scanning fast path below would never match one.
         using range_type = std::remove_cvref_t<R>;
         // Any common iota_view over an integral type, not iota_view<K, K>
         // exactly: the near-miss iota(0, n) -- int literals against a map
-        // keyed by an unsigned type -- silently enumerated through the
-        // generic branch below, 10-50x slower. (views::take and views::drop
-        // of an iota_view collapse back to an iota_view, so clipped ranges
-        // stay on this path too.)
+        // keyed by an unsigned type -- otherwise falls silently through to
+        // the generic branch below, 10-50x slower. (views::take and
+        // views::drop of an iota_view collapse back to an iota_view, so
+        // clipped ranges stay on this path too.)
         if constexpr(detail::specialization_of<range_type,
                                                std::ranges::iota_view> &&
                      std::ranges::common_range<range_type> &&
@@ -455,10 +452,9 @@ public:
             if(begin_index < end_index && !operator[](begin_index)) ++first;
             return std::ranges::subrange(first, std::default_sentinel);
         } else {
-            // forward, not r: passed as an lvalue, an rvalue container was
-            // wrapped in a ref_view of a temporary dead at the semicolon;
-            // forwarding lets views::transform take ownership through an
-            // owning_view.
+            // forward, not r: passed on as an lvalue, an rvalue container
+            // becomes a ref_view of a temporary dead at the semicolon;
+            // forwarding hands ownership to an owning_view instead.
             return std::views::filter(
                 std::views::transform(
                     std::forward<R>(r),

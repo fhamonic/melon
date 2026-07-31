@@ -18,23 +18,18 @@
 
 namespace melon {
 
-// A traits concept, like the dijkstra family's: without it a misspelled flag
-// in a user traits struct silently fell back to nothing instead of failing
-// the constraint.
-// clang-format off
 template <typename Traits>
-concept depth_first_search_traits = requires() {
+concept depth_first_search_traits = requires {
     { Traits::store_pred_vertices } -> std::convertible_to<bool>;
     { Traits::store_pred_arcs } -> std::convertible_to<bool>;
     { Traits::store_depth } -> std::convertible_to<bool>;
 };
-// clang-format on
 
 struct depth_first_search_default_traits {
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
-    // Depth in the DFS tree, not a graph distance: it counts the arcs from
-    // the source along the path DFS happened to take, so on the same graph it
+    // Depth in the DFS tree, not a graph distance: it counts the arcs from the
+    // source along the path DFS happened to take, so on the same graph it
     // changes with the order the out-arcs come in. Deliberately not called
     // store_distances -- breadth_first_search has a flag of that name whose
     // dist() is a genuine shortest-hop distance, and the two are not
@@ -64,11 +59,10 @@ private:
     // graph object, so nothing to do. Otherwise the ranges may capture the
     // stored graph's address (views::subgraph's do), and each frame must be
     // re-asked for -- which the primary consumable_input_view's _consumed
-    // counter makes possible. The remaining combination -- a non-borrowed
-    // graph whose incidence ranges are std-borrowed (iterators into storage
-    // the graph merely owns) -- has no counter to reseek with, so relocation
-    // support for it is exactly what the defaulted members provide: moves
-    // (storage transfers), no copies.
+    // counter makes possible. The remaining combination -- a non-borrowed graph
+    // whose incidence ranges are std-borrowed (iterators into storage the graph
+    // merely owns) -- has no counter to reseek with, so it gets only what the
+    // defaulted members provide: moves (storage transfers), no copies.
     static constexpr bool frames_need_rebase =
         !borrowed_graph<Graph> && !std::ranges::borrowed_range<stack_range>;
 
@@ -113,19 +107,15 @@ public:
 
     // The relocation policy, stated once: every cached cursor is keyed by the
     // vertex sitting right next to it in the frame, so after the members
-    // relocate, _rebase_stack() re-asks the *new* _graph for each frame's
-    // range and the _consumed counter puts the cursor back where it was. For
-    // borrowed graphs (and std-borrowed incidence ranges) that loop compiles
-    // away entirely and these members behave exactly as the defaulted ones
-    // they replace.
+    // relocate, _rebase_stack() re-asks the *new* _graph for each frame's range
+    // and the _consumed counter puts the cursor back where it was. For borrowed
+    // graphs (and std-borrowed incidence ranges) that loop compiles away
+    // entirely, leaving exactly a memberwise move.
     //
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // The defaulted move this replaces was unsound: the moved-from object's
-    // cached ranges pointed at its _graph member, which does not travel with a
-    // memberwise move (REVIEW.md Tier 1, finding 2 -- an ASan-verified
-    // heap-use-after-free with no copy anywhere in the program). That is the
-    // half of the relocation problem that survives, and the half the rebasing
-    // below exists for.
+    // Move-only; see the melon::traversal_algorithm concept for the ruling. The
+    // move cannot be defaulted: a memberwise move leaves the cached ranges
+    // pointing at the moved-from object's _graph member, a heap-use-after-free
+    // on the next advance().
     constexpr depth_first_search(const depth_first_search &) = delete;
     constexpr depth_first_search(depth_first_search && o) noexcept(
         !frames_need_rebase && std::is_nothrow_move_constructible_v<Graph> &&
@@ -168,12 +158,6 @@ private:
     }
 
 public:
-    // The graph the algorithm runs over. An algorithm owns its view rather
-    // than adapting it, so this is the std::ranges::owning_view shape --
-    // references, ref-qualified -- and not the filter_view shape the graph
-    // *views* use. Returning a copy here would also put traversal_forest back
-    // where it started: it reaches its sources through base(), and an owned
-    // graph view is move-only.
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -190,6 +174,8 @@ public:
         _reached_map.fill(false);
         return *this;
     }
+    // Strict precondition: the vertex must not have been reached. Re-seeding
+    // one gives it a second stack frame, so it is traversed and emitted twice.
     constexpr depth_first_search & add_source(const vertex & s) {
         assert(!_reached_map[s]);
         if constexpr(Traits::store_pred_arcs)
@@ -207,8 +193,8 @@ public:
         return _stack.empty();
     }
 
-    // See competing_dijkstras::current(): the noexcept measures the copy the
-    // by-value return performs, not just reaching the element.
+    // The noexcept measures the copy the by-value return performs, not just
+    // reaching the element.
     [[nodiscard]] constexpr vertex current() const
         noexcept(noexcept(vertex(_stack.back().first))) {
         assert(!finished());
@@ -258,15 +244,15 @@ public:
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
+    // Refers into the algorithm, like every melon map view: valid while this
+    // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & noexcept(
         noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
     }
-    // The expiring overload moves the stored map into a mapping_owning_view,
-    // std::views::all's ref-or-owning split. Extraction is terminal, like
-    // std::move(alg).base(): the member left behind is valid but empty, so
-    // no other member may be called afterwards. Same for the trait-gated
-    // expiring overloads below.
+    // Terminal, like std::move(alg).base() -- the member left behind is valid
+    // but empty, so no other member may be called afterwards. Same for the
+    // trait-gated expiring overloads below.
     [[nodiscard]] constexpr auto reached_map() && noexcept(
         noexcept(maps::mapping_all(std::move(_reached_map)))) {
         return maps::mapping_all(std::move(_reached_map));
@@ -286,9 +272,9 @@ public:
         return _pred_arcs_map[u];
     }
     // Number of arcs from the source to u along the DFS tree -- equivalently,
-    // the length of the pred_vertex chain up to the source. See store_depth:
-    // this is not a shortest-path distance, and two runs over the same graph
-    // can disagree if the out-arcs come in a different order.
+    // the length of the pred_vertex chain up to the source. Not a shortest-path
+    // distance: two runs over the same graph disagree if the out-arcs come in a
+    // different order.
     [[nodiscard]] constexpr int depth(const vertex & u) const
         noexcept(noexcept(_depth_map[u]))
         requires(Traits::store_depth)

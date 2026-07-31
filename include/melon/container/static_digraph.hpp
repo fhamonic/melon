@@ -57,12 +57,11 @@ public:
     }
 
     // Both ends cast to `arc`. Without the cast the ternary's common type is
-    // num_arcs()'s std::size_t, so this returned an iota_view<arc, size_t>: a
+    // num_arcs()'s std::size_t, so this yields an iota_view<arc, size_t>: a
     // *non-common* range, 16 bytes instead of 8, comparing an arc against a
-    // size_t on every iteration. arcs() above already spelled both ends
-    // explicitly, which is why it was 8 bytes and this was not. The size shows
-    // up multiplied -- depth_first_search keeps one such cursor per stack
-    // frame and dinitz one per vertex in each of two maps.
+    // size_t on every iteration. The size shows up multiplied --
+    // depth_first_search keeps one such cursor per stack frame and dinitz one
+    // per vertex in each of two maps.
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
         return std::views::iota(
@@ -87,9 +86,6 @@ public:
         return _arc_target[a];
     }
 
-    // constexpr *and* noexcept: building a mapping_ref_view is taking an
-    // address. static_forward_digraph's twin said constexpr-but-not-noexcept
-    // and this one noexcept-but-not-constexpr, for the same one-line body.
     [[nodiscard]] constexpr auto arc_sources_map() const noexcept {
         return mapping_ref_view(_arc_source);
     }
@@ -138,11 +134,10 @@ public:
         , _in_arc_begin(num_vertices_, 0)
         , _in_arcs(_arc_target.size()) {
         // Read the members, not the parameters: both were forwarded into
-        // _arc_source / _arc_target above, so after a move they may
-        // legitimately be empty. Same latent trap as
-        // static_forward_digraph's, and it only ever worked because
-        // static_map's range constructor copies. The members are contiguous,
-        // so this is also the cheaper scan.
+        // _arc_source / _arc_target above, so after a move the parameters may
+        // legitimately be empty and every assertion below would pass
+        // vacuously. The members are contiguous, so this is also the cheaper
+        // scan.
         assert(std::ranges::all_of(
             _arc_source, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::all_of(
