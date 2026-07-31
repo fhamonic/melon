@@ -12,7 +12,7 @@ template <std::ranges::range R>
 constexpr void prefetch_range(const R & range) {
     if constexpr(std::ranges::contiguous_range<R>) {
 #if defined(__GNUC__)
-        __builtin_prefetch(range.data());
+        __builtin_prefetch(std::ranges::data(range));
 #endif
     }
 }

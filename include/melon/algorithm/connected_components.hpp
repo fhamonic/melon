@@ -207,9 +207,17 @@ public:
     // depth_first_search's. It refers into the algorithm, as every melon map
     // view refers into what it names: it is valid while this object lives and
     // stays put, exactly the contract mapping_ref_view carries.
-    [[nodiscard]] constexpr auto reached_map() const
-        noexcept(noexcept(maps::mapping_all(_reached_map))) {
+    [[nodiscard]] constexpr auto reached_map() const & noexcept(
+        noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
+    }
+    // The expiring overload moves the stored map into a mapping_owning_view,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards.
+    [[nodiscard]] constexpr auto reached_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_reached_map)))) {
+        return maps::mapping_all(std::move(_reached_map));
     }
 };
 

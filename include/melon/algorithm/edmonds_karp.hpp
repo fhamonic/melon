@@ -104,9 +104,12 @@ private:
         _bfs_reached_map[_s] = true;
         _bfs_queue.resize(0);
         _bfs_queue.push_back(_s);
-        auto current = _bfs_queue.begin();
-        while(current != _bfs_queue.end()) {
-            const vertex & u = *current;
+        // Returns true when it reaches _t.
+        // By value, not by reference: the callers pass _bfs_queue elements,
+        // and the push_backs below reallocate _bfs_queue mid-call in the
+        // no-reserve arm -- a reference parameter dangles inside the running
+        // call.
+        const auto visit = [this](const vertex u) {
             for(auto && a : out_arcs(_graph, u)) {
                 const vertex v = arc_target(_graph, a);
                 if(_bfs_reached_map[v] ||
@@ -125,7 +128,23 @@ private:
                 if(v == _t) return true;
                 _bfs_queue.push_back(v);
             }
-            ++current;
+            return false;
+        };
+        // The iterator walk is only legal because the constructor reserved
+        // num_vertices slots, so visit's push_backs never reallocate under
+        // `current`. Without num_vertices there is no reserve, and a growing
+        // queue relocates -- index, not iterator, the same split as
+        // breadth_first_search's cursor.
+        if constexpr(has_num_vertices<Graph>) {
+            auto current = _bfs_queue.begin();
+            while(current != _bfs_queue.end()) {
+                if(visit(*current)) return true;
+                ++current;
+            }
+        } else {
+            for(std::size_t i = 0; i < _bfs_queue.size(); ++i) {
+                if(visit(_bfs_queue[i])) return true;
+            }
         }
         return false;
     }
@@ -171,6 +190,29 @@ public:
         for(auto && a : out_arcs(_graph, _s)) sum += _carried_flow_map[a];
         return sum;
     }
+
+    // The flow carried by `a`: zero after reset(), part of a maximum flow
+    // once run() has converged, and of a valid intermediate flow between the
+    // two -- every augmentation preserves conservation.
+    [[nodiscard]] constexpr value_t flow(const arc & a) const
+        noexcept(noexcept(_carried_flow_map[a])) {
+        return _carried_flow_map[a];
+    }
+    // A view of the stored flows, reached_map()'s contract: valid while this
+    // object lives and stays put.
+    [[nodiscard]] constexpr auto flows_map() const & noexcept(
+        noexcept(maps::mapping_all(_carried_flow_map))) {
+        return maps::mapping_all(_carried_flow_map);
+    }
+    // The expiring overload moves the stored map into a mapping_owning_view,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards.
+    [[nodiscard]] constexpr auto flows_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_carried_flow_map)))) {
+        return maps::mapping_all(std::move(_carried_flow_map));
+    }
+
     [[nodiscard]] constexpr auto minimum_cut() const {
         if constexpr(std::ranges::viewable_range<out_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(

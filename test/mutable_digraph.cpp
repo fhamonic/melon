@@ -157,14 +157,14 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
             Operation op;
             for(;;) {
                 op = random_element(operations);
-                auto num_vertices =
+                auto num_vertices_ =
                     std::ranges::distance(dummy_graph.vertices());
-                auto num_arcs = std::ranges::distance(dummy_graph.arcs());
-                if(op == REMOVE_VERTEX && num_vertices == 0) continue;
-                if(op == CREATE_ARC && num_vertices < 2) continue;
-                if(op == REMOVE_ARC && num_arcs == 0) continue;
+                auto num_arcs_ = std::ranges::distance(dummy_graph.arcs());
+                if(op == REMOVE_VERTEX && num_vertices_ == 0) continue;
+                if(op == CREATE_ARC && num_vertices_ < 2) continue;
+                if(op == REMOVE_ARC && num_arcs_ == 0) continue;
                 if((op == CHANGE_SOURCE || op == CHANGE_TARGET) &&
-                   (num_arcs == 0 || num_vertices < 2))
+                   (num_arcs_ == 0 || num_vertices_ < 2))
                     continue;
                 break;
             }
@@ -277,3 +277,36 @@ GTEST_TEST(mutable_digraph, moved_from_is_a_valid_empty_graph) {
     ASSERT_EQ(target.num_arcs(), 0u);
     ASSERT_TRUE(std::ranges::empty(vertices(target)));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// clear() has the std container shape: everything removed, the graph reusable
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(mutable_digraph, clear) {
+    mutable_digraph graph;
+    auto u = graph.create_vertex();
+    auto v = graph.create_vertex();
+    (void)graph.create_arc(u, v);
+    graph.clear();
+    ASSERT_EQ(graph.num_vertices(), 0u);
+    ASSERT_EQ(graph.num_arcs(), 0u);
+    ASSERT_TRUE(std::ranges::empty(vertices(graph)));
+    // and the graph is usable afterwards
+    auto w = graph.create_vertex();
+    ASSERT_EQ(graph.num_vertices(), 1u);
+    ASSERT_TRUE(is_valid_vertex(graph, w));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// iterator honesty: the intrusive iterators return prvalues, so they are
+// C++20 forward_iterators but only Cpp17 *input* iterators -- the
+// std::vector<bool> / zip_view split
+////////////////////////////////////////////////////////////////////////////////
+
+using vertices_it = std::ranges::iterator_t<decltype(vertices(
+    std::declval<const mutable_digraph &>()))>;
+static_assert(std::forward_iterator<vertices_it>);
+static_assert(std::same_as<std::iterator_traits<vertices_it>::iterator_category,
+                           std::input_iterator_tag>);
+static_assert(
+    std::same_as<vertices_it::iterator_concept, std::forward_iterator_tag>);

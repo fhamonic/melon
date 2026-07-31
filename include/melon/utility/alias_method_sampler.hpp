@@ -26,10 +26,20 @@ struct alias_method_sampler_default_traits {
     static constexpr bool heuristic_preprocessing = false;
 };
 
-template <typename ItemRange, typename Prob,
+// random_access_range: operator() subscripts the items by drawn index.
+// floating_point Prob: the table entries feed std::uniform_real_distribution,
+// so an integer prob map must fail here, at a melon concept, rather than at
+// libstdc++'s static_assert deep inside <random>.
+template <std::ranges::random_access_range ItemRange, std::floating_point Prob,
           alias_method_sampler_traits Traits =
               alias_method_sampler_default_traits>
 class alias_method_sampler {
+public:
+    // The std distribution convention (std::discrete_distribution's
+    // result_type), spelled as what operator() actually hands back: a
+    // reference into the item range, not a copy.
+    using result_type = std::ranges::range_reference_t<ItemRange>;
+
 private:
     using index_type = int;
 
@@ -57,10 +67,23 @@ public:
         auto overfull_end = overfull_buckets.get();
         auto underfull_end = underfull_buckets.get();
 
+        // Two passes: the first stores the raw weights and their sum, the
+        // second scales by n / sum and classifies the buckets. Like
+        // std::discrete_distribution, the weights need not sum to one --
+        // unnormalized weights used to silently build a garbage table.
+        Prob weights_sum = Prob{0};
         for(auto && [i, item] : std::views::enumerate(_items)) {
-            const auto prob = prob_map(item) * static_cast<Prob>(n);
-            _probs[static_cast<index_type>(i)] = prob;
-            *overfull_end = *underfull_end = static_cast<index_type>(i);
+            const Prob w = prob_map(item);
+            assert(w >= Prob{0});
+            _probs[static_cast<index_type>(i)] = w;
+            weights_sum += w;
+        }
+        assert(weights_sum > Prob{0});
+        const Prob scale = static_cast<Prob>(n) / weights_sum;
+        for(index_type i = 0; i < static_cast<index_type>(n); ++i) {
+            const Prob prob = _probs[i] * scale;
+            _probs[i] = prob;
+            *overfull_end = *underfull_end = i;
             const bool is_underfull = (prob < 1.0);
             underfull_end += is_underfull;
             overfull_end += !is_underfull;
@@ -118,7 +141,7 @@ public:
     // two threads sampling from the same const sampler race -- the same
     // defect erdos_renyi's function-local statics had, in a per-object form.
     // Both are trivially constructed from their bounds.
-    template <typename Generator>
+    template <std::uniform_random_bit_generator Generator>
     [[nodiscard]] decltype(auto) operator()(Generator & gen) const {
         std::uniform_int_distribution<index_type> index_distribution(
             index_type{0}, _last_index);

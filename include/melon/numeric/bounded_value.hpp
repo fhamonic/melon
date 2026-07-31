@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 namespace melon {
 // bounded_value, const_value, rational and integer live in melon::numeric:
@@ -158,7 +159,7 @@ public:
     // bounds that bracket nothing; for signed T with Min ==
     // numeric_limits<T>::min(), -Min is not representable and the template-id
     // is ill-formed, so the class failed to compile at the point of use.
-    constexpr auto operator-() const
+    [[nodiscard]] constexpr auto operator-() const
         requires negation_is_representable
     {
         return bounded_value<T, -Max, -Min, PS>(-value());
@@ -178,42 +179,42 @@ public:
         requires(!negation_is_representable)
     = delete;
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-    constexpr auto operator<(
+    [[nodiscard]] constexpr auto operator<(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
         if constexpr(Max < OMIN) return true;
         if constexpr(Min >= OMAX) return false;
         return value() < o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-    constexpr auto operator<=(
+    [[nodiscard]] constexpr auto operator<=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
         if constexpr(Max <= OMIN) return true;
         if constexpr(Min > OMAX) return false;
         return value() <= o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-    constexpr auto operator>(
+    [[nodiscard]] constexpr auto operator>(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
         if constexpr(Max <= OMIN) return false;
         if constexpr(Min > OMAX) return true;
         return value() > o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-    constexpr auto operator>=(
+    [[nodiscard]] constexpr auto operator>=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
         if constexpr(Max < OMIN) return false;
         if constexpr(Min >= OMAX) return true;
         return value() >= o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-    constexpr auto operator==(
+    [[nodiscard]] constexpr auto operator==(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
         if constexpr(Max < OMIN) return false;
         if constexpr(Min > OMAX) return false;
         return value() == o.value();
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
-    constexpr auto operator!=(
+    [[nodiscard]] constexpr auto operator!=(
         const bounded_value<OT, OMIN, OMAX, OPS> & o) const {
         if constexpr(Max < OMIN) return true;
         if constexpr(Min > OMAX) return true;
@@ -224,12 +225,19 @@ public:
 template <typename T1, T1 MIN1, T1 MAX1, typename PS1, typename T2, T2 MIN2,
           T2 MAX2, typename PS2>
     requires std::same_as<PS1, PS2>
-constexpr auto operator+(const bounded_value<T1, MIN1, MAX1, PS1> & a,
-                         const bounded_value<T2, MIN2, MAX2, PS2> & b) {
+[[nodiscard]] constexpr auto operator+(
+    const bounded_value<T1, MIN1, MAX1, PS1> & a,
+    const bounded_value<T2, MIN2, MAX2, PS2> & b) {
     using return_value_type = detail::first_matching_t<
         PS1::template predicates<T1, MIN1, MAX1, T2, MIN2,
                                  MAX2>::template can_hold_plus,
         typename PS1::type_hierarchy>;
+    // Friendly diagnostic, like mapping_subscript's: without it the failure
+    // is a raw "compound literal of non-object type ... {aka 'void'}".
+    static_assert(!std::is_void_v<return_value_type>,
+                  "melon: no type in the promotion strategy's hierarchy can "
+                  "hold this sum's bounds; tighten the operands' bounds with "
+                  ".bound<Min, Max>() or use a wider hierarchy.");
     return bounded_value<
         return_value_type, return_value_type{MIN1} + return_value_type{MIN2},
         return_value_type{MAX1} + return_value_type{MAX2}, PS1>(
@@ -239,12 +247,17 @@ constexpr auto operator+(const bounded_value<T1, MIN1, MAX1, PS1> & a,
 template <typename T1, T1 MIN1, T1 MAX1, typename PS1, typename T2, T2 MIN2,
           T2 MAX2, typename PS2>
     requires std::same_as<PS1, PS2>
-constexpr auto operator-(const bounded_value<T1, MIN1, MAX1, PS1> & a,
-                         const bounded_value<T2, MIN2, MAX2, PS2> & b) {
+[[nodiscard]] constexpr auto operator-(
+    const bounded_value<T1, MIN1, MAX1, PS1> & a,
+    const bounded_value<T2, MIN2, MAX2, PS2> & b) {
     using return_value_type = detail::first_matching_t<
         PS1::template predicates<T1, MIN1, MAX1, T2, MIN2,
                                  MAX2>::template can_hold_substract,
         typename PS1::type_hierarchy>;
+    static_assert(!std::is_void_v<return_value_type>,
+                  "melon: no type in the promotion strategy's hierarchy can "
+                  "hold this difference's bounds; tighten the operands' "
+                  "bounds with .bound<Min, Max>() or use a wider hierarchy.");
     return bounded_value<
         return_value_type, return_value_type{MIN1} - return_value_type{MAX2},
         return_value_type{MAX1} - return_value_type{MIN2}, PS1>(
@@ -254,12 +267,17 @@ constexpr auto operator-(const bounded_value<T1, MIN1, MAX1, PS1> & a,
 template <typename T1, T1 MIN1, T1 MAX1, typename PS1, typename T2, T2 MIN2,
           T2 MAX2, typename PS2>
     requires std::same_as<PS1, PS2>
-constexpr auto operator*(const bounded_value<T1, MIN1, MAX1, PS1> & a,
-                         const bounded_value<T2, MIN2, MAX2, PS2> & b) {
+[[nodiscard]] constexpr auto operator*(
+    const bounded_value<T1, MIN1, MAX1, PS1> & a,
+    const bounded_value<T2, MIN2, MAX2, PS2> & b) {
     using return_value_type = detail::first_matching_t<
         PS1::template predicates<T1, MIN1, MAX1, T2, MIN2,
                                  MAX2>::template can_hold_multiply,
         typename PS1::type_hierarchy>;
+    static_assert(!std::is_void_v<return_value_type>,
+                  "melon: no type in the promotion strategy's hierarchy can "
+                  "hold this product's bounds; tighten the operands' bounds "
+                  "with .bound<Min, Max>() or use a wider hierarchy.");
     return bounded_value<
         return_value_type,
         std::min({return_value_type{MIN1} * return_value_type{MIN2},
@@ -291,7 +309,11 @@ public:
     template <std::convertible_to<T> V>
         requires(!std::derived_from<V, bounded_value_base_base>)
     constexpr bounded_value(V v) : _value(static_cast<T>(v)) {
-        assert(Min <= v && v <= Max);
+        if constexpr(std::integral<T> && std::integral<V>) {
+            assert(std::cmp_less_equal(Min, v) && std::cmp_less_equal(v, Max));
+        } else {
+            assert(Min <= v && v <= Max);
+        }
     }
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
@@ -318,11 +340,9 @@ public:
         return *this;
     }
 
-    template <typename OT, OT OMIN, OT OMAX, typename OPS>
-        requires(OMIN <= Min && OMAX >= Max)
-    explicit constexpr operator bounded_value<OT, OMIN, OMAX, OPS>() {
-        return bounded_value<OT, OMIN, OMAX, OPS>(_value);
-    }
+    // No widening conversion operator: the converting constructor above
+    // already covers every widening (same bounds relation), so the operator
+    // was unreachable dead code -- and non-const on top of it.
 
     static constexpr value_type min() { return Min; }
     static constexpr value_type max() { return Max; }

@@ -104,7 +104,9 @@ for(auto && [v, dist] : dijkstra(g, length, s)) {
 }
 ```
 
-LEMON's stepwise interface is the closest analogue, and melon keeps it: `finished()`, `current()`, `advance()`, plus `run()` when you want the whole thing.
+LEMON's stepwise interface is the closest analogue, and melon keeps it: `finished()`, `current()`, `advance()`, plus `run()` when you want the whole thing. The whole lifecycle is the named `traversal_algorithm` contract: `reset()` restores the constructor's state, `run()` drains and returns the algorithm, and there is no post-construction step — LEMON's `init()` has no melon counterpart, and the one algorithm that had one, `competing_dijkstras::init()`, was removed in 1.0.
+
+One more difference matters if you are used to copying algorithm objects around: melon's are move-only. A copy is a compile error — `reset()` or construct a second object instead — and `auto a = alg.run();` does not compile, because `run()` returns a reference. See [The 1.0 contract](../contract.md).
 
 ### 3. Data maps are created by the graph, not handed to it
 
@@ -117,7 +119,7 @@ auto dist = create_vertex_map<double>(g, 0.0);
 dist[v] = 3.0;
 ```
 
-The storage type is the graph's choice, and *anything* with `operator[]` qualifies as a map — `std::vector`, `std::map`, `std::vector<bool>`, your own type, or a lambda wrapped in `maps::map`. See [Mappings](../graphs/mappings.md).
+The storage type is the graph's choice, and anything with a const-readable `operator[]` qualifies as a map — `std::vector`, `std::vector<bool>`, your own type, or a lambda wrapped in `maps::map`. (`std::map` is the exception: its inserting `operator[]` has no const form, so it fails `mapping` bare and works only wrapped through `maps::mapping_all` — of a const map.) See [Mappings](../graphs/mappings.md).
 
 ### 4. Concepts replace traits classes — and your type can be the graph
 
@@ -126,9 +128,9 @@ To make a type usable by Boost.Graph you specialize `graph_traits` and provide t
 An algorithm's requirements are visible in its signature and enforced at the call site:
 
 ```cpp
-template <outward_incidence_graph Graph, mapping_view<arc_t<Graph>> LengthMap,
+template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           dijkstra_traits Traits>
-    requires has_vertex_map<Graph>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class dijkstra;
 ```
 

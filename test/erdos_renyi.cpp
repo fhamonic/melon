@@ -62,3 +62,15 @@ GTEST_TEST(erdos_renyi, unseeded_overload_still_varies) {
     auto b = erdos_renyi<static_digraph>(60, 0.5);
     ASSERT_FALSE(EQ_RANGES(arcs_entries(a), arcs_entries(b)));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// the generator parameter is constrained by uniform_random_bit_generator, so
+// a non-generator fails at the melon signature, not inside <random>
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename Gen>
+concept erdos_renyi_accepts = requires(Gen & gen) {
+    erdos_renyi<static_digraph>(std::size_t{3}, 0.5, gen);
+};
+static_assert(erdos_renyi_accepts<std::mt19937>);
+static_assert(!erdos_renyi_accepts<int>);

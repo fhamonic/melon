@@ -51,6 +51,7 @@
 #include "melon/utility/erdos_renyi.hpp"
 #include "melon/utility/geometry.hpp"
 #include "melon/utility/graphviz_printer.hpp"
+#include "melon/utility/make_static_digraph.hpp"
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/semiring.hpp"
 #include "melon/utility/static_digraph_builder.hpp"

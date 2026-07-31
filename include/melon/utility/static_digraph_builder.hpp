@@ -94,7 +94,7 @@ public:
     // Copies the property vectors: the builder is still usable afterwards
     // (though build() is not idempotent -- it sorts in place, and a second
     // call re-sorts an already-sorted list).
-    auto build() & {
+    [[nodiscard]] auto build() & {
         sort_arcs();
         return std::apply(
             [this](auto &&... property_map) {
@@ -113,7 +113,7 @@ public:
     //
     // The builder is left in a moved-from state: valid, and to be reset or
     // destroyed rather than added to.
-    auto build() && {
+    [[nodiscard]] auto build() && {
         sort_arcs();
         return std::apply(
             [this](auto &&... property_map) {

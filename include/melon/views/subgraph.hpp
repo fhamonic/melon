@@ -53,6 +53,13 @@ public:
         , _vertex_filter(maps::mapping_all(std::forward<VF>(vertex_filter)))
         , _arc_filter(maps::mapping_all(std::forward<AF>(arc_filter))) {}
 
+    // The std adaptor shape (filter_view &co.): default-constructible exactly
+    // when everything it stores is.
+    subgraph_view()
+        requires std::default_initializable<Graph> &&
+                     std::default_initializable<VertexFilter> &&
+                     std::default_initializable<ArcFilter>
+    = default;
     constexpr subgraph_view(const subgraph_view &) = default;
     constexpr subgraph_view(subgraph_view &&) = default;
 
@@ -80,6 +87,16 @@ public:
                  std::same_as<VertexFilter, maps::true_map>
     {
         return melon::num_vertices(_graph);
+    }
+    // Both filters, not just the vertex one: an arc filter changes the arc
+    // count too.
+    [[nodiscard]] constexpr decltype(auto) num_arcs() const
+        noexcept(noexcept(melon::num_arcs(_graph)))
+        requires has_num_arcs<Graph> &&
+                 std::same_as<VertexFilter, maps::true_map> &&
+                 std::same_as<ArcFilter, maps::true_map>
+    {
+        return melon::num_arcs(_graph);
     }
 
     constexpr void disable_vertex(const vertex & v) noexcept(
@@ -164,6 +181,36 @@ public:
         }
     }
 
+    // Forwarded only when the wrapped graph carries its *own* arcs_entries,
+    // exactly as graph_forwarding_interface does: forwarding the synthesised
+    // fallback would stack a transform on a transform. Without this member an
+    // entries-only graph wrapped by a subgraph stopped modeling `graph` at
+    // all, and a graph with its own entries got the fallback.
+    [[nodiscard]] constexpr decltype(auto) arcs_entries() const
+        noexcept(noexcept(melon::arcs_entries(_graph)))
+        requires cpo::has_own_arcs_entries<Graph> &&
+                 std::same_as<VertexFilter, maps::true_map> &&
+                 std::same_as<ArcFilter, maps::true_map>
+    {
+        return melon::arcs_entries(_graph);
+    }
+    // The filtered twin: the entry names the arc and both endpoints, which is
+    // everything the filters need -- so filtering the base's own entries also
+    // works for a graph with no endpoint accessors at all, where the CPO's
+    // synthesis is impossible.
+    [[nodiscard]] constexpr auto arcs_entries() const
+        requires cpo::has_own_arcs_entries<Graph> &&
+                 (!std::same_as<VertexFilter, maps::true_map> ||
+                  !std::same_as<ArcFilter, maps::true_map>)
+    {
+        return std::views::filter(
+            melon::arcs_entries(_graph), [this](const auto & entry) {
+                return _vertex_filter[std::get<1>(entry).first] &&
+                       _vertex_filter[std::get<1>(entry).second] &&
+                       _arc_filter[std::get<0>(entry)];
+            });
+    }
+
     [[nodiscard]] constexpr auto arc_source(const arc & a) const
         noexcept(noexcept(melon::arc_source(_graph, a)))
         requires has_arc_source<Graph>
@@ -231,6 +278,26 @@ public:
                            _arc_filter[a];
                 });
         }
+    }
+
+    // Forwarded only when no filter can change the answer.
+    [[nodiscard]] constexpr decltype(auto) out_degree(const vertex & v) const
+        noexcept(noexcept(melon::out_degree(_graph, v)))
+        requires has_out_degree<Graph> &&
+                 std::same_as<VertexFilter, maps::true_map> &&
+                 std::same_as<ArcFilter, maps::true_map>
+    {
+        assert(is_valid_vertex(v));
+        return melon::out_degree(_graph, v);
+    }
+    [[nodiscard]] constexpr decltype(auto) in_degree(const vertex & v) const
+        noexcept(noexcept(melon::in_degree(_graph, v)))
+        requires has_in_degree<Graph> &&
+                 std::same_as<VertexFilter, maps::true_map> &&
+                 std::same_as<ArcFilter, maps::true_map>
+    {
+        assert(is_valid_vertex(v));
+        return melon::in_degree(_graph, v);
     }
 
     // Not noexcept: see vertices().
@@ -309,6 +376,17 @@ subgraph_view(G &&, VF && = {}, AF && = {})
     -> subgraph_view<views::graph_all_t<G>, maps::mapping_all_t<VF>,
                      maps::mapping_all_t<AF>>;
 
+// Only the filterless case: with a filter present, every range member is a
+// filter_view capturing `this`, which is exactly what borrowed_graph.hpp
+// names as the reason subgraph cannot be borrowed. With both filters
+// maps::true_map every range member forwards straight through, so the view is
+// borrowed exactly when the wrapped view is -- graph_ref_view yes,
+// graph_owning_view no.
+template <typename G, typename VF, typename AF>
+inline constexpr bool enable_borrowed_graph<subgraph_view<G, VF, AF>> =
+    std::same_as<VF, maps::true_map> && std::same_as<AF, maps::true_map> &&
+    enable_borrowed_graph<G>;
+
 template <graph Graph, std::ranges::viewable_range vertices_fn>
     requires std::convertible_to<std::ranges::range_value_t<vertices_fn>,
                                  vertex_t<Graph>> &&
@@ -360,6 +438,10 @@ public:
                         construct_vertex_filter(g, vertices_range), {})
         , _vertices(std::views::all(std::forward<VR>(vertices_range))) {}
 
+    induced_subgraph_view()
+        requires std::default_initializable<base_subgraph> &&
+                     std::default_initializable<vertices_fn>
+    = default;
     constexpr induced_subgraph_view(const induced_subgraph_view &) = default;
     constexpr induced_subgraph_view(induced_subgraph_view &&) = default;
 
@@ -419,7 +501,16 @@ struct subgraph_fn {
                              std::forward<AF>(arc_filter));
     }
 
-    // The bound form: no graph yet, hold the filters and wait for one.
+    // The bound form: no graph yet, hold the filters and wait for one. The
+    // filters are decay-*copied* into the closure (adaptor_partial): a
+    // closure must be self-contained or it dangles. This is the one place
+    // the two spellings diverge -- the direct call above stores an lvalue
+    // map by reference, per the library-wide mapping_all rule. Deliberate:
+    // converging would mean deep-copying lvalue maps in the direct call,
+    // out of step with every other map-taking entry point. Either semantics
+    // is spellable in either form -- mapping_ref_view(m) pipes a reference,
+    // auto(m) passes the direct call a copy; all four cells are pinned in
+    // test/subgraph.cpp and documented in docs/views/graphs.md.
     template <typename VF = maps::true_map, typename AF = maps::true_map>
         requires(!graph<std::remove_cvref_t<VF>>)
     [[nodiscard]] constexpr auto operator()(

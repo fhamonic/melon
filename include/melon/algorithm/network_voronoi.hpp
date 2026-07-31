@@ -27,13 +27,19 @@ template <typename Traits>
 concept network_voronoi_traits = semiring<typename Traits::semiring> &&
     updatable_priority_queue<typename Traits::heap> && requires() {
     { Traits::store_cluster_adjacency } -> std::convertible_to<bool>;
+    { Traits::store_distances } -> std::convertible_to<bool>;
+    { Traits::store_clusters } -> std::convertible_to<bool>;
 };
 // clang-format on
 
 template <typename Graph, typename ValueType>
 struct network_voronoi_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
-    using cluster_id_t = unsigned int;
+    // The graph's own vertex type, not a hardcoded unsigned int: a cluster id
+    // names the kernel vertex, and a 64-bit vertex id was silently truncated
+    // into the 32-bit id (std::pair's forwarding constructor bypasses the
+    // braced-init narrowing check, so it never even warned).
+    using cluster_id_t = vertex_t<Graph>;
     using entry = std::pair<ValueType, cluster_id_t>;
     struct entry_cmp {
         [[nodiscard]] constexpr bool operator()(const entry & e1,
@@ -50,6 +56,8 @@ struct network_voronoi_default_traits {
                              maps::element_map<1>, maps::element_map<0>>;
 
     static constexpr bool store_cluster_adjacency = false;
+    static constexpr bool store_distances = false;
+    static constexpr bool store_clusters = false;
 };
 
 // Multi-source Dijkstra partitioning the graph into Voronoi cells: every
@@ -90,14 +98,20 @@ private:
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
     [[no_unique_address]] entry_cmp _entry_cmp;
 
+    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph,
+                                        length_type> _distances_map;
+    [[no_unique_address]] vertex_map_if<Traits::store_clusters, Graph,
+                                        cluster_id_t> _clusters_map;
+
 public:
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
     constexpr network_voronoi(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
-        , _vertex_status_map(
-              create_vertex_map<vertex_status>(_graph, PRE_HEAP)) {}
+        , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
+        , _distances_map(_graph)
+        , _clusters_map(_graph) {}
 
     template <graph_for<Graph> G, mapping_for<LengthMap> LM,
               std::ranges::range KR>
@@ -146,9 +160,13 @@ public:
     constexpr network_voronoi & set_kernels(KR && kernels) {
         assert(_heap.empty());
         for(auto && k : kernels) {
-            assert(_vertex_status_map[k] != IN_HEAP);
-            _heap.push(std::make_pair(k, entry_t{Traits::semiring::zero, k}));
-            _vertex_status_map[k] = IN_HEAP;
+            // One conversion to vertex up front: the constraint only promises
+            // convertibility, and pushing `k` itself let a wider id type flow
+            // unconverted into the heap entry.
+            const vertex v = static_cast<vertex>(k);
+            assert(_vertex_status_map[v] != IN_HEAP);
+            _heap.push(std::make_pair(v, entry_t{Traits::semiring::zero, v}));
+            _vertex_status_map[v] = IN_HEAP;
         }
         return *this;
     }
@@ -170,6 +188,8 @@ public:
         assert(!finished());
         const auto [t, st_dist] = _heap.top();
         _vertex_status_map[t] = POST_HEAP;
+        if constexpr(Traits::store_distances) _distances_map[t] = st_dist.first;
+        if constexpr(Traits::store_clusters) _clusters_map[t] = st_dist.second;
         auto && out_arcs_range = melon::out_arcs(_graph, t);
         prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
                                  _length_map);
@@ -200,12 +220,69 @@ public:
     // view refers into what it names: it is valid while this object lives and
     // stays put, exactly the contract mapping_ref_view carries.
     // See dijkstra::reached_map: computed, not stored.
-    [[nodiscard]] constexpr auto reached_map() const {
+    [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & u) { return reached(u); });
+    }
+    // See dijkstra::reached_map's expiring overload: no stored bool map, so
+    // the status map moves into the lambda -- self-contained, terminal.
+    [[nodiscard]] constexpr auto reached_map() && {
+        return maps::map(
+            [status_map = std::move(_vertex_status_map)](const vertex & u) {
+                return status_map[u] != PRE_HEAP;
+            });
     }
     [[nodiscard]] constexpr bool visited(const vertex & u) const
         noexcept(noexcept(_vertex_status_map[u] == POST_HEAP)) {
         return _vertex_status_map[u] == POST_HEAP;
+    }
+    // Per-vertex accessors after the sweep settled `u`, trait-gated like
+    // dijkstra's dist(): iteration yields each (vertex, (distance, kernel))
+    // once and then forgets it, so lookups need the stored maps.
+    [[nodiscard]] constexpr length_type dist(const vertex & u) const
+        noexcept(noexcept(_distances_map[u]))
+        requires(Traits::store_distances)
+    {
+        assert(visited(u));
+        return _distances_map[u];
+    }
+    [[nodiscard]] constexpr cluster_id_t cluster(const vertex & u) const
+        noexcept(noexcept(_clusters_map[u]))
+        requires(Traits::store_clusters)
+    {
+        assert(visited(u));
+        return _clusters_map[u];
+    }
+    // Views of the stored maps, reached_map()'s contract: valid while this
+    // object lives and stays put. Unlike dist() and cluster() they cannot
+    // assert per read, so vertices not yet visited still hold indeterminate
+    // values -- read them once the vertices of interest are out.
+    [[nodiscard]] constexpr auto dists_map() const & noexcept(
+        noexcept(maps::mapping_all(_distances_map._map)))
+        requires(Traits::store_distances)
+    {
+        return maps::mapping_all(_distances_map._map);
+    }
+    [[nodiscard]] constexpr auto clusters_map() const & noexcept(
+        noexcept(maps::mapping_all(_clusters_map._map)))
+        requires(Traits::store_clusters)
+    {
+        return maps::mapping_all(_clusters_map._map);
+    }
+    // The expiring overloads move the stored maps into mapping_owning_views,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards.
+    [[nodiscard]] constexpr auto dists_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_distances_map._map))))
+        requires(Traits::store_distances)
+    {
+        return maps::mapping_all(std::move(_distances_map._map));
+    }
+    [[nodiscard]] constexpr auto clusters_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_clusters_map._map))))
+        requires(Traits::store_clusters)
+    {
+        return maps::mapping_all(std::move(_clusters_map._map));
     }
 };
 

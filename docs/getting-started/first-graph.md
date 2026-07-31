@@ -96,7 +96,7 @@ for(auto && [v, dist] : dijkstra(graph, length_map, 0u)) {
 }
 ```
 
-The object can also be held and stepped by hand, which is what you want when two searches must advance together — see [Algorithms are ranges](../algorithms/index.md).
+The object can also be held and stepped by hand, which is what you want when two searches must advance together — see [Algorithms are ranges](../algorithms/index.md). It is move-only — a copy is a compile error — and `reset()` restores the constructor's state while reusing its allocations; `add_source` asserts the vertex is untouched ([The 1.0 contract](../contract.md)).
 
 ## Distances and paths
 
@@ -165,7 +165,7 @@ for(auto && [v, hops] : dijkstra(graph, [](auto &&) { return 1; }, 0u))
     std::println("vertex {} at {} hops", v, hops);
 ```
 
-The lambda is wrapped into a mapping for you: every algorithm routes its map arguments through `maps::mapping_all`, which [subscripts a callable by calling it](../graphs/mappings.md#mapping-views). The same holds for a `std::map`, whose `operator[]` is not const-callable.
+The lambda is wrapped into a mapping for you: every algorithm routes its map arguments through `maps::mapping_all`, which [subscripts a callable by calling it](../graphs/mappings.md#mapping-views). The same holds for a `std::map`, whose `operator[]` is not const-callable — though the wrap reads via `at()` only when the wrapped map is const; a wrapped non-const `std::map` lvalue still uses the inserting `operator[]` ([Mappings](../graphs/mappings.md) has the details).
 
 ## When the graph must change
 
@@ -188,7 +188,24 @@ remove_arc(g, ab);
 remove_vertex(g, c);
 ```
 
-Removals do not renumber what remains, so identifiers stay valid — but they leave holes, and `vertices(g)` is then a filtered range rather than an `iota`. [Graph containers](../containers/graphs.md) compares the two structures and their costs.
+Removals do not renumber what remains, so identifiers stay valid — but they leave holes in the identifier space. `vertices(g)` is unaffected: it is always a walk over an intrusive linked list, and a removal simply unlinks the vertex. [Graph containers](../containers/graphs.md) compares the two structures and their costs.
+
+When the mutations are done, the graph can be compacted back into a dense `static_digraph`:
+
+```cpp
+#include "melon/utility/make_static_digraph.hpp"
+
+auto [sg] = make_static_digraph(g);
+```
+
+`make_static_digraph` rebuilds any outward-incidence graph with vertices renumbered `0..n-1` — holes closed — and returns the builder's tuple shape. It takes three optional arguments beyond the graph: a comparator that chooses the new vertex order, a tuple of vertex maps, and a tuple of arc maps to translate onto the new identifiers ([Rebuilding as a static_digraph](../containers/graphs.md#rebuilding-as-a-static_digraph) has the details):
+
+```cpp
+auto [sg, deg_map, len_map] = make_static_digraph(
+    g, by_degree_cmp, std::tie(degree_map), std::tie(length_map));
+```
+
+The maps are only read (any [`mapping`](../graphs/mappings.md) works), and each comes back as a `static_map` over the new handles.
 
 ## Next steps
 

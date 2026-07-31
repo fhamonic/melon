@@ -23,17 +23,26 @@ private:
 
     Graph _graph;
 
-    // What incidence() and adjacency() capture. Their lambdas used to capture
-    // `this` (which is what `[&]` does to reach a member), so the ranges they
-    // return refer back into the undirect_view object -- and relocating it left
-    // reading freed memory, although enable_borrowed_graph below promised the
-    // opposite. A copy of the view has no such tie; the graph it names lives
-    // elsewhere. When the view is not copyable it owns its graph, and the trait
-    // is false anyway, so capturing `this` there costs nothing.
+    // What incidence() captures. Its lambdas used to capture `this` (which is
+    // what `[&]` does to reach a member), so the ranges they return refer back
+    // into the undirect_view object -- and relocating it left reading freed
+    // memory, although enable_borrowed_graph below promised the opposite. A
+    // copy of the view has no such tie; the graph it names lives elsewhere.
+    //
+    // The branch is the trait's own condition -- borrowed *and* copyable --
+    // not copy_constructible alone. The copy only buys anything where the
+    // trait ends up true, and there the wrapped view is a handle (a
+    // graph_ref_view is one pointer). A copyable non-borrowed view -- a
+    // filtered subgraph carrying its filter maps by value -- was deep-copied
+    // into both lambdas on every call, buying a borrowedness the trait
+    // (correctly) refused to report; capturing `this` there is free.
+    static constexpr bool _lambdas_capture_a_copy =
+        enable_borrowed_graph<Graph> && std::copy_constructible<Graph>;
+
     [[nodiscard]] constexpr auto _capture() const
         noexcept(std::is_nothrow_copy_constructible_v<Graph> ||
-                 !std::copy_constructible<Graph>) {
-        if constexpr(std::copy_constructible<Graph>)
+                 !_lambdas_capture_a_copy) {
+        if constexpr(_lambdas_capture_a_copy)
             return _graph;
         else
             return this;
@@ -53,6 +62,11 @@ public:
     constexpr explicit undirect_view(G && g)
         : _graph(views::graph_all(std::forward<G>(g))) {}
 
+    // The std adaptor shape (transform_view &co.): default-constructible
+    // exactly when the wrapped view is.
+    undirect_view()
+        requires std::default_initializable<Graph>
+    = default;
     constexpr undirect_view(const undirect_view &) = default;
     constexpr undirect_view(undirect_view &&) = default;
 
@@ -124,15 +138,6 @@ public:
                 }));
     }
 
-    // Not noexcept: see incidence() above. Nothing to capture here -- both
-    // ranges come straight from the wrapped graph.
-    [[nodiscard]] constexpr decltype(auto) adjacency(const vertex & u) const
-        requires outward_adjacency_graph<Graph> && inward_adjacency_graph<Graph>
-    {
-        return detail::views::concat(melon::out_neighbors(_graph, u),
-                                     melon::in_neighbors(_graph, u));
-    }
-
     template <typename T>
         requires has_vertex_map<Graph>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const
@@ -167,11 +172,11 @@ undirect_view(G &&) -> undirect_view<views::graph_all_t<G>>;
 
 // incidence() builds a concat of transform_views whose lambdas hold a *copy*
 // of the wrapped view, so nothing in them refers to the undirect_view object
-// itself and it is borrowed exactly when the graph it wraps is. The
-// copy_constructible conjunct is what makes that true rather than merely
-// intended: it is the condition under which the lambdas capture the view
-// instead of `this`, and without it a user specialising the trait for a
-// move-only graph handle would get the promise back without the property.
+// itself and it is borrowed exactly when the graph it wraps is. This is the
+// same condition as _lambdas_capture_a_copy inside the class, and it must
+// stay that way: it is the condition under which the lambdas capture the view
+// instead of `this`, and a user specialising the trait for a move-only graph
+// handle would otherwise get the promise back without the property.
 template <typename G>
 inline constexpr bool enable_borrowed_graph<undirect_view<G>> =
     enable_borrowed_graph<G> && std::copy_constructible<G>;

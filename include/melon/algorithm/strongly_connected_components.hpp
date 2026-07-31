@@ -265,8 +265,15 @@ public:
     // view refers into what it names: it is valid while this object lives and
     // stays put, exactly the contract mapping_ref_view carries.
     // See dijkstra::reached_map: computed, not stored.
-    [[nodiscard]] constexpr auto reached_map() const {
+    [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & v) { return reached(v); });
+    }
+    // See dijkstra::reached_map's expiring overload: no stored bool map, so
+    // the index map moves into the lambda -- self-contained, terminal.
+    [[nodiscard]] constexpr auto reached_map() && {
+        return maps::map([index_map = std::move(_index_map)](const vertex & v) {
+            return index_map[v] != INVALID_COMPONENT;
+        });
     }
 
 private:
@@ -366,11 +373,21 @@ public:
     // object lives and stays put. Unlike component_id() it cannot assert per
     // read, so vertices whose component has not been yielded still hold the
     // sentinel -- read it once the components of interest are out.
-    [[nodiscard]] constexpr auto component_ids_map() const
-        noexcept(noexcept(maps::mapping_all(_component_id_map._map)))
+    [[nodiscard]] constexpr auto component_ids_map() const & noexcept(
+        noexcept(maps::mapping_all(_component_id_map._map)))
         requires(Traits::store_component_ids)
     {
         return maps::mapping_all(_component_id_map._map);
+    }
+    // The expiring overload moves the stored map into a mapping_owning_view,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards.
+    [[nodiscard]] constexpr auto component_ids_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_component_id_map._map))))
+        requires(Traits::store_component_ids)
+    {
+        return maps::mapping_all(std::move(_component_id_map._map));
     }
 };
 

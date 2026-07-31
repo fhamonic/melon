@@ -50,6 +50,8 @@ int main() {
 }
 ```
 
+The algorithm object driven by that loop is move-only — copying it is a compile error, and `reset()` reuses its allocated state instead ([The 1.0 contract](contract.md)).
+
 ## Where to start
 
 The documentation follows the way the library is layered: the concepts first, then what implements them, then what consumes them.
@@ -80,7 +82,7 @@ The documentation follows the way the library is layered: the concepts first, th
 | **Flows and trees** | Edmonds–Karp, Dinitz, Kruskal |
 | **Other** | knapsack and unbounded knapsack branch-and-bound, Bentley–Ottmann segment intersection |
 | **Data structures** | `d_ary_heap`, `updatable_d_ary_heap`, `static_map`, `static_filter_map`, `disjoint_sets` |
-| **Utilities** | graph builder, Graphviz printer, Erdős–Rényi generator, alias-method sampler, semirings, rationals |
+| **Utilities** | graph builder, `make_static_digraph` (rebuild any graph as a renumbered `static_digraph`, translating its maps), Graphviz printer, Erdős–Rényi generator, alias-method sampler, semirings, rationals |
 
 ## Requirements
 
@@ -95,7 +97,7 @@ Header-only and dependency-free. **C++23** is the baseline; GCC 15 / C++26 is re
 
 ## Status
 
-melon is under active development towards its first stable release; the API is not frozen until 1.0.0 ships. See the [changelog](https://github.com/fhamonic/melon/blob/main/CHANGELOG.md) for what has landed, and [API stability](getting-started/installation.md#api-stability) for what the 1.x guarantee will and will not cover.
+1.0.0 is melon's first stable release. Every header outside `melon/detail/` and `melon/experimental/` is frozen API for the 1.x series, under [semantic versioning](https://semver.org); the design rulings that guarantee rests on are stated in [The 1.0 contract](contract.md). See the [changelog](https://github.com/fhamonic/melon/blob/main/CHANGELOG.md) for what has landed.
 
 ## Documentation, license
 

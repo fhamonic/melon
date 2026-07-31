@@ -134,17 +134,19 @@ Graphs that can be modified opt in through one concept per operation, so a struc
 | Concept | Operation |
 | --- | --- |
 | `has_vertex_creation<G>` | `create_vertex(g)` |
-| `has_vertex_removal<G>` | `remove_vertex(g, v)`, `is_valid_vertex(g, v)` |
+| `has_is_valid_vertex<G>` | `is_valid_vertex(g, v)` |
+| `has_vertex_removal<G>` | `has_is_valid_vertex<G>` plus `remove_vertex(g, v)` |
 | `has_arc_creation<G>` | `create_arc(g, u, v)` |
-| `has_arc_removal<G>` | `remove_arc(g, a)`, `is_valid_arc(g, a)` |
+| `has_is_valid_arc<G>` | `is_valid_arc(g, a)` |
+| `has_arc_removal<G>` | `has_is_valid_arc<G>` plus `remove_arc(g, a)` |
 | `has_change_arc_source<G>` | `change_arc_source(g, a, s)` |
 | `has_change_arc_target<G>` | `change_arc_target(g, a, t)` |
 
-Removal concepts include the validity query, because after a removal the only way to tell a live identifier from a dangling one is to ask.
+Removal concepts refine the validity query, because after a removal the only way to tell a live identifier from a dangling one is to ask. The query also stands alone as `has_is_valid_vertex` / `has_is_valid_arc`, so a read-only view over a mutable graph can forward the question without forwarding the mutation.
 
 ## What the containers satisfy
 
-| | `static_digraph` | `static_forward_digraph` | `mutable_digraph` | `complete_digraph` |
+| | `static_digraph` | `static_forward_digraph` | `mutable_digraph` | `views::complete_digraph` |
 | --- | :-: | :-: | :-: | :-: |
 | `graph` | ✓ | ✓ | ✓ | ✓ |
 | `has_num_vertices` / `has_num_arcs` | ✓ | ✓ | ✓ | ✓ |
@@ -155,7 +157,7 @@ Removal concepts include the validity query, because after a removal the only wa
 | `outward_adjacency_graph` | ✓ | ✓ | ✓ | ✓ |
 | `inward_adjacency_graph` | ✓ | | ✓ | ✓ |
 | `has_out_degree` | ✓ | ✓ | | ✓ |
-| `has_in_degree` | ✓ | | | |
+| `has_in_degree` | ✓ | | | ✓ |
 | `has_vertex_map` / `has_arc_map` | ✓ | ✓ | ✓ | ✓ |
 | mutation concepts | | | ✓ | |
 

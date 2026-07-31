@@ -16,16 +16,16 @@ namespace melon {
 // std::uniform_real_distribution is shared mutable state -- a distribution
 // carries its own -- so concurrent calls raced on it, and a `static` engine
 // made the whole function unseedable.
-template <typename G, typename Generator>
-[[nodiscard]] G erdos_renyi(const std::size_t num_vertices,
+template <typename G, std::uniform_random_bit_generator Generator>
+[[nodiscard]] G erdos_renyi(const std::size_t num_vertices_,
                             const double expected_density, Generator & gen) {
     using vertex = vertex_t<G>;
 
     std::uniform_real_distribution<double> distr{0.0, 1.0};
-    static_digraph_builder<G> builder(num_vertices);
+    static_digraph_builder<G> builder(num_vertices_);
 
-    for(std::size_t i = 0; i < num_vertices; ++i) {
-        for(std::size_t j = 0; j < num_vertices; ++j) {
+    for(std::size_t i = 0; i < num_vertices_; ++i) {
+        for(std::size_t j = 0; j < num_vertices_; ++j) {
             if(i == j) continue;
             if(distr(gen) < expected_density)
                 builder.add_arc(vertex(i), vertex(j));
@@ -39,10 +39,10 @@ template <typename G, typename Generator>
 // so successive calls differ. Reach for the three-argument form above whenever
 // the graph has to be reproducible.
 template <typename G>
-[[nodiscard]] G erdos_renyi(const std::size_t num_vertices,
+[[nodiscard]] G erdos_renyi(const std::size_t num_vertices_,
                             const double expected_density) {
     std::mt19937 gen{std::random_device{}()};
-    return erdos_renyi<G>(num_vertices, expected_density, gen);
+    return erdos_renyi<G>(num_vertices_, expected_density, gen);
 }
 
 }  // namespace melon

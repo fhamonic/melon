@@ -36,13 +36,13 @@ add_executable(
   static_map.cpp
   static_filter_map.cpp
   static_digraph_builder.cpp
+  make_static_digraph.cpp
   breadth_first_search.cpp
   depth_first_search.cpp
   d_ary_heap.cpp
   dijkstra.cpp
   bidirectional_dijkstra.cpp
   competing_dijkstras.cpp
-  intrusive_view.cpp
   edmonds_karp.cpp
   erdos_renyi.cpp
   complete_digraph.cpp
@@ -98,6 +98,14 @@ set(MELON_SANITIZE
 if(MELON_SANITIZE)
   target_compile_options(melon_test PRIVATE -fsanitize=${MELON_SANITIZE})
   target_link_options(melon_test PRIVATE -fsanitize=${MELON_SANITIZE})
+  # UBSan instrumentation defeats GCC's initialization analysis inside
+  # libstdc++'s filter_view begin-cache, flooding ranges-heavy TUs with
+  # -Wmaybe-uninitialized false positives. The plain (non-sanitize) GCC job
+  # compiles the same code with the warning fully enabled, so nothing is
+  # lost by silencing it here.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(melon_test PRIVATE -Wno-maybe-uninitialized)
+  endif()
 endif()
 
 gtest_discover_tests(melon_test)

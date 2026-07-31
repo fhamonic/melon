@@ -7,7 +7,6 @@
 #include <span>
 #include <vector>
 
-#include "melon/container/static_filter_map.hpp"
 #include "melon/container/static_map.hpp"
 #include "melon/mapping.hpp"
 
@@ -131,11 +130,12 @@ public:
         requires std::convertible_to<std::ranges::range_value_t<S>, vertex> &&
                      std::convertible_to<std::ranges::range_value_t<T>, vertex>
     // Not noexcept: builds five static_maps, i.e. five allocations.
-    static_digraph(const std::size_t & num_vertices, S && sources, T && targets)
-        : _out_arc_begin(num_vertices, 0)
+    static_digraph(const std::size_t & num_vertices_, S && sources,
+                   T && targets)
+        : _out_arc_begin(num_vertices_, 0)
         , _arc_target(std::forward<T>(targets))
         , _arc_source(std::forward<S>(sources))
-        , _in_arc_begin(num_vertices, 0)
+        , _in_arc_begin(num_vertices_, 0)
         , _in_arcs(_arc_target.size()) {
         // Read the members, not the parameters: both were forwarded into
         // _arc_source / _arc_target above, so after a move they may
@@ -144,19 +144,21 @@ public:
         // static_map's range constructor copies. The members are contiguous,
         // so this is also the cheaper scan.
         assert(std::ranges::all_of(
-            _arc_source, [n = num_vertices](auto && v) { return v < n; }));
+            _arc_source, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::all_of(
-            _arc_target, [n = num_vertices](auto && v) { return v < n; }));
+            _arc_target, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::is_sorted(_arc_source));
-        static_map<vertex, arc> in_arc_count(num_vertices, 0);
+        static_map<vertex, arc> in_arc_count(num_vertices_, 0);
         for(auto && s : _arc_source) ++_out_arc_begin[s];
         for(auto && t : _arc_target) ++in_arc_count[t];
+        // arc{0}, not 0: exclusive_scan accumulates in the init value's type,
+        // and an int accumulator is signed-overflow UB past INT_MAX arcs.
         std::exclusive_scan(_out_arc_begin.data(),
-                            _out_arc_begin.data() + num_vertices,
-                            _out_arc_begin.data(), 0);
+                            _out_arc_begin.data() + num_vertices_,
+                            _out_arc_begin.data(), arc{0});
         std::exclusive_scan(in_arc_count.data(),
-                            in_arc_count.data() + num_vertices,
-                            _in_arc_begin.data(), 0);
+                            in_arc_count.data() + num_vertices_,
+                            _in_arc_begin.data(), arc{0});
         // Descending over the arc ids: each bucket fills from its back, so
         // walking the ids backwards leaves every in_arcs() range ascending --
         // the order out_arcs() already has, and the forward stride every arc

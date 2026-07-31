@@ -247,6 +247,8 @@ public:
     }
 
     [[nodiscard]] constexpr arc create_arc(const vertex from, const vertex to) {
+        assert(is_valid_vertex(from));
+        assert(is_valid_vertex(to));
         arc new_arc;
         vertex_struct & tos = _vertices[to];
         vertex_struct & froms = _vertices[from];
@@ -351,6 +353,20 @@ public:
         _first_free_arc = a;
         _arcs_filter[a] = false;
         --_num_arcs;
+    }
+    // The std container shape: removes every vertex and arc but keeps the
+    // allocated buffers, like std::vector::clear. Every previously obtained
+    // vertex and arc handle is invalidated.
+    constexpr void clear() noexcept {
+        _vertices.clear();
+        _arcs.clear();
+        _vertices_filter.clear();
+        _arcs_filter.clear();
+        _first_vertex = INVALID_VERTEX;
+        _first_free_vertex = INVALID_VERTEX;
+        _first_free_arc = INVALID_ARC;
+        _num_vertices = 0;
+        _num_arcs = 0;
     }
     constexpr void change_arc_target(const arc a, const vertex t) noexcept {
         assert(is_valid_arc(a));

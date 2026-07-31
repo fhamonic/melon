@@ -77,6 +77,28 @@ GTEST_TEST(complete_digraph, k4) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// both degrees are the constant n - 1, O(1) and noexcept
+////////////////////////////////////////////////////////////////////////////////
+
+// The answer is a constant, yet the view had no degree members: out_degree
+// fell back to the size of the out_arcs iota, and in_degree did not exist at
+// all -- in_arcs is a concat of two subranges, which is not a sized_range, so
+// the size-of-the-range fallback never fires for it.
+GTEST_TEST(complete_digraph, degrees_are_the_constant_n_minus_one) {
+    static_assert(melon::has_out_degree<G> && melon::has_in_degree<G>);
+
+    G graph(4);
+    static_assert(noexcept(graph.out_degree(0u)));
+    static_assert(noexcept(graph.in_degree(0u)));
+    for(auto && u : vertices(graph)) {
+        EXPECT_EQ(out_degree(graph, u), 3u);
+        EXPECT_EQ(in_degree(graph, u), 3u);
+    }
+    EXPECT_DEATH((void)out_degree(graph, 4u), "");
+    EXPECT_DEATH((void)in_degree(graph, 4u), "");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // num_arcs is exact up to the arc type's ceiling and asserts past it instead
 // of wrapping
 ////////////////////////////////////////////////////////////////////////////////

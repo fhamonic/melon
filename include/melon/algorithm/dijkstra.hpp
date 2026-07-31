@@ -175,7 +175,11 @@ public:
         return _heap.empty();
     }
 
-    [[nodiscard]] constexpr traversal_entry current() const {
+    // See competing_dijkstras::current(): the noexcept measures the copy the
+    // by-value return performs, not just the top() call. This was the one
+    // current() in the Dijkstra family carrying no specification at all.
+    [[nodiscard]] constexpr traversal_entry current() const
+        noexcept(noexcept(traversal_entry(_heap.top()))) {
         assert(!finished());
         return _heap.top();
     }
@@ -226,8 +230,20 @@ public:
     // stays put, exactly the contract mapping_ref_view carries.
     // Derived rather than stored: reachedness here is a status enum, so this
     // hands back a computed map instead of a reference to one.
-    [[nodiscard]] constexpr auto reached_map() const {
+    [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & u) { return reached(u); });
+    }
+    // The expiring overload has no stored bool map to hand to
+    // mapping_owning_view, so it moves the status map into the lambda
+    // instead: self-contained, no `this`, it outlives the algorithm like
+    // every other extraction. Terminal, like std::move(alg).base(): the
+    // member left behind is valid but empty, so no other member may be
+    // called afterwards.
+    [[nodiscard]] constexpr auto reached_map() && {
+        return maps::map(
+            [status_map = std::move(_vertex_status_map)](const vertex & u) {
+                return status_map[u] != PRE_HEAP;
+            });
     }
     [[nodiscard]] constexpr bool visited(const vertex & u) const
         noexcept(noexcept(_vertex_status_map[u] == POST_HEAP)) {
@@ -259,6 +275,26 @@ public:
     {
         assert(visited(u));
         return _distances_map[u];
+    }
+    // A view of the stored distances, reached_map()'s contract: valid while
+    // this object lives and stays put. Unlike dist() it cannot assert per
+    // read, so vertices not yet visited still hold indeterminate values --
+    // read it once the vertices of interest are out.
+    [[nodiscard]] constexpr auto dists_map() const & noexcept(
+        noexcept(maps::mapping_all(_distances_map._map)))
+        requires(Traits::store_distances)
+    {
+        return maps::mapping_all(_distances_map._map);
+    }
+    // The expiring overload moves the stored map into a mapping_owning_view,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards.
+    [[nodiscard]] constexpr auto dists_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_distances_map._map))))
+        requires(Traits::store_distances)
+    {
+        return maps::mapping_all(std::move(_distances_map._map));
     }
 
 private:

@@ -178,9 +178,16 @@ public:
         return _bfs.reached(u);
     }
     // Delegated, like reached() right above.
-    [[nodiscard]] constexpr auto reached_map() const
-        noexcept(noexcept(_bfs.reached_map())) {
+    [[nodiscard]] constexpr auto reached_map() const & noexcept(
+        noexcept(_bfs.reached_map())) {
         return _bfs.reached_map();
+    }
+    // Delegated too: the expiring overload forwards to the inner
+    // breadth_first_search's, which moves its stored map into a
+    // mapping_owning_view. Extraction is terminal, like std::move(alg).base().
+    [[nodiscard]] constexpr auto reached_map() && noexcept(
+        noexcept(std::move(_bfs).reached_map())) {
+        return std::move(_bfs).reached_map();
     }
 };
 

@@ -1,8 +1,10 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <compare>
 #include <concepts>
 #include <cstdint>
+#include <string>
 
 #include "melon/numeric/bounded_value.hpp"
 #include "melon/numeric/rational.hpp"
@@ -208,4 +210,94 @@ GTEST_TEST(rational, converting_a_const_rational) {
     const auto wide = r.operator rational<long, long>();
     ASSERT_EQ(wide.num(), 3L);
     ASSERT_EQ(wide.den(), 4L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// std alignment: == / <=> replace the six relationals, compound assignments
+// exist, and the mixed-operand operators are constrained to number-like types
+////////////////////////////////////////////////////////////////////////////////
+
+// weak_ordering, not strong: unnormalized representations make 1/2 and 2/4
+// equivalent, not equal.
+static_assert(std::same_as<decltype(rational(1, 2) <=> rational(1, 3)),
+                           std::weak_ordering>);
+
+// the scalar comparisons work in both argument orders through the compiler's
+// rewritten candidates -- there is no (T, rational) comparison overload
+GTEST_TEST(rational, scalar_comparisons_rewrite_both_orders) {
+    ASSERT_TRUE(rational(1, 2) < 1);
+    ASSERT_TRUE(1 > rational(1, 2));
+    ASSERT_TRUE(rational(4, 2) == 2);
+    ASSERT_TRUE(2 == rational(4, 2));
+    ASSERT_TRUE(2 != rational(1, 2));
+}
+
+GTEST_TEST(rational, compound_assignments) {
+    rational c(1, 2);
+    c += rational(1, 3);
+    ASSERT_TRUE(c == rational(5, 6));
+    c -= rational(1, 3);
+    ASSERT_TRUE(c == rational(1, 2));
+    c *= rational(2, 3);
+    ASSERT_TRUE(c == rational(1, 3));
+    c /= rational(1, 3);
+    ASSERT_TRUE(c == rational(1, 1));
+    c += 1;
+    ASSERT_TRUE(c == 2);
+    c *= 3;
+    ASSERT_TRUE(c == 6);
+    c /= 2;
+    ASSERT_TRUE(c == 3);
+    c -= 2;
+    ASSERT_TRUE(c == 1);
+}
+
+// /= keeps the class invariants like binary /: the sign moves to the
+// numerator and a zero divisor collapses to the 1/0 sentinel
+GTEST_TEST(rational, compound_division_normalizes_signs) {
+    rational d(1, 2);
+    d /= -2;
+    ASSERT_TRUE(d == rational(-1, 4));
+    ASSERT_TRUE(d.den() > 0);
+    rational z(1, 2);
+    z /= rational(0, 1);
+    ASSERT_TRUE(z.den() == 0);
+}
+
+// integer's const_value denominator survives the compound forms whose result
+// keeps den == 1
+GTEST_TEST(rational, integer_compound_assignments) {
+    integer<int> i(3);
+    i += 2;
+    ASSERT_TRUE(i == 5);
+    i *= integer<int>(2);
+    ASSERT_TRUE(i == 10);
+}
+
+// the mixed-operand operators are constrained to number-like T: arithmetic
+// types and bounded_value, nothing that merely makes rational<T> a legal type
+template <typename R, typename S>
+concept has_mixed_arithmetic = requires(const R & r, const S & s) {
+    r + s;
+    s * r;
+};
+template <typename R, typename S>
+concept has_mixed_comparison = requires(const R & r, const S & s) {
+    r == s;
+    r < s;
+};
+static_assert(has_mixed_arithmetic<rational<int, int>, int>);
+static_assert(has_mixed_comparison<rational<int, int>, int>);
+static_assert(!has_mixed_arithmetic<rational<int, int>, std::string>);
+static_assert(!has_mixed_comparison<rational<int, int>, std::string>);
+
+// heterogeneous specializations keep working through the rational-rational
+// friends, not the scalar path
+static_assert(has_mixed_arithmetic<rational<int, int>, rational<short, short>>);
+GTEST_TEST(rational, heterogeneous_specializations) {
+    short sn = 1, sd = 2;
+    rational<short, short> s(sn, sd);
+    ASSERT_TRUE(s + rational(1, 2) == 1);
+    ASSERT_TRUE(rational(1, 2) + s == 1);
+    ASSERT_TRUE(s == rational(1, 2));
 }

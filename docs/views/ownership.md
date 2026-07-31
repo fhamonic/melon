@@ -44,19 +44,19 @@ static_assert(std::same_as<views::graph_all_t<views::complete_digraph<>>,
                            views::complete_digraph<>>);   // already a view
 ```
 
-The last line is why views compose without stacking wrappers: a type that already satisfies `graph_view` — that is, a movable `graph` deriving from `graph_view_base` — passes straight through.
+The last line is why views compose without stacking wrappers: a type that already satisfies `graph_view` — that is, a movable `graph` deriving from `graph_view_base` — passes straight through, provided the value category allows it. An **lvalue** `graph_owning_view` fails that last test (its copy constructor is deleted) and becomes a `graph_ref_view` of the owning view instead of passing through.
 
-This is what every algorithm and every view does with its graph argument, which is why they all take it by forwarding reference:
+This is what every algorithm and every view does with its graph argument, which is why they all take it by forwarding reference — and the constructors are constrained on exactly that wrap, so `std::is_constructible` answers honestly:
 
 ```cpp
-template <typename G, typename M>
-constexpr dijkstra(G && g, M && l)
+template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+constexpr dijkstra(G && g, LM && lm)
     : _graph(views::graph_all(std::forward<G>(g)))
-    , _length_map(maps::mapping_all(std::forward<M>(l)))
+    , _length_map(maps::mapping_all(std::forward<LM>(lm)))
     ...
 ```
 
-and why their deduction guides are written in terms of `views::graph_all_t<Graph>`.
+Their deduction guides are written in terms of `views::graph_all_t<Graph>`, and the class heads require view types for the stored members (`graph_view Graph`, `mapping_view<arc_t<Graph>> LengthMap`) — **stored members are always views**, one of the [1.0 rulings](../contract.md): a raw-container member spelling like `dijkstra<static_digraph, static_map<…>>` is ill-formed, and value ownership is spelled `graph_owning_view` / `mapping_owning_view`.
 
 ### Marking your own type as a view
 
@@ -87,6 +87,17 @@ auto g = std::move(r).base();                   // move it back out
 
 Algorithms differ deliberately: an algorithm *owns* its graph view rather than adapting it, so its `base()` is the `owning_view` shape and returns references. See [Algorithms](../algorithms/index.md).
 
+### Getting a result map out: the `*s_map()` accessors
+
+The same ref-or-owning split applies on the way *out*. Every map accessor backed by a stored map — `flows_map()`, `dists_map()`, `reached_map()`, `component_ids_map()`, … — is a ref-qualified pair: an lvalue algorithm hands out a `mapping_ref_view` (valid while the algorithm lives and stays put), and an expiring one **moves the stored map** into a `mapping_owning_view`, so the result outlives the machinery that computed it:
+
+```cpp
+auto flows = std::move(dinitz(graph, capacity, s, t).run()).flows_map();
+// owning: the algorithm is gone, the flow map lives on
+```
+
+Extraction is terminal, like `std::move(alg).base()`: the member left behind is valid but empty, so extract last and call nothing else afterwards. The handful of *computed* maps (`dijkstra`'s, `network_voronoi`'s, `strongly_connected_components`' and `biobjective_dijkstra`'s `reached_map()`, derived from richer state rather than stored as a bool map) extract too — their expiring overload moves the backing map (status enums, component indices, Pareto fronts) into the lambda of the returned computed map, so it is self-contained and outlives the algorithm just the same.
+
 ## Pipe closures own their arguments
 
 A bound adaptor stage — `views::subgraph(filter)`, `views::induced_subgraph(vertex_range)` — stores *copies* of its arguments, and each application hands a copy (or, when the closure is a temporary, a move) into the view it builds. So the closure is reusable, the view it builds never points back into it, and the type built does not depend on how the closure was held:
@@ -103,7 +114,7 @@ This is the one place the pipe and call spellings differ: the direct call keeps 
 
 ## Mapping views
 
-`maps::mapping_all(m)` is the mapping counterpart, with `mapping_ref_view` and `mapping_owning_view`, `mapping_view_base` as the opt-in marker, and `mapping_all_t<M>` as the resulting type.
+`maps::mapping_all(m)` is the mapping counterpart, and `maps::mapping_all_t<M>` the resulting type. Mind the namespaces: the factories live in `melon::maps`, while `mapping_ref_view`, `mapping_owning_view`, the `mapping_view_base` opt-in marker and the mapping concepts live in `melon::` itself — symmetric with `graph_ref_view` / `graph_owning_view`.
 
 Two features are worth knowing beyond the ownership rule.
 
@@ -121,11 +132,13 @@ That is what makes a **callable** usable as a mapping, and what rescues `std::ma
 // a lambda becomes a mapping
 auto unit = maps::map([](auto &&) { return 1; });
 
-// std::map is not a mapping on its own (operator[] is non-const),
-// but the view falls back to at()
-std::map<unsigned int, double> lengths = ...;
+// std::map is not a mapping on its own (operator[] is non-const);
+// wrapped const, the view reads through at()
+const std::map<unsigned int, double> lengths = ...;
 auto length_map = maps::mapping_all(lengths);
 ```
+
+The dispatch runs with the constness the wrapped map carries, so the `const` above matters: wrapping a **non-const** `std::map` lvalue finds its inserting `operator[]` at step 1 — a lookup of a missing key default-inserts. The throwing `at()` path is reached only through a const base (`std::as_const(lengths)`, or an owning view read through a const algorithm). See the [mappings chapter](../graphs/mappings.md#stdmap-is-not-a-mapping) for the full mechanism.
 
 `maps::map(f)` is a shorthand for `mapping_owning_view<F>(f)`. Use `maps::mapping_all` when you have an lvalue container you want referenced, `maps::map` when you have a callable to own.
 
@@ -149,13 +162,16 @@ algorithm `A`, over every graph, and `std::movable<A>` is `true` for every one
 of them. An algorithm carries the whole search state — each vertex map, the
 heap, the cached cursors — so copying it is never the cheap operation the
 syntax suggests; passing one by value is a compile error rather than a silent
-O(V+E) duplication. The `melon::traversal_algorithm` concept states the ruling.
+O(V+E) duplication. The `melon::traversal_algorithm` concept requires the
+movability, and [The 1.0 contract](../contract.md) states the ruling.
 
 If you want a second search, construct a second algorithm. If you want to
 re-run one, `reset()` reuses the state it has already allocated.
 
 Moving, on the other hand, is always available and always sound — including
 mid-traversal. Getting that right is what `enable_borrowed_graph` is for.
+
+### Borrowed graphs
 
 `depth_first_search`, `strongly_connected_components`, `connected_components`
 and `dinitz` keep a *cursor* over an incidence range for each stack frame or
@@ -164,16 +180,21 @@ Whether a memberwise move would suffice depends on what those ranges point at.
 
 `graph_ref_view` is a bare pointer, so `out_arcs(v)` names storage that lives
 outside the view — moving the algorithm, which relocates the stored view, does
-not disturb it. `views::subgraph` is different: its filtered ranges capture
-`this`, so a range obtained from a subgraph the algorithm stores *by value*
-points back at that member, and a memberwise move would leave the new object's
-cursors aimed at the moved-from object's graph.
+not disturb it. A *filtered* `views::subgraph` is different: its filtered
+ranges capture `this`, so a range obtained from a subgraph the algorithm
+stores *by value* points back at that member, and a memberwise move would
+leave the new object's cursors aimed at the moved-from object's graph.
 
 `melon::enable_borrowed_graph<G>` draws that line, mirroring
 `std::ranges::enable_borrowed_range`. It is `true` for `graph_ref_view`,
-`undirected_graph_ref_view` and `views::complete_digraph`, propagates through
-`views::reverse` and `views::undirect`, and is `false` by default — including
-for `views::subgraph` and `graph_owning_view`.
+`undirected_graph_ref_view` and `views::complete_digraph`, and `false` by
+default — including for `graph_owning_view`. The adaptors compute it from
+what they wrap: `views::reverse` propagates it unchanged; a `subgraph_view`
+is borrowed exactly when **both filters are `maps::true_map` and the wrapped
+view is borrowed** (with any real filter present, the captured `this` makes
+it non-borrowed); and `undirect_view` propagates it only for a
+copy-constructible wrapped view — its incidence lambdas capture a *copy* of
+the view in that case, which is what makes the promise true.
 
 Where it is `false`, those four hand-write their move to *re-ask the new graph*
 for each cached range; the cursor's consumed counter puts it back where it was.

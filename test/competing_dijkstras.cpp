@@ -88,7 +88,7 @@ auto compute_competing_dijkstras_map(const G & g,
 }
 
 GTEST_TEST(competing_dijkstras, fuzzy) {
-    static constexpr std::size_t num_vertices = 15;
+    static constexpr std::size_t num_vertices_ = 15;
     static constexpr double density = 0.35;
     static constexpr int num_tests = 1000;
 
@@ -98,7 +98,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
     std::mt19937 engine{std::random_device{}()};
 
     for(int i = 0; i < num_tests; ++i) {
-        auto graph = erdos_renyi<static_digraph>(num_vertices, density);
+        auto graph = erdos_renyi<static_digraph>(num_vertices_, density);
         auto lower_length_map = create_arc_map<int>(graph);
         auto upper_length_map = create_arc_map<int>(graph);
         for(const auto & a : arcs(graph)) {
@@ -247,7 +247,7 @@ struct useless_competing_dijkstras_traits {
 };
 
 GTEST_TEST(useless_fiber, fuzzy) {
-    static constexpr std::size_t num_vertices = 15;
+    static constexpr std::size_t num_vertices_ = 15;
     static constexpr double density = 0.35;
     static constexpr int num_tests = 1000;
 
@@ -257,7 +257,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
     std::mt19937 engine{std::random_device{}()};
 
     for(int i = 0; i < num_tests; ++i) {
-        auto graph = erdos_renyi<static_digraph>(num_vertices, density);
+        auto graph = erdos_renyi<static_digraph>(num_vertices_, density);
         auto lower_length_map = create_arc_map<int>(graph);
         auto upper_length_map = create_arc_map<int>(graph);
         for(const auto & a : arcs(graph)) {

@@ -18,16 +18,14 @@ The maps handed out by `create_vertex_map` and `create_arc_map` are [`static_map
 
 ### Explicit prefetching
 
-Before relaxing a vertex, `dijkstra` and the flow algorithms issue `__builtin_prefetch` for the ranges and mapped values they are about to read:
+Before relaxing a vertex, the Dijkstra family (`dijkstra`, `bidirectional_dijkstra`, `biobjective_dijkstra`, `competing_dijkstras`, `network_voronoi`) and `edmonds_karp` issue `__builtin_prefetch` for the ranges and mapped values they are about to read:
 
 ```cpp
 auto && out_arcs_range = melon::out_arcs(_graph, t);
-prefetch_range(out_arcs_range);
-prefetch_mapped_values(out_arcs_range, arc_targets_map(_graph));
-prefetch_mapped_values(out_arcs_range, _length_map);
+prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph), _length_map);
 ```
 
-Both helpers are guarded by `if constexpr` on contiguity: on a non-contiguous map, or on a non-GCC/Clang compiler, they compile to nothing. This is the concrete pay-off of the [`contiguous_mapping`](graphs/mappings.md#reading-writing-prefetching) concept — and the reason a `std::map` length map is not merely inconvenient but measurably slower.
+The helper is guarded by `if constexpr` on contiguity: on a non-contiguous map, or on a non-GCC/Clang compiler, it compiles to nothing. This is the concrete pay-off of the [`contiguous_mapping`](graphs/mappings.md#writing-prefetching) concept — and the reason a `std::map` length map is not merely inconvenient but measurably slower.
 
 ### Array lookups instead of hash lookups
 
@@ -41,9 +39,14 @@ The same applies to views: [`views::subgraph`](views/graphs.md#subgraph) with th
 
 ### Algorithm-specific tricks
 
-- [`breadth_first_search`](algorithms/traversals.md#breadth_first_search) selects a **branchless** implementation — flat preallocated queue, no bounds checks — when the graph knows its vertex count and nothing optional is stored.
+- [`breadth_first_search`](algorithms/traversals.md#breadth_first_search) selects a **branchless** implementation — flat preallocated queue, no bounds checks — when the graph knows its vertex count, the vertex handle is trivially copyable, and no predecessor or distance map is stored (`store_traversal_range` does not disqualify it).
 - [`dinitz`](algorithms/flows-and-trees.md#dinitz) keeps a *consumable view* of each vertex's remaining arcs, so a saturated arc is never rescanned within a phase.
 - DFS and Tarjan's SCC are iterative, so recursion depth is heap memory rather than stack frames.
+- [`static_filter_map::filter()`](containers/data-structures.md#static_filter_map) enumerates a sparse key set by bit scan, 64 keys per word — 10-50x over a per-key loop at low densities, provided the key range is a common integral iota.
+
+### Moves that cost nothing
+
+Relocating an algorithm mid-run is always sound, but what the move *does* depends on [`enable_borrowed_graph`](views/ownership.md#borrowed-graphs): over a borrowed graph (every melon container behind `graph_ref_view`, a filterless subgraph of one) the cursor-rebasing compiles away and the move is memberwise; over a filtered subgraph held by value, the move re-asks the new graph for each cached incidence range. If you write a view whose ranges do not point at the view object, specialise the trait and get the free move.
 
 ### Not computing what you do not need
 
@@ -66,6 +69,8 @@ dijkstra(views::subgraph(graph, keep), length_map, s);   // no rebuild
 **Compile with optimizations and `NDEBUG`.** melon uses `assert` for preconditions, and the traversal loops contain several. A `-O0` build with assertions is not a measurement of anything.
 
 **Pick the narrowest container.** [`static_forward_digraph`](containers/graphs.md#static_forward_digraph) stores one integer per arc against `static_digraph`'s three. If the traversal is forward-only, that is two thirds of the arc memory saved, and memory is what large graph traversals are bound by.
+
+**Compact and reorder once the topology settles.** [`make_static_digraph`](containers/graphs.md#rebuilding-as-a-static_digraph) rebuilds any graph — a hole-riddled `mutable_digraph`, your own structure — as a dense `static_digraph`, and its comparator chooses the vertex order, which *is* the memory layout: renumbering by degree, BFS discovery or geometric proximity is a locality optimization expressed in one call, maps translated for you.
 
 **Let the graph give you the maps.** `create_vertex_map<T>(g)` returns a contiguous map for melon's containers. A `std::map` or `std::unordered_map` of your own is [accepted](graphs/mappings.md#stdmap-is-not-a-mapping) but is not contiguous, so it is never prefetched — and every lookup is a hash or a tree descent where the flat map is an array index.
 

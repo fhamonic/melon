@@ -239,8 +239,16 @@ public:
         return !_pareto_front_map[v].empty();
     }
     // Derived, like dijkstra's: valid while this object lives and stays put.
-    [[nodiscard]] constexpr auto reached_map() const {
+    [[nodiscard]] constexpr auto reached_map() const & {
         return maps::map([this](const vertex & v) { return reached(v); });
+    }
+    // See dijkstra::reached_map's expiring overload: no stored bool map, so
+    // the Pareto fronts move into the lambda -- self-contained, terminal.
+    [[nodiscard]] constexpr auto reached_map() && {
+        return maps::map(
+            [front_map = std::move(_pareto_front_map)](const vertex & v) {
+                return !front_map[v].empty();
+            });
     }
 };
 

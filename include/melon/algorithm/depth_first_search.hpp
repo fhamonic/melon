@@ -207,8 +207,10 @@ public:
         return _stack.empty();
     }
 
+    // See competing_dijkstras::current(): the noexcept measures the copy the
+    // by-value return performs, not just reaching the element.
     [[nodiscard]] constexpr vertex current() const
-        noexcept(noexcept(_stack.back().first)) {
+        noexcept(noexcept(vertex(_stack.back().first))) {
         assert(!finished());
         return _stack.back().first;
     }
@@ -256,9 +258,18 @@ public:
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];
     }
-    [[nodiscard]] constexpr auto reached_map() const
-        noexcept(noexcept(maps::mapping_all(_reached_map))) {
+    [[nodiscard]] constexpr auto reached_map() const & noexcept(
+        noexcept(maps::mapping_all(_reached_map))) {
         return maps::mapping_all(_reached_map);
+    }
+    // The expiring overload moves the stored map into a mapping_owning_view,
+    // std::views::all's ref-or-owning split. Extraction is terminal, like
+    // std::move(alg).base(): the member left behind is valid but empty, so
+    // no other member may be called afterwards. Same for the trait-gated
+    // expiring overloads below.
+    [[nodiscard]] constexpr auto reached_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_reached_map)))) {
+        return maps::mapping_all(std::move(_reached_map));
     }
     [[nodiscard]] constexpr vertex pred_vertex(const vertex & u) const
         noexcept(noexcept(_pred_vertices_map[u]))
@@ -284,6 +295,46 @@ public:
     {
         assert(reached(u));
         return _depth_map[u];
+    }
+    // Views of the stored maps, reached_map()'s contract: valid while this
+    // object lives and stays put. Unlike the per-vertex accessors above they
+    // cannot assert per read, so unreached vertices still hold indeterminate
+    // values -- read them once the vertices of interest are out.
+    [[nodiscard]] constexpr auto pred_vertices_map() const & noexcept(
+        noexcept(maps::mapping_all(_pred_vertices_map._map)))
+        requires(Traits::store_pred_vertices)
+    {
+        return maps::mapping_all(_pred_vertices_map._map);
+    }
+    [[nodiscard]] constexpr auto pred_arcs_map() const & noexcept(
+        noexcept(maps::mapping_all(_pred_arcs_map._map)))
+        requires(Traits::store_pred_arcs)
+    {
+        return maps::mapping_all(_pred_arcs_map._map);
+    }
+    [[nodiscard]] constexpr auto depths_map() const & noexcept(
+        noexcept(maps::mapping_all(_depth_map._map)))
+        requires(Traits::store_depth)
+    {
+        return maps::mapping_all(_depth_map._map);
+    }
+    [[nodiscard]] constexpr auto pred_vertices_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_pred_vertices_map._map))))
+        requires(Traits::store_pred_vertices)
+    {
+        return maps::mapping_all(std::move(_pred_vertices_map._map));
+    }
+    [[nodiscard]] constexpr auto pred_arcs_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_pred_arcs_map._map))))
+        requires(Traits::store_pred_arcs)
+    {
+        return maps::mapping_all(std::move(_pred_arcs_map._map));
+    }
+    [[nodiscard]] constexpr auto depths_map() && noexcept(
+        noexcept(maps::mapping_all(std::move(_depth_map._map))))
+        requires(Traits::store_depth)
+    {
+        return maps::mapping_all(std::move(_depth_map._map));
     }
 };
 

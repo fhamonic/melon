@@ -7,6 +7,7 @@
 #include "melon/container/static_digraph.hpp"
 #include "melon/undirected_graph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
+#include "melon/views/subgraph.hpp"
 #include "melon/views/undirect.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -66,3 +67,63 @@ GTEST_TEST(undirect_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     decltype(view) from_const_lvalue(std::as_const(view));
     ASSERT_EQ(from_const_lvalue.num_edges(), num_arcs(graph));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// incidence() copies the wrapped view only where the copy buys borrowedness
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: _capture() branched on copy_constructible alone while the
+// enable_borrowed_graph specialisation requires borrowed && copyable, so a
+// copyable non-borrowed graph -- a filtered subgraph carrying its filter map
+// by value -- was deep-copied into both incidence() lambdas on every call,
+// buying a borrowedness the trait (correctly) refused to report anyway.
+namespace {
+int filter_map_copies = 0;
+struct counting_filter {
+    bool operator[](const vertex_t<static_digraph> &) const { return true; }
+    counting_filter() = default;
+    counting_filter(const counting_filter &) { ++filter_map_copies; }
+    counting_filter(counting_filter &&) noexcept = default;
+    counting_filter & operator=(const counting_filter &) = default;
+    counting_filter & operator=(counting_filter &&) noexcept = default;
+};
+}  // namespace
+
+GTEST_TEST(undirect_views, incidence_copies_the_view_only_when_borrowed) {
+    static_digraph_builder<static_digraph> builder(2);
+    builder.add_arc(0, 1);
+    auto [graph] = builder.build();
+
+    auto sub = views::subgraph(graph, counting_filter{});
+    static_assert(std::copy_constructible<decltype(sub)>);
+    static_assert(!enable_borrowed_graph<decltype(sub)>);
+
+    undirect_view und(sub);
+    static_assert(!enable_borrowed_graph<decltype(und)>);
+
+    filter_map_copies = 0;
+    unsigned count = 0;
+    for(auto && [e, w] : und.incidence(0u)) (void)e, (void)w, ++count;
+    ASSERT_EQ(count, 1u);
+    ASSERT_EQ(filter_map_copies, 0);
+
+    // Where the copy does buy the trait -- a borrowed, one-pointer ref view --
+    // it is still taken, so the promise keeps its property.
+    undirect_view und_ref{graph_ref_view(graph)};
+    static_assert(enable_borrowed_graph<decltype(und_ref)>);
+    unsigned ref_count = 0;
+    for(auto && [e, w] : und_ref.incidence(0u)) (void)e, (void)w, ++ref_count;
+    ASSERT_EQ(ref_count, 1u);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the orphan adjacency() member is gone: no CPO ever reached it
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+template <typename U>
+concept has_adjacency_member =
+    requires(const U & u, vertex_t<static_digraph> v) { u.adjacency(v); };
+}  // namespace
+static_assert(
+    !has_adjacency_member<undirect_view<graph_ref_view<static_digraph>>>);

@@ -64,9 +64,12 @@ private:
     using segment_id_type = std::ranges::range_value_t<SegmentIdRange>;
     using coordinate_system = typename Traits::coordinate_system;
     using segment_type = typename Traits::segment_type;
+    // Two decltypes, not a comma inside one: the comma operator discarded the
+    // first endpoint's type, so common_type was never consulted across the
+    // two and a segment with differing endpoint types took the second's.
     using endpoint_type =
-        std::common_type_t<decltype(std::get<0>(std::declval<segment_type>()),
-                                    std::get<1>(std::declval<segment_type>()))>;
+        std::common_type_t<decltype(std::get<0>(std::declval<segment_type>())),
+                           decltype(std::get<1>(std::declval<segment_type>()))>;
     using line_type = typename Traits::line_type;
     using intersection_type = typename Traits::intersection_type;
     static constexpr auto compute_sweepline_intersection(
@@ -280,7 +283,10 @@ private:
 
         push_intersection(i);
     }
-    void handle_event(const std::pair<intersection_type, events> & e) {
+    // The tree's value_type, not pair<intersection_type, events>: a std::map's
+    // value_type has a const key, so the latter bound every call to a
+    // temporary copying the point *and* the events vector (executed).
+    void handle_event(const typename events_tree::value_type & e) {
         const auto & [i, evts] = e;
         _event_points->tmp = i;
 

@@ -86,15 +86,62 @@ of this review; unchecked items remain open.
 - [x] 13. Non-view `Graph` parameters — `reverse_view`/`subgraph_view`/`undirect_view` heads now
       require `graph_view`; both owning views gained `is_object_v`
 - [x] 14. `reverse_view::arcs_entries` hard-errors on tuple-shaped entries
-- [ ] 15. Experimental headers (planar_map ADL loop, dual.hpp, doubly_connected_digraph,
-      scapegoat_tree)
+- [x] 15. Experimental headers — the two shipped ones are fixed: `planar_map.hpp` gained the
+      variable-template `create_face_map` (killing the ADL self-dependency), the unary member
+      `vertex_coordinates` probe, and the graph argument in `vertex_coordinates_t` (reviving both
+      arc endpoint-coordinate protocols); `dual.hpp` uses `std::views::transform`, conditional
+      `noexcept` throughout, and `has_*_map<P, T>` constraints. Positive coverage added in
+      test/experimental.cpp (triangle planar-map fixture + dual round-trip).
+      `doubly_connected_digraph.hpp` and `scapegoat_tree.hpp` stay quarantined (UNFINISHED
+      banners, out of install rules): finishing them means completing the DCEL migration
+      (mutation API still written for the old linked-adjacency members) resp. rewriting
+      insert/erase/rebalance — tracked as future work, not patches
 
 **Tier 3 — API inconsistencies**
-- [ ] 16. `views::subgraph` capability drops (`arcs_entries`, `num_arcs`, degrees, borrowedness)
-- [ ] 17. `undirect_view::incidence()` double copy; missing `degree` forwarding; orphan
-      `adjacency()`
-- [ ] 18. Direct-call vs piped filter-map semantics divergence
-- [ ] 19. `noexcept` honesty on `current()`/`consumable_iterator`/geometry comparator
+- [x] 16. `views::subgraph` capability drops — `arcs_entries` forwarded when own (and *filtered*
+      when filters are present, which also makes *arc-filtered* subgraphs of entries-only graphs
+      full graphs; vertex-filtered ones still are not — `arcs` has no entries-based fallback),
+      `num_arcs`/degrees forwarded for the filterless case, `enable_borrowed_graph` specialized
+      (filterless ∧ wrapped-view-borrowed), `complete_digraph` gained O(1) noexcept degrees;
+      pinned at test/api_review.cpp (`subgraph_keeps_arcs_entries`,
+      `subgraph_forwards_what_no_filter_can_change`, `filterless_subgraph_is_borrowed`) and
+      test/complete_digraph.cpp
+- [x] 17. `undirect_view::incidence()` double copy; missing `degree` forwarding; orphan
+      `adjacency()` — `_capture()` now branches on the `enable_borrowed_graph` specialisation's
+      own condition (borrowed ∧ copyable, a shared `_lambdas_capture_a_copy` constant), so a
+      copyable non-borrowed graph — a filtered subgraph carrying its filter maps by value —
+      captures `this` instead of being deep-copied into both lambdas (executed count: 0 copies,
+      was 2 per call; the trait was false there anyway).
+      `undirected_graph_forwarding_interface` forwards `degree`: the test fixture's deliberately
+      unsized incidence range proves the views previously lost `degree` outright, not merely the
+      O(1) member. The orphan `adjacency()` is removed — nothing in the library, tests or docs
+      called it; it can return additively if an undirected adjacency CPO ever exists. Pinned in
+      test/undirect.cpp (`incidence_copies_the_view_only_when_borrowed`, `has_adjacency_member`
+      probe) and test/undirected_graph_view.cpp (`forwards_degree`)
+- [x] 18. Direct-call vs piped filter-map semantics divergence — ruled *loud doc*, not
+      unification: ref-for-lvalue in the direct call is the library-wide `mapping_all` rule
+      (every algorithm's map arguments, the graph argument itself), and a closure must copy or
+      dangle, so converging could only mean deep-copying lvalue maps in the direct call — a
+      worse divergence against every other map-taking entry point. Both semantics are spellable
+      in both forms (executed): `mapping_ref_view(m)` pipes a reference (the decay-copy copies
+      the pointer), `auto(m)` hands the direct call a copy — so only the lvalue *default*
+      differed, and it is now pinned: all four cells behaviorally + by deduced type in
+      test/subgraph.cpp (`lvalue_filter_direct_call_references_pipe_copies`,
+      `filter_map_semantics`), the `induced_subgraph` vertex-range analogue by type
+      (`induced_range_semantics`); docs/views/graphs.md "Pipe syntax" states the divergence,
+      the mutation-visibility consequence and the override table, with matching notes under
+      "Filters you can flip" and `induced_subgraph`; rationale comment on `subgraph_fn`'s
+      binding overload
+- [x] 19. `noexcept` honesty on `current()`/`consumable_iterator`/geometry comparator — the
+      traversal `current()`s now measure the copy their by-value return performs
+      (`noexcept(vertex(...))`, the competing_dijkstras spelling, in BFS both specialisations /
+      DFS / topological_sort; `dijkstra::current()` gained the specification it had none of —
+      one spelling in the family now). `consumable_iterator`'s increment and both comparisons
+      and `cartesian::point_xy_comparator` are conditional on the operations they forward.
+      Each verified both directions with throwing types (vertex, iterator, coordinate); pinned
+      in test/api_review.cpp (`current_noexcept_measures_the_returned_copy`),
+      test/consumable_view.cpp (`noexcept_follows_the_wrapped_iterator`) and test/geometry.cpp
+      (`point_xy_comparator_noexcept_follows_the_coordinates`)
 - [x] 20. Algorithm-family drift — `store_paths` rename, strict `add_source` preconditions,
       `reset()` semantics documented in the `traversal_algorithm` concept,
       `bidirectional_dijkstra::run()` normalized (+ cached idempotent `dist()`), traits concepts
@@ -102,34 +149,69 @@ of this review; unchecked items remain open.
       `reached_map()` + missing asserts/nodiscard. *Still open from this item*: `set_*_length_map`
       on only two of four Dijkstras, dinitz/edmonds_karp indeterminate `_s`/`_t`, dinitz recursion
       depth, `constexpr` coverage drift
-- [ ] 21. Container drift — *partially*: `d_ary_heap` single-comparator constructor forwarded and
-      `explicit` (dead code revived). Everything else in item 21 remains open
-      (`static_filter_map` sweep, iterator↔const_iterator, `updatable_d_ary_heap` map
-      constructors, `create_arc` asserts, `exclusive_scan` int accumulator, unbounded-knapsack
-      constraint, `bounded_value`, integer geometry truncation, `handle_event` copies, sampler
-      constraints, voronoi accessors)
+- [x] 21. Container drift — `d_ary_heap` single-comparator constructor forwarded and `explicit`
+      (dead code revived); `updatable_d_ary_heap` gained 3- and 4-arg constructors receiving
+      stateful priority/id maps (the commented-out external-priority test revived against them);
+      `create_arc` validity asserts; `exclusive_scan` accumulates in `arc{0}` (both static
+      digraphs); both knapsacks constrained `random_access_range` (they order iterators with `<`);
+      `bounded_value` no-fit arithmetic diagnosed by friendly static_assert and the dead non-const
+      widening conversion operator removed (the converting constructor covers it); integral
+      geometry divides through `make_rational` (exact intersections, 1/0 slope sentinel — pinned
+      in test/geometry.cpp); `bentley_ottmann::handle_event` takes the tree's `value_type` (no
+      per-event copy) and `endpoint_type` uses two decltypes (comma bug); sampler constrained
+      (`random_access_range`, `floating_point` Prob, `uniform_random_bit_generator`) and weights
+      normalized like `std::discrete_distribution`; voronoi `cluster_id_t = vertex_t<Graph>` and
+      trait-gated `dist()`/`cluster()` accessors (dijkstra's `store_distances` shape).
+      *Still open from this item*: the `static_filter_map` sweep (constexpr/nodiscard parity,
+      iterator↔const_iterator, `key_type`/`mapped_type`, `resize()`), deferred on purpose;
+      `store_cluster_adjacency` stays pinned inert
 
 **Tier 4 — std::ranges/STL alignment**
-- [ ] `iterator_concept` on `intrusive_iterator_base`/`static_filter_map::iterator`
-- [ ] `std::ranges::data` in `prefetch.hpp`
-- [ ] `rational` modernization (`<=>`, compound assignment, `common_type`, hidden friends)
-- [ ] `[[nodiscard]]` sweep — *partially*: `biobjective_dijkstra::is_dominated()`/`pareto_front()`
-      done; numeric/geometry/knapsack/builder/run() sites remain
-- [ ] `d_ary_heap` `emplace`/`push_range`/`swap`; `priority()` `same_as` → `convertible_to`
-- [ ] Adaptor gaps (default ctors, double-reverse unwrap, `complete_digraph` naming, container
-      `operator==`, `mutable_digraph::clear()`)
-- [ ] std random idioms (`uniform_random_bit_generator`, `floating_point` Prob, weight
-      normalization)
-- [ ] `graphviz_printer::print` iterator threading + `output_iterator` constraint (overlaps
+- [x] `iterator_concept` on `intrusive_iterator_base` — done everywhere: the base now carries
+      `iterator_concept = forward` + `iterator_category = input`, completing the
+      `static_filter_map` / `filter_iterator` half
+- [x] `std::ranges::data` in `prefetch.hpp`
+- [x] `rational` modernization (`<=>` as `weak_ordering`, compound assignments, hidden friends,
+      mixed operators constrained to arithmetic-or-`bounded_value`) — the `common_type` /
+      `numeric_limits` / `hash` specializations are deferred: with unnormalized representations
+      they need a normalize-before-hash ruling. Note: the number-like constraint is deliberately
+      trait-based, not a requires-expression probing `n * a` — probing runs overload resolution,
+      and ADL can re-enter the constrained operators themselves (any type whose associated
+      classes include a rational, e.g. a `std::map<tuple<rational, …>, _>::iterator` in
+      bentley_ottmann) making constraint satisfaction recurse, a hard error
+- [x] `[[nodiscard]]` sweep — numeric/geometry/knapsack/builder done.
+      `bidirectional_dijkstra::run()` deliberately *not* annotated: it now returns `*this` for
+      chaining like every run() in the family (the returned-distance shape the finding described
+      no longer exists), so `alg.run();` as a statement is the normal calling convention
+- [x] `d_ary_heap` `emplace`/`push_range`/member+ADL `swap`/`priority_compare` typedef;
+      `priority()` `same_as` → `convertible_to`
+- [x] Adaptor gaps — default ctors gated on `default_initializable`, double-reverse unwrap in
+      `views::reverse` (the class stays directly nestable, per the pin in test/reverse.cpp),
+      `mutable_digraph::clear()`. Deferred (need rulings): `complete_digraph` naming (breaking
+      rename), container `operator==` (equality semantics), `static_map` sized-range ctors,
+      `reserve_hint`
+- [x] std random idioms — `uniform_random_bit_generator` on `erdos_renyi`, `result_type` on
+      `alias_method_sampler`; `floating_point` Prob and weight normalization were already in
+      place from an earlier pass
+- [x] `graphviz_printer::print` iterator threading + `output_iterator` constraint (landed with
       Tier 1 #7)
 
-**New finding (discovered during implementation)**: `dinitz` over a graph whose incidence ranges
-are lambda-predicated views (any *filtered* subgraph) is unconstructible for a pre-existing
-reason unrelated to the relocation work — its per-vertex cursor maps go through
+**New finding (discovered during implementation) — since fixed**: `dinitz` over a graph whose
+incidence ranges are lambda-predicated views (any *filtered* subgraph) was unconstructible for a
+pre-existing reason unrelated to the relocation work — its per-vertex cursor maps go through
 `create_vertex_map<cursor>`, and `static_map`'s element default-initialization requires
 default-constructible elements, which a `filter_view` holding a capturing lambda is not.
-Constructibility of cursor maps deserves its own ruling (e.g. an `optional`-like slot or a
-`movable_box`-backed cursor).
+Ruling: a default-constructed cursor is *disengaged* — `consumable_input_view`'s primary
+specialisation stores its range in a `std::optional`, so the cursor is default-constructible
+even when the range is not. A disengaged cursor supports destruction and assignment only, the
+contract the cursor maps already live by (`reset()` re-seeds every slot before use), and
+copy/move of one yields another disengaged cursor (`_reseek()` no-ops), since `static_map` and
+`std::vector` relocate slots wholesale. The borrowed specialisation — what every melon container
+lands on — is untouched; only filtered-subgraph cursors pay (+8 bytes, debug-only asserts, no
+release hot-path branch). `detail::movable_box` was considered and rejected: it has no empty
+state (its default constructor requires `default_initializable<T>`). Pinned by test/dinitz.cpp
+(`filtered_subgraph`, `filtered_subgraph_move`) and test/consumable_view.cpp
+(`default_constructed_is_assignment_only`, `disengaged_cursor_survives_relocation`).
 
 ---
 
@@ -278,7 +360,10 @@ immediate context.
     - No `num_arcs`, `out_degree`, `in_degree` forwarding (`graph_forwarding_interface` forwards
       all three; `subgraph_view` derives `graph_view_base` directly).
     - No `enable_borrowed_graph` specialization for the filterless case, so
-      `depth_first_search(views::subgraph(g))` loses the copyability `depth_first_search(g)` has.
+      `depth_first_search(views::subgraph(g))` loses the nothrow memberwise relocation
+      `depth_first_search(g)` has and runs the cursor-rebase loop on every move instead.
+      (Originally reported as lost "copyability" — wrong: traversals are move-only by ruling;
+      what borrowedness feeds is `frames_need_rebase`.)
     Related: `views::complete_digraph` has no O(1) `out_degree`/`in_degree` members although the
     answer is the constant n−1, and its non-sized `in_arcs` kills the fallback
     (`include/melon/views/complete_digraph.hpp:135-149`).
@@ -366,9 +451,12 @@ immediate context.
       unnormalized weights silently build garbage tables where `std::discrete_distribution`
       normalizes.
     - `network_voronoi`: `store_cluster_adjacency` is inert — **pinned** as such
-      (`test/network_voronoi.cpp:108-128`), no action until implemented; `set_kernels` narrows a
-      64-bit vertex id in braced init (compile error); no per-vertex `dist()`/`cluster()` accessor
-      after a run.
+      (`test/network_voronoi.cpp:108-128`), no action until implemented; the default traits
+      hardcode `cluster_id_t = unsigned int`, so a 64-bit vertex id is **silently truncated**
+      into the cluster id — not a compile error as this review first claimed: `std::pair`'s
+      perfect-forwarding constructor wins list-initialization overload resolution, so the
+      braced-init narrowing check never fires (compile-checked, clean under `-Wconversion`);
+      no per-vertex `dist()`/`cluster()` accessor after a run.
 
 ## Tier 4 — std::ranges / STL alignment opportunities
 
@@ -424,10 +512,10 @@ immediate context.
 
 ## Nits (abridged)
 
-- Dead commented-out code blocks in eight headers (`subgraph.hpp:211`, `geometry.hpp:46-64`,
+- Dead commented-out code blocks in seven headers (`subgraph.hpp:211`, `geometry.hpp:46-64`,
   `connected_components.hpp:199-203`, `strongly_connected_components.hpp:264-267`,
-  `static_filter_map.hpp:33-57`, `dual.hpp:91-109`, `bentley_ottmann.hpp:202`,
-  `algorithmic_generator.hpp:30,67`).
+  `dual.hpp:91-109`, `bentley_ottmann.hpp:202`, `algorithmic_generator.hpp:30,67`).
+  `static_filter_map.hpp`'s were removed with the intrusive_view → filter_iterator migration.
 - Load-bearing typos: `substract_overflows` is concept-required so users must reproduce the
   misspelling (`bounded_value.hpp:56`); `computeUpperBound` lone camelCase (`knapsack_bnb.hpp:51`);
   `max_incomming_flow` (`dinitz.hpp:150`); copy/move parameters named `bin` on defaulted members

@@ -20,7 +20,7 @@ ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
 | Header | Declares |
 | --- | --- |
 | `melon/graph.hpp` | the [graph concepts](../graphs/concepts.md) and every directed [customization point](customization-points.md); `vertex_t`, `arc_t`, `vertex_map_t`, `arc_map_t` |
-| `melon/mapping.hpp` | the [mapping concepts](../graphs/mappings.md), `mapping_ref_view` / `mapping_owning_view` / `maps::mapping_all`, `maps::map`, `maps::true_map`, `maps::false_map`, `maps::identity_map`, `maps::element_map` |
+| `melon/mapping.hpp` | the [mapping concepts](../graphs/mappings.md) — `mapping`, `mapping_of`, `mapping_view` and friends, plus `mapping_for` — `mapping_ref_view` / `mapping_owning_view` / `maps::mapping_all`, `maps::map`, `maps::true_map`, `maps::false_map`, `maps::identity_map`, `maps::element_map` |
 | `melon/undirected_graph.hpp` | the [undirected concepts](../graphs/undirected-graphs.md) and CPOs; `edge_t`, `edge_map_t` |
 | `melon/version.hpp` | `MELON_VERSION_MAJOR` / `MINOR` / `PATCH`, `MELON_VERSION` |
 | `melon/all.hpp` | everything below |
@@ -41,8 +41,8 @@ ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
 
 | Header | Declares |
 | --- | --- |
-| `graph_view.hpp` | `graph_view_base`, `graph_ref_view`, `graph_owning_view`, `views::graph_all`, [`views::graph_adaptor_closure`](../views/graphs.md#pipe-syntax) |
-| `undirected_graph_view.hpp` | the undirected counterparts |
+| `graph_view.hpp` | `graph_view_base`, the `graph_view` concept and `enable_graph_view`, `graph_ref_view`, `graph_owning_view`, `graph_for`, `views::graph_all`, [`views::graph_adaptor_closure`](../views/graphs.md#pipe-syntax) |
+| `undirected_graph_view.hpp` | the undirected counterparts, `undirected_graph_for` included |
 | `reverse.hpp` | `reverse_view`, the [`views::reverse`](../views/graphs.md#reverse) adaptor |
 | `subgraph.hpp` | `subgraph_view`, `induced_subgraph_view`, the [`views::subgraph`, `views::induced_subgraph`](../views/graphs.md#subgraph) adaptors |
 | `undirect.hpp` | `undirect_view`, the [`views::undirect`](../views/graphs.md#undirect) adaptor |
@@ -75,7 +75,8 @@ ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
 | Header | Declares |
 | --- | --- |
 | `static_digraph_builder.hpp` | [`static_digraph_builder`](../containers/graphs.md#the-builder) |
-| `algorithmic_generator.hpp` | [`algorithmic_generator`](../algorithms/index.md), `algorithm_iterator`, `algorithm_view_interface`, `traversal_entry_t` |
+| `make_static_digraph.hpp` | [`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph) |
+| `algorithmic_generator.hpp` | [`algorithmic_generator`](../algorithms/index.md), `traversal_algorithm`, `rooted_traversal_algorithm`, `algorithm_iterator`, `algorithm_view_interface`, `traversal_entry_t` |
 | `priority_queue.hpp` | `priority_queue`, `updatable_priority_queue` |
 | `semiring.hpp` | [`semiring`](../algorithms/shortest-paths.md#semirings) and the four provided ones |
 | `graphviz_printer.hpp` | [`graphviz_printer`](../containers/graphs.md#printing-a-graph) |
@@ -94,11 +95,11 @@ Everything here lives in `namespace melon::numeric`; the directory matches the n
 
 ## Not public API
 
-**`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `borrowed_graph.hpp` (declares the `enable_borrowed_graph` trait, which *is* public — see below), `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `movable_box.hpp` (the `std::ranges`-style box that keeps a view owning a capturing lambda assignable), `not_self.hpp` (the guard that stops a single-argument constructor template from swallowing an object of its own type instead of letting the copy or move constructor be chosen), `prefetch.hpp`, `specialization_of.hpp`, `stdlib_check.hpp` (the libstdc++ version diagnostic).
+**`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `borrowed_graph.hpp` (declares the `enable_borrowed_graph` trait, which *is* public — see below), `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `movable_box.hpp` (the `std::ranges`-style box that keeps a view owning a capturing lambda assignable), `not_self.hpp` (the guard that stops a single-argument constructor template from swallowing an object of its own type instead of letting the copy or move constructor be chosen), `prefetch.hpp`, `specialization_of.hpp`, `stdlib_check.hpp` (the libstdc++ version diagnostic).
 
 `enable_borrowed_graph` is the one name in that directory you may need: it lives in `melon`, not `melon::detail`, and specialising it is how you tell melon that ranges obtained from a graph view of your own survive the view being relocated. See [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound).
 
-The same applies to anything in a `detail` or `detail` namespace, or prefixed with `__` — including `melon::cpo`, where the CPO function objects are defined.
+The same applies to anything under `melon/detail/` or in a `detail` namespace — including `melon::cpo`, where the CPO function objects are defined.
 
 **`melon/experimental/`** — work in progress in `namespace melon::experimental`, with no stability guarantee:
 
@@ -116,6 +117,6 @@ The last two remain in the repository but are excluded from both the CMake insta
 The dependency edges worth knowing:
 
 - `melon/graph.hpp` includes `melon/mapping.hpp` and, at the end, `melon/views/graph_view.hpp` — so having a graph gives you the mapping concepts and `views::graph_all`.
-- every algorithm header includes `melon/graph.hpp`, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::map` and the concepts.
+- the algorithm headers include `melon/graph.hpp` or `melon/undirected_graph.hpp` as needed, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::map` and the concepts. The pure-mapping ones — both knapsacks and `bentley_ottmann` — include only `melon/mapping.hpp`.
 - **container headers do not include `melon/graph.hpp`** — they only need `melon/mapping.hpp`. Including `container/mutable_digraph.hpp` on its own gives you the class but not `create_vertex`, `vertices` or `num_vertices`. Add `melon/graph.hpp` when a container is all you include.
-- no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (`algorithm/dijkstra.hpp` does pull in `container/d_ary_heap.hpp`, which its default traits need.)
+- no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp`, `utility/make_static_digraph.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (`algorithm/dijkstra.hpp` does pull in `container/d_ary_heap.hpp`, which its default traits need.)

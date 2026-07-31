@@ -5,7 +5,7 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 see the [API stability](README.md#api-stability) section of the README for the
 exact scope of the guarantees.
 
-## 1.0.0 — unreleased
+## 1.0.0 — 2026-07-31
 
 First stable release.
 
@@ -83,8 +83,83 @@ First stable release.
   which store the same bytes. Code using CTAD or the `views::…` factories —
   which only ever produce view types — is unaffected.
 
+- **`static_filter_map::filter()` returns a `std::ranges::subrange` of the
+  new named `static_filter_map::filter_iterator`, and `melon::intrusive_view`
+  is gone** (`detail/intrusive_view.hpp` deleted; `filter()` was its last
+  user, the other containers having moved to `std::ranges::subrange` over
+  hand-written intrusive iterators). The old return type embedded three
+  lambdas: unnameable, non-default-constructible, unstorable, and its
+  iterator was input-only. The new range is multipass (`forward_range`),
+  borrowed, and storable; it stays sentinel-ended on purpose — making it
+  common needs a clamp in the increment that measured 1.5x on dense scans —
+  so pipe through `std::views::common` for an iterator pair. The bit-scan
+  fast path also now engages for *any* common integral `iota_view`, not
+  `iota_view<K, K>` exactly: `filter(std::views::iota(0, n))` against a map
+  keyed by an unsigned type used to fall back silently to the generic
+  per-key branch, 10-50x slower. Scan throughput is unchanged (re-measured
+  at 1/10/50/90% density, 64K and 4M keys). Migration: code that spelled
+  the range type re-spells it as
+  `std::ranges::subrange<static_filter_map<K>::filter_iterator,
+  std::default_sentinel_t>`; range-for and `auto` users are unaffected.
+
 ### Added
 
+- **Stored maps are exposed as map views.** The `reached()`/`reached_map()`
+  rule generalised: every per-key accessor over a stored map gains a
+  pluralised `*s_map()` companion returning a read-only view
+  (`maps::mapping_all`, valid while the algorithm lives and stays put).
+  `dinitz`/`edmonds_karp` gain `flow(a)` and `flows_map()` — closing the
+  documented per-arc flow gap; `dijkstra` gains `dists_map()`;
+  `network_voronoi` gains `dists_map()` and `clusters_map()`;
+  `breadth_first_search` gains `pred_vertices_map()`, `pred_arcs_map()` and
+  `dists_map()`; `depth_first_search` gains `pred_vertices_map()`,
+  `pred_arcs_map()` and `depths_map()` (each gated on the trait that stores
+  the map, like the per-key accessor it accompanies). `dijkstra`'s pred maps
+  stay unexposed on purpose: they store `std::optional<arc>`, not the `arc`
+  that `pred_arc()` answers, and `path_to()` already covers that use. Pinned
+  by `api_review.stored_maps_are_exposed_as_map_views`.
+- **Result maps are extractable.** Every stored-map accessor
+  (`flows_map()`, `dists_map()`, `reached_map()`, `component_ids_map()`, …)
+  became a ref-qualified pair following `std::views::all`'s ref-or-owning
+  split: lvalue algorithms hand out a `mapping_ref_view` as before, and an
+  expiring algorithm — `std::move(alg).flows_map()` — moves the stored map
+  into a `mapping_owning_view` that outlives it. Extraction is terminal,
+  `std::move(alg).base()`'s contract: the member left behind is valid but
+  empty. The rvalue path also closes a latent hazard — the old unqualified
+  accessors bound to temporaries and returned a view into an expiring
+  object. The computed `reached_map()`s (`dijkstra`, `network_voronoi`,
+  `strongly_connected_components`, `biobjective_dijkstra` — derived from
+  richer state, no stored bool map) extract by moving their backing map
+  (status enums, component indices, Pareto fronts) into the returned lambda
+  map, so extraction works uniformly across the family.
+  `traversal_forest` delegates extraction to its inner BFS. Pinned by
+  `api_review.expiring_map_accessors_extract_the_stored_map`.
+- **std/STL alignment sweep** across the utility layer. `rational` replaces
+  its six macro-generated relationals with hidden-friend `operator==` /
+  `operator<=>` (`std::weak_ordering` — unnormalized representations make
+  `1/2` and `2/4` equivalent, not equal), gains the compound assignments
+  (`+=` did not compile before) and constrains its mixed-operand operators to
+  number-like types (arithmetic or `bounded_value`), so `rational + string`
+  is rejected at the constraint instead of erroring inside the body.
+  `d_ary_heap` gains `std::priority_queue` parity: `emplace`, C++23
+  `push_range`, member + ADL `swap` (the updatable heap swaps its id and
+  index maps along), and a `priority_compare` typedef; the
+  `updatable_priority_queue` concept's `priority()` loosens `same_as` to
+  `convertible_to`, admitting the by-const-reference STL shape like `top()`
+  already did. `mutable_digraph` gains `clear()`. View adaptors
+  (`reverse_view`, `undirect_view`, `subgraph_view`, `induced_subgraph_view`)
+  gain default constructors gated on `default_initializable`, and
+  `views::reverse(views::reverse(g))` unwraps to the adapted graph like
+  `std::views::reverse`. `erdos_renyi` constrains its generator with
+  `std::uniform_random_bit_generator`; `alias_method_sampler` exposes
+  `result_type`. The intrusive iterators (`mutable_digraph`, the
+  dijkstra-family path iterators) now advertise `iterator_concept =
+  forward_iterator_tag` with `iterator_category = input_iterator_tag`, the
+  honest split for prvalue-returning iterators (`std::views::zip` precedent),
+  and `prefetch_range` uses `std::ranges::data`, fixing a hard error for C
+  arrays. `[[nodiscard]]` lands on every rational / `bounded_value` /
+  geometry operation, the knapsack `solution_*()` accessors and
+  `static_digraph_builder::build()`.
 - **`melon::traversal_algorithm` and `melon::rooted_traversal_algorithm`**
   (`utility/algorithmic_generator.hpp`): the algorithm-object lifecycle as a
   named, tested contract — `reset()` restores the constructor's state, `run()`
@@ -94,22 +169,29 @@ First stable release.
   concepts (`breadth_first_search_traits`, …) the dijkstra family already had,
   so a misspelled traits flag fails the constraint instead of silently
   defaulting.
-- **`graph_storable_as`, `undirected_graph_storable_as` and
-  `mapping_storable_as`**: every algorithm and view constructor is now
-  constrained on what its member initializers actually do — wrapping through
-  `graph_all` / `mapping_all` into the always-a-view member — so
-  `std::is_constructible` answers honestly. Hand-written copy operations carry
-  matching constraints, so `std::copyable` no longer lies for move-only
-  graphs.
+- **`graph_for`, `undirected_graph_for` and `mapping_for`**: every algorithm
+  and view constructor is now constrained on what its member initializers
+  actually do — wrapping through `graph_all` / `mapping_all` into the
+  always-a-view member — so `std::is_constructible` answers honestly in both
+  directions.
 - **Relocation is sound and rebases.** Algorithms that cache incidence
   cursors (`depth_first_search`, `strongly_connected_components`,
   `connected_components`, `dinitz`, `traversal_forest`) re-aim every cursor at
-  the *new* graph member when they are moved or copied, using the vertex key
-  stored beside each cursor and `consumable_input_view`'s consumed counter
+  the *new* graph member when they are moved, using the vertex key stored
+  beside each cursor and `consumable_input_view`'s consumed counter
   (new `rebase()` / `(range, consumed)` members). This fixes a use-after-free
-  in the defaulted moves over a by-value subgraph, and *widens* copyability:
-  an algorithm over an owned, filtered subgraph is now honestly copyable,
-  where copy used to require `borrowed_graph`.
+  in the defaulted moves over a by-value subgraph — an algorithm over an
+  owned, filtered subgraph now relocates soundly mid-run. For graphs that opt
+  into `melon::enable_borrowed_graph`, the rebase compiles away and the move
+  stays the defaulted memberwise one.
+- **`melon::make_static_digraph`**
+  (`melon/utility/make_static_digraph.hpp`): rebuilds any outward-incidence
+  graph as a `static_digraph` whose vertices are renumbered `0..n-1` in the
+  order a comparator induces, and translates given vertex and arc maps onto
+  the new handles. Returns one flat, structured-binding-ready tuple:
+  `auto [g, dist] = make_static_digraph(old_g, cmp, std::tie(dist));` — pass
+  maps with `std::tie` to translate through references, `std::make_tuple` to
+  hand over ownership.
 - **`static_map` accepts sized forward ranges** (one `ranges::distance` pass,
   the way std containers accept forward iterators), which makes the
   `forward_range` constraint on `static_digraph` / `static_forward_digraph`
@@ -145,26 +227,14 @@ First stable release.
   `strongly_connected_components::push_tarjan()` is now the private
   `_push_tarjan()` — pushing onto Tarjan's stack behind the traversal's back
   was never meant to be callable.
-- **Algorithms that cache incidence ranges relocate by rebasing.**
-  `depth_first_search`, `strongly_connected_components`,
-  `connected_components`, `dinitz` and `traversal_forest` keep cursors over
-  `out_arcs` / `out_neighbors` / `vertices`; `views::subgraph`'s filtered
-  ranges capture `this`, so a memberwise copy or move aimed the new object's
-  cursors at the old object's graph. Copy and move now re-ask the *new* graph
-  member for every cached range (each cursor is keyed by its vertex, and the
-  consumed counter restores the position), so both are sound — and copy is
-  *wider* than an intermediate design that constrained it on
-  `melon::enable_borrowed_graph`: an algorithm over an owned, filtered
-  subgraph is copyable. The trait still exists and marks graphs whose ranges
-  are independent of the graph object (the rebase compiles away for them);
-  specialise it for your own view when that holds.
 - **`melon::cpo::incident_edges_fn` is `melon::cpo::incidence_fn`**, the only
   CPO whose function-object name did not match the object it defines
   (`melon::incidence`).
 - **`run()` returns `Algo &` on every algorithm** rather than `void` on ten of
   them and `Algo &` on four, matching `reset()`. Additive: callers discarding
-  the result are unaffected. `bidirectional_dijkstra::run()` still returns the
-  computed distance — it is the one algorithm whose `run()` *is* the answer.
+  the result are unaffected. This now includes `bidirectional_dijkstra` — its
+  `run()` used to return the computed distance and is covered in the breaking
+  changes above; the answer is read through `dist()`.
 - **`views::induced_subgraph::vertices()` returns a `ref_view`** over the
   stored range rather than a copy of it, so its type changed. This is what
   makes the view usable with an owned vertex range at all.
@@ -270,12 +340,33 @@ First stable release.
   rvalue container in a `ref_view` of a temporary dead at the semicolon.
   It is now forwarded, so the pipeline owns rvalues (`owning_view`) and
   still references lvalues.
+- **`dinitz` over a filtered subgraph did not compile.** Its per-vertex
+  cursor maps go through `create_vertex_map<cursor>`, and `static_map`
+  default-constructs its slots — but a cursor over a filtered subgraph's
+  incidence range holds a `filter_view` whose capturing-lambda predicate is
+  not default-constructible, so the map type was unformable.
+  `consumable_input_view`'s owning specialisation now stores its range in a
+  `std::optional`: a default-constructed cursor is *disengaged* (assignment
+  and destruction only — the contract the maps already live by, since
+  `reset()` re-seeds every slot before use), and copying or moving one yields
+  another disengaged cursor. The borrowed specialisation every melon
+  container lands on is unchanged.
 - **`dinitz` and `edmonds_karp` hung forever for capacity types without a
   `numeric_limits` specialization.** The primary template's `max()` returns
   `T{}` — a zero infinity — so a conforming custom capacity type compiled
   cleanly and looped forever. Both class heads now require
   `std::numeric_limits<value_t>::is_specialized`, turning the hang into a
   concept-level rejection.
+- **`dinitz` and `edmonds_karp` BFS faulted on graphs without
+  `num_vertices`.** Both walked `_bfs_queue` with a vector iterator while
+  `push_back`-ing into it — safe only under the `reserve()` that
+  `has_num_vertices` gates, and a use-after-free once the queue reallocated
+  (caught by ASan on a conforming graph whose vertex range is a filter view,
+  so the sized-range `num_vertices` fallback is unavailable). The walk now
+  mirrors `breadth_first_search`'s cursor split — iterator when the reserve
+  is guaranteed, index otherwise — measured at a 2–4% cost on the BFS phase
+  for the index arm only, and none for the reserved one. Pinned by the new
+  `test/unsized_digraph.hpp` fixture in both algorithms' tests.
 - **`graphviz_printer` was broken three ways.** `print` discarded every
   iterator `std::format_to` returned, so positional output iterators (a
   `char *`) rewound and overwrote on each call — it now takes the iterator
@@ -361,8 +452,10 @@ First stable release.
   iterators into the *source*, so `kruskal::finished()` — comparing against the
   copy's own `end()` — never came true and `advance()` walked off the end
   (ASan: heap-buffer-overflow), while a knapsack copy outliving its source read
-  freed memory. All three now copy, then rebase, like the five algorithms that
-  already did.
+  freed memory. All three first learned to copy-then-rebase; the defect class
+  was then closed outright when algorithm copies were deleted (see the
+  breaking changes) — a move transfers the vector's buffer, so the cursors
+  stay valid without rebasing.
 - **Cursors over a non-borrowed range aliased the range they were copied or
   moved from.** `consumable_input_view`'s owning specialisation keeps an
   iterator that may refer *back* into the range it holds -- a
@@ -643,9 +736,11 @@ regression).
   optional discriminants.
 - **`run()` lives in `algorithm_view_interface`.** `while(!finished())
   advance();` was retyped in eleven algorithms and missing from `kruskal`, which
-  inherits the interface. The three whose `run()` means something else keep
-  their own: `dinitz` and `edmonds_karp` are not generators, and
-  `bidirectional_dijkstra::run()` returns the distance it computed.
+  inherits the interface. The three whose iteration is internal keep their own
+  body with the same shape (drain, return the algorithm, results through
+  accessors): `dinitz` and `edmonds_karp` are not generators, and
+  `bidirectional_dijkstra` is a point query whose answer `dist()` reads after
+  `run()`.
 - **`prefetch_keys_and_values`** replaces the identical three- and four-line
   prefetch preamble in `dijkstra`, `bidirectional_dijkstra`, `network_voronoi`,
   `competing_dijkstras`, `biobjective_dijkstra` and `edmonds_karp`.

@@ -21,12 +21,16 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `inward_incidence_graph<G>` | `has_in_arcs` and `has_arc_source` |
 | `outward_adjacency_graph<G>` | `graph` and `melon::out_neighbors(g, v)` |
 | `inward_adjacency_graph<G>` | `graph` and `melon::in_neighbors(g, v)` |
+| `has_arc_sources_map<G>` | `melon::arc_sources_map(g)` |
+| `has_arc_targets_map<G>` | `melon::arc_targets_map(g)` |
 | `has_vertex_map<G, T = std::size_t>` | `has_vertices` and both `create_vertex_map<T>` overloads |
 | `has_arc_map<G, T = std::size_t>` | `has_arcs` and both `create_arc_map<T>` overloads |
 | `has_vertex_creation<G>` | `melon::create_vertex(g)` returning `vertex_t<G>` |
 | `has_vertex_removal<G>` | `melon::remove_vertex(g, v)` and `melon::is_valid_vertex(g, v)` |
+| `has_is_valid_vertex<G>` | `graph` and `melon::is_valid_vertex(g, v)` — the validity question without the removal |
 | `has_arc_creation<G>` | `melon::create_arc(g, u, v)` returning `arc_t<G>` |
 | `has_arc_removal<G>` | `melon::remove_arc(g, a)` and `melon::is_valid_arc(g, a)` |
+| `has_is_valid_arc<G>` | `graph` and `melon::is_valid_arc(g, a)` — likewise |
 | `has_change_arc_source<G>` | `melon::change_arc_source(g, a, s)` |
 | `has_change_arc_target<G>` | `melon::change_arc_target(g, a, t)` |
 
@@ -39,8 +43,8 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `undirected_graph<G>` | `melon::vertices(g)`, `melon::edges(g)`, `melon::edge_endpoints(g, e)` |
 | `has_num_edges<G>` | `undirected_graph` and `melon::num_edges(g)` |
 | `has_incidence<G>` | `undirected_graph` and `melon::incidence(g, v)` yielding `(edge, vertex)` pairs |
-| `has_degree<G>` | ⚠️ written as `melon::degree(g)` with the vertex argument missing — never satisfied |
-| `has_edge_map<G, T>` | both `create_edge_map<T>` overloads |
+| `has_degree<G>` | `undirected_graph` and `melon::degree(g, v)` |
+| `has_edge_map<G, T = std::size_t>` | `undirected_graph` and both `create_edge_map<T>` overloads |
 
 **Aliases.** `edge_t<G>`, `edges_range_t<G>`, `incidence_range_t<G>`, `incidence_iterator_t<G>`, `incidence_sentinel_t<G>`, `edge_map_t<G, T>`.
 
@@ -54,7 +58,8 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `mapping_of<M, K, V>` | `mapping` and `mapped_value_t<M, K>` is exactly `V` |
 | `output_mapping_of<M, K, V>` | `output_mapping` and the value is exactly `V` |
 | `contiguous_mapping_of<M, K, V>` | `contiguous_mapping` and the value is exactly `V` |
-| `mapping_view<M, K>` | `mapping`, `std::movable`, and `enable_mapping_view<M>` |
+| `mapping_view<M, K>` | `mapping`, `std::movable`, and `enable_mapping_view<M>` — the variable template is `std::derived_from<M, mapping_view_base>`, mirroring `enable_graph_view` |
+| `mapping_for<M, Map>` | `Map` is constructible from `maps::mapping_all_t<M>` — the constructor constraint that wraps an argument through `mapping_all` into the member |
 
 **Aliases.** `mapped_reference_t<M, K>`, `mapped_const_reference_t<M, K>`, `mapped_value_t<M, K>`, `maps::mapping_all_t<M>`.
 
@@ -68,6 +73,8 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `undirected_graph_view<T>` | `undirected_graph`, `std::movable`, and the above |
 | `enable_borrowed_graph<T>` | Opt-in, `false` by default: ranges obtained from `T` stay valid when the `T` *object* is relocated |
 | `borrowed_graph<T>` | `enable_borrowed_graph<std::remove_cvref_t<T>>` |
+| `graph_for<G, Graph>` | `Graph` is constructible from `views::graph_all_t<G>` — the constructor constraint that wraps an argument through `graph_all` into the member |
+| `undirected_graph_for<UG, UGraph>` | the undirected counterpart, through `undirected_graph_all_t` |
 
 **Aliases.** `views::graph_all_t<G>`, `views::undirected_graph_all_t<G>`.
 
@@ -85,16 +92,22 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | Concept | Header | Requires |
 | --- | --- | --- |
 | `algorithmic_generator<A>` | `utility/algorithmic_generator.hpp` | `finished()`, `current()`, `advance()` |
+| `traversal_algorithm<A>` | `utility/algorithmic_generator.hpp` | the [1.0 lifecycle contract](../contract.md): a movable generator range with chaining `reset()` and `run()` |
+| `rooted_traversal_algorithm<A, S>` | `utility/algorithmic_generator.hpp` | `traversal_algorithm` plus chaining `add_source(s)` |
 | `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::semiregular`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
 | `updatable_priority_queue<Q>` | `utility/priority_queue.hpp` | `priority_queue` plus `contains`, `priority`, `promote`, `demote` |
 | `semiring<S>` | `utility/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less` |
+| `breadth_first_search_traits<T>` | `algorithm/breadth_first_search.hpp` | the four BFS flags: `store_pred_vertices`, `store_pred_arcs`, `store_distances`, `store_traversal_range` |
+| `depth_first_search_traits<T>` | `algorithm/depth_first_search.hpp` | `store_pred_vertices`, `store_pred_arcs`, `store_depth` |
+| `topological_sort_traits<T>` | `algorithm/topological_sort.hpp` | `store_ranks`, `store_critical_paths` |
+| `strongly_connected_components_traits<T>` | `algorithm/strongly_connected_components.hpp` | `store_component_ids` |
 | `dijkstra_traits<T>` | `algorithm/dijkstra.hpp` | a `semiring`, an `updatable_priority_queue`, `store_distances`, `store_paths` |
-| `bidirectional_dijkstra_traits<T>` | `algorithm/bidirectional_dijkstra.hpp` | same shape |
-| `network_voronoi_traits<T>` | `algorithm/network_voronoi.hpp` | same shape |
+| `bidirectional_dijkstra_traits<T>` | `algorithm/bidirectional_dijkstra.hpp` | a `semiring`, an `updatable_priority_queue`, `store_paths` |
+| `network_voronoi_traits<T>` | `algorithm/network_voronoi.hpp` | a `semiring`, an `updatable_priority_queue`, and three flags: `store_distances`, `store_clusters`, `store_cluster_adjacency` |
 | `biobjective_dijkstra_traits<T>` | `algorithm/biobjective_dijkstra.hpp` | the two-objective label and heap types |
-| `competing_dijkstras_traits<T>` | `algorithm/competing_dijkstras.hpp` | same shape, plus the entry comparator |
+| `competing_dijkstras_traits<T>` | `algorithm/competing_dijkstras.hpp` | a `semiring`, an `updatable_priority_queue`, a `(value, is_blue)`-shaped `entry`, and a strict-weak-order `entry_cmp` over it |
 | `alias_method_sampler_traits<T>` | `utility/alias_method_sampler.hpp` | `heuristic_preprocessing` |
-| `bentley_ottmann_traits<T>` | `algorithm/bentley_ottmann.hpp` | the geometric kernel types |
+| `bentley_ottmann_traits<T>` | `algorithm/bentley_ottmann.hpp` | `Traits::report_endpoints` convertible to `bool` — the geometric kernel types are members of `bentley_ottmann_default_traits`, not concept requirements |
 | `cartesian_point<T>` | `utility/geometry.hpp` | `std::get<0>` and `std::get<1>` of the point |
 | `cartesian_segment<T>` | `utility/geometry.hpp` | two `cartesian_point`s |
 | `cartesian_line<T>` | `utility/geometry.hpp` | the line coefficients |

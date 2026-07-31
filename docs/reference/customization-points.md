@@ -52,9 +52,9 @@ None of these has a fallback; providing one is what makes the corresponding conc
 | CPO | Concept |
 | --- | --- |
 | `create_vertex(g)` | `has_vertex_creation` |
-| `remove_vertex(g, v)`, `is_valid_vertex(g, v)` | `has_vertex_removal` |
+| `remove_vertex(g, v)`, `is_valid_vertex(g, v)` | `has_vertex_removal`; `is_valid_vertex` alone satisfies `has_is_valid_vertex` |
 | `create_arc(g, u, v)` | `has_arc_creation` |
-| `remove_arc(g, a)`, `is_valid_arc(g, a)` | `has_arc_removal` |
+| `remove_arc(g, a)`, `is_valid_arc(g, a)` | `has_arc_removal`; `is_valid_arc` alone satisfies `has_is_valid_arc` |
 | `change_arc_source(g, a, s)` | `has_change_arc_source` |
 | `change_arc_target(g, a, t)` | `has_change_arc_target` |
 
@@ -71,7 +71,7 @@ None of these has a fallback; providing one is what makes the corresponding conc
 
 ## Choosing between fallbacks
 
-`arcs` and `arcs_entries` may have several routes available at once, and the CPO picks by **range category**, preferring the stronger one. The internal `_range_rank` ranks contiguous over random-access over bidirectional over forward over input.
+`arcs` and `arcs_entries` may have several routes available at once, and the CPO picks by **range category**, preferring the stronger one. The internal `detail::range_rank` ranks contiguous over random-access over bidirectional over forward over input.
 
 For `arcs_entries` the priority is:
 
@@ -103,6 +103,6 @@ template <typename T> auto create_vertex_map(const their_graph & g, const T & d)
 }  // namespace their_lib
 ```
 
-Nothing is added to `namespace melon`; ADL from the argument type finds them. The map factories are templates called with an explicit template argument — `create_vertex_map<T>(g)` — which ADL supports because a function template of that name is visible in `melon`.
+Nothing is added to `namespace melon`; ADL from the argument type finds them. The map factories are called with an explicit template argument — `create_vertex_map<T>(g)` — and that works because on melon's side `create_vertex_map` is a *variable* template wrapping a CPO object, not a function template: the melon name is invisible to ADL, so the ADL probe inside the CPO can only ever find *your* `create_vertex_map`.
 
-See [Bringing your own graph](../graphs/custom-graphs.md) for complete, compiling examples and the rules the ranges must respect. `graph_ref_view`, which every algorithm wraps its argument in, forwards every read-only accessor in the tables above — `arcs_entries` included — so a type stays a `graph` once wrapped whichever protocol it provides. It does not forward the mutating CPOs: a view is read-only by construction.
+See [Bringing your own graph](../graphs/custom-graphs.md) for complete, compiling examples and the rules the ranges must respect. `graph_ref_view`, which every algorithm wraps its argument in, forwards every read-only accessor in the tables above — `arcs_entries` when the wrapped graph provides its own; otherwise the CPO fallback synthesizes it — so a type stays a `graph` once wrapped whichever protocol it provides. It does not forward the mutating CPOs — a view is read-only by construction — but it does forward `is_valid_vertex` and `is_valid_arc`: those are questions, not mutations, and the standalone concepts `has_is_valid_vertex<G>` / `has_is_valid_arc<G>` name a graph that answers them.

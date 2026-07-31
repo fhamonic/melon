@@ -219,56 +219,52 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     // }
 }
 
-// GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
-//     external_priority_map::array = {0, 7, 3, 5, 6, 11};
-//     constexpr std::size_t num_elements = 6;
-//     d_ary_heap<2, unsigned int, external_priority_map, std::greater<int>,
-//                maps::identity_map>
-//         heap;
-//     for(unsigned int i = 0; i < external_priority_map::array.size(); ++i) {
-//         heap.push(i);
-//     }
-//     heap.promote(3u, 8);
+// regression: the heap's constructors default-constructed both maps, so a
+// stateful priority map could never reach it -- external priorities needed a
+// static-array workaround. The maps are now constructor parameters, and the
+// heap holds bare ids while the priorities live outside.
+GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
+    std::vector<int> priorities = {0, 7, 3, 5, 6, 11};
+    constexpr std::size_t num_elements = 6;
+    auto priority_map = maps::map(
+        [&priorities](const unsigned int i) -> int & { return priorities[i]; });
+    updatable_d_ary_heap<2, unsigned int, std::greater<int>,
+                         std::array<std::size_t, num_elements>,
+                         decltype(priority_map), maps::identity_map>
+        heap(std::greater<int>(), std::array<std::size_t, num_elements>{},
+             priority_map);
 
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), 5u);
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), 3u);
-//     heap.pop();
+    for(unsigned int i = 0; i < num_elements; ++i) {
+        heap.push(i);
+    }
+    heap.promote(3u, 8);
+    // The write went through to the external vector, not to a copy.
+    ASSERT_EQ(priorities[3], 8);
 
-//     heap.promote(0u, 9);
+    ASSERT_FALSE(heap.empty());
+    ASSERT_EQ(heap.top(), 5u);
+    heap.pop();
+    ASSERT_FALSE(heap.empty());
+    ASSERT_EQ(heap.top(), 3u);
+    heap.pop();
 
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), 0u);
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), 1u);
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), 4u);
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), 2u);
-//     heap.pop();
-//     ASSERT_TRUE(heap.empty());
+    heap.promote(0u, 9);
+    ASSERT_EQ(priorities[0], 9);
 
-//     // heap.promote(3u, 8);
-
-//     // for(int i = 0; i < 2; ++i) {
-//     //     auto && [u, dist] = heap.top();
-//     //     std::cout << u << "  " << dist << std::endl;
-//     //     heap.pop();
-//     // }
-
-//     // heap.promote(0u, 9);
-
-//     // while(!heap.empty()) {
-//     //     auto && [u, dist] = heap.top();
-//     //     std::cout << u << "  " << dist << std::endl;
-//     //     heap.pop();
-//     // }
-// }
+    ASSERT_FALSE(heap.empty());
+    ASSERT_EQ(heap.top(), 0u);
+    heap.pop();
+    ASSERT_FALSE(heap.empty());
+    ASSERT_EQ(heap.top(), 1u);
+    heap.pop();
+    ASSERT_FALSE(heap.empty());
+    ASSERT_EQ(heap.top(), 4u);
+    heap.pop();
+    ASSERT_FALSE(heap.empty());
+    ASSERT_EQ(heap.top(), 2u);
+    heap.pop();
+    ASSERT_TRUE(heap.empty());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // promote/demote require a priority map that writes into the entry
@@ -440,4 +436,56 @@ GTEST_TEST(d_ary_heap, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     // and the comparator constructor is still reachable
     heap_base with_comparator(std::greater<int>{});
     ASSERT_TRUE(with_comparator.empty());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// std::priority_queue parity: emplace, push_range, swap and the comparator
+// typedef
+////////////////////////////////////////////////////////////////////////////////
+
+static_assert(
+    std::same_as<d_ary_heap<2, int>::priority_compare, std::greater<int>>);
+
+GTEST_TEST(d_ary_heap, emplace_and_push_range) {
+    d_ary_heap<2, std::pair<int, int>> heap;
+    heap.emplace(1, 2);
+    std::vector<std::pair<int, int>> more = {{3, 4}, {0, 1}};
+    heap.push_range(more);
+    ASSERT_EQ(heap.size(), 3u);
+    ASSERT_EQ(heap.top(), (std::pair{3, 4}));
+}
+
+// both the member and the ADL swap, on the plain and the updatable heap --
+// the updatable one must carry its id and index maps along
+GTEST_TEST(d_ary_heap, member_and_adl_swap) {
+    d_ary_heap<2, int> a, b;
+    a.push(1);
+    a.push(5);
+    a.swap(b);
+    ASSERT_TRUE(a.empty());
+    ASSERT_EQ(b.top(), 5);
+    swap(a, b);
+    ASSERT_TRUE(b.empty());
+    ASSERT_EQ(a.top(), 5);
+}
+
+GTEST_TEST(updatable_d_ary_heap, swap_carries_the_maps) {
+    using entry = std::pair<unsigned int, int>;
+    using heap_t =
+        updatable_d_ary_heap<2, entry, std::greater<int>,
+                             std::array<std::size_t, 4>, maps::element_map<1>,
+                             maps::element_map<0>>;
+    heap_t a(std::greater<int>(), std::array<std::size_t, 4>{});
+    heap_t b(std::greater<int>(), std::array<std::size_t, 4>{});
+    a.push({0u, 3});
+    a.push({1u, 7});
+    a.swap(b);
+    ASSERT_TRUE(a.empty());
+    ASSERT_TRUE(b.contains(1u));
+    ASSERT_EQ(b.priority(1u), 7);
+    b.promote(1u, 9);
+    ASSERT_EQ(b.priority(1u), 9);
+    swap(a, b);
+    ASSERT_TRUE(b.empty());
+    ASSERT_EQ(a.priority(1u), 9);
 }

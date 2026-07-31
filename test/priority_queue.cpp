@@ -183,3 +183,28 @@ GTEST_TEST(updatable_priority_queue_concept, drives_the_dijkstra_heap) {
     }
     ASSERT_EQ(order, (std::vector<unsigned int>{2u, 0u, 1u}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// priority() may return by const reference, the STL shape -- the concept asks
+// convertible_to, not same_as, exactly like top()
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+struct by_const_ref_queue {
+    using value_type = int;
+    using size_type = std::size_t;
+    using id_type = int;
+    using priority_type = int;
+    void push(int);
+    const int & top() const;
+    void pop();
+    std::size_t size() const;
+    bool empty() const;
+    void clear();
+    bool contains(int) const;
+    const int & priority(int) const;
+    void promote(int, int);
+    void demote(int, int);
+};
+}  // namespace
+static_assert(updatable_priority_queue<by_const_ref_queue>);

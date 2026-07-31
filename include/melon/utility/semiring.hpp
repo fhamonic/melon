@@ -13,6 +13,13 @@ namespace melon {
 // that does not exist. `less` orders values from best to worst, so it is not
 // always `std::less`. Whenever `plus` is not addition these take values that
 // read as inverted; each struct below says which.
+//
+// All four members are structurally required to be static constexpr
+// *variables*, not functions: `{ S::zero } -> same_as<const value_type &>`
+// only holds for an object (a function name would yield a function type), and
+// `S::plus` / `S::less` must be objects of `plus_t` / `less_t` for the same
+// reason -- which is why every model below declares `static constexpr plus_t
+// plus{}` rather than a static member function.
 // clang-format off
 template <typename S>
 concept semiring = requires(typename S::value_type v) {

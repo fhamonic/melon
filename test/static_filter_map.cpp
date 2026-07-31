@@ -4,8 +4,8 @@
 #include <random>
 
 #include "melon/container/static_digraph.hpp"
+#include "melon/container/static_filter_map.hpp"
 #include "melon/container/static_map.hpp"
-#include "melon/detail/intrusive_view.hpp"
 #include "melon/mapping.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -13,8 +13,9 @@
 using namespace melon;
 
 ////////////////////////////////////////////////////////////////////////////////
-// static_map<K, bool> packs bits yet still models a copyable random-access
-// range and an output mapping
+// static_map<K, bool> stores one plain bool per key -- no bit packing, unlike
+// static_filter_map -- and models a copyable random-access range and an
+// output mapping
 ////////////////////////////////////////////////////////////////////////////////
 
 static_assert(std::copyable<static_map<std::size_t, bool>>);
@@ -202,7 +203,7 @@ GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
 ////////////////////////////////////////////////////////////////////////////////
 // filter() yields exactly the keys whose bit is set
 
-GTEST_TEST(static_map_bool, filter) {
+GTEST_TEST(static_filter_map, filter) {
     const std::size_t num_bools = 153;
     static_filter_map<std::size_t> map(num_bools, false);
     std::vector<std::size_t> indices;
@@ -270,7 +271,7 @@ GTEST_TEST(static_filter_map, filter_matches_reference_over_sizes_and_ranges) {
     }
 }
 
-GTEST_TEST(static_map_bool, filter_bench) {
+GTEST_TEST(static_filter_map, filter_bench) {
     std::cout << "density,map_filter,manual_filter\n";
 
     auto gen = std::bind(std::uniform_real_distribution<>(0, 1),
@@ -383,32 +384,51 @@ GTEST_TEST(static_filter_map, filter_clamps_out_of_range_bounds) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // filter() takes its bit-scan fast path for every value category of the range
+// and for every integral iota, not only the one matching the key type
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: the dispatch tested `std::same_as<R, iota_view<K, K>>` on the
+// regression 1: the dispatch tested `std::same_as<R, iota_view<K, K>>` on the
 // *deduced* type of a forwarding reference, which is iota_view<K, K> & for an
 // lvalue. Passing a named range silently fell back to the generic
 // filter/transform pipeline.
+// regression 2: it then required iota_view<K, K> *exactly*, so the near-miss
+// iota(0, n) -- int literals against a differently-keyed map -- also fell
+// back silently, 10-50x slower. Any common integral iota now qualifies.
 namespace {
-template <typename T>
-struct is_intrusive_view : std::false_type {};
-template <typename I, typename A, typename B, typename C>
-struct is_intrusive_view<intrusive_view<I, A, B, C>> : std::true_type {};
-
 using filter_map = static_filter_map<int>;
 using iota_int = std::ranges::iota_view<int, int>;
+// The fast path returns a subrange of the named, storable filter_iterator;
+// the generic path returns a lambda-predicated filter_view.
+using bitscan_range =
+    std::ranges::subrange<filter_map::filter_iterator, std::default_sentinel_t>;
 
 template <typename R>
 inline constexpr bool takes_bitscan_path =
-    is_intrusive_view<decltype(std::declval<const filter_map &>().filter(
-        std::declval<R>()))>::value;
+    std::same_as<decltype(std::declval<const filter_map &>().filter(
+                     std::declval<R>())),
+                 bitscan_range>;
 }  // namespace
 
 static_assert(takes_bitscan_path<iota_int &>);        // lvalue
 static_assert(takes_bitscan_path<const iota_int &>);  // const lvalue
 static_assert(takes_bitscan_path<iota_int &&>);       // rvalue
-// a range whose value type is not the key type still uses the generic path
-static_assert(!takes_bitscan_path<std::ranges::iota_view<long, long> &>);
+// integral iotas of other types qualify too, whatever the map's key type
+static_assert(takes_bitscan_path<std::ranges::iota_view<long, long> &>);
+static_assert(
+    takes_bitscan_path<std::ranges::iota_view<std::size_t, std::size_t> &&>);
+// a non-iota key range still uses the generic path
+static_assert(!takes_bitscan_path<std::vector<int> &>);
+
+// The fast-path range is a view over the map: multipass and borrowed -- the
+// iterators hold raw pointers into the map, not into the range object. It is
+// deliberately NOT common: ending on an exact end-iterator position needs a
+// clamp in the increment that measured 1.5x on dense scans; views::common
+// exists for consumers that need an iterator pair.
+static_assert(std::ranges::forward_range<bitscan_range>);
+static_assert(!std::ranges::common_range<bitscan_range>);
+static_assert(std::ranges::viewable_range<bitscan_range>);
+static_assert(std::ranges::borrowed_range<bitscan_range>);
+static_assert(std::forward_iterator<filter_map::filter_iterator>);
 
 GTEST_TEST(static_filter_map, filter_lvalue_and_rvalue_agree) {
     filter_map map(200, false);

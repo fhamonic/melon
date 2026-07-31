@@ -25,7 +25,7 @@ CMake 3.24 or later is required for the CMake integration, and Conan 2.0 or late
 
 ## As a Conan package
 
-**From the repository** (latest commit — the recommended route while 1.0.0 is unreleased):
+**From the repository** (the tagged 1.0.0 release — the recommended route):
 
 ```console
 $ git clone https://github.com/fhamonic/melon
@@ -53,10 +53,11 @@ melon/1.0.0-alpha.1
 
 !!! warning
 
-    The `1.0.0-alpha.1` package on Conan Center predates two breaking changes:
-    it still depends on range-v3, and its symbols live in the
-    `fhamonic::melon` namespace rather than `melon`. Prefer the repository
-    route until 1.0.0 is published.
+    The `1.0.0-alpha.1` package on Conan Center is a pre-1.0 alpha that
+    predates two breaking changes: it still depends on range-v3, and its
+    symbols live in the `fhamonic::melon` namespace rather than `melon`.
+    Prefer the repository / tagged release until the 1.0.0 package lands on
+    Conan Center.
 
 Either way, consume it from CMake with:
 
@@ -113,10 +114,10 @@ Four sub-namespaces carve out the parts that would otherwise take very generic n
 
 Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): every header is frozen API for the whole 1.x series, with two explicit exceptions that carry **no stability guarantee** and may change or disappear in any release:
 
-- `melon/detail/` — implementation details, as well as any symbol in a `detail` / `detail` namespace or prefixed with `__`;
+- `melon/detail/` — implementation details, as well as any symbol in a `detail` namespace;
 - `melon/experimental/` — work-in-progress data structures. These live in `namespace melon::experimental`, so nothing reaches the stable `melon` namespace by accident.
 
-Until 1.0.0 is tagged, treat the whole API as unstable and pin a commit.
+The 1.x guarantee and the design rulings it rests on are stated in [The 1.0 contract](../contract.md).
 
 `melon/version.hpp` is the single source of truth for the version number and lets you feature-test:
 

@@ -1,6 +1,6 @@
 # Shortest paths
 
-The family melon is built around. All of them are label-setting searches over an [updatable heap](../containers/data-structures.md#updatable_d_ary_heap), all take a length map per arc, and all are configurable through [traits](#traits) — including the [semiring](#semirings), which is what lets the same traversal compute a maximum-reliability or a maximum-capacity path.
+The family melon is built around. All of them are label-setting searches over a [heap](../containers/data-structures.md#heaps) — an updatable one for the single-label algorithms, while `biobjective_dijkstra`'s traits ask only for a plain `priority_queue` and default to a non-updatable `d_ary_heap` — all take a length map per arc, and all are configurable through [traits](#traits) — including the [semiring](#semirings), which is what lets the same traversal compute a maximum-reliability or a maximum-capacity path.
 
 ## `dijkstra`
 
@@ -22,8 +22,9 @@ Requires `outward_incidence_graph`, `has_vertex_map`, and a length map modelling
 | `finished()` / `current()` / `advance()` / `run()` | the [generator protocol](index.md) |
 | `reached(v)` | `v` has entered the heap |
 | `visited(v)` | `v` has been settled |
-| `current_dist(v)` | tentative distance of a reached, unsettled `v` — needs `store_distances` |
+| `current_dist(v)` | tentative distance of a reached, unsettled `v` — read from the heap, no flag needed |
 | `dist(v)` | final distance — needs `store_distances` |
+| `dists_map()` | a read-only view of the stored distances — needs `store_distances`; only visited vertices hold meaningful values |
 | `pred_arc(v)` / `pred_vertex(v)` | predecessor — needs `store_paths` |
 | `path_to(t)` | the arcs of the path, **target first** — needs `store_paths` |
 
@@ -82,7 +83,7 @@ alg.run();
 alg.dist(4u);   // probability of the most reliable path 0 -> 4
 ```
 
-Note that the heap's comparator must be `semiring::less_t` — the two are not independently chosen, and a mismatch is caught by a `static_assert` in the algorithm.
+Note that the heap's comparator must be `semiring::less_t` — the two are not independently chosen. A `static_assert` checks the heap's entry type; the comparator direction is your responsibility.
 
 Writing your own is four members and two types; anything satisfying the `semiring` concept in `melon/utility/semiring.hpp` will do.
 
@@ -117,6 +118,8 @@ Advances a forward search from the source and a backward search from the target 
 
 It requires **both** `outward_incidence_graph` and `inward_incidence_graph` — the backward search walks in-arcs — so it does not accept a `static_forward_digraph`. It is not a range: `run()` drains the search and returns the algorithm like every other `run()` in the library, `dist()` then reads the distance (idempotently — a second `run()` is a no-op), and `path()` returns the arcs of the path in order from source to target.
 
+Like the one-sided search, it exposes `add_source(s)` / `add_source(s, d)` and `add_target(t)` / `add_target(t, d)`, so either side can be seeded with several vertices at chosen offsets. `pred_arc(v)`, `succ_arc(v)`, `path_found()` and `path()` are gated on `Traits::store_paths`, which the default traits set to `true`.
+
 ## `network_voronoi`
 
 ```cpp
@@ -133,6 +136,22 @@ for(auto && [v, entry] : network_voronoi(graph, length_map, kernels)) {
 A multi-source Dijkstra that remembers *which* source won each vertex: the graph-theoretic Voronoi diagram induced by a set of kernels. Yields `(vertex, (distance, kernel))` in nondecreasing distance order.
 
 `set_kernels(range)` replaces the kernel set on an existing object, so a study over many kernel sets allocates once.
+
+Iteration yields each vertex once and then forgets it. For per-vertex lookup after a `run()`, opt into storage through the traits — `store_distances` gates `dist(v)` and `dists_map()`, `store_clusters` gates `cluster(v)` and `clusters_map()` — the same shape as `dijkstra`'s `store_distances`:
+
+```cpp
+struct storing_traits : network_voronoi_default_traits<static_digraph, int> {
+    static constexpr bool store_distances = true;
+    static constexpr bool store_clusters = true;
+};
+
+network_voronoi alg(storing_traits{}, graph, length_map, kernels);
+alg.run();
+auto d = alg.dist(v);      // distance to the nearest kernel
+auto k = alg.cluster(v);   // that kernel's vertex id
+```
+
+`network_voronoi_traits` also requires a third flag, `store_cluster_adjacency` — currently inert — so a from-scratch traits struct must declare it; inheriting `network_voronoi_default_traits`, as above, is the easier route.
 
 ## `biobjective_dijkstra`
 
@@ -155,7 +174,7 @@ for(auto && [b, r] : alg.pareto_front(4u))
 
 A label-setting algorithm for the bi-objective shortest path problem: instead of one distance per vertex it maintains the set of Pareto-optimal `(blue, red)` labels, discarding dominated ones as they are generated. `pareto_front(v)` is the resulting range of nondominated cost pairs, and `is_dominated(v, label)` answers the query directly.
 
-Both length maps must have the same value type — enforced by a `requires` clause. The output can be exponentially large in principle; on realistic instances it is not, but there is no cap and no ε-dominance option.
+The two length maps may have different value types — the blue and red objectives are tracked independently. The output can be exponentially large in principle; on realistic instances it is not, but there is no cap and no ε-dominance option.
 
 ## `competing_dijkstras`
 
@@ -170,7 +189,7 @@ alg.run();
 
 Runs two searches with *different length maps* over the same graph, in one heap, where each vertex is claimed by whichever search reaches it first. `add_blue_source` and `add_red_source` seed the two sides, and `set_blue_length_map` / `set_red_length_map` swap the maps between runs.
 
-This is the machinery behind "which vertices are strictly closer under one length function than another" — comparing a nominal and a perturbed cost, for instance — computed in a single pass instead of two searches and a subtraction. As with `biobjective_dijkstra`, both maps must share a value type.
+This is the machinery behind "which vertices are strictly closer under one length function than another" — comparing a nominal and a perturbed cost, for instance — computed in a single pass instead of two searches and a subtraction. Both maps must share a value type — enforced by a `requires` clause.
 
 ## Choosing
 
