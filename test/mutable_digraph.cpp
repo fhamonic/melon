@@ -1,6 +1,11 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <optional>
+#include <set>
+#include <vector>
+
 #include "melon/container/mutable_digraph.hpp"
 #include "melon/graph.hpp"
 
@@ -239,6 +244,82 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
                 ASSERT_EQ(arc_target(graph, a), dummy_graph.arc_target(a));
                 ASSERT_EQ(arc_source(graph, a), dummy_graph.arc_source(a));
             }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// removing a vertex returns every one of its arc ids to the free list
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: remove_vertex() relinks each incidence chain through
+// .next_in_arc and splices it onto the free list, but published the chain's
+// *tail* as the new head instead of its first arc. Only one arc per chain came
+// back; the rest were unreachable forever, so _arcs grew without bound under
+// churn -- and with it every create_arc_map, which sizes on _arcs.size()
+// rather than num_arcs(). Nothing above catches it: the structure stays
+// perfectly consistent, only the ids leak.
+GTEST_TEST(mutable_digraph, remove_vertex_frees_every_incident_arc) {
+    mutable_digraph graph;
+    const auto hub = create_vertex(graph);
+    std::vector<vertex_t<Graph>> others;
+    for(std::size_t i = 0; i < 4; ++i) others.push_back(create_vertex(graph));
+
+    std::set<arc_t<Graph>> freed;
+    for(auto && v : others) freed.insert(create_arc(graph, v, hub));
+    for(auto && v : others) freed.insert(create_arc(graph, hub, v));
+    // the self-loop is the interesting one: it sits in both incidence lists,
+    // so a splice that mishandles it either strands it or frees it twice
+    freed.insert(create_arc(graph, hub, hub));
+    ASSERT_EQ(freed.size(), 9u);
+
+    remove_vertex(graph, hub);
+    ASSERT_EQ(num_arcs(graph), 0u);
+
+    // every freed id comes back, and each exactly once -- a double free would
+    // hand the same id out twice and shrink the set
+    const auto hub2 = create_vertex(graph);
+    std::set<arc_t<Graph>> reused;
+    for(auto && v : others) reused.insert(create_arc(graph, v, hub2));
+    for(auto && v : others) reused.insert(create_arc(graph, hub2, v));
+    reused.insert(create_arc(graph, hub2, hub2));
+    ASSERT_EQ(reused, freed);
+}
+
+// The same property without leaning on an allocation order: over an arbitrary
+// mutation sequence, an id is only ever minted when the free list is empty, so
+// the highest one handed out stays below the peak number of live arcs.
+GTEST_TEST(mutable_digraph, arc_ids_stay_bounded_by_the_peak_arc_count) {
+    for(std::size_t j = 0; j < 10; ++j) {
+        mutable_digraph graph;
+        dumb_digraph reference;
+        std::size_t peak_arcs = 0;
+        std::optional<arc_t<Graph>> highest_id;
+
+        for(std::size_t i = 0; i < 200; ++i) {
+            const auto num_vertices_ =
+                std::ranges::distance(reference.vertices());
+            if(num_vertices_ < 3 || i % 3 == 0) {
+                const auto u = create_vertex(graph);
+                reference.create_vertex(u);
+            } else if(i % 3 == 1) {
+                const auto s = random_element(reference.vertices());
+                const auto t = random_element(reference.vertices());
+                const auto a = create_arc(graph, s, t);
+                reference.create_arc(a, s, t);
+                highest_id = highest_id ? std::max(*highest_id, a) : a;
+            } else {
+                const auto u = random_element(reference.vertices());
+                remove_vertex(graph, u);
+                reference.remove_vertex(u);
+            }
+            peak_arcs = std::max(peak_arcs, num_arcs(graph));
+        }
+
+        if(highest_id.has_value()) {
+            ASSERT_LT(*highest_id, peak_arcs)
+                << "arc ids outgrew the peak live-arc count: the free list is "
+                   "losing entries";
         }
     }
 }

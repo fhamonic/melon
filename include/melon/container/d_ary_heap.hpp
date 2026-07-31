@@ -394,8 +394,15 @@ protected:
     }
     friend base_class;
 
-    [[nodiscard]] size_type index_of(const id_type & k) const {
+    // A *byte* offset into the heap array, the unit heap_move() writes and
+    // entry_ref() reads -- not an element index. Named for the unit: every
+    // member below feeds it straight to entry_ref() or adjust_heap(), and an
+    // element index is silently in range for a heap of more than one entry.
+    [[nodiscard]] size_type byte_offset_of(const id_type & k) const {
         return _heap_index_map[k];
+    }
+    [[nodiscard]] size_type heap_bytes() const noexcept {
+        return base_class::_heap_array.size() * sizeof(value_type);
     }
 
 public:
@@ -412,34 +419,36 @@ public:
     // keys they have pushed.
     [[nodiscard]] priority_type priority(const id_type & k) const {
         return base_class::_entry_priority_map[base_class::entry_ref(
-            index_of(k))];
+            byte_offset_of(k))];
     }
+    // The bound is the array's size *in bytes*, and the entry is reached
+    // through entry_ref(): comparing the offset against _heap_array.size() --
+    // an element count -- reports every entry but the top one as absent, and
+    // subscripting _heap_array with it then names the wrong entry.
     [[nodiscard]] bool contains(const id_type & k) const {
-        const size_type i = index_of(k);
-        if(i >= base_class::_heap_array.size()) return false;
-        return _entry_id_map[base_class::_heap_array[i]] == k;
+        const size_type offset = byte_offset_of(k);
+        if(offset >= heap_bytes()) return false;
+        return _entry_id_map[base_class::entry_ref(offset)] == k;
     }
     void promote(const id_type & k, const priority_type & p)
         requires mutable_entry_priority_map<EntryPriorityMap, Entry>
     {
-        value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
+        value_type e = std::move(base_class::entry_ref(byte_offset_of(k)));
         assert(
             !base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
         base_class::_entry_priority_map[e] = p;
-        base_class::heap_push(_heap_index_map[k], std::move(e));
+        base_class::heap_push(byte_offset_of(k), std::move(e));
     }
     void demote(const id_type & k, const priority_type & p)
         requires mutable_entry_priority_map<EntryPriorityMap, Entry>
     {
-        value_type e = std::move(base_class::entry_ref(_heap_index_map[k]));
+        value_type e = std::move(base_class::entry_ref(byte_offset_of(k)));
         assert(
             base_class::_priority_cmp(base_class::_entry_priority_map[e], p));
         base_class::_entry_priority_map[e] = p;
         // Unlike pop(), every slot of the array is still live here, so the
         // sifting range covers the whole heap.
-        base_class::adjust_heap(
-            _heap_index_map[k],
-            base_class::_heap_array.size() * sizeof(value_type), std::move(e));
+        base_class::adjust_heap(byte_offset_of(k), heap_bytes(), std::move(e));
     }
 };
 

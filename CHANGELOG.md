@@ -327,6 +327,29 @@ First stable release.
 
 ### Fixed
 
+- **`updatable_d_ary_heap::contains()` reported every entry but the top one
+  as absent.** The index map stores *byte* offsets — the unit `heap_move()`
+  writes and `entry_ref()` reads — while `contains()` compared one against
+  `_heap_array.size()`, an element count, and then subscripted `_heap_array`
+  with it: only the entry at offset 0 answered `true`, and a stale offset
+  could name an unrelated slot. The bound is now taken in bytes and the entry
+  reached through `entry_ref()`; the accessor is renamed `byte_offset_of()`
+  and every member goes through it, so nothing else re-derives the unit.
+  `priority()`, `promote()` and `demote()` were always right — no algorithm
+  in the library calls `contains()`, so results were unaffected. Pinned in
+  `test/d_ary_heap.cpp` (`contains_answers_for_every_entry`).
+- **`mutable_digraph::remove_vertex()` leaked arc ids.** Both incidence
+  chains are relinked through `.next_in_arc` and spliced onto the free list,
+  but the chain's *tail* was published as the new head instead of its first
+  arc, so removing a vertex of degree *k* recycled one id per direction and
+  stranded the rest. The structure stayed consistent — only the ids never
+  came back, so `_arcs` grew without bound under add/remove churn and so did
+  every `create_arc_map`, which sizes on `_arcs.size()` rather than
+  `num_arcs()`. Each chain is now spliced whole; the out-list head is read
+  *after* the in-arc loop, since a self-loop lives in both lists and that
+  loop unlinks it from the out-list. Pinned in `test/mutable_digraph.cpp`
+  (`remove_vertex_frees_every_incident_arc`,
+  `arc_ids_stay_bounded_by_the_peak_arc_count`).
 - **Moved-from `static_map`, `static_filter_map` and the digraphs violated
   their invariants.** The defaulted moves nulled the buffer but kept `_size`
   (and `mutable_digraph`'s counts and list heads), so a moved-from map

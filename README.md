@@ -139,6 +139,10 @@ melon is a young, single-maintainer library: the roadmap lists things that do no
 
 Bug reports, feature requests and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers building, running the test suite (including the sanitizer run expected before submitting), the code and comment conventions, and what CI enforces.
 
+## Acknowledgments
+
+This work is grounded in the PhD thesis and postdoctoral positions of François Hamonic, funded by Région Sud - Provence-Alpes-Côte d'Azur, Natural Solutions, the Eurpean Research Council grant SCALED to Cécile ALBERT (ERC-STG no 949812), the ANR project RESILIENCE (no- ANR-24-PEVD-0002) and the OASIS project of Aix-Marseille University's ITEM institute.
+
 ## License
 
 Distributed under the [Boost Software License 1.0](LICENSE).

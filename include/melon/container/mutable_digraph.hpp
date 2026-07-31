@@ -297,6 +297,7 @@ private:
     constexpr void remove_incident_arcs(const vertex v) noexcept {
         assert(is_valid_vertex(v));
         // in_arcs are already linked by .next_in_arc
+        const arc first_in_arc = _vertices[v].first_in_arc;
         arc last_in_arc = INVALID_ARC;
         for(const arc & a : in_arcs(v)) {
             last_in_arc = a;
@@ -304,6 +305,11 @@ private:
             _arcs_filter[a] = false;
             --_num_arcs;
         }
+        // Read after the loop above, not beside first_in_arc: a self-loop sits
+        // in both incidence lists, and the loop just unlinked it from v's
+        // out-list -- possibly the very arc first_out_arc named. That is also
+        // what keeps the two chains disjoint, so no arc is freed twice.
+        const arc first_out_arc = _vertices[v].first_out_arc;
         arc last_out_arc = INVALID_ARC;
         for(const arc & a : out_arcs(v)) {
             last_out_arc = a;
@@ -315,13 +321,19 @@ private:
         }
         // out_arcs were linked by .next_out_arc
         // [first_out_arc, last_out_arc] are now linked by .next_in_arc
+        //
+        // Each chain goes onto the free list *whole*: the tail takes the old
+        // head, and the new head is the chain's first arc. Publishing the tail
+        // instead recycles one arc per chain and strands the rest -- those ids
+        // never come back, so _arcs grows without bound under churn and so
+        // does every create_arc_map, which sizes on _arcs.size().
         if(last_in_arc != INVALID_ARC) {
             _arcs[last_in_arc].next_in_arc = _first_free_arc;
-            _first_free_arc = last_in_arc;
+            _first_free_arc = first_in_arc;
         }
         if(last_out_arc != INVALID_ARC) {
             _arcs[last_out_arc].next_in_arc = _first_free_arc;
-            _first_free_arc = last_out_arc;
+            _first_free_arc = first_out_arc;
         }
     }
 

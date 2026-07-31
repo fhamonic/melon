@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <array>
 #include <numeric>
 #include <queue>
 
@@ -367,6 +368,45 @@ GTEST_TEST(updatable_d_ary_heap, demote_actually_reorders) {
     ASSERT_EQ(heap.priority(2u), 5);
     ASSERT_EQ(heap.top().first, 1u);
     ASSERT_EQ(heap.top().second, 20);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// contains() answers for every entry, not only the one on top
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: the index map stores *byte* offsets -- the unit heap_move()
+// writes and entry_ref() reads -- while contains() compared one against
+// _heap_array.size(), an element count, and then subscripted _heap_array with
+// it. Only the entry at offset 0 answered true; every other live entry came
+// back absent. Every earlier test queried the top, which is exactly that one
+// entry, so the defect was invisible.
+GTEST_TEST(updatable_d_ary_heap, contains_answers_for_every_entry) {
+    const std::array<int, 4> priorities = {50, 90, 70, 60};
+    writable_heap heap(std::greater<int>{},
+                       indices_map(std::vector<std::size_t>(8)));
+    for(std::size_t k = 0; k < priorities.size(); ++k)
+        heap.push({k, priorities[k]});
+
+    ASSERT_EQ(heap.top().first, 1u);
+    for(std::size_t k = 0; k < priorities.size(); ++k) {
+        ASSERT_TRUE(heap.contains(k))
+            << "contains(" << k << ") on a live entry";
+        ASSERT_EQ(heap.priority(k), priorities[k]);
+    }
+
+    // a popped key drops out, whichever slot its stale offset now names
+    heap.pop();
+    ASSERT_FALSE(heap.contains(1u));
+    for(std::size_t k : {0u, 2u, 3u}) ASSERT_TRUE(heap.contains(k));
+
+    // and re-ordering loses none of the others
+    heap.promote(3u, 100);
+    ASSERT_EQ(heap.top().first, 3u);
+    for(std::size_t k : {0u, 2u, 3u}) ASSERT_TRUE(heap.contains(k));
+
+    while(!heap.empty()) heap.pop();
+    for(std::size_t k = 0; k < priorities.size(); ++k)
+        ASSERT_FALSE(heap.contains(k));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

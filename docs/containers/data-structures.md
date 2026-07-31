@@ -139,6 +139,7 @@ heap.push({1u, 1.0});
 heap.push({2u, 5.0});
 
 heap.contains(1u);      // true
+heap.contains(2u);      // true -- any live entry, not only the one on top
 heap.priority(1u);      // 1.0
 heap.promote(2u, 0.5);  // now on top
 ```

@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "melon/detail/stdlib_check.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
