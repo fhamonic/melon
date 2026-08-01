@@ -87,6 +87,8 @@ melon is header-only and dependency-free: putting `include/` on your include pat
 | MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
 | MSVC | — | not supported |
 
+GCC 15 / C++26 is the recommended configuration; GCC 14 / C++23 is supported through a bundled fallback for `std::views::concat`, which costs one view's range category — the [C++23-versus-C++26 note](https://fhamonic.github.io/melon/getting-started/installation/) has the details and the option that checks portability from a C++26 build.
+
 **As a Conan package** — build the tagged release locally, then declare `melon/1.0.0` in your `conanfile.txt`:
 
 ```sh

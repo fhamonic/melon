@@ -114,8 +114,7 @@ public:
     // walks a concat of two transform_views, and disappears altogether where
     // the concat is not a sized_range -- which depends on whether the standard
     // library offers std::views::concat, so has_degree<undirect_view> would
-    // answer differently on two supported toolchains. See CONCAT_VIEW_ISSUE.md
-    // before removing this in favour of the fallback.
+    // answer differently on two supported toolchains.
     [[nodiscard]] constexpr auto degree(const vertex & u) const
         noexcept(noexcept(melon::out_degree(_graph, u)) &&
                  noexcept(melon::in_degree(_graph, u)))

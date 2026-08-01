@@ -137,8 +137,7 @@ static_assert(
 // implementation detail/concat_view.hpp selects, hence on
 // __cpp_lib_ranges_concat, hence on the toolchain: has_degree answers false
 // under GCC 14 / C++23 and true under GCC 15 / C++26. This static_assert is
-// what fails if the member is dropped. CONCAT_VIEW_ISSUE.md covers the half of
-// that divergence still open.
+// what fails if the member is dropped.
 static_assert(
     melon::has_degree<undirect_view<views::graph_all_t<static_digraph &>>>);
 

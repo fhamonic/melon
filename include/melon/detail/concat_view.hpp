@@ -8,7 +8,25 @@
 
 namespace melon::detail::views {
 
-#if defined(__cpp_lib_ranges_concat)
+// std::views::concat is a C++26 addition; the fallback below is what makes
+// the documented C++23 minimum work. The two do not hand out the same range:
+// over bases that are themselves sized, common or random-access -- a
+// static_digraph's incidence ranges, for instance -- std's concat is all
+// three and the fallback is none of them, so undirect_view::incidence(u) is
+// a richer range under C++26. The shapes are ordered rather than
+// contradictory: the fallback claims no property std's lacks, on any base
+// combination, so code written against a C++23 build keeps compiling on a
+// C++26 one. The converse does not hold, which is what the macro below is
+// for: defining MELON_PORTABLE_RANGE_SHAPES forces the fallback, reproducing
+// the C++23 range shapes on a C++26 toolchain without installing a second
+// one.
+//
+// It must be defined for every translation unit of a program, and the CMake
+// option of the same name (which puts it on the melon interface target) is
+// the way to do that: it changes the return type of undirect_view::incidence,
+// so a program mixing the two settings -- like one mixing -std=c++23 and
+// -std=c++26 objects -- is ill-formed, no diagnostic required.
+#if defined(__cpp_lib_ranges_concat) && !defined(MELON_PORTABLE_RANGE_SHAPES)
 
 inline constexpr auto concat = std::views::concat;
 

@@ -13,15 +13,43 @@ melon is header-only and dependency-free: adding its `include/` directory to you
 | MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
 | MSVC | — | not supported |
 
-CMake 3.24 or later is required for the CMake integration, and Conan 2.0 or later for the Conan one.
+CMake 3.24 or later is required for the CMake integration, and Conan 2.0 or later for the Conan one. Asking CMake for a **C++26** build needs **3.30**: `CXX_STANDARD 26` became a valid value in 3.25, but no `-std=c++26` mapping exists for GCC before 3.30, where the `cxx_std_26` compile feature was finally implemented. Older CMake is not an error — the `melon::melon` target requires only `cxx_std_23`, so you get a working C++23 build with the range shapes noted below.
 
 !!! note "C++23 versus C++26"
 
     melon uses `std::ranges::concat_view`, which is a C++26 addition. When the
     standard library does not advertise it through `__cpp_lib_ranges_concat`,
-    melon transparently falls back to a bundled implementation — this is
-    detected per translation unit, needs no flag, and is why C++23 works.
-    Nothing else in the library is conditional.
+    melon falls back to a bundled implementation — this needs no flag, and is
+    why C++23 works. Nothing else in the library is conditional.
+
+    The fallback is a forward range ending at a sentinel; std's is *also*
+    sized, common and random-access whenever its bases are. Three members are
+    built on it, and only one of them — over a graph whose own incidence
+    ranges are richer than forward — can tell the difference:
+
+    | expression | C++23 | GCC 15 / C++26 |
+    | --- | --- | --- |
+    | `incidence(ug, v)`, `ug` undirecting a `static_digraph` | forward | forward, bidirectional, random-access, sized, common |
+    | `incidence(ug, v)`, `ug` undirecting a `mutable_digraph` | forward | forward |
+    | `in_arcs(g, v)` on a `complete_digraph` | forward | forward |
+    | `bidirectional_dijkstra::path()` | forward | forward |
+
+    So **C++23 is the shape melon guarantees**: a range documented only by
+    concept is a `forward_range` you walk to its end, and a C++26 standard
+    library may hand you a stronger one but never a weaker one. Write against
+    that floor — ask `degree(ug, v)` for a cardinality rather than sizing the
+    range — and the same code compiles on every configuration in the table
+    above. Code that requires `sized_range`, `common_range` or
+    `random_access_range` of one of those ranges compiles on GCC 15 / C++26
+    and fails on the GCC 14 minimum.
+
+    To catch that from a C++26 build without installing GCC 14, configure with
+    `-DMELON_PORTABLE_RANGE_SHAPES=ON` (or define the macro of the same name):
+    melon then uses the fallback everywhere and reproduces the C++23 shapes.
+    The setting must be the same for every translation unit of a program — it
+    changes the return type of `incidence()` — which is why the CMake option
+    puts it on the `melon::melon` interface target, and it is also why objects
+    compiled as C++23 and as C++26 must not be linked into one program.
 
 ## As a Conan package
 
