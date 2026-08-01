@@ -97,7 +97,7 @@ Header-only and dependency-free. **C++23** is the baseline; GCC 15 / C++26 is re
 
 ## Status
 
-1.0.0 is melon's first stable release. Every header outside `melon/detail/` and `melon/experimental/` is frozen API for the 1.x series, under [semantic versioning](https://semver.org); the design rulings that guarantee rests on are stated in [The 1.0 contract](contract.md). See the [changelog](https://github.com/fhamonic/melon/blob/main/CHANGELOG.md) for what has landed.
+1.0.0 is melon's first stable release. Every header outside `melon/detail/` and `melon/experimental/` is frozen API for the 1.x series, under [semantic versioning](https://semver.org); the design rulings that guarantee rests on are stated in [The 1.0 contract](contract.md).
 
 ## Documentation, license
 

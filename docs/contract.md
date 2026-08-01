@@ -149,6 +149,24 @@ Anything subscriptable-const works directly: `static_map`, `std::vector`
 mapping stored by view is `mapping_view`. There is no `input_mapping` layer
 anymore — `mapping` *is* the readable concept.
 
+The second casualty is a **mutable lambda**: its `operator()` is non-const, so
+`maps::map([state](K k) mutable { … })` is not readable through a const access
+and `mapping<…>` is `false` for it. The map stays usable through its non-const
+subscript; it is only the const one that leaves the overload set. Spell a
+stateful map as a *const* lambda handing out a reference into storage it does
+not own:
+
+```cpp
+std::vector<double> storage(n);
+auto m = maps::map([&storage](arc_t<G> a) -> double & { return storage[a]; });
+```
+
+`output_mapping` demands that a write actually lands: the subscript must return
+an lvalue reference into storage, or a proxy standing in for one
+(`std::vector<bool>`, `static_filter_map`). A map whose subscript returns a
+*prvalue of the value type* — a computed map — is readable but is not an
+`output_mapping`, because `m[k] = v` would assign into a temporary.
+
 ## Ruling 5 — Direct call and pipe differ for lvalue filters, on purpose
 
 `views::subgraph(g, filter)` and `g | views::subgraph(filter)` are the same

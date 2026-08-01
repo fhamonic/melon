@@ -50,10 +50,17 @@ template <typename Map, typename Key, typename Value>
 concept mapping_of =
     mapping<Map, Key> && std::same_as<mapped_value_t<Map, Key>, Value>;
 
+// The disequality is not redundant with the requires-expression below. A
+// subscript returning a prvalue of the value type stores nothing -- `m[k] = v`
+// assigns into a temporary -- yet it satisfies that expression, assigning to a
+// class prvalue being well-formed and yielding the same `V &` a real map would.
+// Only scalar value types are rejected without it, so dropping it admits
+// computed maps of class type whose every write is silently discarded.
 template <typename Map, typename Key>
 concept output_mapping =
     mapping<Map, Key> &&
-    requires(Map map, Key key, mapped_value_t<Map, Key> value) {
+    !std::same_as<mapped_reference_t<Map, Key>, mapped_value_t<Map, Key>> &&
+    requires(Map & map, Key key, mapped_value_t<Map, Key> value) {
         {
             map[key] = value
         } -> std::same_as<
@@ -108,6 +115,51 @@ constexpr decltype(auto) mapping_subscript(Map & m, Key && k) {
                       "operator()(key) or at(key).");
 }
 
+// One concept per branch of the dispatch above, in the same order: a fourth
+// spelling added there and not here makes can_mapping_subscript reject a map
+// the dispatch handles, silently removing its subscript from the overload set.
+template <typename Map, typename Key>
+concept callable_with =
+    requires(Map & m, Key && k) { m(std::forward<Key>(k)); };
+
+template <typename Map, typename Key>
+concept at_callable_with =
+    requires(Map & m, Key && k) { m.at(std::forward<Key>(k)); };
+
+// mapping_subscript ends in a static_assert and is reached through members
+// returning decltype(auto), so computing such a member's type instantiates the
+// body and the failure escapes the immediate context. Every member that exposes
+// it is constrained on this: drop the constraint and asking `mapping<M, K>`
+// about a map the dispatch rejects fails to compile instead of yielding false,
+// which no requires-clause can recover from. A mutable lambda is what reaches
+// this, its operator() being non-const.
+template <typename Map, typename Key>
+concept can_mapping_subscript =
+    subscriptable_with<Map, Key> || callable_with<Map, Key> ||
+    at_callable_with<Map, Key>;
+
+// Enumerates the *non-const* shapes rather than negating the const ones, so
+// that the default for anything not listed -- a ref-qualified operator(), an
+// unusual signature -- is false. A wrong `false` here costs nothing (the
+// callable falls through to the ordinary concept machinery); a wrong `true`
+// would reject a legitimate const-callable map outright.
+template <typename T>
+inline constexpr bool is_non_const_call_operator = false;
+template <typename C, typename R, typename... Args>
+inline constexpr bool is_non_const_call_operator<R (C::*)(Args...)> = true;
+template <typename C, typename R, typename... Args>
+inline constexpr bool is_non_const_call_operator<R (C::*)(Args...) noexcept> =
+    true;
+
+// Taking the address of operator() is ill-formed for a *generic* lambda, whose
+// call operator is a template, so those answer false and are left to the
+// concepts to judge.
+template <typename F>
+concept has_non_const_call_operator = requires {
+    { &F::operator() };
+    requires is_non_const_call_operator<decltype(&F::operator())>;
+};
+
 }  // namespace detail
 
 template <typename Map>
@@ -149,7 +201,11 @@ public:
 
     constexpr Map & base() const noexcept { return *_map; }
 
+    // Map, not `const Map`: the access goes through `Map &` however const the
+    // view object is, so asking about `const Map` would drop the subscript for
+    // every view over a map that is only non-const readable.
     template <typename Key>
+        requires detail::can_mapping_subscript<Map, Key>
     [[nodiscard]] constexpr decltype(auto) operator[](Key && k) const {
         return detail::mapping_subscript(*_map, std::forward<Key>(k));
     }
@@ -191,11 +247,17 @@ public:
     constexpr const Map & base() const & noexcept { return *_map; }
     constexpr Map && base() && noexcept { return *std::move(_map); }
 
+    // Each guard asks about the qualification its own overload subscripts
+    // through. Spelling both `Map` admits the const overload for a map that is
+    // only non-const readable, and computing its return type then hard-errors
+    // inside mapping_subscript -- what the guards exist to prevent.
     template <typename Key>
+        requires detail::can_mapping_subscript<Map, Key>
     [[nodiscard]] constexpr decltype(auto) operator[](Key && k) {
         return detail::mapping_subscript(*_map, std::forward<Key>(k));
     }
     template <typename Key>
+        requires detail::can_mapping_subscript<const Map, Key>
     [[nodiscard]] constexpr decltype(auto) operator[](Key && k) const {
         return detail::mapping_subscript(*_map, std::forward<Key>(k));
     }
@@ -268,8 +330,19 @@ inline constexpr mapping_all_fn mapping_all{};
 template <typename Map>
 using mapping_all_t = decltype(mapping_all(std::declval<Map>()));
 
+// The diagnostic belongs here and not in the concepts, which are probed in
+// requires-clauses and must answer false rather than fire. maps::map is probed
+// nowhere, so it can afford to be loud; the same assert added to mapping_all
+// would break `requires { maps::mapping_all(x); }`.
 template <typename F>
 [[nodiscard]] constexpr auto map(F && f) {
+    static_assert(
+        !detail::has_non_const_call_operator<std::decay_t<F>>,
+        "melon: this callable cannot be used as a mapping -- its operator() is "
+        "not const (a `mutable` lambda), and melon reads maps through a const "
+        "access (contract Ruling 4). Do not let the map own the state: capture "
+        "the storage and hand out a reference into it, as in "
+        "maps::map([&storage](key_t k) -> value_t & { return storage[k]; }).");
     return mapping_owning_view<std::decay_t<F>>(
         std::decay_t<F>(std::forward<F>(f)));
 }

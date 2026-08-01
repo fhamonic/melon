@@ -127,7 +127,7 @@ Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): ev
 
 The guarantee rests on ten design rulings — algorithms are move-only, stored members are always views, mappings are read through const access, one lifecycle for every algorithm, preconditions are asserted rather than thrown — each pinned by tests and stated in [The 1.0 contract](https://fhamonic.github.io/melon/contract/). Code that follows them keeps compiling and keeps meaning the same thing for every 1.x release; if a 1.x release ever breaks such code, that is a bug in melon.
 
-`melon/version.hpp` is the single source of truth for the version number and lets you feature-test with `MELON_VERSION`. Changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+`melon/version.hpp` is the single source of truth for the version number and lets you feature-test with `MELON_VERSION`.
 
 ## Roadmap
 

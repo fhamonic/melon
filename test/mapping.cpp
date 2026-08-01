@@ -59,6 +59,34 @@ static_assert(!mapping<std::map<std::string, int>, std::string>);
 static_assert(!contiguous_mapping<std::map<std::size_t, int>, std::size_t>);
 
 ////////////////////////////////////////////////////////////////////////////////
+// output_mapping means the write *lands*: the subscript must return an lvalue
+// reference into storage, or a proxy standing in for one -- never a prvalue of
+// the value type itself
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+// A computed map: `operator[]` returns a fresh value every call, so
+// `m[k] = v` assigns into a temporary and the write is lost. It is a perfectly
+// good *readable* mapping.
+template <typename V>
+struct computed_map {
+    V operator[](int) const { return V{}; }
+};
+}  // namespace
+
+static_assert(mapping_of<computed_map<std::string>, int, std::string>);
+static_assert(!output_mapping<computed_map<std::string>, int>);
+// The class-type case is the one that needs the disequality: for a scalar the
+// requires-expression already rejects it, assignment to a scalar prvalue being
+// ill-formed. Both must stay rejected.
+static_assert(mapping_of<computed_map<int>, int, int>);
+static_assert(!output_mapping<computed_map<int>, int>);
+
+static_assert(!std::same_as<mapped_reference_t<std::vector<bool>, std::size_t>,
+                            mapped_value_t<std::vector<bool>, std::size_t>>);
+static_assert(output_mapping_of<std::vector<bool>, std::size_t, bool>);
+
+////////////////////////////////////////////////////////////////////////////////
 // only the adaptors and the canned maps are mapping_views; a raw mapping is
 // not
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +253,108 @@ static_assert(can_mapping_all<std::vector<int>>);
 static_assert(can_mapping_all<const std::vector<int> &>);
 static_assert(can_mapping_all<maps::true_map>);
 static_assert(!can_mapping_all<not_a_mapping>);
+
+// regression, same shape as the one above one layer down: the subscript
+// members of the two views reach detail::mapping_subscript, which ends in a
+// static_assert, through a decltype(auto) return type. Computing that type
+// instantiates the body, so without the guards on those members merely
+// *asking* `mapping<M, K>` about a map the dispatch rejects fails to compile
+// instead of yielding false.
+//
+// A mutable lambda is what reaches this: its operator() is non-const, so it is
+// not readable through a const access and is correctly not a mapping (contract
+// Ruling 4) -- but it has to *say* so rather than hard-error.
+// Built through mapping_owning_view directly, not maps::map: the factory
+// rejects a mutable lambda outright with a friendly static_assert (below), and
+// what is under test here is the layer beneath it -- that the *concepts* answer
+// false about such a view instead of hard-erroring.
+namespace {
+auto mutable_lambda = [counter = 0](unsigned k) mutable {
+    return k + (counter++);
+};
+using mutable_lambda_map_t = mapping_owning_view<decltype(mutable_lambda)>;
+}  // namespace
+
+// Named concepts rather than bare requires-expressions: outside a template
+// there is no substitution to suppress the failure, so `requires { m[0u]; }`
+// on a map lacking the subscript is a hard error rather than false -- the very
+// distinction under test here.
+namespace {
+template <typename M>
+concept subscriptable_mutable = requires(M & m) { m[0u]; };
+template <typename M>
+concept subscriptable_const = requires(const M & m) { m[0u]; };
+}  // namespace
+
+static_assert(!mapping<mutable_lambda_map_t, unsigned>);
+static_assert(!output_mapping<mutable_lambda_map_t, unsigned>);
+// Only the const subscript leaves the overload set; the map stays usable
+// through the non-const one.
+static_assert(subscriptable_mutable<mutable_lambda_map_t>);
+static_assert(!subscriptable_const<mutable_lambda_map_t>);
+static_assert(
+    subscriptable_mutable<decltype(maps::map([](unsigned k) { return k; }))>);
+static_assert(
+    subscriptable_const<decltype(maps::map([](unsigned k) { return k; }))>);
+
+// The supported spelling for a stateful map: a const lambda handing out a
+// reference into storage it does not own. Readable const, and writes land.
+namespace {
+std::vector<int> external_storage(4, 0);
+auto ref_lambda_map =
+    maps::map([](unsigned k) -> int & { return external_storage[k]; });
+using ref_lambda_map_t = decltype(ref_lambda_map);
+}  // namespace
+
+static_assert(mapping_of<ref_lambda_map_t, unsigned, int>);
+static_assert(output_mapping_of<ref_lambda_map_t, unsigned, int>);
+
+// maps::map rejects a mutable lambda with a friendly static_assert naming the
+// remedy. That the assert *fires* cannot be asserted from inside a compiling
+// test, so what is pinned here is the discriminator it fires on -- and above
+// all that it stays silent for everything else, a false positive being the
+// costly direction: it would reject a legitimate map outright.
+namespace {
+struct const_functor {
+    int operator()(unsigned k) const { return int(k); }
+};
+struct mutable_functor {
+    int counter = 0;
+    int operator()(unsigned k) { return int(k) + (counter++); }
+};
+struct noexcept_mutable_functor {
+    int operator()(unsigned k) noexcept { return int(k); }
+};
+struct ref_qualified_functor {
+    int operator()(unsigned k) const & { return int(k); }
+};
+}  // namespace
+
+static_assert(detail::has_non_const_call_operator<decltype(mutable_lambda)>);
+static_assert(detail::has_non_const_call_operator<mutable_functor>);
+static_assert(detail::has_non_const_call_operator<noexcept_mutable_functor>);
+
+static_assert(!detail::has_non_const_call_operator<const_functor>);
+static_assert(!detail::has_non_const_call_operator<ref_qualified_functor>);
+static_assert(!detail::has_non_const_call_operator<decltype([](unsigned k) {
+    return k;
+})>);
+// The detector abstains on generic lambdas, mutable ones included, and that is
+// not a hole to be plugged with sharper detection: the guard concepts are the
+// real gate, and the assertion below is what keeps it true.
+static_assert(
+    !detail::has_non_const_call_operator<decltype([](auto k) { return k; })>);
+static_assert(!detail::has_non_const_call_operator<decltype([](auto k) mutable {
+    return k;
+})>);
+static_assert(
+    !mapping<mapping_owning_view<decltype([](auto k) mutable { return k; })>,
+             unsigned>);
+
+GTEST_TEST(mapping, writes_through_a_reference_returning_lambda_map_land) {
+    ref_lambda_map[2u] = 42;
+    ASSERT_EQ(external_storage[2], 42);
+}
 
 // an lvalue is referenced, an rvalue is owned -- the std::views::all contract
 static_assert(std::same_as<maps::mapping_all_t<std::vector<int> &>,
