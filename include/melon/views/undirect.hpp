@@ -108,6 +108,22 @@ public:
         return {melon::arc_source(_graph, e), melon::arc_target(_graph, e)};
     }
 
+    // Counts a self-loop twice, incidence(u) listing it in both directions.
+    //
+    // A member rather than the CPO's size-the-range fallback: that fallback
+    // walks a concat of two transform_views, and disappears altogether where
+    // the concat is not a sized_range -- which depends on whether the standard
+    // library offers std::views::concat, so has_degree<undirect_view> would
+    // answer differently on two supported toolchains. See CONCAT_VIEW_ISSUE.md
+    // before removing this in favour of the fallback.
+    [[nodiscard]] constexpr auto degree(const vertex & u) const
+        noexcept(noexcept(melon::out_degree(_graph, u)) &&
+                 noexcept(melon::in_degree(_graph, u)))
+        requires has_out_degree<Graph> && has_in_degree<Graph>
+    {
+        return melon::out_degree(_graph, u) + melon::in_degree(_graph, u);
+    }
+
     // Not noexcept: builds a concat of two transform_views over the wrapped
     // graph's incidence ranges, each of which may allocate or throw.
     [[nodiscard]] constexpr decltype(auto) incidence(const vertex & u) const

@@ -423,13 +423,27 @@ public:
     // between a caller and a silently ignored argument. It must stay implicit
     // and one-argument -- that is what lets a const_value<int, 1> denominator
     // be initialized `_den(1)`, as rational's constructors do.
-    constexpr bounded_value(T v) {
-        assert(v == V);
+    //
+    // A constrained template rather than a plain `T` parameter, mirroring the
+    // primary template: taking `T` lets any *other* bounded_value in through
+    // the implicit operator T(), so a bound violation the general template
+    // rejects at compile time -- `bounded_value<int, 1, 2>` from
+    // `bounded_value<int, 0, 10>` is ill-formed -- reaches a runtime assert
+    // here instead.
+    template <std::convertible_to<T> V_>
+        requires(!std::derived_from<std::remove_cvref_t<V_>,
+                                    bounded_value_base_base>)
+    constexpr bounded_value(V_ v) {
+        assert(detail::cmp_equal(v, V));
         (void)v;
     }
     constexpr bounded_value() = default;
     constexpr bounded_value(const bounded_value &) = default;
     constexpr bounded_value(bounded_value &&) = default;
+
+    template <typename OT, OT OMIN, OT OMAX, typename OPS>
+        requires(detail::cmp_equal(OMIN, V) && detail::cmp_equal(OMAX, V))
+    constexpr bounded_value(const bounded_value<OT, OMIN, OMAX, OPS> &) {}
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
         requires(detail::cmp_equal(OMIN, V) && detail::cmp_equal(OMAX, V))

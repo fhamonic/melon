@@ -158,3 +158,53 @@ concept edmonds_karp_admits =
 static_assert(edmonds_karp_admits<int>);
 static_assert(edmonds_karp_admits<double>);
 static_assert(!edmonds_karp_admits<zero_infinity_probes::opaque_capacity>);
+
+////////////////////////////////////////////////////////////////////////////////
+// the unset-terminal and un-converged states are preconditions, not silent
+// wrong answers
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: _s and _t were left default-initialised by the two-argument
+// constructor, and run()/flow_value() read them -- the only stated
+// preconditions in the library that Ruling 8 did not actually assert.
+// minimum_cut() has a second one: it reads the reachability the *final*,
+// failed augmenting search leaves behind, so before run() converges it names a
+// cut of no particular graph.
+namespace {
+auto two_arc_instance() {
+    static_digraph_builder<static_digraph, int> builder(3);
+    builder.add_arc(0, 1, 5).add_arc(1, 2, 3);
+    return builder.build();
+}
+}  // namespace
+
+GTEST_TEST(edmonds_karp, unset_terminals_are_preconditions) {
+    auto [graph, capacity_map] = two_arc_instance();
+
+    edmonds_karp alg(graph, capacity_map);
+    EXPECT_DEATH((void)alg.run(), "");
+    EXPECT_DEATH((void)alg.flow_value(), "");
+
+    // setting only one is not enough either
+    edmonds_karp half(graph, capacity_map);
+    half.set_source(0u);
+    EXPECT_DEATH((void)half.run(), "");
+}
+
+GTEST_TEST(edmonds_karp, minimum_cut_requires_a_converged_run) {
+    auto [graph, capacity_map] = two_arc_instance();
+    edmonds_karp alg(graph, capacity_map, 0u, 2u);
+
+    EXPECT_DEATH((void)alg.minimum_cut(), "");
+
+    alg.run();
+    ASSERT_EQ(alg.flow_value(), 3);
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {1}));
+
+    // reset() and re-aiming both invalidate it again
+    alg.reset();
+    EXPECT_DEATH((void)alg.minimum_cut(), "");
+    alg.run();
+    alg.set_target(1u);
+    EXPECT_DEATH((void)alg.minimum_cut(), "");
+}

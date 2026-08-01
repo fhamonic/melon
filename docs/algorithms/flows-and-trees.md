@@ -48,14 +48,22 @@ Dinitz's algorithm: rank the vertices by BFS, then push blocking flows through t
 | `flows_map()` | a read-only view of the per-arc flows, for bulk reads and composition |
 | `minimum_cut()` | the arcs of a minimum cut, as a range |
 
-!!! warning "Set the terminals before running"
+!!! warning "Set the terminals before running, and run before reading the cut"
 
     The two-argument constructor `dinitz(graph, capacity)` builds the working
     maps but leaves the terminals unset — it exists so you can pick them later,
     and change them, without paying for the maps again. `run()`,
     `flow_value()` and `minimum_cut()` all read them, so call `set_source` and
-    `set_target` first, or use the four-argument constructor. The same applies
-    to `edmonds_karp`.
+    `set_target` first, or use the four-argument constructor. Both are
+    asserted, as every precondition in melon is.
+
+    `minimum_cut()` carries a second one: it reads the reachability the
+    *final, failed* search leaves behind, so it names a minimum cut only once
+    `run()` has converged. `reset()`, `set_source()` and `set_target()` each
+    invalidate it again. `flow(a)` and `flows_map()` have no such restriction —
+    every augmentation preserves conservation, so they are readable throughout.
+
+    The same applies to `edmonds_karp`.
 
 `set_source`, `set_target` and `reset()` chain, so a series of *s*–*t* computations on one graph reuses all the allocations:
 

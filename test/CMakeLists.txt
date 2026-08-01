@@ -79,6 +79,7 @@ add_executable(
   geometry.cpp
   api_consistency.cpp
   api_review.cpp
+  differential.cpp
 )
 target_include_directories(melon_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(melon_test GTest::gtest)

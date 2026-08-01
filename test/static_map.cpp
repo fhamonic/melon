@@ -425,3 +425,22 @@ GTEST_TEST(static_map, moved_from_is_a_valid_empty_map) {
     ASSERT_EQ(target.size(), 0u);
     ASSERT_TRUE(target.empty());
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// every mutating member is usable in a constant expression
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: fill() was the one member without constexpr, so a static_map
+// could be built, subscripted and assigned at compile time but not filled --
+// and every reset() in the library that calls it, all of them declared
+// constexpr, carried a promise the container could not keep.
+namespace {
+consteval int filled_then_read() {
+    static_map<unsigned int, int> m(4u);
+    m.fill(3);
+    m[2] = 7;
+    return m[0] + m[1] + m[2] + m[3];
+}
+}  // namespace
+
+static_assert(filled_then_read() == 3 + 3 + 7 + 3);

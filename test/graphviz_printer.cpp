@@ -226,3 +226,46 @@ GTEST_TEST(graphviz_printer, emits_the_graph_attributes_not_a_node) {
 static_assert(!std::is_constructible_v<printer, static_digraph>);
 static_assert(std::is_constructible_v<printer, static_digraph &>);
 static_assert(std::is_constructible_v<printer, const static_digraph &>);
+
+////////////////////////////////////////////////////////////////////////////////
+// labels are escaped, so user data cannot become graph syntax
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: labels were interpolated raw into `label="{}"`. A DOT quoted
+// string ends at the first unescaped '"', so a label carrying one closed the
+// attribute list early and everything after it was parsed as further
+// attributes -- `a" shape=box color="red` silently restyled the node.
+GTEST_TEST(graphviz_printer, quotes_in_labels_do_not_inject_attributes) {
+    const auto graph = triangle_digraph();
+    printer p(graph);
+    p.set_vertex_label(0u, std::string("a\" shape=box color=\"red"));
+    const std::string dot = print(p);
+
+    // The whole attribute list, not just the label: what the payload must not
+    // do is end the quoted string, and only the closing bracket landing right
+    // after it shows that it did not. (`shape=box` still occurs in the output
+    // -- as label text, which is the point.)
+    ASSERT_TRUE(contains(
+        dot, "0 [width=\"1\" label=\"a\\\" shape=box color=\\\"red\"]"));
+}
+
+// a trailing backslash would otherwise escape the closing quote and swallow
+// the rest of the line
+GTEST_TEST(graphviz_printer, backslashes_in_labels_are_escaped) {
+    const auto graph = triangle_digraph();
+    printer p(graph);
+    p.set_vertex_label(1u, std::string("c:\\"));
+    const std::string dot = print(p);
+
+    ASSERT_TRUE(contains(dot, "label=\"c:\\\\\""));
+}
+
+// arc labels go through the same path
+GTEST_TEST(graphviz_printer, arc_labels_are_escaped_too) {
+    const auto graph = triangle_digraph();
+    printer p(graph);
+    p.set_arc_label(0u, std::string("w=\"1\""));
+    const std::string dot = print(p);
+
+    ASSERT_TRUE(contains(dot, "label=\"w=\\\"1\\\"\""));
+}

@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <limits>
 #include <ranges>
 
@@ -90,7 +91,14 @@ private:
     template <std::integral T>
     class custom_iota_iterator {
     public:
-        using iterator_category = std::forward_iterator_tag;
+        // operator*() returns a prvalue, which Cpp17ForwardIterator forbids
+        // (*it must be a reference); the C++20 concept has no such
+        // requirement, so the two tags deliberately differ. Nothing outside
+        // can catch a regression here -- the class is private and in_arcs()
+        // hands out a concat over it, so std::iterator_traits of *this*
+        // iterator is unreachable from a test.
+        using iterator_concept = std::forward_iterator_tag;
+        using iterator_category = std::input_iterator_tag;
         using value_type = T;
         using reference = T;
         using pointer = void;

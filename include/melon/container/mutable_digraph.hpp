@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <functional>
 #include <limits>
 #include <ranges>
@@ -307,8 +308,11 @@ private:
         }
         // Read after the loop above, not beside first_in_arc: a self-loop sits
         // in both incidence lists, and the loop just unlinked it from v's
-        // out-list -- possibly the very arc first_out_arc named. That is also
-        // what keeps the two chains disjoint, so no arc is freed twice.
+        // out-list -- possibly the very arc first_out_arc named. Hoisting the
+        // two reads together publishes an arc the out-loop never visits, whose
+        // next_in_arc was never rewritten, so the free list runs into live
+        // arcs. It is also what keeps the two chains disjoint, so no arc is
+        // freed twice.
         const arc first_out_arc = _vertices[v].first_out_arc;
         arc last_out_arc = INVALID_ARC;
         for(const arc & a : out_arcs(v)) {
@@ -322,11 +326,11 @@ private:
         // out_arcs were linked by .next_out_arc
         // [first_out_arc, last_out_arc] are now linked by .next_in_arc
         //
-        // Each chain goes onto the free list *whole*: the tail takes the old
-        // head, and the new head is the chain's first arc. Publishing the tail
-        // instead recycles one arc per chain and strands the rest -- those ids
-        // never come back, so _arcs grows without bound under churn and so
-        // does every create_arc_map, which sizes on _arcs.size().
+        // The new free-list head is the chain's *first* arc, not the tail the
+        // loop above happens to be holding. Publishing the tail recycles one
+        // arc per chain and strands the rest: nothing reads them again, so
+        // _arcs grows without bound under churn, and so does every
+        // create_arc_map, which sizes on _arcs.size() rather than num_arcs().
         if(last_in_arc != INVALID_ARC) {
             _arcs[last_in_arc].next_in_arc = _first_free_arc;
             _first_free_arc = first_in_arc;

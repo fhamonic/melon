@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <random>
 
 #include "melon/container/static_digraph.hpp"

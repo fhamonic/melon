@@ -104,6 +104,25 @@ First stable release.
 
 ### Added
 
+- **`topological_sort::is_acyclic()`.** Kahn's algorithm stops with every
+  vertex on a cycle — and every vertex behind one — still holding a positive
+  remaining in-degree, so it orders strictly fewer than all of them. Asking
+  whether the graph was a DAG previously meant counting the emitted vertices
+  by hand against `num_vertices`. Requires a drained sweep, asserted.
+- **`undirect_view::degree(u)`.** `out_degree(u) + in_degree(u)`, which is
+  exactly `incidence(u)`'s cardinality with self-loops counted twice — the
+  answer the CPO's size-the-range fallback gave, without the walk. See
+  *Fixed* for why it is a member.
+- **Randomized differential tests** (`test/differential.cpp`). Dijkstra
+  distances *and* reconstructed paths, bidirectional Dijkstra, network
+  Voronoi cells, Dinitz against Edmonds–Karp plus flow conservation and
+  capacity, topological order, and strongly connected components against
+  mutual reachability, all cross-checked against an independent reference on
+  random graphs rather than against hand-written values on one fixed graph.
+  The suite's random helpers now share a single engine seeded once per run and
+  printed at startup, so a failure is replayable with `MELON_TEST_SEED`;
+  previously every helper built its own generator from `std::random_device`
+  and a red run could not be reproduced.
 - **Stored maps are exposed as map views.** The `reached()`/`reached_map()`
   rule generalised: every per-key accessor over a stored map gains a
   pluralised `*s_map()` companion returning a read-only view
@@ -350,6 +369,54 @@ First stable release.
   loop unlinks it from the out-list. Pinned in `test/mutable_digraph.cpp`
   (`remove_vertex_frees_every_incident_arc`,
   `arc_ids_stay_bounded_by_the_peak_arc_count`).
+- **`graphviz_printer` did not escape labels.** Vertex and arc labels were
+  interpolated raw into `label="{}"`. A DOT quoted string ends at the first
+  unescaped `"`, so a label carrying one closed the attribute list early and
+  everything after it was parsed as further attributes — user data became
+  graph syntax. `"` and `\` are escaped now. The cost is that DOT's own
+  escapes (`\n`, `\l`, `\N`) no longer survive a label; smuggling markup
+  through one was never a documented capability, and the alternative is an
+  output whose well-formedness depends on the data.
+- **`edmonds_karp` and `dinitz` did not assert their stated preconditions.**
+  Both constructors leave the terminals unset, and `run()` / `flow_value()`
+  read them — the only preconditions in the library that Ruling 8 did not
+  actually enforce. `minimum_cut()` has a second one: it reads the
+  reachability the *final, failed* search leaves behind, so before `run()`
+  converges it names a cut of no particular graph. All three are asserted.
+  The flags are unconditional members rather than `#ifndef NDEBUG` ones: in a
+  header-only library a layout that depends on `NDEBUG` differs between
+  translation units of one program, which is an ODR violation no test and no
+  sanitizer sees.
+- **`undirect_view` had no `degree()`.** The CPO synthesised one by sizing
+  `incidence(u)`, a concat of two transform views — so whether
+  `has_degree<undirect_view<G>>` held depended on which `concat`
+  implementation the standard library offered, and it answered `false` under
+  GCC 14 / C++23 and `true` under GCC 15 / C++26. The member is O(1) and
+  present in both. The remaining half of that divergence — `incidence()` and
+  `bidirectional_dijkstra::path()` still differing in `common_range` and
+  `sized_range` — is written up in `CONCAT_VIEW_ISSUE.md` and unresolved.
+- **`static_filter_map::filter()` read through a past-the-end iterator.** It
+  recovered an `iota_view`'s bound with `*std::ranges::end(r)`. The bound is
+  derived from the lower one through `ranges::distance` now — O(1) on a common
+  integral iota — and the empty case returns before either end is
+  dereferenced.
+- **`static_map::fill()` was the one member without `constexpr`.** A
+  `static_map` could be built, subscripted and assigned in a constant
+  expression but not filled, which also made every `constexpr reset()` in the
+  library that calls it a promise the container could not keep.
+- **`complete_digraph`'s `in_arcs` iterator overstated its Cpp17 category.**
+  It advertised `iterator_category = forward_iterator_tag` while `operator*`
+  returns a prvalue, which `Cpp17ForwardIterator` forbids, and declared no
+  `iterator_concept`. The two tags differ now, the same split
+  `intrusive_iterator_base` and `static_filter_map::filter_iterator` use.
+- **`bounded_value`'s single-value specialization checked bounds at runtime
+  where the general template checks them at compile time.** Taking a plain `T`
+  let any other `bounded_value` in through the implicit `operator T()`, so a
+  violation the general template rejects outright degraded to an `assert`. The
+  constructor is a constrained template now, with the same-bounds conversion
+  spelled out separately.
+- **27 headers named `std::size_t` without including `<cstddef>`,** compiling
+  only because another header dragged it in. CI now fails if that recurs.
 - **Moved-from `static_map`, `static_filter_map` and the digraphs violated
   their invariants.** The defaulted moves nulled the buffer but kept `_size`
   (and `mutable_digraph`'s counts and list heads), so a moved-from map
