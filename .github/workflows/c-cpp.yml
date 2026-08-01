@@ -20,6 +20,43 @@ jobs:
           find include test -name "*.hpp" -o -name "*.cpp" \
             | xargs clang-format --dry-run -Werror
 
+  # Two invariants that no compiler enforces and that both fail silently: a
+  # header that only builds because another one included <cstddef> first, and
+  # a test file that quietly stops exercising melon's precondition asserts.
+  source-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Every header naming std::size_t includes <cstddef>
+        run: |
+          missing=$(grep -rl 'std::size_t' include --include='*.hpp' \
+                    | xargs grep -L '#include <cstddef>')
+          if [ -n "$missing" ]; then
+            echo "These headers use std::size_t without including <cstddef>;"
+            echo "they compile today only because another header drags it in:"
+            echo "$missing"
+            exit 1
+          fi
+      # melon's preconditions are asserts (contract Ruling 8), and a Release
+      # build defines NDEBUG. Each test file re-enables them for itself before
+      # including anything: <cassert> is designed to be re-included and
+      # re-reads the macro each time, and melon being header-only that covers
+      # the library code too. A file missing the line silently stops testing
+      # every precondition it was written to check.
+      - name: Every test file either undefines NDEBUG or opts out explicitly
+        run: |
+          missing=$(for f in test/*.cpp; do
+                      head -8 "$f" \
+                        | grep -qE '#undef NDEBUG|NDEBUG-INDEPENDENT' || echo "$f"
+                    done)
+          if [ -n "$missing" ]; then
+            echo "These test files neither '#undef NDEBUG' nor carry the"
+            echo "'NDEBUG-INDEPENDENT' marker, so their assertions vanish in a"
+            echo "Release build:"
+            echo "$missing"
+            exit 1
+          fi
+
   linux-gcc15-build:
     runs-on: ubuntu-latest
     container:
@@ -83,6 +120,12 @@ jobs:
   # The regular jobs run plain Release; this one reruns the suite under
   # AddressSanitizer + UndefinedBehaviorSanitizer. It goes through the pure
   # CMake workflow, which also exercises the FetchContent GTest fallback.
+  #
+  # Debug, not Release: -O0 keeps ASan's reports precise and stops the
+  # optimiser from eliding the very UB being hunted. The assertions are live
+  # either way -- melon is header-only, so the `#undef NDEBUG` each test file
+  # opens with covers every melon header that file includes, and the
+  # source-hygiene job above enforces that it is there.
   linux-gcc15-sanitize:
     runs-on: ubuntu-latest
     container:
@@ -98,7 +141,7 @@ jobs:
         run: apt-get install -y gcc-15 g++-15 cmake
       - name: Configure with ASan and UBSan
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
             -DMELON_SANITIZE=address,undefined
       - name: Build
         run: cmake --build build -j

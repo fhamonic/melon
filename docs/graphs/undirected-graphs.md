@@ -80,7 +80,7 @@ for(auto && e : kruskal(ugraph, cost_map)) {
 }
 ```
 
-Because the incidence range is a concatenation of two ranges of different types, it is not sized — so `degree` is unavailable on `views::undirect`, and `std::ranges::distance` is the way to count.
+`degree(ugraph, v)` is an O(1) member: it adds the wrapped digraph's `out_degree` and `in_degree`, which is exactly what `incidence(v)` yields — a self-loop sits in both lists and so counts twice. It does *not* go through the incidence range, which is a concatenation of two ranges of different types and may not be sized.
 
 ## Algorithms on undirected graphs
 

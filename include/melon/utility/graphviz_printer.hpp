@@ -15,6 +15,7 @@
 #include <optional>
 #include <ranges>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -182,6 +183,23 @@ public:
         return *this;
     }
 
+    // A DOT quoted string ends at the first unescaped '"', so a label carrying
+    // one closes the attribute list early and everything after it is parsed as
+    // *further attributes*: user data becomes graph syntax. The backslash goes
+    // too, or a label ending in one escapes the closing quote.
+    //
+    // Consequence for callers: DOT's own escapes -- \n, \l, \N -- do not
+    // survive a label, they are emitted literally.
+    [[nodiscard]] static std::string escape_dot(std::string_view s) {
+        std::string escaped;
+        escaped.reserve(s.size());
+        for(const char c : s) {
+            if(c == '"' || c == '\\') escaped.push_back('\\');
+            escaped.push_back(c);
+        }
+        return escaped;
+    }
+
     // Takes and returns the output iterator, std::format_to's own contract:
     // every write must go through the iterator format_to gave back, or a
     // positional iterator such as a bare char * rewrites the same characters
@@ -256,8 +274,9 @@ public:
             output = std::format_to(output, "{} [width=\"{}\"", u,
                                     scale_size(std::sqrt(_vertex_size_map[u])));
             if(_vertex_label_map.has_value()) {
-                output = std::format_to(output, " label=\"{}\"",
-                                        _vertex_label_map.value()[u]);
+                output =
+                    std::format_to(output, " label=\"{}\"",
+                                   escape_dot(_vertex_label_map.value()[u]));
             }
             if(_vertex_pos_map.has_value()) {
                 output =
@@ -285,7 +304,7 @@ public:
 
             if(_arc_label_map.has_value()) {
                 output = std::format_to(output, " label=\"{}\"",
-                                        _arc_label_map.value()[a]);
+                                        escape_dot(_arc_label_map.value()[a]));
             }
             output = std::format_to(output, "]\n");
         }

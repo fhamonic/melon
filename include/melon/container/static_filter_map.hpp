@@ -4,6 +4,7 @@
 #include <bit>
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <iterator>
 #include <memory>
 #include <ranges>
@@ -429,9 +430,20 @@ public:
                                                std::ranges::iota_view> &&
                      std::ranges::common_range<range_type> &&
                      std::integral<std::ranges::range_value_t<range_type>>) {
+            // The bounds come from `*begin(r)` and ranges::distance, never
+            // from `*end(r)`: recovering an iota's upper bound by
+            // dereferencing its past-the-end iterator is undefined, and so is
+            // dereferencing the begin of an empty one -- hence the early
+            // return. ranges::distance is O(1) on a common integral iota, so
+            // there is no walk to optimise back out.
+            if(std::ranges::empty(r))
+                return std::ranges::subrange(
+                    filter_iterator(_data.get(), size_type{0}, size_type{0}),
+                    std::default_sentinel);
             const auto raw_begin = *std::ranges::begin(r);
-            const auto raw_end = *std::ranges::end(r);
-            using bound_type = std::remove_const_t<decltype(raw_end)>;
+            using bound_type = std::remove_const_t<decltype(raw_begin)>;
+            const auto raw_end =
+                static_cast<bound_type>(raw_begin + std::ranges::distance(r));
             // Clamp both bounds into [0, _size] before they become span
             // indices -- in the iota's own type first, so a negative signed
             // bound never reaches the unsigned cast.

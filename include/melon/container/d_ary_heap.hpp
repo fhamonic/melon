@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <functional>
 #include <ranges>
 #include <type_traits>
@@ -394,10 +395,12 @@ protected:
     }
     friend base_class;
 
-    // A *byte* offset into the heap array, the unit heap_move() writes and
-    // entry_ref() reads -- not an element index. Named for the unit: every
-    // member below feeds it straight to entry_ref() or adjust_heap(), and an
-    // element index is silently in range for a heap of more than one entry.
+    // A *byte* offset into the heap array -- the unit heap_move() writes and
+    // entry_ref() reads -- not an element index. The two are interchangeable
+    // for the entry on top and for nothing else, so mixing them up passes
+    // every test that only ever looks at top() and answers wrongly for the
+    // rest of the heap. Hence the name, and hence heap_bytes() rather than
+    // _heap_array.size() wherever an offset is bounded.
     [[nodiscard]] size_type byte_offset_of(const id_type & k) const {
         return _heap_index_map[k];
     }
@@ -421,10 +424,6 @@ public:
         return base_class::_entry_priority_map[base_class::entry_ref(
             byte_offset_of(k))];
     }
-    // The bound is the array's size *in bytes*, and the entry is reached
-    // through entry_ref(): comparing the offset against _heap_array.size() --
-    // an element count -- reports every entry but the top one as absent, and
-    // subscripting _heap_array with it then names the wrong entry.
     [[nodiscard]] bool contains(const id_type & k) const {
         const size_type offset = byte_offset_of(k);
         if(offset >= heap_bytes()) return false;

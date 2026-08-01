@@ -95,10 +95,22 @@ Traits are `store_ranks` and `store_critical_paths`. `store_ranks` enables `rank
 
 !!! warning
 
-    The graph must be acyclic. Vertices on a cycle are simply never yielded —
-    there is no error and no exception — so if the input might contain one,
-    compare what you got against `num_vertices(graph)`, or run
-    [`strongly_connected_components`](#strongly_connected_components) first.
+    The graph must be acyclic. Vertices on a cycle — and vertices behind one —
+    are simply never yielded, with no error and no exception. Once the sweep is
+    drained, `is_acyclic()` reports whether that happened; it is `true` exactly
+    when every vertex came out. Asking before `finished()` is a precondition
+    violation, since the count is only meaningful once nothing more can be
+    ordered.
+
+    ```cpp
+    auto alg = topological_sort(graph);
+    for(auto && v : alg) { /* ... */ }
+    if(!alg.is_acyclic()) { /* the graph had a cycle */ }
+    ```
+
+    To find *where* the cycle is, run
+    [`strongly_connected_components`](#strongly_connected_components): every
+    component of more than one vertex is one.
 
 ## `strongly_connected_components`
 

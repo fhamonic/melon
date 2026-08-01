@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <iterator>
 #include <limits>
 #include <memory>

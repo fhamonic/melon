@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -180,6 +181,14 @@ public:
                 if constexpr(!has_arc_source<Graph>) _pred_vertices_map[w] = u;
             }
         }
+    }
+
+    // Whether the graph carried no directed cycle. Precondition: finished() --
+    // a vertex on a cycle, or behind one, keeps a positive remaining in-degree
+    // forever, so the count only settles once nothing more can be ordered.
+    [[nodiscard]] constexpr bool is_acyclic() const {
+        assert(finished());
+        return _queue.size() == num_vertices(_graph);
     }
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <limits>
 #include <ranges>
 #include <vector>
@@ -34,6 +35,12 @@ private:
     CapacityMap _capacity_map;
     vertex _s;
     vertex _t;
+    // Unconditional, not `#ifndef NDEBUG`: melon is header-only, so a layout
+    // that depends on NDEBUG differs between translation units of one program
+    // -- an ODR violation no test and no sanitizer sees.
+    bool _source_set;
+    bool _target_set;
+    bool _converged;
     arc_map_t<Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
     vertex_map_t<Graph, bool> _bfs_reached_map;
@@ -46,6 +53,9 @@ public:
     constexpr edmonds_karp(G && g, CM && cm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))
+        , _source_set(false)
+        , _target_set(false)
+        , _converged(false)
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _bfs_reached_map(create_vertex_map<bool>(_graph))
         , _bfs_pred_arc(create_vertex_map<arc>(_graph)) {
@@ -82,14 +92,19 @@ public:
 
     constexpr edmonds_karp & set_source(const vertex & s) {
         _s = s;
+        _source_set = true;
+        _converged = false;
         return *this;
     }
     constexpr edmonds_karp & set_target(const vertex & t) {
         _t = t;
+        _target_set = true;
+        _converged = false;
         return *this;
     }
     constexpr edmonds_karp & reset() {
         _carried_flow_map.fill(0);
+        _converged = false;
         return *this;
     }
 
@@ -176,12 +191,15 @@ private:
 
 public:
     constexpr edmonds_karp & run() {
+        assert(_source_set && _target_set);
         while(find_unsaturated_path()) {
             push_flow_on_found_path();
         }
+        _converged = true;
         return *this;
     }
     [[nodiscard]] constexpr value_t flow_value() const {
+        assert(_source_set);
         value_t sum{0};
         for(auto && a : out_arcs(_graph, _s)) sum += _carried_flow_map[a];
         return sum;
@@ -207,7 +225,12 @@ public:
         return maps::mapping_all(std::move(_carried_flow_map));
     }
 
+    // Precondition: run() has converged. It reads the reachability the
+    // *final*, failed augmenting search left behind; before that the maps hold
+    // either uninitialised memory or an intermediate residual reachability,
+    // which is a cut of no particular graph.
     [[nodiscard]] constexpr auto minimum_cut() const {
+        assert(_converged);
         if constexpr(std::ranges::viewable_range<out_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(
                 _bfs_queue, [this](const vertex_t<Graph> & v) {

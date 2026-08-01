@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <limits>
 #include <ranges>
 #include <vector>
@@ -35,6 +36,12 @@ private:
     CapacityMap _capacity_map;
     vertex _s;
     vertex _t;
+    // Unconditional, not `#ifndef NDEBUG`: melon is header-only, so a layout
+    // that depends on NDEBUG differs between translation units of one program
+    // -- an ODR violation no test and no sanitizer sees.
+    bool _source_set;
+    bool _target_set;
+    bool _converged;
     arc_map_t<Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
     vertex_map_t<Graph, std::size_t> _vertex_rank_map;
@@ -50,6 +57,9 @@ public:
     constexpr dinitz(G && g, CM && cm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))
+        , _source_set(false)
+        , _target_set(false)
+        , _converged(false)
         , _carried_flow_map(create_arc_map<value_t>(_graph))
         , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
         , _remaining_out_arcs(
@@ -80,6 +90,9 @@ public:
         , _capacity_map(std::move(o._capacity_map))
         , _s(std::move(o._s))
         , _t(std::move(o._t))
+        , _source_set(o._source_set)
+        , _target_set(o._target_set)
+        , _converged(o._converged)
         , _carried_flow_map(std::move(o._carried_flow_map))
         , _bfs_queue(std::move(o._bfs_queue))
         , _vertex_rank_map(std::move(o._vertex_rank_map))
@@ -95,6 +108,9 @@ public:
         _capacity_map = std::move(o._capacity_map);
         _s = std::move(o._s);
         _t = std::move(o._t);
+        _source_set = o._source_set;
+        _target_set = o._target_set;
+        _converged = o._converged;
         _carried_flow_map = std::move(o._carried_flow_map);
         _bfs_queue = std::move(o._bfs_queue);
         _vertex_rank_map = std::move(o._vertex_rank_map);
@@ -130,15 +146,20 @@ public:
 
     constexpr dinitz & set_source(const vertex & s) {
         _s = s;
+        _source_set = true;
+        _converged = false;
         return *this;
     }
 
     constexpr dinitz & set_target(const vertex & t) {
         _t = t;
+        _target_set = true;
+        _converged = false;
         return *this;
     }
 
     constexpr dinitz & reset() {
+        _converged = false;
         _carried_flow_map.fill(0);
         for(auto && u : vertices(_graph)) {
             _remaining_out_arcs[u] = out_arcs(_graph, u);
@@ -195,6 +216,10 @@ private:
         return _vertex_rank_map[_s] != std::numeric_limits<std::size_t>::max();
     }
 
+    // Recursive, one frame per level of the level graph, so the stack depth is
+    // bounded by the number of vertices: a graph carrying a very long
+    // augmenting path can overflow it. Every other traversal in melon is
+    // iterative and has no such bound.
     value_t dfs_push_flow(const vertex u, const value_t max_incomming_flow) {
         if(max_incomming_flow == 0 || u == _t) return max_incomming_flow;
         for(; !_remaining_out_arcs[u].empty();
@@ -226,6 +251,7 @@ private:
 
 public:
     constexpr dinitz & run() {
+        assert(_source_set && _target_set);
         while(bfs_rank_vertices()) {
             for(auto && u : vertices(_graph)) {
                 _remaining_out_arcs[u] = out_arcs(_graph, u);
@@ -234,10 +260,12 @@ public:
             while(dfs_push_flow(_s, std::numeric_limits<value_t>::max()) >
                   value_t{0});
         }
+        _converged = true;
         return *this;
     }
 
     [[nodiscard]] constexpr value_t flow_value() const {
+        assert(_source_set);
         value_t sum{0};
         for(auto && a : out_arcs(_graph, _s)) sum += _carried_flow_map[a];
         return sum;
@@ -263,7 +291,12 @@ public:
         return maps::mapping_all(std::move(_carried_flow_map));
     }
 
+    // Precondition: run() has converged. It reads the ranks the *final*,
+    // failed BFS left behind; before that the map holds either uninitialised
+    // memory or an intermediate residual ranking, which is a cut of no
+    // particular graph.
     [[nodiscard]] constexpr auto minimum_cut() const {
+        assert(_converged);
         if constexpr(std::ranges::viewable_range<in_arcs_range_t<Graph>>) {
             return std::views::join(std::views::transform(
                 _bfs_queue, [this](const vertex_t<Graph> & v) {

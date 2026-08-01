@@ -127,3 +127,33 @@ concept has_adjacency_member =
 }  // namespace
 static_assert(
     !has_adjacency_member<undirect_view<graph_ref_view<static_digraph>>>);
+
+////////////////////////////////////////////////////////////////////////////////
+// degree() is a member, so it is O(1) and does not depend on the concat shape
+////////////////////////////////////////////////////////////////////////////////
+
+// Without the member, the CPO synthesises degree by sizing incidence(u) -- a
+// concat of two transform_views, whose sized_range-ness depends on which
+// implementation detail/concat_view.hpp selects, hence on
+// __cpp_lib_ranges_concat, hence on the toolchain: has_degree answers false
+// under GCC 14 / C++23 and true under GCC 15 / C++26. This static_assert is
+// what fails if the member is dropped. CONCAT_VIEW_ISSUE.md covers the half of
+// that divergence still open.
+static_assert(
+    melon::has_degree<undirect_view<views::graph_all_t<static_digraph &>>>);
+
+GTEST_TEST(undirect, degree_counts_both_incidence_lists) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0).add_arc(1, 1);
+    auto [graph] = builder.build();
+
+    auto ugraph = views::undirect(graph);
+    for(auto && v : vertices(ugraph)) {
+        // the member and the range it describes must agree, self-loops
+        // included -- vertex 1 carries one, and it sits in both incidence
+        // lists, so it counts twice on each side
+        ASSERT_EQ(static_cast<std::ptrdiff_t>(degree(ugraph, v)),
+                  std::ranges::distance(incidence(ugraph, v)));
+    }
+    ASSERT_EQ(degree(ugraph, 1u), 4u);
+}

@@ -215,3 +215,50 @@ concept dinitz_admits = requires(
 static_assert(dinitz_admits<int>);
 static_assert(dinitz_admits<double>);
 static_assert(!dinitz_admits<zero_infinity_probes::opaque_capacity>);
+
+////////////////////////////////////////////////////////////////////////////////
+// the unset-terminal and un-converged states are preconditions, not silent
+// wrong answers
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: _s and _t were left default-initialised by the two-argument
+// constructor, and run() / flow_value() read them unasserted. minimum_cut()
+// carries a second precondition: it reads the ranks the *final*, failed BFS
+// leaves behind, so before run() converges it names a cut of no particular
+// graph.
+namespace {
+auto two_arc_instance() {
+    static_digraph_builder<static_digraph, int> builder(3);
+    builder.add_arc(0, 1, 5).add_arc(1, 2, 3);
+    return builder.build();
+}
+}  // namespace
+
+GTEST_TEST(dinitz, unset_terminals_are_preconditions) {
+    auto [graph, capacity_map] = two_arc_instance();
+
+    dinitz alg(graph, capacity_map);
+    EXPECT_DEATH((void)alg.run(), "");
+    EXPECT_DEATH((void)alg.flow_value(), "");
+
+    dinitz half(graph, capacity_map);
+    half.set_source(0u);
+    EXPECT_DEATH((void)half.run(), "");
+}
+
+GTEST_TEST(dinitz, minimum_cut_requires_a_converged_run) {
+    auto [graph, capacity_map] = two_arc_instance();
+    dinitz alg(graph, capacity_map, 0u, 2u);
+
+    EXPECT_DEATH((void)alg.minimum_cut(), "");
+
+    alg.run();
+    ASSERT_EQ(alg.flow_value(), 3);
+    ASSERT_TRUE(EQ_MULTISETS(alg.minimum_cut(), {1}));
+
+    alg.reset();
+    EXPECT_DEATH((void)alg.minimum_cut(), "");
+    alg.run();
+    alg.set_target(1u);
+    EXPECT_DEATH((void)alg.minimum_cut(), "");
+}

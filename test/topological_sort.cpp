@@ -469,3 +469,53 @@ GTEST_TEST(topological_sort, is_not_constructible_from_an_algorithm) {
     relocated.run();
     ASSERT_TRUE(relocated.finished());
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// is_acyclic() answers what the sweep already knows
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(topological_sort, is_acyclic_on_a_dag) {
+    static_digraph_builder<static_digraph> builder(4);
+    builder.add_arc(0, 1).add_arc(1, 2).add_arc(0, 3).add_arc(3, 2);
+    auto [graph] = builder.build();
+
+    auto alg = topological_sort(graph);
+    std::vector<vertex_t<static_digraph>> order;
+    for(auto && v : alg) order.push_back(v);
+
+    ASSERT_EQ(order.size(), 4u);
+    ASSERT_TRUE(alg.is_acyclic());
+}
+
+GTEST_TEST(topological_sort, is_acyclic_on_a_graph_with_a_cycle) {
+    static_digraph_builder<static_digraph> builder(4);
+    // 0 -> 1, and the cycle 2 -> 3 -> 2 that no start vertex can reach into
+    builder.add_arc(0, 1).add_arc(2, 3).add_arc(3, 2);
+    auto [graph] = builder.build();
+
+    auto alg = topological_sort(graph);
+    alg.run();
+
+    ASSERT_FALSE(alg.is_acyclic());
+    // the cycle's vertices are exactly the ones left unordered
+    ASSERT_TRUE(alg.reached(0u));
+    ASSERT_TRUE(alg.reached(1u));
+    ASSERT_FALSE(alg.reached(2u));
+    ASSERT_FALSE(alg.reached(3u));
+
+    // and it survives a reset
+    alg.reset().run();
+    ASSERT_FALSE(alg.is_acyclic());
+}
+
+// answering before the sweep is drained is a precondition violation: the count
+// is only meaningful once no vertex can still be ordered
+GTEST_TEST(topological_sort, is_acyclic_requires_a_drained_sweep) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0, 1).add_arc(1, 2);
+    auto [graph] = builder.build();
+
+    auto alg = topological_sort(graph);
+    ASSERT_FALSE(alg.finished());
+    EXPECT_DEATH((void)alg.is_acyclic(), "");
+}

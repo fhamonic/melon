@@ -290,3 +290,29 @@ GTEST_TEST(bounded_value, negation_flips_the_bounds) {
     ASSERT_EQ(d.value(), -4);
     static_assert(d.min() <= -10);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// the single-value specialization rejects bound violations at compile time,
+// like the general template
+////////////////////////////////////////////////////////////////////////////////
+
+// regression: bounded_value<T, V, V> took a plain `T`, so any *other*
+// bounded_value reached it through the implicit operator T() and a bound
+// violation the general template rejects outright -- bounded_value<int, 1, 2>
+// from bounded_value<int, 0, 10> is ill-formed -- degraded to a runtime
+// assert.
+static_assert(!std::is_constructible_v<numeric::bounded_value<int, 1, 2>,
+                                       numeric::bounded_value<int, 0, 10>>);
+static_assert(!std::is_constructible_v<numeric::const_value<int, 1>,
+                                       numeric::bounded_value<int, 0, 10>>);
+
+// the conversions that are in bounds stay available
+static_assert(std::is_constructible_v<numeric::const_value<int, 1>, int>);
+static_assert(std::is_constructible_v<numeric::const_value<int, 1>,
+                                      numeric::const_value<int, 1>>);
+static_assert(std::is_constructible_v<numeric::bounded_value<int, 0, 10>,
+                                      numeric::bounded_value<int, 1, 2>>);
+
+// implicit and one-argument, which is what lets rational initialise a
+// const_value<int, 1> denominator with `_den(1)`
+static_assert(std::is_convertible_v<int, numeric::const_value<int, 1>>);

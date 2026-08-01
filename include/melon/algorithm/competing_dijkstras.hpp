@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <utility>
 
 #include "melon/container/d_ary_heap.hpp"

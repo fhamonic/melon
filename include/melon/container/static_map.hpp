@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <iterator>
 #include <memory>
 #include <ranges>
@@ -174,7 +175,7 @@ public:
         return _data[static_cast<size_type>(i)];
     }
 
-    void fill(const mapped_type & v) noexcept(
+    constexpr void fill(const mapped_type & v) noexcept(
         std::is_nothrow_copy_assignable_v<mapped_type>) {
         std::fill(_data.get(), _data.get() + size(), v);
     }

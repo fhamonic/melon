@@ -1,3 +1,6 @@
+// NDEBUG-INDEPENDENT: static assertions only, so the `#undef NDEBUG` every
+// other test file opens with would guard nothing here. The marker is what
+// the source-hygiene CI job accepts in its place.
 // Regression tests for TODO items 2.4 (naming and const-ness drift across the
 // algorithm family), 2.5 (encapsulation slips) and 2.6 (noexcept that would
 // call std::terminate, and [[nodiscard]] where it buys nothing).
