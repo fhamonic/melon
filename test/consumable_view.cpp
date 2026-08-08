@@ -212,8 +212,7 @@ GTEST_TEST(consumable_view, rewind_borrowed_range) {
 // borrowed range makes detail::consumable_view wider than
 // detail::consumable_input_view, and that is precisely the shape those hot
 // cursors have.
-GTEST_TEST(consumable_input_view,
-           costs_no_more_than_one_traversal_needs) {
+GTEST_TEST(consumable_input_view, costs_no_more_than_one_traversal_needs) {
     using span_type = std::span<const unsigned int>;
     static_assert(std::ranges::borrowed_range<span_type>);
 
@@ -248,8 +247,7 @@ GTEST_TEST(consumable_input_view, accepts_an_input_only_range) {
 // The re-seeding path the per-vertex cursors actually use: hand it the range
 // again, which the graph can always produce. dinitz::reset() does exactly this
 // with `_remaining_out_arcs[u] = out_arcs(_graph, u)`.
-GTEST_TEST(consumable_input_view,
-           reseeds_from_an_externally_held_range) {
+GTEST_TEST(consumable_input_view, reseeds_from_an_externally_held_range) {
     std::vector<unsigned int> v = {3u, 1u, 4u};
     using view_type = detail::consumable_input_view<
         std::views::all_t<std::vector<unsigned int> &>>;
@@ -285,8 +283,7 @@ static_assert(!std::default_initializable<filtered>);
 static_assert(!std::ranges::borrowed_range<filtered>);
 }  // namespace disengaged_probes
 
-GTEST_TEST(consumable_input_view,
-           default_constructed_is_assignment_only) {
+GTEST_TEST(consumable_input_view, default_constructed_is_assignment_only) {
     using namespace disengaged_probes;
     static_assert(
         std::default_initializable<detail::consumable_input_view<filtered>>);
@@ -302,8 +299,7 @@ GTEST_TEST(consumable_input_view,
 // Copying or moving a disengaged cursor must yield another disengaged cursor:
 // static_map and std::vector relocate their slots wholesale, so a reseek
 // through the (absent) range would fault before any slot is ever seeded.
-GTEST_TEST(consumable_input_view,
-           disengaged_cursor_survives_relocation) {
+GTEST_TEST(consumable_input_view, disengaged_cursor_survives_relocation) {
     using namespace disengaged_probes;
 
     detail::consumable_input_view<filtered> a;
