@@ -3,6 +3,9 @@ name: C/C++ CI
 on:
   push:
     branches: ["main"]
+    # Release tags run the full matrix on the exact tagged commit, which may
+    # not be the branch head the last main push validated.
+    tags: ["v*"]
   pull_request:
     branches: ["main"]
 
@@ -139,9 +142,15 @@ jobs:
         run: apt-get update && apt-get upgrade -y
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
+      # C++26 with MELON_PORTABLE_RANGE_SHAPES forces the C++23 concat
+      # fallback although std::views::concat exists -- the option's whole
+      # purpose -- so this job is the only one where both that combination
+      # and the fallback itself run under the sanitizers.
       - name: Configure with ASan and UBSan
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_STANDARD=26 \
+            -DMELON_PORTABLE_RANGE_SHAPES=ON \
             -DMELON_SANITIZE=address,undefined
       - name: Build
         run: cmake --build build -j

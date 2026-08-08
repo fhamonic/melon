@@ -1,6 +1,7 @@
 import os
 import re
 from conan import ConanFile
+from conan.errors import ConanException
 from conan.tools.files import copy, load
 from conan.tools.cmake import cmake_layout, CMake
 from conan.tools.build import check_min_cppstd
@@ -10,9 +11,10 @@ class MelonConan(ConanFile):
     name = "melon"
 
     license = "BSL-1.0"
-    description = (
-        "A modern and efficient graph library using C++20 ranges and concepts."
-    )
+    # Same sentence as the CMake project() DESCRIPTION, so the two cannot
+    # drift; this string is what Conan Center displays.
+    description = "Modern and Efficient Library for Optimization in Networks."
+    topics = ("graph", "header-only", "cpp23", "algorithms")
     homepage = "https://github.com/fhamonic/melon"
     url = "https://github.com/fhamonic/melon.git"
 
@@ -35,12 +37,18 @@ class MelonConan(ConanFile):
             self,
             os.path.join(self.recipe_folder, "include", "melon", "version.hpp"),
         )
-        components = {
-            level: re.search(
+        components = {}
+        for level in ("MAJOR", "MINOR", "PATCH"):
+            match = re.search(
                 rf"#define MELON_VERSION_{level} (\d+)", version_hpp
-            ).group(1)
-            for level in ("MAJOR", "MINOR", "PATCH")
-        }
+            )
+            if match is None:
+                # Mirrors the FATAL_ERROR in CMakeLists.txt; a bare
+                # AttributeError here would not name the real problem.
+                raise ConanException(
+                    f"Failed to parse MELON_VERSION_{level} from version.hpp"
+                )
+            components[level] = match.group(1)
         self.version = "{MAJOR}.{MINOR}.{PATCH}".format(**components)
 
     def requirements(self):

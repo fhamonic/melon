@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+    # Rebuild the published site from the exact tagged commit on release.
+    tags:
+      - "v*"
 permissions:
   contents: read
   pages: write

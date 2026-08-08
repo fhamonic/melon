@@ -194,6 +194,26 @@ The version number has a single source of truth:
 `CMakeLists.txt` and `conanfile.py` parse it — never edit a version number
 anywhere else.
 
+## Releasing
+
+The checklist for cutting a release, in order — a step lives here rather than
+in a private file precisely so it cannot be lost between releases:
+
+1. Bump `include/melon/version.hpp` and move the `Unreleased` section of
+   `CHANGELOG.md` under the new version number, dated.
+2. Tag the release commit `v<MAJOR>.<MINOR>.<PATCH>` and push the tag. Both
+   workflows trigger on `v*` tags: wait for the full CI matrix to pass **on
+   the tag** — it may not be the commit the last `main` push validated — and
+   for the docs deployment from the tagged commit.
+3. Publish the Conan package: `conan create` from the tag, then submit the
+   recipe bump to Conan Center.
+4. Once the package is live on Conan Center, delete the stale
+   pre-1.0 fallback instructions if any remain: the `melon/1.0.0-alpha.1`
+   block in `docs/getting-started/installation.md` and the matching README
+   paragraph were kept only until 1.0.0 landed there.
+5. Create the GitHub release from the tag, with the changelog entry as its
+   notes.
+
 ## License
 
 melon is distributed under the [Boost Software License 1.0](LICENSE). By

@@ -8,6 +8,6 @@ CMakeUserPresets.json
 # zensical build output (docs/ holds the sources)
 /site
 
-Makefile
+# local convenience wrapper, deliberately untracked (Makefile is tracked)
 MakeW64.bat
 TODO_1.0.0.md
