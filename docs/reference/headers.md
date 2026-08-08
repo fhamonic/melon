@@ -98,7 +98,7 @@ Everything here lives in `namespace melon::numeric`; the directory matches the n
 
 **`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `movable_box.hpp` (the `std::ranges`-style box that keeps a view owning a capturing lambda assignable), `not_self.hpp` (the guard that stops a single-argument constructor template from swallowing an object of its own type instead of letting the copy or move constructor be chosen), `prefetch.hpp`, `specialization_of.hpp`, `stdlib_check.hpp` (the libstdc++ version diagnostic).
 
-The same applies to anything under `melon/detail/` or in a `detail` namespace — including `melon::cpo`, where the CPO function objects are defined.
+The same applies to anything under `melon/detail/` or in a `detail` namespace — including `melon::cpo`, where the CPO implementation types are defined. The customization point *objects* themselves (`vertices`, `out_arcs`, …) live in an inline namespace inside `melon`, are spelled `melon::vertices` and so on, and are stable API.
 
 **`melon/experimental/`** — work in progress in `namespace melon::experimental`, with no stability guarantee:
 
@@ -106,8 +106,8 @@ The same applies to anything under `melon/detail/` or in a `detail` namespace �
 | --- | --- |
 | `planar_map.hpp` | compiles, covered by `test/experimental.cpp` |
 | `dual.hpp` | compiles, covered by `test/experimental.cpp` |
-| `scapegoat_tree.hpp` | **unfinished, does not compile when instantiated — not shipped** |
-| `doubly_connected_digraph.hpp` | **unfinished, does not compile when instantiated — not shipped** |
+| `scapegoat_tree.hpp` | **unfinished, does not compile — not shipped** |
+| `doubly_connected_digraph.hpp` | **unfinished, does not compile — not shipped** |
 
 The last two remain in the repository but are excluded from both the CMake install rules and the Conan package.
 

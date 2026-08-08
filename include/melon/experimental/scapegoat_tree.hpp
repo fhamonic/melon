@@ -1,11 +1,10 @@
 #pragma once
 
 // UNFINISHED — not shipped in the melon package, and excluded from the
-// install rules. The header parses, but `insert()` does not compile once
-// instantiated (it writes through const references and uses node members
-// that do not exist), and the scapegoat rebuild/rebalance step is missing
-// entirely. Finish those before adding this to the install set and to
-// test/experimental.cpp.
+// install rules. The header does not compile: `insert()` misspells `const`
+// and writes through const references onto node members that do not exist,
+// and the scapegoat rebuild/rebalance step is missing entirely. Finish
+// those before adding this to the install set and to test/experimental.cpp.
 
 #include <algorithm>
 #include <cassert>

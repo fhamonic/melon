@@ -39,7 +39,7 @@ concept enable_branchless_bfs =
     has_num_vertices<Graph> && std::is_trivially_copyable_v<vertex_t<Graph>> &&
     (!Traits::store_pred_vertices && !Traits::store_pred_arcs &&
      !Traits::store_distances);
-}
+}  // namespace detail
 
 template <graph_view Graph, breadth_first_search_traits Traits =
                                 breadth_first_search_default_traits>

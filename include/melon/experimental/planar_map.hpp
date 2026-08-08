@@ -1,5 +1,9 @@
 #pragma once
 
+// EXPERIMENTAL — ships and is tested (test/experimental.cpp), but carries no
+// stability guarantee: anything in melon::experimental may change or
+// disappear in any release, including a patch release.
+
 #include <concepts>
 #include <cstddef>
 #include <ranges>

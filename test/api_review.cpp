@@ -1,11 +1,11 @@
 // NDEBUG-INDEPENDENT: static assertions only, so the `#undef NDEBUG` every
 // other test file opens with would guard nothing here. The marker is what
 // the source-hygiene CI job accepts in its place.
-// Regression tests from the second and third API-review passes, run after the
-// TODO.md items were closed. Like api_consistency.cpp these are mostly
-// family-wide invariants; every test here was checked to fail before the fix
-// it guards and passes after. The file is organised by theme, not by review
-// pass.
+// Regression tests from the second and third pre-1.0 API-review passes, run
+// after the first pass's findings were fixed. Like api_consistency.cpp these
+// are mostly family-wide invariants; every test here was checked to fail before
+// the fix it guards and passes after. The file is organised by theme, not by
+// review pass.
 //
 // The relocation tests deliberately destroy the source before reading the
 // moved-to object: a cursor that still points into a *live* source reads
