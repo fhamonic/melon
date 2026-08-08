@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "melon/detail/borrowed_graph.hpp"
+#include "melon/borrowed_graph.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 

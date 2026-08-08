@@ -6,8 +6,8 @@
 #include <limits>
 #include <ranges>
 
+#include "melon/borrowed_graph.hpp"
 #include "melon/container/static_map.hpp"
-#include "melon/detail/borrowed_graph.hpp"
 #include "melon/detail/concat_view.hpp"
 #include "melon/mapping.hpp"
 #include "melon/views/graph_view.hpp"

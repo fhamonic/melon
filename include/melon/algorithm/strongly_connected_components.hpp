@@ -13,7 +13,7 @@
 #include <variant>
 #include <vector>
 
-#include "melon/detail/borrowed_graph.hpp"
+#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/not_self.hpp"

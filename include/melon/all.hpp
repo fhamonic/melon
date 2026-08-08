@@ -7,6 +7,7 @@
 
 #include "melon/version.hpp"
 
+#include "melon/borrowed_graph.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 #include "melon/undirected_graph.hpp"

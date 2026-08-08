@@ -19,6 +19,7 @@ ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
 
 | Header | Declares |
 | --- | --- |
+| `melon/borrowed_graph.hpp` | `enable_borrowed_graph`, the trait to specialise for a view of your own whose ranges survive the view being relocated, and the `borrowed_graph` concept — see [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound) |
 | `melon/graph.hpp` | the [graph concepts](../graphs/concepts.md) and every directed [customization point](customization-points.md); `vertex_t`, `arc_t`, `vertex_map_t`, `arc_map_t` |
 | `melon/mapping.hpp` | the [mapping concepts](../graphs/mappings.md) — `mapping`, `mapping_of`, `mapping_view` and friends, plus `mapping_for` — `mapping_ref_view` / `mapping_owning_view` / `maps::mapping_all`, `maps::map`, `maps::true_map`, `maps::false_map`, `maps::identity_map`, `maps::element_map` |
 | `melon/undirected_graph.hpp` | the [undirected concepts](../graphs/undirected-graphs.md) and CPOs; `edge_t`, `edge_map_t` |
@@ -95,9 +96,7 @@ Everything here lives in `namespace melon::numeric`; the directory matches the n
 
 ## Not public API
 
-**`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `borrowed_graph.hpp` (declares the `enable_borrowed_graph` trait, which *is* public — see below), `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `movable_box.hpp` (the `std::ranges`-style box that keeps a view owning a capturing lambda assignable), `not_self.hpp` (the guard that stops a single-argument constructor template from swallowing an object of its own type instead of letting the copy or move constructor be chosen), `prefetch.hpp`, `specialization_of.hpp`, `stdlib_check.hpp` (the libstdc++ version diagnostic).
-
-`enable_borrowed_graph` is the one name in that directory you may need: it lives in `melon`, not `melon::detail`, and specialising it is how you tell melon that ranges obtained from a graph view of your own survive the view being relocated. See [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound).
+**`melon/detail/`** — implementation details. No stability guarantee, and nothing here should appear in your code: `concat_view.hpp` (the `std::ranges::concat_view` fallback for standard libraries that lack it), `consumable_view.hpp`, `intrusive_iterator_base.hpp`, `map_if.hpp` (the `[[no_unique_address]]` conditional maps), `movable_box.hpp` (the `std::ranges`-style box that keeps a view owning a capturing lambda assignable), `not_self.hpp` (the guard that stops a single-argument constructor template from swallowing an object of its own type instead of letting the copy or move constructor be chosen), `prefetch.hpp`, `specialization_of.hpp`, `stdlib_check.hpp` (the libstdc++ version diagnostic).
 
 The same applies to anything under `melon/detail/` or in a `detail` namespace — including `melon::cpo`, where the CPO function objects are defined.
 

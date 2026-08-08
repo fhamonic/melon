@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "melon/detail/borrowed_graph.hpp"
+#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/undirected_graph.hpp"

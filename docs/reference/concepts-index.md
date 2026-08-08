@@ -69,7 +69,7 @@ Every concept in melon's public API, with its header and a one-line statement of
 
 **Aliases.** `mapped_reference_t<M, K>`, `mapped_const_reference_t<M, K>`, `mapped_value_t<M, K>`, `maps::mapping_all_t<M>`.
 
-## Views — `melon/views/graph_view.hpp`, `melon/views/undirected_graph_view.hpp`
+## Views — `melon/views/graph_view.hpp`, `melon/views/undirected_graph_view.hpp`, `melon/borrowed_graph.hpp`
 
 | Concept / variable | Meaning |
 | --- | --- |
@@ -84,7 +84,8 @@ Every concept in melon's public API, with its header and a one-line statement of
 
 **Aliases.** `views::graph_all_t<G>`, `views::undirected_graph_all_t<G>`.
 
-`enable_borrowed_graph` mirrors `std::ranges::enable_borrowed_range` and is what
+`enable_borrowed_graph` and the `borrowed_graph` concept are the two names from
+`melon/borrowed_graph.hpp`; the trait mirrors `std::ranges::enable_borrowed_range` and is what
 decides whether an algorithm caching incidence ranges must rebase those cursors
 when it is moved, or can let the compiler default the move. It is
 `true` for `graph_ref_view`, `undirected_graph_ref_view` and

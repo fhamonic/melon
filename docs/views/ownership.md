@@ -214,6 +214,8 @@ If you write a graph view whose ranges do not refer to the view object,
 specialise the trait and that rebasing compiles away entirely:
 
 ```cpp
+#include "melon/borrowed_graph.hpp"
+
 template <>
 inline constexpr bool melon::enable_borrowed_graph<my_view> = true;
 ```

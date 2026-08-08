@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <ranges>
 
-#include "melon/detail/borrowed_graph.hpp"
+#include "melon/borrowed_graph.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/undirected_graph.hpp"
 
