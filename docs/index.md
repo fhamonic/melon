@@ -50,7 +50,7 @@ int main() {
 }
 ```
 
-The algorithm object driven by that loop is move-only — copying it is a compile error, and `reset()` reuses its allocated state instead ([The 1.0 contract](contract.md)).
+The algorithm object driven by that loop is move-only — copying it is a compile error, and `reset()` reuses its allocated state instead ([Algorithms are ranges](algorithms/index.md)).
 
 ## Where to start
 
@@ -86,18 +86,11 @@ The documentation follows the way the library is layered: the concepts first, th
 
 ## Requirements
 
-Header-only and dependency-free. **C++23** is the baseline; GCC 15 / C++26 is recommended.
-
-| Compiler | Minimum version | CI configuration |
-| --- | --- | --- |
-| GCC | 14 | GCC 14 / C++23, GCC 15 / C++26 |
-| Clang | 18 | Clang 18 / C++23 (libstdc++ 14) |
-| MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
-| MSVC | — | not supported |
+Header-only and dependency-free. **C++23** is the baseline — GCC 14 and Clang 18 at minimum, GCC 15 / C++26 recommended; on Windows the supported toolchain is MinGW-w64, not MSVC. [Installation](getting-started/installation.md) has the full CI matrix and the C++23-versus-C++26 note.
 
 ## Status
 
-1.0.0 is melon's first stable release. Every header outside `melon/detail/` and `melon/experimental/` is frozen API for the 1.x series, under [semantic versioning](https://semver.org); the design rulings that guarantee rests on are stated in [The 1.0 contract](contract.md).
+1.0.0 is melon's first stable release. Every header outside `melon/detail/` and `melon/experimental/` is frozen API for the 1.x series, under [semantic versioning](https://semver.org) — see [API stability](getting-started/installation.md#api-stability) for the scope of the guarantee and the design decisions it rests on.
 
 ## Documentation, license
 

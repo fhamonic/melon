@@ -58,7 +58,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
           competing_dijkstras_traits Traits =
               competing_dijkstras_default_traits<
                   Graph, mapped_value_t<BlueLengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
+    requires outward_incidence_graph<Graph> &&
              std::is_same_v<mapped_value_t<BlueLengthMap, arc_t<Graph>>,
                             mapped_value_t<RedLengthMap, arc_t<Graph>>>
 class competing_dijkstras
@@ -90,6 +90,7 @@ private:
 public:
     template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
               mapping_for<RedLengthMap> RLM>
+        requires has_vertex_map<Graph>
     competing_dijkstras(G && g, BLM && blm, RLM && rlm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))

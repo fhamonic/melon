@@ -37,8 +37,7 @@ struct topological_sort_default_traits {
 // fails the constraint instead of hard-erroring inside the constructor.
 template <graph_view Graph,
           topological_sort_traits Traits = topological_sort_default_traits>
-    requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
-             has_num_vertices<Graph>
+    requires outward_incidence_graph<Graph> && has_num_vertices<Graph>
 class topological_sort
     : public algorithm_view_interface<topological_sort<Graph, Traits>> {
 private:
@@ -105,7 +104,8 @@ private:
 
 public:
     template <typename G>
-        requires detail::not_self<G, topological_sort> && graph_for<G, Graph>
+        requires detail::not_self<G, topological_sort> && graph_for<G, Graph> &&
+                     has_vertex_map<Graph>
     constexpr explicit topological_sort(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()

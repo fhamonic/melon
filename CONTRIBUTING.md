@@ -115,8 +115,10 @@ clang-format -i <files you changed>
 
 ## Comments
 
-melon's teaching documentation is prose, under `docs/`, and its API contract is
-stated once in [docs/contract.md](docs/contract.md). Header comments are not a
+melon's teaching documentation is prose, under `docs/`, and each piece of its
+API contract is stated once, in the docs page that owns the topic (the
+algorithm lifecycle in `docs/algorithms/index.md`, ownership in
+`docs/views/ownership.md`, and so on). Header comments are not a
 second copy of either: the code is meant to be readable on its own, and a
 comment earns its place only by saying something the code cannot. Three kinds
 qualify.

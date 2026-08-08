@@ -34,7 +34,7 @@ struct strongly_connected_components_default_traits {
 
 template <graph_view Graph, strongly_connected_components_traits Traits =
                                 strongly_connected_components_default_traits>
-    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
+    requires outward_adjacency_graph<Graph>
 class strongly_connected_components
     : public algorithm_view_interface<
           strongly_connected_components<Graph, Traits>> {
@@ -67,7 +67,7 @@ private:
 public:
     template <typename G>
         requires detail::not_self<G, strongly_connected_components> &&
-                     graph_for<G, Graph>
+                     graph_for<G, Graph> && has_vertex_map<Graph>
     constexpr explicit strongly_connected_components(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _remaining_vertices(vertices(_graph))

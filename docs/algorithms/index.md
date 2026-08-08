@@ -137,11 +137,38 @@ for(auto && s : terminals) {
 }
 ```
 
+## The lifecycle contract
+
 These `reset()` / `run()` / `add_source` semantics are not a per-class
 convention: they are the named concepts `melon::traversal_algorithm` and
 `rooted_traversal_algorithm` (`melon/utility/algorithmic_generator.hpp`),
-statically asserted for every algorithm in the library.
-[The 1.0 contract](../contract.md) states them in full.
+statically asserted for every algorithm in the library and frozen for the
+whole 1.x series. In full:
+
+- **`reset()` restores exactly the state the constructor leaves behind** —
+  blank for an algorithm whose sources are added afterwards, re-seeded and
+  immediately runnable for one whose constructor seeds (`topological_sort`,
+  `traversal_forest`). `alg.reset()` is always equivalent to constructing a
+  fresh object from the same arguments, minus the allocations.
+- **`run()` drains and returns `*this`.** It is idempotent: `finished()` holds
+  afterwards and a second call is a no-op, with the results still readable
+  through the accessors — which is why `bidirectional_dijkstra`'s answer is
+  read as `alg.run().dist()`.
+- **`current()` and `advance()` require `!finished()`** — asserted in debug
+  builds, undefined in release builds, like every precondition
+  ([below](#a-note-on-assert)).
+- **There is no post-construction, pre-iteration step.** A constructed (and,
+  for rooted algorithms, sourced) object is ready to iterate. LEMON-style
+  `init()` has no melon counterpart.
+
+!!! note "Accessor naming is part of the contract"
+
+    Traits-gated results are `dist(v)` / `dists_map()`, `pred_arc(v)` /
+    `pred_arcs_map()`, `path_to(v)`, `reached(v)` / `reached_map()`. A per-key
+    accessor's map view pluralises the noun and appends `_map`: `flow(a)` /
+    `flows_map()`, `depth(v)` / `depths_map()`, `cluster(v)` / `clusters_map()`,
+    `component_id(v)` / `component_ids_map()`. If an algorithm ever drifts from
+    any of this, that is a bug — report it.
 
 ## Traits
 
@@ -164,6 +191,15 @@ Two things follow from the design.
 
 The flags available per algorithm are listed on each algorithm's page. The data-structure slots — the heap type, the semiring, the index map — are described under [Shortest paths](shortest-paths.md#traits).
 
+!!! note "Traits are checked by concepts"
+
+    Each algorithm constrains its traits parameter (`dijkstra_traits`,
+    `breadth_first_search_traits`, … — all listed in the
+    [concepts index](../reference/concepts-index.md#algorithms-and-utilities)),
+    so a misspelled flag fails the constraint at the constructor instead of
+    silently defaulting. The path-storing flag is `store_paths`, plural,
+    everywhere.
+
 ## A note on `noexcept`
 
 melon marks a function `noexcept` only when it can keep the promise. An algorithm's constructor, `reset()`, `add_source()`, `advance()` and `run()` are **not** `noexcept`: they allocate (the heap, the queue, the vertex maps) and they run your code — your length map, your semiring, your comparator, your graph's `out_arcs()`. A `noexcept` there would not prevent the throw, it would turn it into `std::terminate` with no diagnostic.
@@ -172,4 +208,6 @@ The observers are `noexcept` when their body allows it. Where a view forwards to
 
 ## A note on `assert`
 
-melon's algorithms use `assert` for their preconditions: `current()` on a finished generator, `dist(v)` on an unvisited vertex, `promote` in the wrong direction. These vanish under `NDEBUG`, which is the default in a Release build. Run your test suite without `NDEBUG` at least once — the test suite of melon itself starts every file with `#undef NDEBUG` for exactly that reason.
+melon does not throw on contract violations. Every stated precondition — `current()` on a finished generator, `dist(v)` on an unvisited vertex, `add_source` on a touched vertex, `promote` in the wrong direction — is an `assert` in debug builds and undefined behaviour in release builds, where `NDEBUG` strips the checks. Run your test suite without `NDEBUG` (and, ideally, with `-DMELON_SANITIZE=address,undefined`) at least once before shipping — the test suite of melon itself starts every file with `#undef NDEBUG` for exactly that reason.
+
+The exceptions that *are* thrown are the STL-shaped ones: `at()` on the map containers throws `std::out_of_range`, and allocation failures propagate `std::bad_alloc`.

@@ -56,8 +56,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           bidirectional_dijkstra_traits Traits =
               bidirectional_dijkstra_default_traits<
                   Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
-             has_vertex_map<Graph>
+    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<Graph>;
@@ -103,6 +102,7 @@ private:
 
 public:
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+        requires has_vertex_map<Graph>
     constexpr bidirectional_dijkstra(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))

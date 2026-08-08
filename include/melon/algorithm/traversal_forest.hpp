@@ -11,8 +11,7 @@
 namespace melon {
 
 template <graph_view Graph, std::ranges::range Sources>
-    requires has_vertex_map<Graph> &&
-             std::same_as<std::ranges::range_value_t<Sources>, vertex_t<Graph>>
+    requires std::same_as<std::ranges::range_value_t<Sources>, vertex_t<Graph>>
 class traversal_forest
     : public algorithm_view_interface<traversal_forest<Graph, Sources>> {
 private:
@@ -45,13 +44,17 @@ private:
 
 public:
     template <typename G>
-        requires detail::not_self<G, traversal_forest> && graph_for<G, Graph>
+        requires detail::not_self<G, traversal_forest> && graph_for<G, Graph> &&
+                     std::constructible_from<
+                         breadth_first_search<Graph, bfs_traits>, G &&>
     constexpr explicit traversal_forest(G && g)
         : _bfs(std::forward<G>(g))
         , _remaining_sources(vertices(_bfs.base()))
         , _sources_from_base(true) {
-        // Guarded: advance() reads _remaining_sources.current(), which on an
-        // empty source range reads past the end of an empty view.
+        // Guarded: advance() reads
+        // _remaining_sources.current(), which on an
+        // empty source range reads past the end of an empty
+        // view.
         if(!finished()) advance();
     }
 
@@ -65,7 +68,9 @@ public:
                      std::constructible_from<consumable_view<Sources>,
                                              std::views::all_t<SR>> &&
                      std::convertible_to<std::ranges::range_value_t<SR>,
-                                         vertex_t<Graph>>
+                                         vertex_t<Graph>> &&
+                     std::constructible_from<
+                         breadth_first_search<Graph, bfs_traits>, G &&>
     constexpr traversal_forest(G && g, SR && sources)
         : _bfs(std::forward<G>(g))
         , _remaining_sources(std::views::all(std::forward<SR>(sources))) {
@@ -181,7 +186,7 @@ public:
         noexcept(std::move(_bfs).reached_map())) {
         return std::move(_bfs).reached_map();
     }
-};
+};  // namespace melon
 
 template <typename Graph>
 traversal_forest(Graph &&)

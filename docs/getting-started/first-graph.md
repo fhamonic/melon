@@ -96,7 +96,7 @@ for(auto && [v, dist] : dijkstra(graph, length_map, 0u)) {
 }
 ```
 
-The object can also be held and stepped by hand, which is what you want when two searches must advance together — see [Algorithms are ranges](../algorithms/index.md). It is move-only — a copy is a compile error — and `reset()` restores the constructor's state while reusing its allocations; `add_source` asserts the vertex is untouched ([The 1.0 contract](../contract.md)).
+The object can also be held and stepped by hand, which is what you want when two searches must advance together — see [Algorithms are ranges](../algorithms/index.md). It is move-only — a copy is a compile error — and `reset()` restores the constructor's state while reusing its allocations; `add_source` asserts the vertex is untouched ([the lifecycle contract](../algorithms/index.md#the-lifecycle-contract)).
 
 ## Distances and paths
 

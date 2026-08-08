@@ -59,7 +59,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
               biobjective_dijkstra_default_traits<
                   Graph, mapped_value_t<BlueLengthMap, arc_t<Graph>>,
                   mapped_value_t<RedLengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
+    requires outward_incidence_graph<Graph>
 class biobjective_dijkstra
     : public algorithm_view_interface<
           biobjective_dijkstra<Graph, BlueLengthMap, RedLengthMap, Traits>> {
@@ -70,30 +70,31 @@ private:
     using red_length_type = mapped_value_t<RedLengthMap, arc_t<Graph>>;
     using heap = Traits::heap;
     using label = Traits::label;
-
-private:
-    Graph _graph;
-    BlueLengthMap _blue_length_map;
-    RedLengthMap _red_length_map;
-
     struct labels_cmp {
         [[nodiscard]] constexpr bool operator()(const label & l1,
                                                 const label & l2) const {
             return Traits::blue_semiring::less(l1.first, l2.first);
         }
     };
-    vertex_map_t<Graph, std::set<label, labels_cmp>> _pareto_front_map;
+    using labels_set = std::set<label, labels_cmp>;
+
+private:
+    Graph _graph;
+    BlueLengthMap _blue_length_map;
+    RedLengthMap _red_length_map;
+
+    vertex_map_t<Graph, labels_set> _pareto_front_map;
     heap _heap;
 
 public:
     template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
               mapping_for<RedLengthMap> RLM>
+        requires has_vertex_map<Graph>
     biobjective_dijkstra(G && g, BLM && blm, RLM && rlm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))
         , _red_length_map(maps::mapping_all(std::forward<RLM>(rlm)))
-        , _pareto_front_map(
-              create_vertex_map<std::set<label, labels_cmp>>(_graph))
+        , _pareto_front_map(create_vertex_map<labels_set>(_graph))
         , _heap() {}
 
     template <typename... Args>

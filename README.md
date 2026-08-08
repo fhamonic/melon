@@ -116,7 +116,7 @@ Full details, including a system-wide install and the C++23-versus-C++26 note, a
 - [Why melon](https://fhamonic.github.io/melon/getting-started/) · [Installation](https://fhamonic.github.io/melon/getting-started/installation/) · [A first graph](https://fhamonic.github.io/melon/getting-started/first-graph/) · [Coming from Boost.Graph or LEMON](https://fhamonic.github.io/melon/getting-started/coming-from/)
 - [Graph concepts](https://fhamonic.github.io/melon/graphs/concepts/) · [Mappings](https://fhamonic.github.io/melon/graphs/mappings/) · [Undirected graphs](https://fhamonic.github.io/melon/graphs/undirected-graphs/) · [Bringing your own graph](https://fhamonic.github.io/melon/graphs/custom-graphs/)
 - [Containers](https://fhamonic.github.io/melon/containers/graphs/) · [Views](https://fhamonic.github.io/melon/views/graphs/) · [Algorithms](https://fhamonic.github.io/melon/algorithms/)
-- [The 1.0 contract](https://fhamonic.github.io/melon/contract/) · [Performance](https://fhamonic.github.io/melon/performance/) · [Header map](https://fhamonic.github.io/melon/reference/headers/)
+- [Performance](https://fhamonic.github.io/melon/performance/) · [Header map](https://fhamonic.github.io/melon/reference/headers/) · [Concepts index](https://fhamonic.github.io/melon/reference/concepts-index/)
 
 ## API stability
 
@@ -125,7 +125,7 @@ Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): ev
 - `melon/detail/` — implementation details, as well as any symbol in a `detail` namespace;
 - `melon/experimental/` — work-in-progress data structures. These live in `namespace melon::experimental`, so nothing reaches the stable `melon` namespace by accident.
 
-The guarantee rests on ten design rulings — algorithms are move-only, stored members are always views, mappings are read through const access, one lifecycle for every algorithm, preconditions are asserted rather than thrown — each pinned by tests and stated in [The 1.0 contract](https://fhamonic.github.io/melon/contract/). Code that follows them keeps compiling and keeps meaning the same thing for every 1.x release; if a 1.x release ever breaks such code, that is a bug in melon.
+The guarantee rests on a handful of design decisions — algorithms are move-only, stored members are always views, mappings are read through const access, one lifecycle for every algorithm, preconditions are asserted rather than thrown — each pinned by tests and stated in the documentation page that owns its topic (see [API stability](https://fhamonic.github.io/melon/getting-started/installation/#api-stability) for the scope). Code that follows them keeps compiling and keeps meaning the same thing for every 1.x release; if a 1.x release ever breaks such code, that is a bug in melon.
 
 `melon/version.hpp` is the single source of truth for the version number and lets you feature-test with `MELON_VERSION`.
 

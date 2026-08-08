@@ -36,6 +36,12 @@ Every concept in melon's public API, with its header and a one-line statement of
 
 **Aliases.** `vertex_t<G>`, `arc_t<G>`, `vertices_range_t<G>`, `arcs_range_t<G>`, `out_arcs_range_t<G>`, `in_arcs_range_t<G>`, `out_arcs_iterator_t<G>`, `out_arcs_sentinel_t<G>`, `in_arcs_iterator_t<G>`, `in_arcs_sentinel_t<G>`, `out_neighbors_range_t<G>`, `in_neighbors_range_t<G>`, `vertex_map_t<G, T>`, `arc_map_t<G, T>`.
 
+!!! note "The alias templates are the supported spelling"
+
+    The member typedefs behind `vertex_t<G>` and `arc_t<G>` are private on
+    every graph type; the alias templates work for every graph, view and user
+    type, and are the only stable way to name a handle.
+
 ## Undirected graph — `melon/undirected_graph.hpp`
 
 | Concept | Requires |
@@ -92,7 +98,7 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | Concept | Header | Requires |
 | --- | --- | --- |
 | `algorithmic_generator<A>` | `utility/algorithmic_generator.hpp` | `finished()`, `current()`, `advance()` |
-| `traversal_algorithm<A>` | `utility/algorithmic_generator.hpp` | the [1.0 lifecycle contract](../contract.md): a movable generator range with chaining `reset()` and `run()` |
+| `traversal_algorithm<A>` | `utility/algorithmic_generator.hpp` | the [lifecycle contract](../algorithms/index.md#the-lifecycle-contract): a movable generator range with chaining `reset()` and `run()` |
 | `rooted_traversal_algorithm<A, S>` | `utility/algorithmic_generator.hpp` | `traversal_algorithm` plus chaining `add_source(s)` |
 | `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::semiregular`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
 | `updatable_priority_queue<Q>` | `utility/priority_queue.hpp` | `priority_queue` plus `contains`, `priority`, `promote`, `demote` |

@@ -16,7 +16,7 @@
 namespace melon {
 
 template <undirected_graph_view UGraph>
-    requires has_incidence<UGraph> && has_vertex_map<UGraph>
+    requires has_incidence<UGraph>
 class connected_components
     : public algorithm_view_interface<connected_components<UGraph>> {
 private:
@@ -35,7 +35,7 @@ private:
 public:
     template <typename UG>
         requires detail::not_self<UG, connected_components> &&
-                     undirected_graph_for<UG, UGraph>
+                     undirected_graph_for<UG, UGraph> && has_vertex_map<UGraph>
     constexpr explicit connected_components(UG && g)
         : _graph(views::undirected_graph_all(std::forward<UG>(g)))
         , _remaining_vertices(vertices(_graph))

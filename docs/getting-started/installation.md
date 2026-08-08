@@ -145,7 +145,14 @@ Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): ev
 - `melon/detail/` — implementation details, as well as any symbol in a `detail` namespace;
 - `melon/experimental/` — work-in-progress data structures. These live in `namespace melon::experimental`, so nothing reaches the stable `melon` namespace by accident.
 
-The 1.x guarantee and the design rulings it rests on are stated in [The 1.0 contract](../contract.md).
+The guarantee covers every documented name in `namespace melon`, `melon::views`, `melon::maps`, `melon::numeric` and `melon::cpo`, plus the behavioural contracts stated throughout this documentation — the [algorithm lifecycle](../algorithms/index.md#the-lifecycle-contract), the [ownership rules](../views/ownership.md), the [mapping concepts](../graphs/mappings.md). Those contracts are deliberate design decisions, each pinned by tests (`test/api_consistency.cpp`, `test/api_review.cpp`), and will not be relitigated within 1.x. If a 1.x release ever breaks code that follows them, that is a bug in melon.
+
+!!! note "Types documented only by concept are not frozen"
+
+    The exact type of a member documented only by concept — the concrete range
+    type an algorithm's iteration yields, for instance, beyond what
+    `traversal_algorithm` promises — is not covered. Spell such types with
+    `auto` or `decltype`.
 
 `melon/version.hpp` is the single source of truth for the version number and lets you feature-test:
 

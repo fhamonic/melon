@@ -72,7 +72,7 @@ struct network_voronoi_default_traits {
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           network_voronoi_traits Traits = network_voronoi_default_traits<
               Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
+    requires outward_incidence_graph<Graph>
 class network_voronoi : public algorithm_view_interface<
                             network_voronoi<Graph, LengthMap, Traits>> {
 private:
@@ -107,6 +107,7 @@ private:
 
 public:
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+        requires has_vertex_map<Graph>
     constexpr network_voronoi(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))

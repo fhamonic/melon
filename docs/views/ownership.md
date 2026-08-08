@@ -56,7 +56,7 @@ constexpr dijkstra(G && g, LM && lm)
     ...
 ```
 
-Their deduction guides are written in terms of `views::graph_all_t<Graph>`, and the class heads require view types for the stored members (`graph_view Graph`, `mapping_view<arc_t<Graph>> LengthMap`) — **stored members are always views**, one of the [1.0 rulings](../contract.md): a raw-container member spelling like `dijkstra<static_digraph, static_map<…>>` is ill-formed, and value ownership is spelled `graph_owning_view` / `mapping_owning_view`.
+Their deduction guides are written in terms of `views::graph_all_t<Graph>`, and the class heads require view types for the stored members (`graph_view Graph`, `mapping_view<arc_t<Graph>> LengthMap`) — **stored members are always views**, the `std::ranges::transform_view` precedent: a raw-container member spelling like `dijkstra<static_digraph, static_map<…>>` is ill-formed, and value ownership is spelled `graph_owning_view` / `mapping_owning_view`. If you need to name an algorithm's type, use `decltype` on the CTAD spelling or spell the ownership explicitly — CTAD always produces exactly the type you could have spelled.
 
 ### Marking your own type as a view
 
@@ -96,7 +96,7 @@ auto flows = std::move(dinitz(graph, capacity, s, t).run()).flows_map();
 // owning: the algorithm is gone, the flow map lives on
 ```
 
-Extraction is terminal, like `std::move(alg).base()`: the member left behind is valid but empty, so extract last and call nothing else afterwards. The handful of *computed* maps (`dijkstra`'s, `network_voronoi`'s, `strongly_connected_components`' and `biobjective_dijkstra`'s `reached_map()`, derived from richer state rather than stored as a bool map) extract too — their expiring overload moves the backing map (status enums, component indices, Pareto fronts) into the lambda of the returned computed map, so it is self-contained and outlives the algorithm just the same.
+Extraction is terminal, like `std::move(alg).base()`: the member left behind is valid but empty, so extract last and call nothing else afterwards. Mind also that a map handed out by an *lvalue* algorithm references the algorithm object — moving the algorithm afterwards invalidates it, the same contract `std::ranges` adaptors have over a moved container. When the map must outlive or outlast the algorithm, extract it from an expiring one. The handful of *computed* maps (`dijkstra`'s, `network_voronoi`'s, `strongly_connected_components`' and `biobjective_dijkstra`'s `reached_map()`, derived from richer state rather than stored as a bool map) extract too — their expiring overload moves the backing map (status enums, component indices, Pareto fronts) into the lambda of the returned computed map, so it is self-contained and outlives the algorithm just the same.
 
 ## Pipe closures own their arguments
 
@@ -162,11 +162,15 @@ algorithm `A`, over every graph, and `std::movable<A>` is `true` for every one
 of them. An algorithm carries the whole search state — each vertex map, the
 heap, the cached cursors — so copying it is never the cheap operation the
 syntax suggests; passing one by value is a compile error rather than a silent
-O(V+E) duplication. The `melon::traversal_algorithm` concept requires the
-movability, and [The 1.0 contract](../contract.md) states the ruling.
+O(V+E) duplication. The `melon::traversal_algorithm` concept — the
+[lifecycle contract](../algorithms/index.md#the-lifecycle-contract) every
+algorithm models — requires the movability.
 
 If you want a second search, construct a second algorithm. If you want to
-re-run one, `reset()` reuses the state it has already allocated.
+re-run one, `reset()` reuses the state it has already allocated. And do not
+write `auto a = alg.run();` — `run()` returns `*this` by reference, so that
+line would be a copy, and it does not compile; call `alg.run();` and read the
+results through the accessors.
 
 Moving, on the other hand, is always available and always sound — including
 mid-traversal. Getting that right is what `enable_borrowed_graph` is for.
@@ -213,6 +217,14 @@ specialise the trait and that rebasing compiles away entirely:
 template <>
 inline constexpr bool melon::enable_borrowed_graph<my_view> = true;
 ```
+
+!!! warning "Borrowedness is a promise you make"
+
+    Specialise it `true` only if the ranges your graph hands out remain valid
+    **independently of the graph object** — a non-owning view over external
+    storage, for example. Claiming it falsely turns every algorithm move over
+    your graph into a use-after-free; not claiming it merely costs the rebase
+    loop. When unsure, leave it `false`.
 
 ## Constness
 

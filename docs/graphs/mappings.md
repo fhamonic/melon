@@ -45,6 +45,8 @@ concept output_mapping =
 
 `output_mapping` adds assignment. A mapping that does not satisfy it is read-only. The shape of the requirement — checking the *type of the assignment expression* rather than requiring a plain `T&` — is what lets proxy references qualify, so `std::vector<bool>` is a perfectly good output mapping alongside `std::vector<double>` and your own type.
 
+The requirement also demands that a write actually *lands*: the subscript must return an lvalue reference into storage, or a proxy standing in for one. A map whose subscript returns a prvalue of the value type — a computed map, such as `maps::map` over a lambda returning by value — is readable but is not an `output_mapping`, because `m[k] = v` would assign into a temporary.
+
 ```cpp
 template <typename Map, typename Key>
 concept contiguous_mapping =
@@ -146,6 +148,23 @@ auto unit = maps::map([](auto &&) { return 1; });
 auto euclidean = maps::map([&](arc_t<G> a) { return distance(pos[arc_source(g, a)],
                                                               pos[arc_target(g, a)]); });
 ```
+
+!!! warning "A `mutable` lambda is not a `mapping`"
+
+    A mutable lambda's `operator()` is non-const, so `maps::map` over one is
+    not readable through a const access and fails `mapping` — the same
+    const-readability requirement that rules out `std::map`. The map stays
+    usable through its non-const subscript; it is only the const one that
+    leaves the overload set. Spell a stateful map as a *const* lambda handing
+    out a reference into storage it does not own:
+
+    ```cpp
+    std::vector<double> storage(n);
+    auto m = maps::map([&storage](arc_t<G> a) -> double & { return storage[a]; });
+    ```
+
+    This spelling is also an `output_mapping` — the subscript returns a real
+    lvalue reference — where the mutable-capture version never could be.
 
 Four ready-made mappings cover the common constant cases:
 

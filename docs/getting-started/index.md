@@ -23,7 +23,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
 class dijkstra;
 ```
 
-The template-parameter constraints (`graph_view`, `mapping_view`) say what the stored members *are* — stored members are always views, one of the 1.0 rulings — while the capabilities the algorithm needs sit in the requires-clause.
+The template-parameter constraints (`graph_view`, `mapping_view`) say what the stored members *are* — stored members are always views, a rule [Ownership and mapping views](../views/ownership.md) spells out — while the capabilities the algorithm needs sit in the requires-clause.
 
 Two things follow. First, instantiating an algorithm with a structure that cannot support it fails at *compile time*, at the call site, with a diagnostic naming the missing requirement — not with a wall of errors from three headers down. Second, and more importantly, nothing about that signature mentions a melon type. Any structure of yours that satisfies `outward_incidence_graph` runs melon's Dijkstra, with no adapter, no wrapper, and no copy of your data into a "real" graph first. [Bringing your own graph](../graphs/custom-graphs.md) shows how few functions that takes.
 
@@ -61,7 +61,7 @@ The [mapping concepts](../graphs/mappings.md) (`mapping`, `output_mapping`, `con
 
 ## Algorithms are ranges you can step
 
-An algorithm in melon is not a function that runs to completion and returns a result. It is an object that satisfies `algorithmic_generator` — `finished()`, `current()`, `advance()` — and therefore [behaves as an input range](../algorithms/index.md), through `algorithm_view_interface`. The full lifecycle is the named `traversal_algorithm` / `rooted_traversal_algorithm` contract: `reset()` restores the constructor's state, `run()` drains and returns the algorithm, and `add_source` requires the vertex to be untouched — see [The 1.0 contract](../contract.md).
+An algorithm in melon is not a function that runs to completion and returns a result. It is an object that satisfies `algorithmic_generator` — `finished()`, `current()`, `advance()` — and therefore [behaves as an input range](../algorithms/index.md), through `algorithm_view_interface`. The full lifecycle is the named `traversal_algorithm` / `rooted_traversal_algorithm` contract: `reset()` restores the constructor's state, `run()` drains and returns the algorithm, and `add_source` requires the vertex to be untouched — see [the lifecycle contract](../algorithms/index.md#the-lifecycle-contract).
 
 ```cpp
 // consume it as a range, in the order the algorithm settles vertices

@@ -21,7 +21,6 @@ namespace melon {
 // O(n m^2), independent of the capacity values.
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
-             has_vertex_map<Graph> && has_arc_map<Graph> &&
              std::numeric_limits<
                  mapped_value_t<CapacityMap, arc_t<Graph>>>::is_specialized
 class edmonds_karp {
@@ -50,6 +49,7 @@ public:
     // Leaves the terminals unset -- run(), flow_value() and minimum_cut() all
     // read them, so set_source() and set_target() must be called first.
     template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
+        requires has_vertex_map<Graph> && has_arc_map<Graph>
     constexpr edmonds_karp(G && g, CM && cm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))

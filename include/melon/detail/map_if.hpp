@@ -22,7 +22,9 @@ template <typename Graph, typename Type, typename DiscriminatingT>
 struct vertex_map_if<true, Graph, Type, DiscriminatingT> {
     vertex_map_t<Graph, Type> _map;
 
-    constexpr vertex_map_if(Graph & g) : _map(create_vertex_map<Type>(g)) {}
+    constexpr vertex_map_if(Graph & g)
+        requires has_vertex_map<Graph>
+        : _map(create_vertex_map<Type>(g)) {}
 
     // `const Type &`, not `Type &&`: Type is a class template parameter, so
     // `Type &&` is a plain rvalue reference and rejects a named default value.

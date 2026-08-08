@@ -19,7 +19,6 @@ nav = [
     { "A first graph" = "getting-started/first-graph.md" },
     { "Coming from Boost.Graph or LEMON" = "getting-started/coming-from.md" },
   ] },
-  { "The 1.0 contract" = "contract.md" },
   { "The graph model" = [
     { "Graph concepts" = "graphs/concepts.md" },
     { "Mappings" = "graphs/mappings.md" },

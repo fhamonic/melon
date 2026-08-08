@@ -39,7 +39,7 @@ struct depth_first_search_default_traits {
 
 template <graph_view Graph,
           depth_first_search_traits Traits = depth_first_search_default_traits>
-    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
+    requires outward_adjacency_graph<Graph>
 class depth_first_search
     : public algorithm_view_interface<depth_first_search<Graph, Traits>> {
 private:
@@ -80,7 +80,8 @@ private:
 
 public:
     template <typename G>
-        requires detail::not_self<G, depth_first_search> && graph_for<G, Graph>
+        requires detail::not_self<G, depth_first_search> &&
+                     graph_for<G, Graph> && has_vertex_map<Graph>
     constexpr explicit depth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _stack()

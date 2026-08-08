@@ -106,7 +106,7 @@ for(auto && [v, dist] : dijkstra(g, length, s)) {
 
 LEMON's stepwise interface is the closest analogue, and melon keeps it: `finished()`, `current()`, `advance()`, plus `run()` when you want the whole thing. The whole lifecycle is the named `traversal_algorithm` contract: `reset()` restores the constructor's state, `run()` drains and returns the algorithm, and there is no post-construction step — LEMON's `init()` has no melon counterpart, and the one algorithm that had one, `competing_dijkstras::init()`, was removed in 1.0.
 
-One more difference matters if you are used to copying algorithm objects around: melon's are move-only. A copy is a compile error — `reset()` or construct a second object instead — and `auto a = alg.run();` does not compile, because `run()` returns a reference. See [The 1.0 contract](../contract.md).
+One more difference matters if you are used to copying algorithm objects around: melon's are move-only. A copy is a compile error — `reset()` or construct a second object instead — and `auto a = alg.run();` does not compile, because `run()` returns a reference. See [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound).
 
 ### 3. Data maps are created by the graph, not handed to it
 
