@@ -49,9 +49,9 @@ private:
 
 private:
     Graph _graph;
-    consumable_input_view<vertices_range_t<Graph>> _remaining_vertices;
-    std::vector<
-        std::pair<vertex, consumable_input_view<out_neighbors_range_t<Graph>>>>
+    detail::consumable_input_view<vertices_range_t<Graph>> _remaining_vertices;
+    std::vector<std::pair<
+        vertex, detail::consumable_input_view<out_neighbors_range_t<Graph>>>>
         _dfs_stack;
     std::vector<vertex> _tarjan_stack;
     std::vector<vertex>::iterator _component_begin;
@@ -61,8 +61,8 @@ private:
     vertex_map_t<Graph, bool> _in_tarjan_stack_map;
     vertex_map_t<Graph, component_num> _index_map;
     vertex_map_t<Graph, component_num> _lowlink_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_component_ids, Graph,
-                                        component_num> _component_id_map;
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_component_ids, Graph, component_num> _component_id_map;
 
 public:
     template <typename G>

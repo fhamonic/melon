@@ -44,9 +44,10 @@ private:
     arc_map_t<Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
     vertex_map_t<Graph, std::size_t> _vertex_rank_map;
-    vertex_map_t<Graph, consumable_input_view_t<out_arcs_range_t<Graph>>>
+    vertex_map_t<Graph,
+                 detail::consumable_input_view_t<out_arcs_range_t<Graph>>>
         _remaining_out_arcs;
-    vertex_map_t<Graph, consumable_input_view_t<in_arcs_range_t<Graph>>>
+    vertex_map_t<Graph, detail::consumable_input_view_t<in_arcs_range_t<Graph>>>
         _remaining_in_arcs;
 
 public:
@@ -64,10 +65,12 @@ public:
         , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
         , _remaining_out_arcs(
               create_vertex_map<
-                  consumable_input_view_t<out_arcs_range_t<Graph>>>(_graph))
+                  detail::consumable_input_view_t<out_arcs_range_t<Graph>>>(
+                  _graph))
         , _remaining_in_arcs(
               create_vertex_map<
-                  consumable_input_view_t<in_arcs_range_t<Graph>>>(_graph)) {
+                  detail::consumable_input_view_t<in_arcs_range_t<Graph>>>(
+                  _graph)) {
         if constexpr(has_num_vertices<Graph>) {
             _bfs_queue.reserve(num_vertices(_graph));
         }

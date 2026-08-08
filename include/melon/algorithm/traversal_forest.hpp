@@ -32,7 +32,7 @@ private:
     // not compile. Declared first so it is initialised before
     // _remaining_sources reads it.
     breadth_first_search<Graph, bfs_traits> _bfs;
-    consumable_view<Sources> _remaining_sources;
+    detail::consumable_view<Sources> _remaining_sources;
     // True when _remaining_sources was derived from vertices(_bfs.base()) by
     // the single-argument constructor. Those are the only sources that can
     // point back *into this object*, so they are the only ones the relocation
@@ -65,7 +65,7 @@ public:
     // temporary container would not compile at all.
     template <typename G, std::ranges::range SR>
         requires detail::not_self<G, traversal_forest> && graph_for<G, Graph> &&
-                     std::constructible_from<consumable_view<Sources>,
+                     std::constructible_from<detail::consumable_view<Sources>,
                                              std::views::all_t<SR>> &&
                      std::convertible_to<std::ranges::range_value_t<SR>,
                                          vertex_t<Graph>> &&
@@ -92,15 +92,15 @@ public:
         // predicate reads the graph inside the _bfs moved away one line up.
         // Those are rebuilt from the new base's vertices and the old
         // consumed count; caller-supplied sources move as members.
-        , _remaining_sources([&]() -> consumable_view<Sources> {
+        , _remaining_sources([&]() -> detail::consumable_view<Sources> {
             if constexpr(!borrowed_graph<Graph> &&
                          !std::ranges::borrowed_range<Sources> && requires {
-                             consumable_view<Sources>(
+                             detail::consumable_view<Sources>(
                                  vertices(_bfs.base()),
                                  o._remaining_sources.consumed());
                          }) {
                 if(o._sources_from_base)
-                    return consumable_view<Sources>(
+                    return detail::consumable_view<Sources>(
                         vertices(_bfs.base()), o._remaining_sources.consumed());
             }
             return std::move(o._remaining_sources);
@@ -115,12 +115,12 @@ public:
         _sources_from_base = o._sources_from_base;
         if constexpr(!borrowed_graph<Graph> &&
                      !std::ranges::borrowed_range<Sources> && requires {
-                         consumable_view<Sources>(
+                         detail::consumable_view<Sources>(
                              vertices(_bfs.base()),
                              o._remaining_sources.consumed());
                      }) {
             if(_sources_from_base) {
-                _remaining_sources = consumable_view<Sources>(
+                _remaining_sources = detail::consumable_view<Sources>(
                     vertices(_bfs.base()), o._remaining_sources.consumed());
                 return *this;
             }

@@ -77,13 +77,13 @@ private:
     heap _heap;
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
 
-    [[no_unique_address]] vertex_map_if<Traits::store_paths &&
-                                            !has_arc_source<Graph>,
-                                        Graph, vertex> _pred_vertices_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_paths, Graph,
-                                        std::optional<arc>> _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph,
-                                        length_type> _distances_map;
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
+        _pred_vertices_map;
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_paths, Graph, std::optional<arc>> _pred_arcs_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_distances, Graph,
+                                                length_type> _distances_map;
 
 public:
     // Constrained on storability into each member, so std::is_constructible
@@ -169,8 +169,8 @@ public:
         if constexpr(Traits::store_distances) _distances_map[t] = st_dist;
         _vertex_status_map[t] = POST_HEAP;
         auto && out_arcs_range = melon::out_arcs(_graph, t);
-        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
-                                 _length_map);
+        detail::prefetch_keys_and_values(out_arcs_range,
+                                         arc_targets_map(_graph), _length_map);
         _heap.pop();
         for(const arc & a : out_arcs_range) {
             const vertex & w = melon::arc_target(_graph, a);
@@ -266,12 +266,13 @@ public:
     }
 
 private:
-    class path_iterator : public intrusive_iterator_base<dijkstra, vertex> {
+    class path_iterator
+        : public detail::intrusive_iterator_base<dijkstra, vertex> {
     public:
         using value_type = arc;
         using reference = arc;
-        using intrusive_iterator_base<dijkstra,
-                                      vertex>::intrusive_iterator_base;
+        using detail::intrusive_iterator_base<dijkstra,
+                                              vertex>::intrusive_iterator_base;
 
         // A plain prvalue, not a `const` one: a const prvalue inhibits moves
         // and makes std::iterator_traits disagree with the `reference` typedef

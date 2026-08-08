@@ -100,10 +100,10 @@ private:
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
     [[no_unique_address]] entry_cmp _entry_cmp;
 
-    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph,
-                                        length_type> _distances_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_clusters, Graph,
-                                        cluster_id_t> _clusters_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_distances, Graph,
+                                                length_type> _distances_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_clusters, Graph,
+                                                cluster_id_t> _clusters_map;
 
 public:
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
@@ -193,8 +193,8 @@ public:
         if constexpr(Traits::store_distances) _distances_map[t] = st_dist.first;
         if constexpr(Traits::store_clusters) _clusters_map[t] = st_dist.second;
         auto && out_arcs_range = melon::out_arcs(_graph, t);
-        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
-                                 _length_map);
+        detail::prefetch_keys_and_values(out_arcs_range,
+                                         arc_targets_map(_graph), _length_map);
         _heap.pop();
         for(const arc & a : out_arcs_range) {
             const vertex & w = melon::arc_target(_graph, a);

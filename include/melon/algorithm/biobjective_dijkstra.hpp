@@ -212,8 +212,9 @@ public:
                 continue;
             }
             auto && out_arcs_range = out_arcs(_graph, t);
-            prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
-                                     _blue_length_map, _red_length_map);
+            detail::prefetch_keys_and_values(out_arcs_range,
+                                             arc_targets_map(_graph),
+                                             _blue_length_map, _red_length_map);
             _heap.pop();
             for(const arc & a : out_arcs_range) {
                 const vertex & w = arc_target(_graph, a);

@@ -3,7 +3,7 @@
 #include <cassert>
 #include <iterator>
 
-namespace melon {
+namespace melon::detail {
 
 template <typename S, typename T>
 class intrusive_iterator_base {
@@ -45,4 +45,4 @@ public:
     }
 };
 
-}  // namespace melon
+}  // namespace melon::detail

@@ -47,10 +47,10 @@ private:
     std::size_t _num_arcs;
 
     class vertices_iterator
-        : public intrusive_iterator_base<mutable_digraph, vertex> {
+        : public detail::intrusive_iterator_base<mutable_digraph, vertex> {
     public:
-        using intrusive_iterator_base<mutable_digraph,
-                                      vertex>::intrusive_iterator_base;
+        using detail::intrusive_iterator_base<mutable_digraph,
+                                              vertex>::intrusive_iterator_base;
 
         constexpr vertices_iterator & operator++() noexcept {
             _cursor = _structure->_vertices[_cursor].next_vertex;
@@ -68,10 +68,10 @@ private:
     };
 
     class out_arcs_iterator
-        : public intrusive_iterator_base<mutable_digraph, arc> {
+        : public detail::intrusive_iterator_base<mutable_digraph, arc> {
     public:
-        using intrusive_iterator_base<mutable_digraph,
-                                      arc>::intrusive_iterator_base;
+        using detail::intrusive_iterator_base<mutable_digraph,
+                                              arc>::intrusive_iterator_base;
 
         constexpr out_arcs_iterator & operator++() noexcept {
             _cursor = _structure->_arcs[_cursor].next_out_arc;
@@ -89,10 +89,10 @@ private:
     };
 
     class in_arcs_iterator
-        : public intrusive_iterator_base<mutable_digraph, arc> {
+        : public detail::intrusive_iterator_base<mutable_digraph, arc> {
     public:
-        using intrusive_iterator_base<mutable_digraph,
-                                      arc>::intrusive_iterator_base;
+        using detail::intrusive_iterator_base<mutable_digraph,
+                                              arc>::intrusive_iterator_base;
 
         constexpr in_arcs_iterator & operator++() noexcept {
             _cursor = _structure->_arcs[_cursor].next_in_arc;

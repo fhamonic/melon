@@ -72,12 +72,12 @@ private:
     cursor _queue_current;
     vertex_map_t<Graph, bool> _reached_map;
 
-    [[no_unique_address]] vertex_map_if<Traits::store_pred_vertices, Graph,
-                                        vertex> _pred_vertices_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_pred_arcs, Graph, arc>
-        _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_distances, Graph, int>
-        _dist_map;
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_pred_vertices, Graph, vertex> _pred_vertices_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_pred_arcs, Graph,
+                                                arc> _pred_arcs_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_distances, Graph,
+                                                int> _dist_map;
 
 public:
     template <typename G>

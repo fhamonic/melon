@@ -17,10 +17,10 @@ namespace melon {
 // algorithm aims the new object's cursors at the old object's graph -- a
 // use-after-free the moment the original dies.
 //
-// Not made redundant by consumable_input_view's own counter, which covers the
-// other half of the problem: there the iterator refers into a range the cursor
-// owns, so it can be re-derived. Here the range refers to something the cursor
-// neither owns nor can re-obtain.
+// Not made redundant by detail::consumable_input_view's own counter, which
+// covers the other half of the problem: there the iterator refers into a range
+// the cursor owns, so it can be re-derived. Here the range refers to something
+// the cursor neither owns nor can re-obtain.
 //
 // Default false, so a graph type is presumed unsafe to copy cached ranges from
 // until it says otherwise. Specialise it for a view whose ranges are

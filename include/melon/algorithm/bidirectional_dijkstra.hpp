@@ -76,12 +76,12 @@ private:
     using optional_arc = std::optional<arc>;
     struct no_forward_pred_arcs_map {};
     using forward_pred_arcs_map =
-        vertex_map_if<Traits::store_paths, Graph, optional_arc,
-                      no_forward_pred_arcs_map>;
+        detail::vertex_map_if<Traits::store_paths, Graph, optional_arc,
+                              no_forward_pred_arcs_map>;
     struct no_reverse_pred_arcs_map {};
     using reverse_pred_arcs_map =
-        vertex_map_if<Traits::store_paths, Graph, optional_arc,
-                      no_reverse_pred_arcs_map>;
+        detail::vertex_map_if<Traits::store_paths, Graph, optional_arc,
+                              no_reverse_pred_arcs_map>;
     struct no_optional_midpoint {};
     using optional_midpoint =
         std::conditional_t<Traits::store_paths, std::optional<vertex>,
@@ -192,8 +192,8 @@ public:
                 break;
             if(Traits::semiring::less(u1_dist, u2_dist)) {
                 const auto & out_arcs_range = out_arcs(_graph, u1);
-                prefetch_keys_and_values(out_arcs_range,
-                                         arc_targets_map(_graph), _length_map);
+                detail::prefetch_keys_and_values(
+                    out_arcs_range, arc_targets_map(_graph), _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
                 _forward_heap.pop();
                 for(const arc a : out_arcs_range) {
@@ -241,8 +241,8 @@ public:
                 }
             } else {
                 const auto & in_arcs_range = in_arcs(_graph, u2);
-                prefetch_keys_and_values(in_arcs_range, arc_sources_map(_graph),
-                                         _length_map);
+                detail::prefetch_keys_and_values(
+                    in_arcs_range, arc_sources_map(_graph), _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;
                 _reverse_heap.pop();
                 for(const arc a : in_arcs_range) {
@@ -326,12 +326,12 @@ public:
 
 private:
     class forward_path_iterator
-        : public intrusive_iterator_base<bidirectional_dijkstra,
-                                         std::optional<arc>> {
+        : public detail::intrusive_iterator_base<bidirectional_dijkstra,
+                                                 std::optional<arc>> {
     public:
         using value_type = arc;
         using reference = arc;
-        using intrusive_iterator_base<
+        using detail::intrusive_iterator_base<
             bidirectional_dijkstra,
             std::optional<arc>>::intrusive_iterator_base;
 
@@ -355,12 +355,12 @@ private:
         }
     };
     class reverse_path_iterator
-        : public intrusive_iterator_base<bidirectional_dijkstra,
-                                         std::optional<arc>> {
+        : public detail::intrusive_iterator_base<bidirectional_dijkstra,
+                                                 std::optional<arc>> {
     public:
         using value_type = arc;
         using reference = arc;
-        using intrusive_iterator_base<
+        using detail::intrusive_iterator_base<
             bidirectional_dijkstra,
             std::optional<arc>>::intrusive_iterator_base;
 

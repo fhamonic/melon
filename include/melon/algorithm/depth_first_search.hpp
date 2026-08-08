@@ -52,17 +52,18 @@ private:
     using stack_range =
         std::conditional_t<Traits::store_pred_arcs, out_arcs_range_t<Graph>,
                            out_neighbors_range_t<Graph>>;
-    using stack_cursor = consumable_input_view<stack_range>;
+    using stack_cursor = detail::consumable_input_view<stack_range>;
 
     // Whether relocating this object requires re-aiming the cached cursors at
     // the relocated _graph. Borrowed graphs hand out ranges independent of the
     // graph object, so nothing to do. Otherwise the ranges may capture the
     // stored graph's address (views::subgraph's do), and each frame must be
-    // re-asked for -- which the primary consumable_input_view's _consumed
-    // counter makes possible. The remaining combination -- a non-borrowed graph
-    // whose incidence ranges are std-borrowed (iterators into storage the graph
-    // merely owns) -- has no counter to reseek with, so it gets only what the
-    // defaulted members provide: moves (storage transfers), no copies.
+    // re-asked for -- which the primary detail::consumable_input_view's
+    // _consumed counter makes possible. The remaining combination -- a
+    // non-borrowed graph whose incidence ranges are std-borrowed (iterators
+    // into storage the graph merely owns) -- has no counter to reseek with, so
+    // it gets only what the defaulted members provide: moves (storage
+    // transfers), no copies.
     static constexpr bool frames_need_rebase =
         !borrowed_graph<Graph> && !std::ranges::borrowed_range<stack_range>;
 
@@ -71,11 +72,11 @@ private:
     std::vector<std::pair<vertex, stack_cursor>> _stack;
     vertex_map_t<Graph, bool> _reached_map;
 
-    [[no_unique_address]] vertex_map_if<Traits::store_pred_vertices, Graph,
-                                        vertex> _pred_vertices_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_pred_arcs, Graph, arc>
-        _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_depth, Graph, int>
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_pred_vertices, Graph, vertex> _pred_vertices_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_pred_arcs, Graph,
+                                                arc> _pred_arcs_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_depth, Graph, int>
         _depth_map;
 
 public:

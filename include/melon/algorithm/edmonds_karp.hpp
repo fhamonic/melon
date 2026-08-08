@@ -111,8 +111,9 @@ public:
 private:
     bool find_unsaturated_path() {
         const auto & out_arcs_range = out_arcs(_graph, _s);
-        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
-                                 _capacity_map, _carried_flow_map);
+        detail::prefetch_keys_and_values(out_arcs_range,
+                                         arc_targets_map(_graph), _capacity_map,
+                                         _carried_flow_map);
         _bfs_reached_map.fill(false);
         _bfs_reached_map[_s] = true;
         _bfs_queue.resize(0);

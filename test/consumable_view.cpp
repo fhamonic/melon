@@ -10,12 +10,13 @@
 using namespace melon;
 
 ////////////////////////////////////////////////////////////////////////////////
-// consumable_view adapts a range into an empty()/current()/advance() cursor
+// detail::consumable_view adapts a range into an empty()/current()/advance()
+// cursor
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(consumable_view, test_std_iota_view) {
     auto v = std::views::iota(0, 9);
-    auto r = consumable_view(v);
+    auto r = detail::consumable_view(v);
     std::vector<int> took;
     for(; !r.empty(); r.advance()) took.push_back(r.current());
     ASSERT_TRUE(EQ_RANGES(took, {0, 1, 2, 3, 4, 5, 6, 7, 8}));
@@ -25,7 +26,7 @@ GTEST_TEST(consumable_view, test_vector_manual_loop) {
     std::vector<bool> filter(9, false);
     std::vector<unsigned int> v = {7u, 5u, 4u, 3u, 2u, 6u, 8u, 1u};
 
-    auto r = consumable_view(v);
+    auto r = detail::consumable_view(v);
     std::vector<unsigned int> took;
 
     for(; !r.empty(); r.advance()) {
@@ -62,7 +63,7 @@ GTEST_TEST(consumable_view, test_vector_iterator_loop) {
     std::vector<bool> filter(9, false);
     std::vector<unsigned int> v = {7u, 5u, 4u, 3u, 2u, 6u, 8u, 1u};
 
-    auto r = consumable_view(v);
+    auto r = detail::consumable_view(v);
     std::vector<unsigned int> took;
 
     for(auto it = std::begin(r); it != std::end(r); ++it) {
@@ -95,7 +96,7 @@ GTEST_TEST(consumable_view, test_vector_for_loop) {
     std::vector<bool> filter(9, false);
     std::vector<unsigned int> v = {7u, 5u, 4u, 3u, 2u, 6u, 8u, 1u};
 
-    auto r = consumable_view(v);
+    auto r = detail::consumable_view(v);
     std::vector<unsigned int> took;
 
     for(auto i : r) {
@@ -134,7 +135,7 @@ GTEST_TEST(consumable_view, assign_from_range_returns_self) {
     std::vector<unsigned int> w = {9u, 2u};
 
     using view_type =
-        consumable_view<std::views::all_t<std::vector<unsigned int> &>>;
+        detail::consumable_view<std::views::all_t<std::vector<unsigned int> &>>;
     view_type cv(v);
     cv.advance();
     ASSERT_EQ(cv.current(), 1u);
@@ -162,9 +163,9 @@ GTEST_TEST(consumable_view, rewind_owning_range) {
     // owning_view is neither borrowed nor copyable: the primary template, which
     // owns the range and can ask it for begin() again -- so rewinding costs it
     // no extra state at all
-    auto cv = consumable_view(std::vector<unsigned int>{3u, 1u, 4u});
+    auto cv = detail::consumable_view(std::vector<unsigned int>{3u, 1u, 4u});
     static_assert(sizeof(cv) ==
-                  sizeof(consumable_input_view<
+                  sizeof(detail::consumable_input_view<
                          std::views::all_t<std::vector<unsigned int>>>));
     static_assert(!std::copy_constructible<decltype(cv)>);
 
@@ -181,7 +182,7 @@ GTEST_TEST(consumable_view, rewind_owning_range) {
 
 GTEST_TEST(consumable_view, rewind_borrowed_range) {
     // iota_view is borrowed: the specialization, which keeps only iterators
-    auto cv = consumable_view(std::views::iota(0, 3));
+    auto cv = detail::consumable_view(std::views::iota(0, 3));
 
     cv.advance();
     cv.advance();
@@ -201,30 +202,33 @@ GTEST_TEST(consumable_view, rewind_borrowed_range) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// consumable_input_view is the minimal cursor: one traversal's state, any
-// input range, re-seedable from outside
+// detail::consumable_input_view is the minimal cursor: one traversal's state,
+// any input range, re-seedable from outside
 ////////////////////////////////////////////////////////////////////////////////
 
 // The rewindable variant is the exception, not the default: a cursor kept per
 // vertex or per stack frame never restarts itself in place, and paying for a
 // remembered begin() there costs an iterator apiece for nothing. Only a
-// borrowed range makes consumable_view wider than consumable_input_view, and
-// that is precisely the shape those hot cursors have.
-GTEST_TEST(consumable_input_view, costs_no_more_than_one_traversal_needs) {
+// borrowed range makes detail::consumable_view wider than
+// detail::consumable_input_view, and that is precisely the shape those hot
+// cursors have.
+GTEST_TEST(consumable_input_view,
+           costs_no_more_than_one_traversal_needs) {
     using span_type = std::span<const unsigned int>;
     static_assert(std::ranges::borrowed_range<span_type>);
 
     // two pointers, an iterator and a sentinel, and nothing else
-    static_assert(sizeof(consumable_input_view<span_type>) ==
+    static_assert(sizeof(detail::consumable_input_view<span_type>) ==
                   2 * sizeof(unsigned int *));
     // the rewindable one is strictly wider here, which is why it is not what
     // dinitz, depth_first_search and strongly_connected_components use
-    static_assert(sizeof(consumable_view<span_type>) >
-                  sizeof(consumable_input_view<span_type>));
+    static_assert(sizeof(detail::consumable_view<span_type>) >
+                  sizeof(detail::consumable_input_view<span_type>));
 }
 
-// Restarting is exactly what an input range cannot promise, so consumable_view
-// does not offer it for one; consumable_input_view still walks it happily.
+// Restarting is exactly what an input range cannot promise, so
+// detail::consumable_view does not offer it for one;
+// detail::consumable_input_view still walks it happily.
 GTEST_TEST(consumable_input_view, accepts_an_input_only_range) {
     auto input_only = std::views::iota(0, 5) |
                       std::views::filter([](int i) { return i % 2 == 0; }) |
@@ -232,9 +236,9 @@ GTEST_TEST(consumable_input_view, accepts_an_input_only_range) {
     using input_view = decltype(std::views::all(input_only));
 
     static_assert(std::ranges::input_range<input_view>);
-    static_assert(requires { consumable_input_view<input_view>{}; });
+    static_assert(requires { detail::consumable_input_view<input_view>{}; });
 
-    auto cv = consumable_input_view(input_only);
+    auto cv = detail::consumable_input_view(input_only);
     ASSERT_FALSE(cv.empty());
     ASSERT_EQ(cv.current(), 0);
     cv.advance();
@@ -244,10 +248,11 @@ GTEST_TEST(consumable_input_view, accepts_an_input_only_range) {
 // The re-seeding path the per-vertex cursors actually use: hand it the range
 // again, which the graph can always produce. dinitz::reset() does exactly this
 // with `_remaining_out_arcs[u] = out_arcs(_graph, u)`.
-GTEST_TEST(consumable_input_view, reseeds_from_an_externally_held_range) {
+GTEST_TEST(consumable_input_view,
+           reseeds_from_an_externally_held_range) {
     std::vector<unsigned int> v = {3u, 1u, 4u};
-    using view_type =
-        consumable_input_view<std::views::all_t<std::vector<unsigned int> &>>;
+    using view_type = detail::consumable_input_view<
+        std::views::all_t<std::vector<unsigned int> &>>;
 
     view_type cv(v);
     cv.advance();
@@ -280,12 +285,14 @@ static_assert(!std::default_initializable<filtered>);
 static_assert(!std::ranges::borrowed_range<filtered>);
 }  // namespace disengaged_probes
 
-GTEST_TEST(consumable_input_view, default_constructed_is_assignment_only) {
+GTEST_TEST(consumable_input_view,
+           default_constructed_is_assignment_only) {
     using namespace disengaged_probes;
-    static_assert(std::default_initializable<consumable_input_view<filtered>>);
+    static_assert(
+        std::default_initializable<detail::consumable_input_view<filtered>>);
 
     std::vector<unsigned int> v = {3u, 1u, 4u, 1u};
-    consumable_input_view<filtered> cv;
+    detail::consumable_input_view<filtered> cv;
     cv = std::views::filter(v, pred);
     std::vector<unsigned int> took;
     for(; !cv.empty(); cv.advance()) took.push_back(cv.current());
@@ -295,13 +302,14 @@ GTEST_TEST(consumable_input_view, default_constructed_is_assignment_only) {
 // Copying or moving a disengaged cursor must yield another disengaged cursor:
 // static_map and std::vector relocate their slots wholesale, so a reseek
 // through the (absent) range would fault before any slot is ever seeded.
-GTEST_TEST(consumable_input_view, disengaged_cursor_survives_relocation) {
+GTEST_TEST(consumable_input_view,
+           disengaged_cursor_survives_relocation) {
     using namespace disengaged_probes;
 
-    consumable_input_view<filtered> a;
-    consumable_input_view<filtered> b(std::move(a));
-    consumable_input_view<filtered> c(b);
-    consumable_input_view<filtered> d;
+    detail::consumable_input_view<filtered> a;
+    detail::consumable_input_view<filtered> b(std::move(a));
+    detail::consumable_input_view<filtered> c(b);
+    detail::consumable_input_view<filtered> d;
     d = std::move(c);
 
     // the relocated cursor is still assignable and usable
@@ -327,15 +335,15 @@ template <typename T>
 constexpr bool advertises_cpp17_category_cv =
     requires { typename std::iterator_traits<T>::iterator_category; };
 }  // namespace
-using consumable_it =
-    std::ranges::iterator_t<consumable_input_view<std::span<const int>>>;
+using consumable_it = std::ranges::iterator_t<
+    detail::consumable_input_view<std::span<const int>>>;
 static_assert(std::input_iterator<consumable_it>);
 static_assert(std::same_as<typename consumable_it::iterator_concept,
                            std::input_iterator_tag>);
 static_assert(!advertises_cpp17_category_cv<consumable_it>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// consumable_iterator forwards noexcept-ness instead of claiming it
+// detail::consumable_iterator forwards noexcept-ness instead of claiming it
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: increment and both comparisons were unconditionally noexcept
@@ -356,7 +364,8 @@ struct throwing_iterator {
 
 GTEST_TEST(consumable_iterator, noexcept_follows_the_wrapped_iterator) {
     static_assert(std::input_iterator<throwing_iterator>);
-    using CI = consumable_iterator<throwing_iterator, throwing_iterator>;
+    using CI =
+        detail::consumable_iterator<throwing_iterator, throwing_iterator>;
     static_assert(!noexcept(++std::declval<CI &>()));
     static_assert(!noexcept(std::declval<CI &>()++));
     static_assert(
@@ -365,7 +374,7 @@ GTEST_TEST(consumable_iterator, noexcept_follows_the_wrapped_iterator) {
                             std::declval<const throwing_iterator &>()));
 
     // Positive control: nothrow wrapped iterators keep the guarantee.
-    using PI = consumable_iterator<const int *, const int *>;
+    using PI = detail::consumable_iterator<const int *, const int *>;
     static_assert(noexcept(++std::declval<PI &>()));
     static_assert(
         noexcept(std::declval<const PI &>() == std::declval<const PI &>()));

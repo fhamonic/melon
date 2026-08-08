@@ -53,12 +53,12 @@ private:
     reached_map_t _reached_map;
     remaining_in_degree_map_t _remaining_in_degree_map;
 
-    [[no_unique_address]] vertex_map_if<Traits::store_critical_paths &&
-                                            !has_arc_source<Graph>,
-                                        Graph, vertex> _pred_vertices_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_critical_paths, Graph,
-                                        std::optional<arc>> _pred_arcs_map;
-    [[no_unique_address]] vertex_map_if<Traits::store_ranks, Graph, int>
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_critical_paths && !has_arc_source<Graph>, Graph, vertex>
+        _pred_vertices_map;
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_critical_paths, Graph, std::optional<arc>> _pred_arcs_map;
+    [[no_unique_address]] detail::vertex_map_if<Traits::store_ranks, Graph, int>
         _rank_map;
 
     constexpr void push_start_vertices() {
@@ -234,12 +234,12 @@ public:
 
 private:
     class path_iterator
-        : public intrusive_iterator_base<topological_sort, vertex> {
+        : public detail::intrusive_iterator_base<topological_sort, vertex> {
     public:
         using value_type = arc;
         using reference = arc;
-        using intrusive_iterator_base<topological_sort,
-                                      vertex>::intrusive_iterator_base;
+        using detail::intrusive_iterator_base<topological_sort,
+                                              vertex>::intrusive_iterator_base;
 
         // A plain prvalue, not a `const` one: a const prvalue inhibits moves
         // and makes std::iterator_traits disagree with the `reference` typedef

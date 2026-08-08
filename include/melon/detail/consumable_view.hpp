@@ -8,7 +8,7 @@
 #include <ranges>
 #include <type_traits>
 
-namespace melon {
+namespace melon::detail {
 
 template <typename Iterator, typename Sentinel>
 class consumable_iterator {
@@ -366,4 +366,4 @@ template <typename R>
 using consumable_view_t =
     std::decay_t<decltype(consumable_view(std::declval<R>()))>;
 
-}  // namespace melon
+}  // namespace melon::detail

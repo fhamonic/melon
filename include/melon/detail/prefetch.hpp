@@ -6,7 +6,7 @@
 
 #include "melon/mapping.hpp"
 
-namespace melon {
+namespace melon::detail {
 
 template <std::ranges::range R>
 constexpr void prefetch_range(const R & range) {
@@ -45,4 +45,4 @@ constexpr void prefetch_keys_and_values(const Keys & keys,
     (prefetch_mapped_values(keys, value_maps), ...);
 }
 
-}  // namespace melon
+}  // namespace melon::detail

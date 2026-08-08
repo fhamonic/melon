@@ -229,8 +229,8 @@ private:
             const auto [t, t_dist] = _heap.top();
             _vertex_status_map[t] = POST_HEAP;
             auto && out_arcs_range = out_arcs(_graph, t);
-            prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
-                                     _red_length_map);
+            detail::prefetch_keys_and_values(
+                out_arcs_range, arc_targets_map(_graph), _red_length_map);
             _heap.pop();
             for(const arc a : out_arcs_range) {
                 const vertex & w = arc_target(_graph, a);
@@ -248,8 +248,8 @@ public:
         assert(t_dist.second);
         _vertex_status_map[t] = POST_HEAP;
         auto && out_arcs_range = out_arcs(_graph, t);
-        prefetch_keys_and_values(out_arcs_range, arc_targets_map(_graph),
-                                 _blue_length_map);
+        detail::prefetch_keys_and_values(
+            out_arcs_range, arc_targets_map(_graph), _blue_length_map);
         _heap.pop();
         --_num_blue_candidates;
         for(const arc & a : out_arcs_range) {

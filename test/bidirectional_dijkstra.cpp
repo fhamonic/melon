@@ -52,8 +52,9 @@ GTEST_TEST(bidirectional_dijkstra, test) {
 
 // bidirectional_dijkstra is the one algorithm whose flag defaults to *true*,
 // so the distance-only configuration was never instantiated: neither the
-// vertex_map_if that drops both predecessor maps, nor the requires-clauses
-// that are supposed to withdraw the path accessors along with them.
+// detail::vertex_map_if that drops both predecessor maps, nor the
+// requires-clauses that are supposed to withdraw the path accessors along with
+// them.
 namespace {
 struct bidirectional_dijkstra_pathless_traits
     : bidirectional_dijkstra_default_traits<static_digraph, int> {

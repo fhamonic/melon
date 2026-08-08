@@ -4,7 +4,7 @@
 
 #include "melon/graph.hpp"
 
-namespace melon {
+namespace melon::detail {
 
 // DiscriminatingT takes no part in the type; it exists so that two disabled
 // maps of the same Graph and Type are still *distinct* empty types. Two
@@ -71,4 +71,4 @@ struct arc_map_if<true, Graph, Type, DiscriminatingT> {
     constexpr void fill(const Type & v) { _map.fill(v); }
 };
 
-}  // namespace melon
+}  // namespace melon::detail

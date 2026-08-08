@@ -231,8 +231,9 @@ GTEST_TEST(dijkstra, current_dist_without_store_distances) {
 
 // Every dijkstra test above runs with store_distances = false -- the default,
 // and the only value the suite ever exercised -- so _distances_map, the
-// vertex_map_if that allocates it, the write in advance() and the dist()
-// accessor gated on it were all dead code as far as the tests were concerned.
+// detail::vertex_map_if that allocates it, the write in advance() and the
+// dist() accessor gated on it were all dead code as far as the tests were
+// concerned.
 namespace {
 struct dijkstra_traits_distances
     : dijkstra_default_traits<static_digraph, int> {

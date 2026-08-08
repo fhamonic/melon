@@ -91,9 +91,9 @@ static_assert(names_the_traits_concepts<G>);
 ////////////////////////////////////////////////////////////////////////////////
 
 // They were non-const on connected_components, strongly_connected_components
-// and traversal_forest -- the three whose cursor is a consumable_view, whose
-// empty() was itself non-const. So a `const algorithm &` could not even be
-// asked whether it was done.
+// and traversal_forest -- the three whose cursor is a detail::consumable_view,
+// whose empty() was itself non-const. So a `const algorithm &` could not even
+// be asked whether it was done.
 template <typename A>
 concept const_inspectable = requires(const A & a) {
     { a.finished() } -> std::convertible_to<bool>;

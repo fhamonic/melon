@@ -171,7 +171,8 @@ GTEST_TEST(api_review, generic_bfs_move_keeps_its_cursor) {
 // This one only *fails* under a sanitizer -- the read lands on freed memory
 // that still holds the right bytes -- so it is written for the
 // linux-gcc15-sanitize job (-DMELON_SANITIZE=address,undefined), where the old
-// code reported a heap-use-after-free in consumable_input_view::current().
+// code reported a heap-use-after-free in
+// detail::consumable_input_view::current().
 GTEST_TEST(api_review, dfs_cursors_survive_stack_reallocation) {
     constexpr unsigned n = 12;
     static_digraph_builder<static_digraph> b(n);
@@ -327,7 +328,7 @@ GTEST_TEST(api_review, traversal_forest_accepts_an_owned_graph) {
     EXPECT_EQ(trees, 2u) << "two components, two trees";
 }
 
-// The re-seeding idiom consumable_input_view exists for --
+// The re-seeding idiom detail::consumable_input_view exists for --
 // `_remaining_out_arcs[u] = out_arcs(_graph, u)` -- is a prvalue, which never
 // bound to the old `operator=(R &)`.
 GTEST_TEST(api_review, consumable_cursor_is_assignable_from_a_prvalue_range) {
@@ -341,7 +342,7 @@ GTEST_TEST(api_review, consumable_cursor_is_assignable_from_a_prvalue_range) {
     static_assert(!std::ranges::borrowed_range<range>,
                   "a filtered incidence range lands on the owning cursor");
 
-    consumable_input_view<range> cursor(melon::out_arcs(sub, 0u));
+    detail::consumable_input_view<range> cursor(melon::out_arcs(sub, 0u));
     cursor.advance();
     ASSERT_FALSE(cursor.empty());
     cursor = melon::out_arcs(sub, 0u);  // did not compile before
@@ -1126,8 +1127,8 @@ GTEST_TEST(api_review, incidence_ranges_are_common_and_narrow) {
     static_assert(std::ranges::common_range<OA>);
     static_assert(std::same_as<std::ranges::range_value_t<OA>, arc_t<SD>>);
     static_assert(sizeof(OA) == sizeof(AR));
-    static_assert(sizeof(consumable_input_view<OA>) ==
-                  sizeof(consumable_input_view<AR>));
+    static_assert(sizeof(detail::consumable_input_view<OA>) ==
+                  sizeof(detail::consumable_input_view<AR>));
 
     using SFD = static_forward_digraph;
     static_assert(std::ranges::common_range<out_arcs_range_t<SFD>>);

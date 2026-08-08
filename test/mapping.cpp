@@ -430,20 +430,19 @@ GTEST_TEST(element_map, variant_access_propagates_instead_of_terminating) {
 // map_if's const subscript returns a reference, not a copy
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: vertex_map_if / arc_map_if returned `auto` from the const
-// subscript and decltype(auto) from the mutable one, so every read through a
-// const algorithm object copied the mapped value (dijkstra reads its distance
-// and predecessor maps that way).
-static_assert(
-    std::same_as<decltype(std::declval<
-                          vertex_map_if<true, static_digraph, std::string> &>()
-                              [std::declval<const unsigned &>()]),
-                 std::string &>);
-static_assert(std::same_as<decltype(std::declval<const vertex_map_if<
+// regression: detail::vertex_map_if / detail::arc_map_if returned `auto` from
+// the const subscript and decltype(auto) from the mutable one, so every read
+// through a const algorithm object copied the mapped value (dijkstra reads its
+// distance and predecessor maps that way).
+static_assert(std::same_as<decltype(std::declval<detail::vertex_map_if<
+                                        true, static_digraph, std::string> &>()
+                                        [std::declval<const unsigned &>()]),
+                           std::string &>);
+static_assert(std::same_as<decltype(std::declval<const detail::vertex_map_if<
                                         true, static_digraph, std::string> &>()
                                         [std::declval<const unsigned &>()]),
                            const std::string &>);
-static_assert(std::same_as<decltype(std::declval<const arc_map_if<
+static_assert(std::same_as<decltype(std::declval<const detail::arc_map_if<
                                         true, static_digraph, std::string> &>()
                                         [std::declval<const unsigned &>()]),
                            const std::string &>);
@@ -453,7 +452,7 @@ GTEST_TEST(map_if, const_subscript_returns_a_reference) {
     builder.add_arc(0u, 1u);
     auto [graph] = builder.build();
 
-    vertex_map_if<true, static_digraph, std::string> map(graph);
+    detail::vertex_map_if<true, static_digraph, std::string> map(graph);
     map[0u] = "written through the mutable overload";
 
     const auto & cmap = map;
@@ -462,6 +461,6 @@ GTEST_TEST(map_if, const_subscript_returns_a_reference) {
     ASSERT_EQ(std::addressof(cmap[0u]), std::addressof(map[0u]));
 
     // the disabled specialization is still an empty, freely constructible stub
-    static_assert(
-        std::is_empty_v<vertex_map_if<false, static_digraph, std::string>>);
+    static_assert(std::is_empty_v<
+                  detail::vertex_map_if<false, static_digraph, std::string>>);
 }

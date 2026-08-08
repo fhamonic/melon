@@ -27,7 +27,7 @@ private:
 
 private:
     UGraph _graph;
-    consumable_input_view<vertices_range_t<UGraph>> _remaining_vertices;
+    detail::consumable_input_view<vertices_range_t<UGraph>> _remaining_vertices;
     std::vector<vertex> _queue;
     cursor _queue_current;
     vertex_map_t<UGraph, bool> _reached_map;
