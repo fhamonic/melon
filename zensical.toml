@@ -10,6 +10,7 @@ repo_name = "fhamonic/melon"
 edit_uri = "edit/main/docs/"
 
 extra_css = ["stylesheets/extra.css"]
+extra_javascript = ["javascripts/benchmark-theme.js"]
 
 nav = [
   { "Home" = "index.md" },

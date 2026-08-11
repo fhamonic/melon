@@ -322,7 +322,7 @@ public:
 };
 
 template <graph_view Graph, breadth_first_search_traits Traits>
-    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph> &&
+    requires outward_adjacency_graph<Graph> &&
              detail::enable_branchless_bfs<Graph, Traits>
 class breadth_first_search<Graph, Traits>
     : public algorithm_view_interface<breadth_first_search<Graph, Traits>> {
@@ -339,7 +339,7 @@ private:
 public:
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                     graph_for<G, Graph>
+                     graph_for<G, Graph> && has_vertex_map<Graph>
     constexpr explicit breadth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue(std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) +

@@ -4,6 +4,13 @@ melon's stated goal is to be as fast as [LEMON](https://lemon.cs.elte.hu/trac/le
 
 **Measured numbers live in a separate repository.** Benchmarks against Boost.Graph and LEMON — with their instances, methodology and raw timings — are at [fhamonic/melon_benchmark](https://github.com/fhamonic/melon_benchmark). Nothing on this page is a substitute for measuring your own workload.
 
+<iframe class="benchmark-embed"
+        src="https://fhamonic.github.io/melon_benchmark/?algorithm=dijkstra&amp;params=double%7C2-heap&amp;build=GCC+14.1.0+generic"
+        loading="lazy"
+        title="Interactive benchmark: Dijkstra with double lengths and a binary heap, GCC 14.1, against Boost.Graph and LEMON"></iframe>
+
+*The embed is the live benchmark site — every control works, so you can switch algorithm, compiler or instances in place, or [open it full-page](https://fhamonic.github.io/melon_benchmark/?algorithm=dijkstra&params=double%7C2-heap&build=GCC+14.1.0+generic).*
+
 ## Where the speed comes from
 
 ### No indirection to erase
