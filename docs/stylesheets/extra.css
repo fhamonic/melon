@@ -209,8 +209,9 @@
   margin: 0.25rem 0.35rem;
 }
 
-/* melon_benchmark embeds (performance.md). Fixed height: the embedded page
-   does not report its size, so there is nothing to auto-resize against. */
+/* melon_benchmark embeds (performance.md). The height is only the fallback
+   until the embedded page reports its real height over postMessage
+   (javascripts/benchmark-embed.js). */
 iframe.benchmark-embed {
   width: 100%;
   height: 700px;
