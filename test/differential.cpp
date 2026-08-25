@@ -5,6 +5,9 @@
 #include <cstddef>
 #include <vector>
 
+#include "melon/algorithm/a_star.hpp"
+#include "melon/algorithm/bellman_ford.hpp"
+#include "melon/algorithm/bellman_ford_moore.hpp"
 #include "melon/algorithm/bidirectional_dijkstra.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/algorithm/dinitz.hpp"
@@ -77,9 +80,66 @@ instance random_instance() {
                     n};
 }
 
+// Lengths in [-3, 9]: negative arcs are the point. The Floyd-Warshall
+// reference needs the same unreached-source guard bellman_ford has -- INF
+// plus a negative length silently undercuts INF -- and its diagonal is the
+// independent negative-cycle oracle: dist[c][c] < 0 exactly when c lies on a
+// negative closed walk.
+struct signed_instance {
+    static_digraph graph;
+    std::vector<int> length_map;
+    std::vector<std::vector<int>> dist;
+    std::vector<bool> on_negative_cycle;
+    std::size_t n;
+};
+
+signed_instance random_signed_instance() {
+    const std::size_t n = 2 + (test_rng()() % 11);
+    const std::size_t m = test_rng()() % (2 * n + 4);
+
+    static_digraph_builder<static_digraph, int> builder(n);
+    for(std::size_t k = 0; k < m; ++k) {
+        const auto u = static_cast<vertex>(test_rng()() % n);
+        const auto v = static_cast<vertex>(test_rng()() % n);
+        builder.add_arc(u, v, -3 + static_cast<int>(test_rng()() % 13));
+    }
+    auto [graph, length_map] = builder.build();
+
+    std::vector<std::vector<int>> dist(n, std::vector<int>(n, INF));
+    for(std::size_t v = 0; v < n; ++v) dist[v][v] = 0;
+    for(auto && [a, endpoints] : arcs_entries(graph))
+        dist[endpoints.first][endpoints.second] =
+            std::min(dist[endpoints.first][endpoints.second], length_map[a]);
+    for(std::size_t k = 0; k < n; ++k)
+        for(std::size_t i = 0; i < n; ++i)
+            for(std::size_t j = 0; j < n; ++j) {
+                if(dist[i][k] >= INF || dist[k][j] >= INF) continue;
+                dist[i][j] = std::min(dist[i][j], dist[i][k] + dist[k][j]);
+            }
+
+    std::vector<bool> on_negative_cycle(n);
+    for(std::size_t v = 0; v < n; ++v) on_negative_cycle[v] = dist[v][v] < 0;
+
+    return signed_instance{std::move(graph), std::move(length_map),
+                           std::move(dist), std::move(on_negative_cycle), n};
+}
+
 struct shortest_path_traits : dijkstra_default_traits<G, int> {
     static constexpr bool store_distances = true;
     static constexpr bool store_paths = true;
+};
+struct a_star_path_traits : a_star_default_traits<G, int> {
+    static constexpr bool store_distances = true;
+    static constexpr bool store_paths = true;
+};
+struct bellman_ford_path_traits : bellman_ford_default_traits<G, int> {
+    static constexpr bool store_paths = true;
+    static constexpr bool detect_negative_cycles = true;
+};
+struct bellman_ford_moore_path_traits
+    : bellman_ford_moore_default_traits<G, int> {
+    static constexpr bool store_paths = true;
+    static constexpr bool detect_negative_cycles = true;
 };
 struct voronoi_traits : network_voronoi_default_traits<G, int> {
     static constexpr bool store_distances = true;
@@ -120,6 +180,58 @@ GTEST_TEST(differential, dijkstra_matches_floyd_warshall) {
     }
 }
 
+// The zero heuristic pins the class contract's identity: a_star with h == 0
+// is dijkstra, checked behaviorally rather than by any type relation.
+GTEST_TEST(differential, a_star_zero_heuristic_matches_floyd_warshall) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+        const std::vector<int> zero(in.n, 0);
+
+        auto alg =
+            a_star(a_star_path_traits{}, in.graph, in.length_map, zero, s);
+        alg.run();
+
+        for(std::size_t v = 0; v < in.n; ++v) {
+            const bool reachable = in.dist[s][v] < INF;
+            ASSERT_EQ(alg.reached(static_cast<vertex>(v)), reachable)
+                << "vertex " << v << " from " << s;
+            if(!reachable) continue;
+            ASSERT_EQ(alg.dist(static_cast<vertex>(v)), in.dist[s][v])
+                << "vertex " << v << " from " << s;
+        }
+    }
+}
+
+// Exact distances-to-t are the strongest consistent heuristic, so this run
+// also exercises the debug consistency assert on every improving arc.
+GTEST_TEST(differential, a_star_perfect_heuristic_matches_floyd_warshall) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+        const auto t = static_cast<vertex>(test_rng()() % in.n);
+        std::vector<int> h(in.n);
+        for(std::size_t v = 0; v < in.n; ++v) h[v] = in.dist[v][t];
+
+        auto alg = a_star(a_star_path_traits{}, in.graph, in.length_map, h, s);
+        alg.run();
+
+        for(std::size_t v = 0; v < in.n; ++v) {
+            const bool reachable = in.dist[s][v] < INF;
+            ASSERT_EQ(alg.reached(static_cast<vertex>(v)), reachable)
+                << "vertex " << v << " from " << s << " toward " << t;
+            if(!reachable) continue;
+            ASSERT_EQ(alg.dist(static_cast<vertex>(v)), in.dist[s][v])
+                << "vertex " << v << " from " << s << " toward " << t;
+
+            int walked = 0;
+            for(auto && a : alg.path_to(static_cast<vertex>(v)))
+                walked += in.length_map[a];
+            ASSERT_EQ(walked, in.dist[s][v]) << "path to " << v;
+        }
+    }
+}
+
 GTEST_TEST(differential, bidirectional_dijkstra_matches_floyd_warshall) {
     for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
         auto in = random_instance();
@@ -138,6 +250,157 @@ GTEST_TEST(differential, bidirectional_dijkstra_matches_floyd_warshall) {
         int walked = 0;
         for(auto && a : alg.path()) walked += in.length_map[a];
         ASSERT_EQ(walked, in.dist[s][t]) << s << " -> " << t;
+    }
+}
+
+GTEST_TEST(differential, bellman_ford_matches_floyd_warshall) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+
+        auto alg =
+            bellman_ford(bellman_ford_path_traits{}, in.graph, in.length_map);
+        alg.add_source(s).run();
+
+        ASSERT_FALSE(alg.found_negative_cycle());
+        for(std::size_t v = 0; v < in.n; ++v) {
+            const bool reachable = in.dist[s][v] < INF;
+            ASSERT_EQ(alg.reached(static_cast<vertex>(v)), reachable)
+                << "vertex " << v << " from " << s;
+            if(!reachable) continue;
+            ASSERT_EQ(alg.dist(static_cast<vertex>(v)), in.dist[s][v])
+                << "vertex " << v << " from " << s;
+
+            // the stored path must be a real walk of exactly that length
+            int walked = 0;
+            for(auto && a : alg.path_to(static_cast<vertex>(v)))
+                walked += in.length_map[a];
+            ASSERT_EQ(walked, in.dist[s][v]) << "path to " << v;
+        }
+    }
+}
+
+GTEST_TEST(differential, bellman_ford_negative_lengths_match_floyd_warshall) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_signed_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+
+        auto alg =
+            bellman_ford(bellman_ford_path_traits{}, in.graph, in.length_map);
+        alg.add_source(s).run();
+
+        // reachable negative cycle <=> some vertex of a negative closed walk
+        // sits in s's row of the reference
+        bool cycle_reachable = false;
+        for(std::size_t c = 0; c < in.n; ++c)
+            if(in.on_negative_cycle[c] && in.dist[s][c] < INF)
+                cycle_reachable = true;
+
+        ASSERT_EQ(alg.found_negative_cycle(), cycle_reachable) << "from " << s;
+        if(cycle_reachable) {
+            // the retrieved cycle is its own certificate: arcs chaining
+            // head-to-tail into a closed walk of negative total length
+            const auto cycle = alg.negative_cycle();
+            ASSERT_FALSE(cycle.empty());
+            long total = 0;
+            for(std::size_t i = 0; i < cycle.size(); ++i) {
+                total += in.length_map[cycle[i]];
+                ASSERT_EQ(arc_target(in.graph, cycle[i]),
+                          arc_source(in.graph, cycle[(i + 1) % cycle.size()]));
+            }
+            ASSERT_LT(total, 0);
+            continue;
+        }
+
+        for(std::size_t v = 0; v < in.n; ++v) {
+            const bool reachable = in.dist[s][v] < INF;
+            ASSERT_EQ(alg.reached(static_cast<vertex>(v)), reachable)
+                << "vertex " << v << " from " << s;
+            if(!reachable) continue;
+            ASSERT_EQ(alg.dist(static_cast<vertex>(v)), in.dist[s][v])
+                << "vertex " << v << " from " << s;
+
+            int walked = 0;
+            for(auto && a : alg.path_to(static_cast<vertex>(v)))
+                walked += in.length_map[a];
+            ASSERT_EQ(walked, in.dist[s][v]) << "path to " << v;
+        }
+    }
+}
+
+GTEST_TEST(differential, bellman_ford_moore_matches_floyd_warshall) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+
+        auto alg = bellman_ford_moore(bellman_ford_moore_path_traits{},
+                                      in.graph, in.length_map);
+        alg.add_source(s).run();
+
+        ASSERT_FALSE(alg.found_negative_cycle());
+        for(std::size_t v = 0; v < in.n; ++v) {
+            const bool reachable = in.dist[s][v] < INF;
+            ASSERT_EQ(alg.reached(static_cast<vertex>(v)), reachable)
+                << "vertex " << v << " from " << s;
+            if(!reachable) continue;
+            ASSERT_EQ(alg.dist(static_cast<vertex>(v)), in.dist[s][v])
+                << "vertex " << v << " from " << s;
+
+            // the stored path must be a real walk of exactly that length
+            int walked = 0;
+            for(auto && a : alg.path_to(static_cast<vertex>(v)))
+                walked += in.length_map[a];
+            ASSERT_EQ(walked, in.dist[s][v]) << "path to " << v;
+        }
+    }
+}
+
+GTEST_TEST(differential,
+           bellman_ford_moore_negative_lengths_match_floyd_warshall) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_signed_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+
+        auto alg = bellman_ford_moore(bellman_ford_moore_path_traits{},
+                                      in.graph, in.length_map);
+        alg.add_source(s).run();
+
+        // reachable negative cycle <=> some vertex of a negative closed walk
+        // sits in s's row of the reference
+        bool cycle_reachable = false;
+        for(std::size_t c = 0; c < in.n; ++c)
+            if(in.on_negative_cycle[c] && in.dist[s][c] < INF)
+                cycle_reachable = true;
+
+        ASSERT_EQ(alg.found_negative_cycle(), cycle_reachable) << "from " << s;
+        if(cycle_reachable) {
+            // the retrieved cycle is its own certificate: arcs chaining
+            // head-to-tail into a closed walk of negative total length
+            const auto cycle = alg.negative_cycle();
+            ASSERT_FALSE(cycle.empty());
+            long total = 0;
+            for(std::size_t i = 0; i < cycle.size(); ++i) {
+                total += in.length_map[cycle[i]];
+                ASSERT_EQ(arc_target(in.graph, cycle[i]),
+                          arc_source(in.graph, cycle[(i + 1) % cycle.size()]));
+            }
+            ASSERT_LT(total, 0);
+            continue;
+        }
+
+        for(std::size_t v = 0; v < in.n; ++v) {
+            const bool reachable = in.dist[s][v] < INF;
+            ASSERT_EQ(alg.reached(static_cast<vertex>(v)), reachable)
+                << "vertex " << v << " from " << s;
+            if(!reachable) continue;
+            ASSERT_EQ(alg.dist(static_cast<vertex>(v)), in.dist[s][v])
+                << "vertex " << v << " from " << s;
+
+            int walked = 0;
+            for(auto && a : alg.path_to(static_cast<vertex>(v)))
+                walked += in.length_map[a];
+            ASSERT_EQ(walked, in.dist[s][v]) << "path to " << v;
+        }
     }
 }
 

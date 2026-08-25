@@ -229,16 +229,18 @@ template <typename T>
 concept has_num_edges =
     undirected_graph<T> && requires(const T & t) { melon::num_edges(t); };
 
+// Shape-probed through std::get, mirroring the directed layer's
+// arc_entry_shape: naming ::first_type instead would demand literal
+// std::pair and silently reject a tuple-shaped incidence the directed side
+// accepts.
 template <typename T>
 concept has_incidence =
-    undirected_graph<T> &&
-    requires(const T & t, const vertex_t<T> & v) { melon::incidence(t, v); } &&
-    std::convertible_to<
-        typename std::ranges::range_value_t<incidence_range_t<T>>::first_type,
-        edge_t<T>> &&
-    std::convertible_to<
-        typename std::ranges::range_value_t<incidence_range_t<T>>::second_type,
-        vertex_t<T>>;
+    undirected_graph<T> && requires(const T & t, const vertex_t<T> & v) {
+        melon::incidence(t, v);
+    } && requires(const std::ranges::range_value_t<incidence_range_t<T>> & e) {
+        { std::get<0>(e) } -> std::convertible_to<edge_t<T>>;
+        { std::get<1>(e) } -> std::convertible_to<vertex_t<T>>;
+    };
 
 template <typename T>
 concept has_degree =

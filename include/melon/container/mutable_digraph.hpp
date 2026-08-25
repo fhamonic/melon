@@ -65,6 +65,12 @@ private:
             const vertices_iterator & it, std::default_sentinel_t) noexcept {
             return it._cursor == INVALID_VERTEX;
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const vertices_iterator & it1,
+            const vertices_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
 
     class out_arcs_iterator
@@ -86,6 +92,12 @@ private:
             const out_arcs_iterator & it, std::default_sentinel_t) noexcept {
             return it._cursor == INVALID_ARC;
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const out_arcs_iterator & it1,
+            const out_arcs_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
 
     class in_arcs_iterator
@@ -106,6 +118,12 @@ private:
         [[nodiscard]] constexpr friend bool operator==(
             const in_arcs_iterator & it, std::default_sentinel_t) noexcept {
             return it._cursor == INVALID_ARC;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const in_arcs_iterator & it1,
+            const in_arcs_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
         }
     };
 
@@ -297,7 +315,6 @@ private:
     }
     constexpr void remove_incident_arcs(const vertex v) noexcept {
         assert(is_valid_vertex(v));
-        // in_arcs are already linked by .next_in_arc
         const arc first_in_arc = _vertices[v].first_in_arc;
         arc last_in_arc = INVALID_ARC;
         for(const arc & a : in_arcs(v)) {
@@ -318,14 +335,15 @@ private:
         for(const arc & a : out_arcs(v)) {
             last_out_arc = a;
             remove_from_target_in_arcs(a);
-            // once removed from the targets in arcs .next_in_arc is free
+            // The free list below links through next_in_arc, and this arc's
+            // next_in_arc still points into its target's in-list: spliced
+            // un-rewritten, the free list threads through live arcs. The
+            // in-chain above needs no rewrite -- it is already linked by
+            // next_in_arc.
             _arcs[a].next_in_arc = _arcs[a].next_out_arc;
             _arcs_filter[a] = false;
             --_num_arcs;
         }
-        // out_arcs were linked by .next_out_arc
-        // [first_out_arc, last_out_arc] are now linked by .next_in_arc
-        //
         // The new free-list head is the chain's *first* arc, not the tail the
         // loop above happens to be holding. Publishing the tail recycles one
         // arc per chain and strands the rest: nothing reads them again, so

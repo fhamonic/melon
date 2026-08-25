@@ -43,6 +43,12 @@ private:
     bool _converged;
     arc_map_t<Graph, value_t> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
+    struct dfs_step {
+        arc a;
+        value_t entry_limit;
+        bool forward;
+    };
+    std::vector<dfs_step> _dfs_path;
     vertex_map_t<Graph, std::size_t> _vertex_rank_map;
     vertex_map_t<Graph,
                  detail::consumable_input_view_t<out_arcs_range_t<Graph>>>
@@ -51,6 +57,8 @@ private:
         _remaining_in_arcs;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     // Leaves the terminals unset -- run(), flow_value() and minimum_cut() all
     // read them, so set_source() and set_target() must be called first.
     template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
@@ -98,6 +106,7 @@ public:
         , _converged(o._converged)
         , _carried_flow_map(std::move(o._carried_flow_map))
         , _bfs_queue(std::move(o._bfs_queue))
+        , _dfs_path(std::move(o._dfs_path))
         , _vertex_rank_map(std::move(o._vertex_rank_map))
         , _remaining_out_arcs(std::move(o._remaining_out_arcs))
         , _remaining_in_arcs(std::move(o._remaining_in_arcs)) {
@@ -116,6 +125,7 @@ public:
         _converged = o._converged;
         _carried_flow_map = std::move(o._carried_flow_map);
         _bfs_queue = std::move(o._bfs_queue);
+        _dfs_path = std::move(o._dfs_path);
         _vertex_rank_map = std::move(o._vertex_rank_map);
         _remaining_out_arcs = std::move(o._remaining_out_arcs);
         _remaining_in_arcs = std::move(o._remaining_in_arcs);
@@ -136,6 +146,8 @@ private:
     }
 
 public:
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -146,6 +158,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     constexpr dinitz & set_source(const vertex & s) {
         _s = s;
@@ -219,42 +233,75 @@ private:
         return _vertex_rank_map[_s] != std::numeric_limits<std::size_t>::max();
     }
 
-    // Recursive, one frame per level of the level graph, so the stack depth is
-    // bounded by the number of vertices: a graph carrying a very long
-    // augmenting path can overflow it. Every other traversal in melon is
-    // iterative and has no such bound.
-    value_t dfs_push_flow(const vertex u, const value_t max_incomming_flow) {
-        if(max_incomming_flow == 0 || u == _t) return max_incomming_flow;
-        for(; !_remaining_out_arcs[u].empty();
-            _remaining_out_arcs[u].advance()) {
-            const arc & a = _remaining_out_arcs[u].current();
-            const vertex v = arc_target(_graph, a);
-            if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
-            if(_capacity_map[a] == _carried_flow_map[a]) continue;
-            const value_t pushed_flow = dfs_push_flow(
-                v, std::min(max_incomming_flow,
-                            _capacity_map[a] - _carried_flow_map[a]));
-            if(pushed_flow == 0) continue;
-            _carried_flow_map[a] += pushed_flow;
-            return pushed_flow;
+    // An explicit path stack, not recursion: one call frame per level-graph
+    // level would put the whole augmenting path on the call stack, which
+    // overflows on graphs carrying very long paths. The per-vertex cursors
+    // are the rest of the frame state and already live in the maps: on a
+    // successful push every cursor on the path stays put, on a dead end the
+    // parent's cursor advances past the arc that led there -- exactly the
+    // recursion's continue/return split.
+    value_t dfs_push_flow(const vertex source, value_t limit) {
+        if(limit == value_t{0}) return limit;
+        _dfs_path.resize(0);
+        vertex u = source;
+        for(;;) {
+            if(u == _t) {
+                for(const dfs_step & step : _dfs_path) {
+                    if(step.forward)
+                        _carried_flow_map[step.a] += limit;
+                    else
+                        _carried_flow_map[step.a] -= limit;
+                }
+                return limit;
+            }
+            bool descended = false;
+            for(; !_remaining_out_arcs[u].empty();
+                _remaining_out_arcs[u].advance()) {
+                const arc & a = _remaining_out_arcs[u].current();
+                const vertex v = arc_target(_graph, a);
+                if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
+                if(_capacity_map[a] == _carried_flow_map[a]) continue;
+                _dfs_path.push_back({a, limit, true});
+                limit =
+                    std::min(limit, _capacity_map[a] - _carried_flow_map[a]);
+                u = v;
+                descended = true;
+                break;
+            }
+            if(descended) continue;
+            for(; !_remaining_in_arcs[u].empty();
+                _remaining_in_arcs[u].advance()) {
+                const arc & a = _remaining_in_arcs[u].current();
+                const vertex v = arc_source(_graph, a);
+                if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
+                if(_carried_flow_map[a] == value_t{0}) continue;
+                _dfs_path.push_back({a, limit, false});
+                limit = std::min(limit, _carried_flow_map[a]);
+                u = v;
+                descended = true;
+                break;
+            }
+            if(descended) continue;
+            if(_dfs_path.empty()) return value_t{0};
+            const dfs_step step = _dfs_path.back();
+            _dfs_path.pop_back();
+            limit = step.entry_limit;
+            if(step.forward) {
+                u = arc_source(_graph, step.a);
+                _remaining_out_arcs[u].advance();
+            } else {
+                u = arc_target(_graph, step.a);
+                _remaining_in_arcs[u].advance();
+            }
         }
-        for(; !_remaining_in_arcs[u].empty(); _remaining_in_arcs[u].advance()) {
-            const arc & a = _remaining_in_arcs[u].current();
-            const vertex v = arc_source(_graph, a);
-            if(_vertex_rank_map[v] + 1 != _vertex_rank_map[u]) continue;
-            if(_carried_flow_map[a] == 0) continue;
-            const value_t pushed_flow = dfs_push_flow(
-                v, std::min(max_incomming_flow, _carried_flow_map[a]));
-            if(pushed_flow == 0) continue;
-            _carried_flow_map[a] -= pushed_flow;
-            return pushed_flow;
-        }
-        return value_t{0};
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     constexpr dinitz & run() {
         assert(_source_set && _target_set);
+        assert(_s != _t);
         while(bfs_rank_vertices()) {
             for(auto && u : vertices(_graph)) {
                 _remaining_out_arcs[u] = out_arcs(_graph, u);
@@ -266,6 +313,8 @@ public:
         _converged = true;
         return *this;
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] constexpr value_t flow_value() const {
         assert(_source_set);

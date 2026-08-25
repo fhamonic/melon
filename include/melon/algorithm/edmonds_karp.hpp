@@ -46,6 +46,8 @@ private:
     vertex_map_t<Graph, arc> _bfs_pred_arc;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     // Leaves the terminals unset -- run(), flow_value() and minimum_cut() all
     // read them, so set_source() and set_target() must be called first.
     template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
@@ -79,6 +81,8 @@ public:
     constexpr edmonds_karp & operator=(const edmonds_karp &) = delete;
     constexpr edmonds_karp & operator=(edmonds_karp &&) = default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -89,6 +93,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     constexpr edmonds_karp & set_source(const vertex & s) {
         _s = s;
@@ -191,14 +197,20 @@ private:
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     constexpr edmonds_karp & run() {
         assert(_source_set && _target_set);
+        assert(_s != _t);
         while(find_unsaturated_path()) {
             push_flow_on_found_path();
         }
         _converged = true;
         return *this;
     }
+
+    // ---- Queries ------------------------------------------------------------
+
     [[nodiscard]] constexpr value_t flow_value() const {
         assert(_source_set);
         value_t sum{0};

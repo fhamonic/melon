@@ -44,8 +44,7 @@ GTEST_TEST(alias_method_sampler, statistics) {
     std::unordered_map<int, double> count_map;
     for(auto && i : vec) count_map[i] = 0.0;
 
-    std::random_device dev;
-    std::mt19937 rng(dev());
+    std::mt19937 rng(test_rng()());
     for(int i = 0; i < 10000; ++i) count_map[sampler(rng)] += 1e-4;
 
     ASSERT_NEAR(count_map[2], 0.5, 0.05);
@@ -54,8 +53,9 @@ GTEST_TEST(alias_method_sampler, statistics) {
     ASSERT_NEAR(count_map[16], 0.125, 0.05);
 }
 
-// regression: weights that do not sum to one silently built a garbage table;
-// like std::discrete_distribution, they are now normalized by their sum.
+// regression: like std::discrete_distribution, weights are normalized by
+// their sum -- taken raw, weights that do not sum to one silently build a
+// garbage table.
 GTEST_TEST(alias_method_sampler, unnormalized_weights_are_normalized) {
     std::vector<int> vec = {2, 4, 8, 16, 16};
     // Same distribution as above, scaled by 8: weights 4, 2, 1, 1/2, 1/2.
@@ -89,9 +89,9 @@ static_assert(!int_prob::valid_prob<int>);
 // guide
 ////////////////////////////////////////////////////////////////////////////////
 
-// Same as the dijkstra family: the default lived on the deduction guide only,
-// so `alias_method_sampler<R, P>` did not compile and CTAD's result could not
-// be named. It is on the class now, and the guide no longer carries one.
+// Same as the dijkstra family: with the default on the deduction guide only,
+// `alias_method_sampler<R, P>` does not compile and CTAD's result cannot be
+// named. It lives on the class, and the guide carries none.
 namespace traits_default {
 using R = std::views::all_t<std::vector<int> &>;
 

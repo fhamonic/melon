@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -8,8 +7,6 @@
 #include <ranges>
 #include <type_traits>
 #include <utility>
-#include <variant>
-#include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
@@ -25,7 +22,7 @@
 namespace melon {
 
 template <typename Traits>
-concept dijkstra_traits =
+concept a_star_traits =
     semiring<typename Traits::semiring> &&
     updatable_priority_queue<typename Traits::heap> && requires {
         { Traits::store_distances } -> std::convertible_to<bool>;
@@ -33,47 +30,75 @@ concept dijkstra_traits =
     };
 
 template <typename Graph, typename ValueType>
-struct dijkstra_default_traits {
+struct a_star_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
-    using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, ValueType>,
-                             typename semiring::less_t,
-                             vertex_map_t<Graph, std::size_t>,
-                             maps::element_map<1>, maps::element_map<0>>;
+
+    // Compares the combined key alone. An ordering that consults the distance
+    // first (std::less on the pair) silently degrades to dijkstra's order:
+    // every distance stays correct and every test passes, but the heuristic
+    // stops pruning anything.
+    struct priority_less {
+        constexpr bool operator()(
+            const std::pair<ValueType, ValueType> & p1,
+            const std::pair<ValueType, ValueType> & p2) const {
+            return semiring::less(p1.second, p2.second);
+        }
+    };
+    using heap = updatable_d_ary_heap<
+        2, std::pair<vertex_t<Graph>, std::pair<ValueType, ValueType>>,
+        priority_less, vertex_map_t<Graph, std::size_t>, maps::element_map<1>,
+        maps::element_map<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
 };
 
-// Precondition on the mapped values, uncheckable by any concept: an arc length
-// must never improve a distance when combined -- non-negative under the default
-// shortest_path_semiring, in [0, 1] under most_reliable_path_semiring. Each
-// vertex settles once and is never revisited, so a violation silently yields a
-// wrong distance instead of an error.
-// O((m + n) log n) with the default binary heap.
+// dijkstra's traversal reordered by the combined key plus(dist, heuristic):
+// with a consistent heuristic it settles the same distances while never
+// examining the vertices whose key exceeds the requested targets', and yields
+// vertices in key order, not distance order. current() and dist() report
+// plain distances -- the key never appears in any result.
+//
+// Precondition on the heuristic map, uncheckable by any concept
+// ("consistency"): relaxing an arc must never improve the combined key --
+// plus(plus(d, length(a)), heuristic(target(a))) may not compare less than
+// plus(d, heuristic(source(a))). Each vertex settles once and is never
+// revisited, so a violation -- an admissible-only heuristic, or a consistent
+// one eroded by floating-point rounding -- silently yields wrong distances;
+// advance() asserts the inequality at every examined arc in debug builds.
+//
+// Deliberately no defaulted zero heuristic: that instance is dijkstra with
+// double-width heap entries, so spell dijkstra instead.
+// O((m + n) log n) with the default binary heap, over the explored subgraph.
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
-          dijkstra_traits Traits = dijkstra_default_traits<
+          mapping_view<vertex_t<Graph>> HeuristicMap,
+          a_star_traits Traits = a_star_default_traits<
               Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph>
-class dijkstra
-    : public algorithm_view_interface<dijkstra<Graph, LengthMap, Traits>> {
+    requires outward_incidence_graph<Graph> &&
+             std::same_as<mapped_value_t<HeuristicMap, vertex_t<Graph>>,
+                          mapped_value_t<LengthMap, arc_t<Graph>>>
+class a_star : public algorithm_view_interface<
+                   a_star<Graph, LengthMap, HeuristicMap, Traits>> {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
 
     using length_type = mapped_value_t<LengthMap, arc_t<Graph>>;
+    using heap_priority = std::pair<length_type, length_type>;
     using traversal_entry = std::pair<vertex, length_type>;
 
     using heap = Traits::heap;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
 
     static_assert(std::is_same_v<typename heap::value_type,
-                                 std::pair<vertex, length_type>>,
-                  "dijkstras requires heap entries type.");
+                                 std::pair<vertex, heap_priority>>,
+                  "a_star requires heap entries pairing a vertex with a "
+                  "(distance, key) priority pair.");
 
 private:
     Graph _graph;
     LengthMap _length_map;
+    HeuristicMap _heuristic_map;
     heap _heap;
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
 
@@ -91,35 +116,39 @@ public:
     // Constrained on storability into each member, so std::is_constructible
     // answers what construction actually does instead of hard-erroring in the
     // mem-initializer, outside the immediate context.
-    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM,
+              mapping_for<HeuristicMap> HM>
         requires has_vertex_map<Graph>
-    constexpr dijkstra(G && g, LM && lm)
+    constexpr a_star(G && g, LM && lm, HM && hm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
-        , _heap(typename Traits::semiring::less_t(),
+        , _heuristic_map(maps::mapping_all(std::forward<HM>(hm)))
+        , _heap(typename heap::priority_compare(),
                 create_vertex_map<std::size_t>(_graph))
         , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _distances_map(_graph) {}
 
-    template <graph_for<Graph> G, mapping_for<LengthMap> LM>
-    constexpr dijkstra(G && g, LM && lm, const vertex & s)
-        : dijkstra(std::forward<G>(g), std::forward<LM>(lm)) {
+    template <graph_for<Graph> G, mapping_for<LengthMap> LM,
+              mapping_for<HeuristicMap> HM>
+    constexpr a_star(G && g, LM && lm, HM && hm, const vertex & s)
+        : a_star(std::forward<G>(g), std::forward<LM>(lm),
+                 std::forward<HM>(hm)) {
         add_source(s);
     }
 
     template <typename... Args>
-        requires std::constructible_from<dijkstra, Args...>
-    constexpr dijkstra(Traits, Args &&... args)
-        : dijkstra(std::forward<Args>(args)...) {}
+        requires std::constructible_from<a_star, Args...>
+    constexpr a_star(Traits, Args &&... args)
+        : a_star(std::forward<Args>(args)...) {}
 
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    constexpr dijkstra(const dijkstra &) = delete;
-    constexpr dijkstra(dijkstra &&) = default;
+    constexpr a_star(const a_star &) = delete;
+    constexpr a_star(a_star &&) = default;
 
-    constexpr dijkstra & operator=(const dijkstra &) = delete;
-    constexpr dijkstra & operator=(dijkstra &&) = default;
+    constexpr a_star & operator=(const a_star &) = delete;
+    constexpr a_star & operator=(a_star &&) = default;
 
     // ---- Base access --------------------------------------------------------
 
@@ -136,7 +165,7 @@ public:
 
     // ---- Setup --------------------------------------------------------------
 
-    constexpr dijkstra & reset() {
+    constexpr a_star & reset() {
         _heap.clear();
         _vertex_status_map.fill(PRE_HEAP);
         return *this;
@@ -144,10 +173,12 @@ public:
     // Strict precondition: the vertex must be untouched. Re-seeding a settled
     // one silently corrupts stored paths and distances, so PRE_HEAP is asserted
     // rather than merely `!= IN_HEAP`.
-    constexpr dijkstra & add_source(
+    constexpr a_star & add_source(
         const vertex & s, const length_type & dist = Traits::semiring::zero) {
         assert(_vertex_status_map[s] == PRE_HEAP);
-        _heap.push(std::make_pair(s, dist));
+        _heap.push(std::make_pair(
+            s, heap_priority(dist,
+                             Traits::semiring::plus(dist, _heuristic_map[s]))));
         _vertex_status_map[s] = IN_HEAP;
         if constexpr(Traits::store_paths) {
             _pred_arcs_map[s].reset();
@@ -163,18 +194,20 @@ public:
         return _heap.empty();
     }
 
-    // The noexcept measures the copy the by-value return performs, not just the
-    // top() call.
+    // The noexcept measures the copies the by-value return performs, not just
+    // the top() call.
     [[nodiscard]] constexpr traversal_entry current() const
-        noexcept(noexcept(traversal_entry(_heap.top()))) {
+        noexcept(noexcept(traversal_entry(_heap.top().first,
+                                          _heap.top().second.first))) {
         assert(!finished());
-        return _heap.top();
+        const auto & [u, p] = _heap.top();
+        return traversal_entry(u, p.first);
     }
 
     constexpr void advance() {
         assert(!finished());
-        const auto [t, st_dist] = _heap.top();
-        if constexpr(Traits::store_distances) _distances_map[t] = st_dist;
+        const auto [t, t_prio] = _heap.top();
+        if constexpr(Traits::store_distances) _distances_map[t] = t_prio.first;
         _vertex_status_map[t] = POST_HEAP;
         auto && out_arcs_range = melon::out_arcs(_graph, t);
         detail::prefetch_keys_and_values(out_arcs_range,
@@ -183,11 +216,22 @@ public:
         for(const arc & a : out_arcs_range) {
             const vertex & w = melon::arc_target(_graph, a);
             const vertex_status & w_status = _vertex_status_map[w];
+            // The class contract's consistency precondition, caught at the
+            // offending arc -- checked before the status dispatch: the
+            // violations that corrupt results land on already-settled
+            // targets, which the dispatch below silently skips.
+            assert(!Traits::semiring::less(
+                Traits::semiring::plus(
+                    Traits::semiring::plus(t_prio.first, _length_map[a]),
+                    _heuristic_map[w]),
+                t_prio.second));
             if(w_status == IN_HEAP) {
                 const length_type new_dist =
-                    Traits::semiring::plus(st_dist, _length_map[a]);
-                if(Traits::semiring::less(new_dist, _heap.priority(w))) {
-                    _heap.promote(w, new_dist);
+                    Traits::semiring::plus(t_prio.first, _length_map[a]);
+                if(Traits::semiring::less(new_dist, _heap.priority(w).first)) {
+                    const length_type new_key =
+                        Traits::semiring::plus(new_dist, _heuristic_map[w]);
+                    _heap.promote(w, heap_priority(new_dist, new_key));
                     if constexpr(Traits::store_paths) {
                         _pred_arcs_map[w].emplace(a);
                         if constexpr(!has_arc_source<Graph>)
@@ -195,8 +239,11 @@ public:
                     }
                 }
             } else if(w_status == PRE_HEAP) {
-                _heap.push(std::make_pair(
-                    w, Traits::semiring::plus(st_dist, _length_map[a])));
+                const length_type new_dist =
+                    Traits::semiring::plus(t_prio.first, _length_map[a]);
+                const length_type new_key =
+                    Traits::semiring::plus(new_dist, _heuristic_map[w]);
+                _heap.push(std::make_pair(w, heap_priority(new_dist, new_key)));
                 _vertex_status_map[w] = IN_HEAP;
                 if constexpr(Traits::store_paths) {
                     _pred_arcs_map[w].emplace(a);
@@ -246,9 +293,11 @@ public:
             return _pred_vertices_map[u];
     }
     // Reads the heap, not _distances_map, so it does not need store_distances.
+    // .first: the distance -- .second, the heap's ordering key, also compiles
+    // and silently reports heuristic-shifted values.
     [[nodiscard]] constexpr length_type current_dist(const vertex & u) const {
         assert(reached(u) && !visited(u));
-        return _heap.priority(u);
+        return _heap.priority(u).first;
     }
     [[nodiscard]] constexpr length_type dist(const vertex & u) const
         noexcept(noexcept(length_type(_distances_map[u])))
@@ -277,11 +326,11 @@ public:
 
 private:
     class path_iterator
-        : public detail::intrusive_iterator_base<dijkstra, vertex> {
+        : public detail::intrusive_iterator_base<a_star, vertex> {
     public:
         using value_type = arc;
         using reference = arc;
-        using detail::intrusive_iterator_base<dijkstra,
+        using detail::intrusive_iterator_base<a_star,
                                               vertex>::intrusive_iterator_base;
 
         // A plain prvalue, not a `const` one: a const prvalue inhibits moves
@@ -326,22 +375,26 @@ public:
     }
 };
 
-template <typename Graph, typename LengthMap>
-dijkstra(Graph &&, LengthMap &&)
-    -> dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>>;
+template <typename Graph, typename LengthMap, typename HeuristicMap>
+a_star(Graph &&, LengthMap &&, HeuristicMap &&)
+    -> a_star<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>,
+              maps::mapping_all_t<HeuristicMap>>;
 
-template <typename Graph, typename LengthMap>
-dijkstra(Graph &&, LengthMap &&, const vertex_t<Graph> &)
-    -> dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>>;
+template <typename Graph, typename LengthMap, typename HeuristicMap>
+a_star(Graph &&, LengthMap &&, HeuristicMap &&, const vertex_t<Graph> &)
+    -> a_star<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>,
+              maps::mapping_all_t<HeuristicMap>>;
 
-template <typename Graph, typename LengthMap, typename Traits>
-dijkstra(Traits, Graph &&,
-         LengthMap &&) -> dijkstra<views::graph_all_t<Graph>,
-                                   maps::mapping_all_t<LengthMap>, Traits>;
+template <typename Graph, typename LengthMap, typename HeuristicMap,
+          typename Traits>
+a_star(Traits, Graph &&, LengthMap &&, HeuristicMap &&)
+    -> a_star<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>,
+              maps::mapping_all_t<HeuristicMap>, Traits>;
 
-template <typename Graph, typename LengthMap, typename Traits>
-dijkstra(Traits, Graph &&, LengthMap &&, const vertex_t<Graph> &)
-    -> dijkstra<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>,
-                Traits>;
+template <typename Graph, typename LengthMap, typename HeuristicMap,
+          typename Traits>
+a_star(Traits, Graph &&, LengthMap &&, HeuristicMap &&, const vertex_t<Graph> &)
+    -> a_star<views::graph_all_t<Graph>, maps::mapping_all_t<LengthMap>,
+              maps::mapping_all_t<HeuristicMap>, Traits>;
 
 }  // namespace melon

@@ -106,6 +106,8 @@ private:
                                                 cluster_id_t> _clusters_map;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
         requires has_vertex_map<Graph>
     constexpr network_voronoi(G && g, LM && lm)
@@ -135,6 +137,8 @@ public:
     constexpr network_voronoi & operator=(const network_voronoi &) = delete;
     constexpr network_voronoi & operator=(network_voronoi &&) = default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -145,6 +149,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     constexpr network_voronoi & reset() {
         _heap.clear();
@@ -172,6 +178,8 @@ public:
         }
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_heap.empty())) {
@@ -212,6 +220,8 @@ public:
             }
         }
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const
         noexcept(noexcept(_vertex_status_map[u] != PRE_HEAP)) {

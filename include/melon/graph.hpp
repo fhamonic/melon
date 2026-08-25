@@ -1,10 +1,15 @@
 #pragma once
 
+#include <algorithm>
 #include <concepts>
 #include <cstddef>
+#include <memory>
 #include <ranges>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 
+#include "melon/borrowed_graph.hpp"
 #include "melon/detail/specialization_of.hpp"
 #include "melon/detail/stdlib_check.hpp"
 
@@ -34,16 +39,27 @@ struct vertices_fn {
     // a fallback overload where one exists. A shared is_noexcept() helper
     // re-runs the dispatch `if constexpr` in a second place and drifts into
     // measuring an expression its overload never evaluates.
-    template <typename T>
-        requires has_member_vertices<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    //
+    // Every range- or closure-returning CPO takes `T &&` and constrains the
+    // category instead of binding `const T &`, which would accept a temporary
+    // graph and dangle behind the result. An rvalue is admitted only where
+    // the graph's borrowed promise covers the handed-out range -- and never
+    // for a synthesized result, which captures the graph object's address
+    // regardless of that promise. A constraint, not a deleted overload: the
+    // reference compilers hard-error on a deleted selection inside a
+    // requires-expression, where an unsatisfied constraint stays probeable.
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_vertices<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(t.vertices())) {
         return t.vertices();
     }
 
-    template <typename T>
-        requires(!has_member_vertices<T>) && has_adl_vertices<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_vertices<G>) && has_adl_vertices<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(vertices(t))) {
         return vertices(t);
     }
@@ -112,18 +128,20 @@ concept has_adl_out_arcs = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct out_arcs_fn {
-    template <typename T>
-        requires has_member_out_arcs<T>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_out_arcs<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
         noexcept(noexcept(t.out_arcs(v))) {
         return t.out_arcs(v);
     }
 
-    template <typename T>
-        requires(!has_member_out_arcs<T>) && has_adl_out_arcs<T>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_out_arcs<G>) && has_adl_out_arcs<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
         noexcept(noexcept(out_arcs(t, v))) {
         return out_arcs(t, v);
     }
@@ -140,18 +158,20 @@ concept has_adl_in_arcs = requires(const T & t, const vertex_t<T> & v) {
 };
 
 struct in_arcs_fn {
-    template <typename T>
-        requires has_member_in_arcs<T>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_in_arcs<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
         noexcept(noexcept(t.in_arcs(v))) {
         return t.in_arcs(v);
     }
 
-    template <typename T>
-        requires(!has_member_in_arcs<T>) && has_adl_in_arcs<T>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_in_arcs<G>) && has_adl_in_arcs<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
         noexcept(noexcept(in_arcs(t, v))) {
         return in_arcs(t, v);
     }
@@ -217,36 +237,38 @@ concept can_join_incidence =
 
 struct arcs_fn {
 private:
-    template <typename T>
+    template <typename G>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_arcs<T>)
-            return noexcept(std::declval<const T &>().arcs());
-        else if constexpr(has_adl_arcs<T>)
-            return noexcept(arcs(std::declval<const T &>()));
+        if constexpr(has_member_arcs<G>)
+            return noexcept(std::declval<const G &>().arcs());
+        else if constexpr(has_adl_arcs<G>)
+            return noexcept(arcs(std::declval<const G &>()));
         else
             return false;
     }
 
 public:
-    template <typename T>
-        requires has_member_arcs<T> || has_adl_arcs<T> ||
-                 can_join_incidence<T, out_arcs_fn> ||
-                 can_join_incidence<T, in_arcs_fn>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_arcs<T>)
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(has_member_arcs<G> || has_adl_arcs<G> ||
+                 can_join_incidence<G, out_arcs_fn> ||
+                 can_join_incidence<G, in_arcs_fn>) &&
+                (std::is_lvalue_reference_v<T> ||
+                 (borrowed_graph<G> && (has_member_arcs<G> || has_adl_arcs<G>)))
+    constexpr auto operator() [[nodiscard]] (T && t) const
+        noexcept(is_noexcept<G>()) {
+        if constexpr(has_member_arcs<G>)
             return t.arcs();
-        else if constexpr(has_adl_arcs<T>)
+        else if constexpr(has_adl_arcs<G>)
             return arcs(t);
-        else if constexpr(can_join_incidence<T, out_arcs_fn> &&
-                          !can_join_incidence<T, in_arcs_fn>)
+        else if constexpr(can_join_incidence<G, out_arcs_fn> &&
+                          !can_join_incidence<G, in_arcs_fn>)
             return join_incidence(t, out_arcs_fn{});
-        else if constexpr(can_join_incidence<T, in_arcs_fn> &&
-                          !can_join_incidence<T, out_arcs_fn>)
+        else if constexpr(can_join_incidence<G, in_arcs_fn> &&
+                          !can_join_incidence<G, out_arcs_fn>)
             return join_incidence(t, in_arcs_fn{});
         else {
-            if constexpr(detail::range_rank<out_arcs_range_t<T>>() >
-                         detail::range_rank<in_arcs_range_t<T>>())
+            if constexpr(detail::range_rank<out_arcs_range_t<G>>() >=
+                         detail::range_rank<in_arcs_range_t<G>>())
                 return join_incidence(t, out_arcs_fn{});
             else
                 return join_incidence(t, in_arcs_fn{});
@@ -460,14 +482,64 @@ inline constexpr cpo::arc_target_fn arc_target{};
 }  // namespace cust
 
 namespace cpo {
+// The entry shape every consumer destructures: std::get<0> names the arc,
+// std::get<1> the (source, target) pair, each tuple-like of size 2. The
+// `typename std::tuple_size<..>::type` line is not redundant with the
+// tuple_size_v comparison next to it: naming the member of the undefined
+// primary template is a substitution failure, where instantiating
+// tuple_size_v on it is a hard error outside the immediate context.
+template <typename P>
+concept vertex_pair_shape =
+    requires { typename std::tuple_size<std::remove_cvref_t<P>>::type; } &&
+    (std::tuple_size_v<std::remove_cvref_t<P>> == 2) &&
+    requires(const std::remove_cvref_t<P> & p) {
+        std::get<0>(p);
+        std::get<1>(p);
+    };
+
+template <typename E>
+concept arc_entry_shape =
+    requires { typename std::tuple_size<std::remove_cvref_t<E>>::type; } &&
+    (std::tuple_size_v<std::remove_cvref_t<E>> == 2) &&
+    requires(const std::remove_cvref_t<E> & e) {
+        std::get<0>(e);
+        { std::get<1>(e) } -> vertex_pair_shape;
+    };
+
+// Shape only, no arc_t / vertex_t: the protocol must stay detectable on types
+// with no arcs() route at all -- a vertex-filtered subgraph of an
+// entries-only graph keeps its filtered arcs_entries member while
+// deliberately dropping arcs() (see subgraph.hpp). Type coherence is checked
+// by `graph`, which requires has_arcs first.
+template <typename R>
+concept arc_entries_range = std::ranges::input_range<R> &&
+                            arc_entry_shape<std::ranges::range_reference_t<R>>;
+
+// The typed half, for `graph`: the entries must name the graph's own arc and
+// vertex types, whichever protocol or fallback produced them.
+template <typename R, typename T>
+concept arc_entries_range_of =
+    arc_entries_range<R> &&
+    requires(const std::remove_cvref_t<std::ranges::range_reference_t<R>> & e) {
+        { std::get<0>(e) } -> std::convertible_to<arc_t<T>>;
+        { std::get<0>(std::get<1>(e)) } -> std::convertible_to<vertex_t<T>>;
+        { std::get<1>(std::get<1>(e)) } -> std::convertible_to<vertex_t<T>>;
+    };
+
+// The shape is checked on protocol detection the way std::ranges::begin
+// ignores a member begin() that returns a non-iterator: a wrong-shaped
+// arcs_entries is not the protocol, so the graph falls back to the
+// synthesised entries or fails `graph` -- instead of satisfying `graph` and
+// erroring inside the transform lambda of whichever view or algorithm first
+// touches an entry.
 template <typename T>
 concept has_member_arcs_entries = requires(const T & t) {
-    { t.arcs_entries() } -> std::ranges::input_range;
+    { t.arcs_entries() } -> arc_entries_range;
 };
 
 template <typename T>
 concept has_adl_arcs_entries = requires(const T & t) {
-    { arcs_entries(t) } -> std::ranges::input_range;
+    { arcs_entries(t) } -> arc_entries_range;
 };
 
 // "Does this graph carry its *own* arcs_entries?", as opposed to one the CPO
@@ -539,54 +611,56 @@ concept can_join_in_arcs_entries =
 
 struct arcs_entries_fn {
 private:
-    template <typename T>
+    template <typename G>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_arcs_entries<T>)
-            return noexcept(std::declval<const T &>().arcs_entries());
-        else if constexpr(has_adl_arcs_entries<T>)
-            return noexcept(arcs_entries(std::declval<const T &>()));
+        if constexpr(has_member_arcs_entries<G>)
+            return noexcept(std::declval<const G &>().arcs_entries());
+        else if constexpr(has_adl_arcs_entries<G>)
+            return noexcept(arcs_entries(std::declval<const G &>()));
         else
             return false;
     }
 
 public:
-    template <typename T>
-        requires has_member_arcs_entries<T> || has_adl_arcs_entries<T> ||
-                 can_list_arcs_entries<T> || can_join_out_arcs_entries<T> ||
-                 can_join_in_arcs_entries<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_arcs_entries<T>)
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(has_member_arcs_entries<G> || has_adl_arcs_entries<G> ||
+                 can_list_arcs_entries<G> || can_join_out_arcs_entries<G> ||
+                 can_join_in_arcs_entries<G>) &&
+                (std::is_lvalue_reference_v<T> ||
+                 (borrowed_graph<G> && has_own_arcs_entries<G>))
+    constexpr auto operator() [[nodiscard]] (T && t) const
+        noexcept(is_noexcept<G>()) {
+        if constexpr(has_member_arcs_entries<G>)
             return t.arcs_entries();
-        else if constexpr(has_adl_arcs_entries<T>)
+        else if constexpr(has_adl_arcs_entries<G>)
             return arcs_entries(t);
-        else if constexpr(!can_join_out_arcs_entries<T> &&
-                          !can_join_in_arcs_entries<T>)
+        else if constexpr(!can_join_out_arcs_entries<G> &&
+                          !can_join_in_arcs_entries<G>)
             return list_arcs_entries(t);
-        else if constexpr(can_join_out_arcs_entries<T> &&
-                          !can_join_in_arcs_entries<T>) {
-            if constexpr(can_list_arcs_entries<T> &&
-                         detail::range_rank<arcs_range_t<T>>() >=
-                             detail::range_rank<out_arcs_range_t<T>>())
+        else if constexpr(can_join_out_arcs_entries<G> &&
+                          !can_join_in_arcs_entries<G>) {
+            if constexpr(can_list_arcs_entries<G> &&
+                         detail::range_rank<arcs_range_t<G>>() >=
+                             detail::range_rank<out_arcs_range_t<G>>())
                 return list_arcs_entries(t);
             else
                 return join_out_arcs_entries(t);
-        } else if constexpr(!can_join_out_arcs_entries<T> &&
-                            can_join_in_arcs_entries<T>) {
-            if constexpr(can_list_arcs_entries<T> &&
-                         detail::range_rank<arcs_range_t<T>>() >=
-                             detail::range_rank<in_arcs_range_t<T>>())
+        } else if constexpr(!can_join_out_arcs_entries<G> &&
+                            can_join_in_arcs_entries<G>) {
+            if constexpr(can_list_arcs_entries<G> &&
+                         detail::range_rank<arcs_range_t<G>>() >=
+                             detail::range_rank<in_arcs_range_t<G>>())
                 return list_arcs_entries(t);
             else
                 return join_in_arcs_entries(t);
         } else {
-            if constexpr(can_list_arcs_entries<T> &&
-                         detail::range_rank<arcs_range_t<T>>() >=
-                             std::max(detail::range_rank<out_arcs_range_t<T>>(),
-                                      detail::range_rank<in_arcs_range_t<T>>()))
+            if constexpr(can_list_arcs_entries<G> &&
+                         detail::range_rank<arcs_range_t<G>>() >=
+                             std::max(detail::range_rank<out_arcs_range_t<G>>(),
+                                      detail::range_rank<in_arcs_range_t<G>>()))
                 return list_arcs_entries(t);
-            else if constexpr(detail::range_rank<out_arcs_range_t<T>>() >=
-                              detail::range_rank<in_arcs_range_t<T>>())
+            else if constexpr(detail::range_rank<out_arcs_range_t<G>>() >=
+                              detail::range_rank<in_arcs_range_t<G>>())
                 return join_out_arcs_entries(t);
             else
                 return join_in_arcs_entries(t);
@@ -621,47 +695,52 @@ concept can_list_incidence_endpoints =
         list_incidence_endpoints(t, v, Incidence{}, EndPoint{});
     };
 
+// Element check via range_reference_t, not `*ranges::begin(expr)`: begin() on
+// the prvalue range would additionally demand the range be borrowed, silently
+// hiding member neighbor ranges that are self-contained but not borrowed.
+template <typename R, typename G>
+concept vertex_range_of =
+    std::ranges::input_range<R> &&
+    std::convertible_to<std::ranges::range_reference_t<R>, vertex_t<G>>;
+
 template <typename T>
 concept has_member_out_neighbors =
     requires(const T & t, const vertex_t<T> & v) {
-        { t.out_neighbors(v) } -> std::ranges::input_range;
-        {
-            *std::ranges::begin(t.out_neighbors(v))
-        } -> std::convertible_to<vertex_t<T>>;
+        { t.out_neighbors(v) } -> vertex_range_of<T>;
     };
 
 template <typename T>
 concept has_adl_out_neighbors = requires(const T & t, const vertex_t<T> & v) {
-    { out_neighbors(t, v) } -> std::ranges::input_range;
-    {
-        *std::ranges::begin(out_neighbors(t, v))
-    } -> std::convertible_to<vertex_t<T>>;
+    { out_neighbors(t, v) } -> vertex_range_of<T>;
 };
 
 struct out_neighbors_fn {
 private:
-    template <typename T>
+    template <typename G>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_out_neighbors<T>)
-            return noexcept(std::declval<const T &>().out_neighbors(
-                std::declval<const vertex_t<T> &>()));
-        else if constexpr(has_adl_out_neighbors<T>)
-            return noexcept(out_neighbors(std::declval<const T &>(),
-                                          std::declval<const vertex_t<T> &>()));
+        if constexpr(has_member_out_neighbors<G>)
+            return noexcept(std::declval<const G &>().out_neighbors(
+                std::declval<const vertex_t<G> &>()));
+        else if constexpr(has_adl_out_neighbors<G>)
+            return noexcept(out_neighbors(std::declval<const G &>(),
+                                          std::declval<const vertex_t<G> &>()));
         else
             return false;
     }
 
 public:
-    template <typename T>
-        requires has_member_out_neighbors<T> || has_adl_out_neighbors<T> ||
-                 can_list_incidence_endpoints<T, out_arcs_fn, arc_target_fn>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(has_member_out_neighbors<G> || has_adl_out_neighbors<G> ||
+                 can_list_incidence_endpoints<G, out_arcs_fn, arc_target_fn>) &&
+                (std::is_lvalue_reference_v<T> ||
+                 (borrowed_graph<G> &&
+                  (has_member_out_neighbors<G> || has_adl_out_neighbors<G>)))
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_out_neighbors<T>)
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
+        noexcept(is_noexcept<G>()) {
+        if constexpr(has_member_out_neighbors<G>)
             return t.out_neighbors(v);
-        else if constexpr(has_adl_out_neighbors<T>)
+        else if constexpr(has_adl_out_neighbors<G>)
             return out_neighbors(t, v);
         else
             return list_incidence_endpoints(t, v, out_arcs_fn{},
@@ -671,44 +750,41 @@ public:
 
 template <typename T>
 concept has_member_in_neighbors = requires(const T & t, const vertex_t<T> & v) {
-    { t.in_neighbors(v) } -> std::ranges::input_range;
-    {
-        *std::ranges::begin(t.in_neighbors(v))
-    } -> std::convertible_to<vertex_t<T>>;
+    { t.in_neighbors(v) } -> vertex_range_of<T>;
 };
 
 template <typename T>
 concept has_adl_in_neighbors = requires(const T & t, const vertex_t<T> & v) {
-    { in_neighbors(t, v) } -> std::ranges::input_range;
-    {
-        *std::ranges::begin(in_neighbors(t, v))
-    } -> std::convertible_to<vertex_t<T>>;
+    { in_neighbors(t, v) } -> vertex_range_of<T>;
 };
 
 struct in_neighbors_fn {
 private:
-    template <typename T>
+    template <typename G>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_in_neighbors<T>)
-            return noexcept(std::declval<const T &>().in_neighbors(
-                std::declval<const vertex_t<T> &>()));
-        else if constexpr(has_adl_in_neighbors<T>)
-            return noexcept(in_neighbors(std::declval<const T &>(),
-                                         std::declval<const vertex_t<T> &>()));
+        if constexpr(has_member_in_neighbors<G>)
+            return noexcept(std::declval<const G &>().in_neighbors(
+                std::declval<const vertex_t<G> &>()));
+        else if constexpr(has_adl_in_neighbors<G>)
+            return noexcept(in_neighbors(std::declval<const G &>(),
+                                         std::declval<const vertex_t<G> &>()));
         else
             return false;
     }
 
 public:
-    template <typename T>
-        requires has_member_in_neighbors<T> || has_adl_in_neighbors<T> ||
-                 can_list_incidence_endpoints<T, in_arcs_fn, arc_source_fn>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(has_member_in_neighbors<G> || has_adl_in_neighbors<G> ||
+                 can_list_incidence_endpoints<G, in_arcs_fn, arc_source_fn>) &&
+                (std::is_lvalue_reference_v<T> ||
+                 (borrowed_graph<G> &&
+                  (has_member_in_neighbors<G> || has_adl_in_neighbors<G>)))
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_in_neighbors<T>)
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
+        noexcept(is_noexcept<G>()) {
+        if constexpr(has_member_in_neighbors<G>)
             return t.in_neighbors(v);
-        else if constexpr(has_adl_in_neighbors<T>)
+        else if constexpr(has_adl_in_neighbors<G>)
             return in_neighbors(t, v);
         else
             return list_incidence_endpoints(t, v, in_arcs_fn{},
@@ -745,8 +821,9 @@ concept has_num_arcs =
     has_arcs<T> && requires(const T & t) { melon::num_arcs(t); };
 
 template <typename T>
-concept graph = has_vertices<T> && has_arcs<T> &&
-                requires(const T & t) { melon::arcs_entries(t); };
+concept graph = has_vertices<T> && has_arcs<T> && requires(const T & t) {
+    { melon::arcs_entries(t) } -> cpo::arc_entries_range_of<T>;
+};
 
 template <typename T>
 concept has_arc_target = graph<T> && requires(const T & t, const arc_t<T> & a) {
@@ -1042,7 +1119,7 @@ inline constexpr cpo::change_arc_source_fn change_arc_source{};
 // concept needed a copy.
 template <typename G>
 concept has_vertex_creation = graph<G> && requires(G & g) {
-    { melon::create_vertex(g) } -> std::same_as<vertex_t<G>>;
+    { melon::create_vertex(g) } -> std::convertible_to<vertex_t<G>>;
 };
 
 // "Can this graph answer whether a handle is still live?" -- separate from
@@ -1068,7 +1145,7 @@ concept has_vertex_removal =
 
 template <typename G>
 concept has_arc_creation = graph<G> && requires(G & g, const vertex_t<G> & v) {
-    { melon::create_arc(g, v, v) } -> std::same_as<arc_t<G>>;
+    { melon::create_arc(g, v, v) } -> std::convertible_to<arc_t<G>>;
 };
 template <typename G>
 concept has_arc_removal =
@@ -1111,24 +1188,28 @@ template <typename T, typename EndPoint>
 
 struct arc_sources_map_fn {
 public:
-    template <typename T>
-        requires has_member_arc_sources_map<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_arc_sources_map<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(t.arc_sources_map())) {
         return t.arc_sources_map();
     }
 
-    template <typename T>
-        requires(!has_member_arc_sources_map<T>) && has_adl_arc_sources_map<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_arc_sources_map<G>) &&
+                has_adl_arc_sources_map<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(arc_sources_map(t))) {
         return arc_sources_map(t);
     }
 
-    template <typename T>
-        requires(!has_member_arc_sources_map<T>) &&
-                (!has_adl_arc_sources_map<T>) && has_arc_source<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_arc_sources_map<G>) &&
+                (!has_adl_arc_sources_map<G>) &&
+                has_arc_source<G> && std::is_lvalue_reference_v<T>
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(endpoint_map(t, arc_source_fn{}))) {
         return endpoint_map(t, arc_source_fn{});
     }
@@ -1146,24 +1227,28 @@ concept has_adl_arc_targets_map = requires(const T & t) {
 
 struct arc_targets_map_fn {
 public:
-    template <typename T>
-        requires has_member_arc_targets_map<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_arc_targets_map<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(t.arc_targets_map())) {
         return t.arc_targets_map();
     }
 
-    template <typename T>
-        requires(!has_member_arc_targets_map<T>) && has_adl_arc_targets_map<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_arc_targets_map<G>) &&
+                has_adl_arc_targets_map<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(arc_targets_map(t))) {
         return arc_targets_map(t);
     }
 
-    template <typename T>
-        requires(!has_member_arc_targets_map<T>) &&
-                (!has_adl_arc_targets_map<T>) && has_arc_target<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_arc_targets_map<G>) &&
+                (!has_adl_arc_targets_map<G>) &&
+                has_arc_target<G> && std::is_lvalue_reference_v<T>
+    constexpr auto operator() [[nodiscard]] (T && t) const
         noexcept(noexcept(endpoint_map(t, arc_target_fn{}))) {
         return endpoint_map(t, arc_target_fn{});
     }

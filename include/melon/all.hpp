@@ -27,6 +27,9 @@
 #include "melon/views/undirect.hpp"
 #include "melon/views/undirected_graph_view.hpp"
 
+#include "melon/algorithm/a_star.hpp"
+#include "melon/algorithm/bellman_ford.hpp"
+#include "melon/algorithm/bellman_ford_moore.hpp"
 #include "melon/algorithm/bentley_ottmann.hpp"
 #include "melon/algorithm/bidirectional_dijkstra.hpp"
 #include "melon/algorithm/biobjective_dijkstra.hpp"

@@ -54,8 +54,9 @@ Dinitz's algorithm: rank the vertices by BFS, then push blocking flows through t
     maps but leaves the terminals unset — it exists so you can pick them later,
     and change them, without paying for the maps again. `run()`,
     `flow_value()` and `minimum_cut()` all read them, so call `set_source` and
-    `set_target` first, or use the four-argument constructor. Both are
-    asserted, as every precondition in melon is.
+    `set_target` first, or use the four-argument constructor. The terminals
+    must also be distinct: a flow from a vertex to itself is ill-posed. All of
+    it is asserted, as every precondition in melon is.
 
     `minimum_cut()` carries a second one: it reads the reachability the
     *final, failed* search leaves behind, so it names a minimum cut only once

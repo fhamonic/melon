@@ -41,7 +41,6 @@ GTEST_TEST(dijkstra, test) {
     dijkstra alg(graph, length_map);
 
     static_assert(std::movable<decltype(alg)> && !std::copyable<decltype(alg)>);
-    std::cout << "dijkstra size: " << sizeof(decltype(alg)) << std::endl;
 
     alg.add_source(0);
     ASSERT_FALSE(alg.finished());
@@ -172,7 +171,7 @@ GTEST_TEST(dijkstra, path_to) {
 
 // advance(), add_source(), run() and reset() push into the heap -- which
 // allocates -- and run the user's length map and semiring, so an unconditional
-// noexcept turned any throw from those into std::terminate. The same applied
+// noexcept turns any throw from those into std::terminate. The same applies
 // to algorithm_iterator, which forwards straight into advance().
 namespace {
 using probe_dijkstra =
@@ -195,7 +194,7 @@ static_assert(noexcept(std::declval<const probe_dijkstra &>().finished()));
 // store_distances
 
 // current_dist reads the heap, not _distances_map, so requiring
-// store_distances kept it out of reach of every default-configured dijkstra.
+// store_distances keeps it out of reach of every default-configured dijkstra.
 namespace {
 struct traits_without_distances : dijkstra_default_traits<static_digraph, int> {
     static constexpr bool store_distances = false;
@@ -215,7 +214,6 @@ GTEST_TEST(dijkstra, current_dist_without_store_distances) {
     auto [graph, length_map] = builder.build();
 
     dijkstra algo(traits_without_distances{}, graph, length_map, 0u);
-    // the whole point: available even though store_distances is false
     static_assert(!traits_without_distances::store_distances);
     static_assert(has_current_dist<decltype(algo)>);
     algo.advance();  // settles 0, puts 1 in the heap at distance 4
@@ -229,11 +227,10 @@ GTEST_TEST(dijkstra, current_dist_without_store_distances) {
 // survives reset() and a rerun
 ////////////////////////////////////////////////////////////////////////////////
 
-// Every dijkstra test above runs with store_distances = false -- the default,
-// and the only value the suite ever exercised -- so _distances_map, the
-// detail::vertex_map_if that allocates it, the write in advance() and the
-// dist() accessor gated on it were all dead code as far as the tests were
-// concerned.
+// Every dijkstra test above runs with store_distances = false, the default --
+// without this section, _distances_map, the detail::vertex_map_if that
+// allocates it, the write in advance() and the dist() accessor gated on it
+// are all dead code as far as the suite is concerned.
 namespace {
 struct dijkstra_traits_distances
     : dijkstra_default_traits<static_digraph, int> {
@@ -341,11 +338,11 @@ GTEST_TEST(dijkstra, store_distances_and_paths_together) {
 // std::terminate
 ////////////////////////////////////////////////////////////////////////////////
 
-// add_source() resets the source's optional predecessor arc, and pred_arc()
-// returned it with .value() from a noexcept function -- so asking a source for
-// its predecessor threw std::bad_optional_access straight into std::terminate,
-// with no diagnostic, in release builds too. It is a precondition violation,
-// now asserted like the one pred_vertex() already made.
+// add_source() resets the source's optional predecessor arc, so a pred_arc()
+// returning it with .value() from a noexcept function throws
+// std::bad_optional_access straight into std::terminate when a source is
+// asked -- no diagnostic, in release builds too. It is a precondition
+// violation, asserted like the one pred_vertex() makes.
 GTEST_TEST(dijkstra, pred_arc_on_a_source_is_a_precondition) {
     static_digraph_builder<static_digraph> plain(3);
     plain.add_arc(0, 1).add_arc(1, 2);
@@ -369,17 +366,17 @@ GTEST_TEST(dijkstra, pred_arc_on_a_source_is_a_precondition) {
 // type can be named and matches CTAD
 ////////////////////////////////////////////////////////////////////////////////
 
-// The default lived on the deduction guides only, so CTAD worked while the
-// written-out `dijkstra<G, LM>` did not compile -- "wrong number of template
-// arguments (2, should be 3)" -- and there was no way to name the type CTAD
-// had just produced. The default is on the class now, and the guides no longer
-// carry one, so there is a single definition of it and the two spellings name
-// the same type.
+// With the default on the deduction guides only, CTAD works while the
+// written-out `dijkstra<G, LM>` does not compile -- "wrong number of template
+// arguments (2, should be 3)" -- and there is no way to name the type CTAD
+// just produced. The default lives on the class and the guides carry none, so
+// there is a single definition of it and the two spellings name the same
+// type.
 namespace traits_default {
 using G = views::graph_all_t<static_digraph &>;
 using LM = maps::mapping_all_t<static_map<arc_t<static_digraph>, int> &>;
 
-// the two-argument spelling compiles at all -- this is the item
+// this alias compiling at all is the first assertion
 using written_out = dijkstra<G, LM>;
 
 template <typename... Ts>
@@ -421,7 +418,8 @@ GTEST_TEST(dijkstra, default_traits_spelling_runs) {
     builder.add_arc(0, 1, 2).add_arc(1, 2, 3).add_arc(0, 2, 9);
     auto [graph, length_map] = builder.build();
 
-    // the point of the item: a variable of the written-out type, seeded and run
+    // spelled out rather than CTAD on purpose: a deduced variable would pass
+    // even with the default moved onto the guides
     dijkstra<views::graph_all_t<decltype(graph) &>,
              maps::mapping_all_t<decltype(length_map) &>>
         alg(graph, length_map);

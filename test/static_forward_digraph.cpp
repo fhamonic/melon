@@ -86,10 +86,6 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 1), {2}));
     ASSERT_TRUE(EQ_RANGES(out_neighbors(graph, 2), {0, 1}));
     ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arc_pairs));
-
-    // for(arc_t<static_forward_digraph> a : arcs(graph)) {
-    //     ASSERT_EQ(arc_source(graph,a), arc_pairs[a].first);
-    // }
 }
 
 GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
@@ -141,11 +137,10 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
 // lvalues are left intact
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression (2.8): the constructor did `_arc_target(std::move(targets))` on a
-// forwarding reference -- stealing from an lvalue the caller still owned --
-// and then read `targets` in the asserts below it. Harmless only because
-// static_map's range constructor copies. It forwards now, and checks the
-// member.
+// regression: the constructor must forward, not `std::move`, its forwarding
+// references -- an unconditional `_arc_target(std::move(targets))` steals
+// from an lvalue the caller still owns, harmless only because static_map's
+// range constructor copies. The asserts read the member, not the argument.
 GTEST_TEST(static_forward_digraph, built_from_rvalue_ranges) {
     std::vector<unsigned int> sources{0u, 0u, 1u, 2u};
     std::vector<unsigned int> targets{1u, 2u, 2u, 0u};
@@ -164,7 +159,7 @@ GTEST_TEST(static_forward_digraph, built_from_rvalue_ranges) {
                   std::vector<unsigned int>({1u, 2u, 2u, 0u})[a]);
 }
 
-// and from lvalues, which is what std::move was quietly stealing from
+// and from lvalues, which an unconditional std::move would quietly steal from
 GTEST_TEST(static_forward_digraph,
            built_from_lvalue_ranges_leaves_them_intact) {
     std::vector<unsigned int> sources{0u, 0u, 1u, 2u};

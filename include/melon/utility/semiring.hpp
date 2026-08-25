@@ -15,9 +15,19 @@ namespace melon {
 // read as inverted; each struct below says which.
 //
 // What a model must guarantee, none of it checkable: `plus` associative with
-// `zero` neutral and `infty` absorbing, and `less(plus(a, b), a)` false for
-// every value the mapped range can produce -- that last one is the precondition
-// the label-setting algorithms restate over their own length maps.
+// `zero` neutral, `less(infty, v)` false for every value the mapped range can
+// produce, and `less(plus(a, b), a)` false likewise -- that last one is the
+// precondition the label-setting algorithms restate over their own length
+// maps.
+//
+// Whether `plus` also absorbs `infty` arithmetically -- `plus(infty, x) ==
+// infty` -- is a per-model promise, not a requirement: no integer absorbs
+// under `+`. A model makes it with `static constexpr bool infty_is_absorbing
+// = true`, read through `has_absorbing_infty` (absent means false). The
+// label-correcting algorithms drop their unreached-vertex guard on that
+// promise, so declaring it falsely lets them evaluate `plus` on `infty`:
+// signed overflow for integral min-plus, and any finite result lets a
+// nonexistent path improve a real one.
 //
 // All four members are structurally required to be static constexpr
 // *variables*, not functions: `{ S::zero } -> same_as<const value_type &>`
@@ -37,13 +47,30 @@ concept semiring = requires(typename S::value_type v) {
 };
 // clang-format on
 
+template <typename S>
+inline constexpr bool has_absorbing_infty = [] {
+    if constexpr(requires {
+                     { S::infty_is_absorbing } -> std::convertible_to<bool>;
+                 })
+        return static_cast<bool>(S::infty_is_absorbing);
+    else
+        return false;
+}();
+
 template <typename T>
 struct shortest_path_semiring {
     using value_type = T;
     using plus_t = typename std::plus<T>;
     using less_t = typename std::less<T>;
     static constexpr T zero = static_cast<T>(0);
-    static constexpr T infty = std::numeric_limits<T>::max();
+    // max() cannot absorb: max() + negative < max() for floats, so a vertex
+    // this semiring should report unreached would relax as reached. IEC 559
+    // guarantees inf + x == inf instead.
+    static constexpr T infty = std::numeric_limits<T>::is_iec559
+                                   ? std::numeric_limits<T>::infinity()
+                                   : std::numeric_limits<T>::max();
+    static constexpr bool infty_is_absorbing =
+        std::numeric_limits<T>::is_iec559;
     static constexpr plus_t plus{};
     static constexpr less_t less{};
 };
@@ -58,6 +85,7 @@ struct most_reliable_path_semiring {
     using less_t = typename std::greater<T>;
     static constexpr T zero = static_cast<T>(1);
     static constexpr T infty = static_cast<T>(0);
+    static constexpr bool infty_is_absorbing = true;
     static constexpr plus_t plus{};
     static constexpr less_t less{};
 };
@@ -76,6 +104,7 @@ struct max_capacity_path_semiring {
     using less_t = typename std::greater<T>;
     static constexpr T zero = std::numeric_limits<T>::max();
     static constexpr T infty = static_cast<T>(0);
+    static constexpr bool infty_is_absorbing = true;
     static constexpr plus_t plus{};
     static constexpr less_t less{};
 };
@@ -92,7 +121,9 @@ struct minimum_spanning_tree_semiring {
     };
     using less_t = typename std::less<T>;
     static constexpr T zero = static_cast<T>(0);
-    static constexpr T infty = std::numeric_limits<T>::max();
+    static constexpr T infty = std::numeric_limits<T>::is_iec559
+                                   ? std::numeric_limits<T>::infinity()
+                                   : std::numeric_limits<T>::max();
     static constexpr plus_t plus{};
     static constexpr less_t less{};
 };

@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -55,10 +56,10 @@ GTEST_TEST(subgraph_views, graph_view) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: subgraph's second and third parameters have defaults, so its
-// constructor template is callable with one argument and competed with the
-// copy constructor. The guard it already carried was written against the
-// *deduced* G, which for an lvalue is `subgraph<...> &` -- a reference is not
-// a specialization of anything, so the guard never fired where it was needed.
+// constructor template is callable with one argument and competes with the
+// copy constructor. A guard written against the *deduced* G -- which for an
+// lvalue is `subgraph<...> &`, and a reference is not a specialization of
+// anything -- never fires where it is needed.
 static_assert(
     !detail::specialization_of<subgraph_view<graph_ref_view<static_digraph>,
                                              maps::true_map, maps::true_map> &,
@@ -241,13 +242,12 @@ GTEST_TEST(subgraph_views, static_graph_filter) {
 ////////////////////////////////////////////////////////////////////////////////
 // the filters are mutable through a non-const view only
 
-// regression 2.8: disable_arc / enable_arc were `const` while disable_vertex /
-// enable_vertex were not. Two things followed. The pair could be called on a
+// regression: all four filter mutators are non-const. A `const` disable_arc /
+// enable_arc has two consequences: the pair can be called on a
 // `const subgraph &`, writing the filter -- part of the view's value --
 // through a const reference; and with the mapping_owning_view filter that
-// views::subgraph(g, maps::true_map{}, map) produces, they did not compile at
-// all, because a const member cannot write through an owning view. All four
-// are non-const now.
+// views::subgraph(g, maps::true_map{}, map) produces, they do not compile at
+// all, because a const member cannot write through an owning view.
 namespace arc_filter_constness {
 using G = static_digraph;
 using owning_sub =
@@ -260,8 +260,8 @@ concept mutable_through_const = requires(const S & s, arc_t<G> a) {
 } || requires(const S & s, vertex_t<G> v) { s.disable_vertex(v); };
 }  // namespace arc_filter_constness
 
-// the owning-filter subgraph can be written at all -- this is what the const
-// used to make impossible
+// the owning-filter subgraph can be written at all -- what a `const`
+// disable_arc makes impossible
 static_assert(requires(arc_filter_constness::owning_sub & s,
                        arc_t<static_digraph> a) {
     s.disable_arc(a);
@@ -328,8 +328,7 @@ GTEST_TEST(subgraph_views, endpoint_maps_come_from_the_wrapped_graph) {
     static_digraph graph(3, std::views::keys(arc_pairs),
                          std::views::values(arc_pairs));
 
-    // arc 2 filtered out. Seeded rather than disable_arc()'d: that member is
-    // `const` (2.8) and so cannot write an owning filter map.
+    // arc 2 filtered out, seeded before the map moves into the view
     auto arc_filter = create_arc_map<bool>(graph, true);
     arc_filter[2] = false;
     auto sub = views::subgraph(graph, maps::true_map{}, std::move(arc_filter));
@@ -403,6 +402,8 @@ GTEST_TEST(subgraph_views, dijkstra) {
 GTEST_TEST(induces_subgraph_views, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
+    // the `//`-marked arcs touch vertex 2 or 3 and fall outside the induced
+    // set {0, 1, 4, 5}
     builder.add_arc(0, 1, 7);
     builder.add_arc(0, 2, 9);  //
     builder.add_arc(0, 5, 14);
@@ -460,11 +461,10 @@ concept can_disable_vertex =
     requires(T t, vertex_t<T> v) { t.disable_vertex(v); };
 }  // namespace
 
-// regression: the filter member used to be spelled `const
-// mapping_owning_view<...>`. A const member deletes the defaulted assignments,
-// so induced_subgraph failed std::movable and therefore graph_view, and
-// views::graph_all stopped passing an rvalue through: it wrapped the whole
-// view in a graph_owning_view instead.
+// regression: a filter member spelled `const mapping_owning_view<...>`
+// deletes the defaulted assignments, so induced_subgraph fails std::movable
+// and therefore graph_view, and views::graph_all stops passing an rvalue
+// through: it wraps the whole view in a graph_owning_view instead.
 static_assert(graph<induced_t>);
 static_assert(enable_graph_view<induced_t>);
 static_assert(std::movable<induced_t>);
@@ -476,8 +476,9 @@ static_assert(std::is_move_assignable_v<induced_t>);
 static_assert(std::same_as<views::graph_all_t<induced_t>, induced_t>);
 static_assert(std::same_as<views::graph_all_t<induced_t &>, induced_t>);
 
-// Dropping the const would have handed callers the base's enable/disable, and
-// the filter and vertices() are two spellings of one set. They stay hidden.
+// The non-const filter member could surface the base's enable/disable to
+// callers, and the filter and vertices() are two spellings of one set. They
+// stay hidden.
 static_assert(!can_disable_vertex<induced_t>);
 static_assert(
     can_disable_vertex<subgraph_view<
@@ -498,7 +499,7 @@ GTEST_TEST(subgraph_views, induced_subgraph_is_assignable) {
     ASSERT_TRUE(view.is_valid_vertex(0u));
     ASSERT_FALSE(view.is_valid_vertex(3u));
 
-    other = view;  // used not to compile at all
+    other = view;  // the assignment a const filter member would delete
     ASSERT_TRUE(other.is_valid_vertex(0u));
     ASSERT_FALSE(other.is_valid_vertex(3u));
     ASSERT_TRUE(EQ_RANGES(other.vertices(), first));
@@ -545,3 +546,24 @@ static_assert(std::same_as<piped_lvalue_t,
                            induced_subgraph_view<graph_ref_view<G>,
                                                  std::ranges::owning_view<R>>>);
 }  // namespace induced_range_semantics
+
+////////////////////////////////////////////////////////////////////////////////
+// the filterless specialisation is borrowed, and that promise covers
+// arcs_entries too: the member delegates to the wrapped graph, so the
+// synthesis captures storage that outlives the view
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(subgraph, filterless_entries_survive_the_view_object) {
+    static_digraph_builder<static_digraph> builder(3);
+    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0);
+    auto [graph] = builder.build();
+    using sub = decltype(views::subgraph(graph));
+    static_assert(borrowed_graph<sub>);
+    static_assert(melon::cpo::has_own_arcs_entries<sub>);
+    auto view = std::make_unique<sub>(views::subgraph(graph));
+    auto entries = arcs_entries(*view);
+    view.reset();
+    std::vector<arc_t<static_digraph>> seen;
+    for(auto && e : entries) seen.push_back(std::get<0>(e));
+    ASSERT_TRUE(EQ_RANGES(seen, {0u, 1u, 2u}));
+}

@@ -17,7 +17,9 @@ The mathematical structure melon abstracts is therefore the **directed multigrap
 ```cpp
 template <typename T>
 concept graph = has_vertices<T> && has_arcs<T> &&
-                requires(const T & t) { melon::arcs_entries(t); };
+                requires(const T & t) {
+                    { melon::arcs_entries(t) } -> cpo::arc_entries_range_of<T>;
+                };
 ```
 
 An instance `g` of a graph type `G` must provide:
@@ -25,6 +27,8 @@ An instance `g` of a graph type `G` must provide:
 - `melon::vertices(g)` — a range of the graph's vertices, of type `vertex_t<G>`;
 - `melon::arcs(g)` — a range of the graph's arc identifiers, of type `arc_t<G>`;
 - `melon::arcs_entries(g)` — a range whose elements are pairs `(a, (s, t))`, where `a` is an arc and `s`, `t` are its source and target.
+
+The return-type constraint on the last line is what pins that entry shape: each element must be a tuple-like of size 2 whose `std::get<0>` converts to `arc_t<G>` and whose `std::get<1>` is itself a tuple-like of size 2 with both elements converting to `vertex_t<G>`. A type whose `arcs_entries` yields anything else — flat `(a, s, t)` triples, say — fails `graph` here, with a diagnostic naming this requirement, rather than compiling until the first view or algorithm destructures an entry.
 
 Nothing is required of `vertex_t<G>` and `arc_t<G>` beyond identifying vertices and arcs unambiguously: no duplicates in `vertices(g)` or `arcs(g)`. The simplest implementation, and probably the most efficient, uses integers.
 

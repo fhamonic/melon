@@ -57,20 +57,10 @@ GTEST_TEST(static_map_bool, size_init_constructor) {
     ASSERT_NE(map2.begin(), map.end());
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
-    // auto test = [](const bool a) { return a; };
-    // ASSERT_TRUE(std::ranges::all_of(std::views::values(map2), test));
-    // ASSERT_TRUE(
-    //     std::ranges::all_of(std::views::values(std::as_const(map2)), test));
-
     static_map<std::size_t, bool> map3(5, false);
     ASSERT_EQ(map3.size(), 5);
     ASSERT_NE(map3.begin(), map.end());
     ASSERT_NE(std::as_const(map3).begin(), std::as_const(map).end());
-
-    // auto test2 = [](const bool a) { return !a; };
-    // ASSERT_TRUE(std::ranges::all_of(std::views::values(map3), test2));
-    // ASSERT_TRUE(
-    //     std::ranges::all_of(std::views::values(std::as_const(map3)), test2));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,18 +138,16 @@ GTEST_TEST(static_map_bool, iterator_extensive_read) {
     static_assert(std::random_access_iterator<std::vector<bool>::iterator>);
     static_assert(
         std::random_access_iterator<static_map<std::size_t, bool>::iterator>);
-
-    // ASSERT_TRUE(std::ranges::equal(std::views::values(map), datas));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // iterators -- const_iterator included -- are genuinely random access
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: iterator_base<I> used to name `iterator` instead of `I` in the
-// bodies of post-increment, post-decrement, operator+ and operator-.
-// const_iterator satisfied std::random_access_iterator all the same, so the
-// breakage only surfaced as a hard error deep inside whichever algorithm used
+// regression: an iterator_base<I> naming `iterator` instead of `I` in the
+// bodies of post-increment, post-decrement, operator+ and operator- leaves
+// const_iterator satisfying std::random_access_iterator all the same, so the
+// breakage only surfaces as a hard error deep inside whichever algorithm uses
 // those ops.
 GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
     using map_type = static_filter_map<std::size_t>;
@@ -190,7 +178,7 @@ GTEST_TEST(static_filter_map, const_iterator_random_access_operations) {
     ASSERT_TRUE(*(cmap.begin() + 65));
     ASSERT_EQ((cmap.begin() + 65) - cmap.begin(), 65);
 
-    // the same set on the mutable iterator, which always worked
+    // the same set on the mutable iterator
     auto mit = map.begin();
     ASSERT_TRUE(*(mit++));   // yields index 0, leaves mit on index 1
     ASSERT_FALSE(*(mit--));  // yields index 1, leaves mit back on index 0
@@ -339,10 +327,10 @@ GTEST_TEST(static_filter_map, filter_bench) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: when the size is an exact multiple of the span width, end_it._p
-// addresses one span past the last allocated one. The span-skipping loop used
-// to accept cursor._p == end_it._p and dereference it, reading past the
-// buffer. A single set bit early on is what exposes it: nothing later stops
-// the scan before it runs off the end.
+// addresses one span past the last allocated one. A span-skipping loop that
+// accepts cursor._p == end_it._p dereferences it, reading past the buffer. A
+// single set bit early on is what exposes it: nothing later stops the scan
+// before it runs off the end.
 GTEST_TEST(static_filter_map, filter_scan_stays_inside_the_buffer) {
     for(const std::size_t num_bools : {std::size_t{64}, std::size_t{128},
                                        std::size_t{192}, std::size_t{256}}) {
@@ -387,13 +375,13 @@ GTEST_TEST(static_filter_map, filter_clamps_out_of_range_bounds) {
 // and for every integral iota, not only the one matching the key type
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression 1: the dispatch tested `std::same_as<R, iota_view<K, K>>` on the
-// *deduced* type of a forwarding reference, which is iota_view<K, K> & for an
-// lvalue. Passing a named range silently fell back to the generic
+// regression 1: a dispatch testing `std::same_as<R, iota_view<K, K>>` on the
+// *deduced* type of a forwarding reference sees iota_view<K, K> & for an
+// lvalue: passing a named range silently falls back to the generic
 // filter/transform pipeline.
-// regression 2: it then required iota_view<K, K> *exactly*, so the near-miss
-// iota(0, n) -- int literals against a differently-keyed map -- also fell
-// back silently, 10-50x slower. Any common integral iota now qualifies.
+// regression 2: requiring iota_view<K, K> *exactly* sends the near-miss
+// iota(0, n) -- int literals against a differently-keyed map -- down the same
+// silent fallback, 10-50x slower. Any common integral iota qualifies.
 namespace {
 using filter_map = static_filter_map<int>;
 using iota_int = std::ranges::iota_view<int, int>;
@@ -464,8 +452,8 @@ GTEST_TEST(static_filter_map, moved_from_is_a_valid_empty_map) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // filter() keeps an rvalue key range alive. Passed as an lvalue into
-// views::transform, an rvalue container was wrapped in a ref_view of a
-// temporary dead at the semicolon (ASan-confirmed); forwarding hands it to an
+// views::transform, an rvalue container is wrapped in a ref_view of a
+// temporary dead at the semicolon (ASan-visible); forwarding hands it to an
 // owning_view instead.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -481,4 +469,23 @@ GTEST_TEST(static_filter_map, filter_owns_an_rvalue_key_range) {
     // and an lvalue range is still referenced, not copied
     std::vector<std::size_t> keys = {5u, 7u, 8u};
     ASSERT_TRUE(EQ_RANGES(map.filter(keys), {5u, 7u}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the bit proxy is const-assignable -- the C++23 vector<bool>::reference
+// protocol -- so the iterator models the writability every constrained
+// mutating algorithm demands
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(static_filter_map, mutating_ranges_algorithms_accept_the_proxy) {
+    static_filter_map<std::size_t> map(8, false);
+    using iterator = decltype(std::ranges::begin(map));
+    static_assert(std::indirectly_writable<iterator, bool>);
+    static_assert(std::sortable<iterator>);
+    std::ranges::fill(map, true);
+    ASSERT_TRUE(std::ranges::all_of(map, [](bool b) { return b; }));
+    map[3] = false;
+    std::ranges::sort(map);
+    ASSERT_TRUE(
+        EQ_RANGES(map, {false, true, true, true, true, true, true, true}));
 }

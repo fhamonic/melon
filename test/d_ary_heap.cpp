@@ -54,34 +54,6 @@ GTEST_TEST(d_ary_heap, 2_heap_push_pop_test) {
     ASSERT_TRUE(heap.empty());
 }
 
-// GTEST_TEST(d_ary_heap, 2_heap_prio_map_push_pop_test) {
-//     std::vector<int> datas = {0, 7, 3, 5, 6, 11};
-//     d_ary_heap<2, std::pair<bool, int>, maps::element_map<1>> heap;
-//     for(auto && e : datas) {
-//         heap.push(std::make_pair(true, e));
-//     }
-
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), std::make_pair(true, 11));
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), std::make_pair(true, 7));
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), std::make_pair(true, 6));
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), std::make_pair(true, 5));
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), std::make_pair(true, 3));
-//     heap.pop();
-//     ASSERT_FALSE(heap.empty());
-//     ASSERT_EQ(heap.top(), std::make_pair(true, 0));
-//     heap.pop();
-//     ASSERT_TRUE(heap.empty());
-// }
-
 GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
     for(int it = 0; it < 10; ++it) {
         std::size_t size = 127;
@@ -202,28 +174,11 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     ASSERT_EQ(heap.top(), std::make_pair(2u, 3));
     heap.pop();
     ASSERT_TRUE(heap.empty());
-
-    // heap.promote(3u, 8);
-
-    // for(int i = 0; i < 2; ++i) {
-    //     auto && [u, dist] = heap.top();
-    //     std::cout << u << "  " << dist << std::endl;
-    //     heap.pop();
-    // }
-
-    // heap.promote(0u, 9);
-
-    // while(!heap.empty()) {
-    //     auto && [u, dist] = heap.top();
-    //     std::cout << u << "  " << dist << std::endl;
-    //     heap.pop();
-    // }
 }
 
-// regression: the heap's constructors default-constructed both maps, so a
-// stateful priority map could never reach it -- external priorities needed a
-// static-array workaround. The maps are now constructor parameters, and the
-// heap holds bare ids while the priorities live outside.
+// regression: the maps are constructor parameters, so the heap can hold bare
+// ids while the priorities live outside. Constructors that default-construct
+// both maps shut every stateful priority map out.
 GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
     std::vector<int> priorities = {0, 7, 3, 5, 6, 11};
     constexpr std::size_t num_elements = 6;
@@ -273,9 +228,9 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
 
 // regression: promote()/demote() rewrite the priority inside an entry via
 // `_entry_priority_map[e] = p`. With maps::identity_map -- the default
-// EntryPriorityMap -- operator[] returns a prvalue, so the write landed on a
-// temporary and was discarded: the heap silently kept the old priority and was
-// never re-ordered. The operations are now constrained on a priority map that
+// EntryPriorityMap -- operator[] returns a prvalue, so the write lands on a
+// temporary and is discarded: the heap silently keeps the old priority and is
+// never re-ordered. The operations are constrained on a priority map that
 // yields a reference into the entry.
 namespace {
 struct heap_item {
@@ -347,8 +302,8 @@ GTEST_TEST(updatable_d_ary_heap, promote_actually_reorders) {
 
     heap.promote(0u, 100);
 
-    // the write used to land on a temporary: priority stayed 50 and the heap
-    // was never re-ordered
+    // a write landing on a temporary leaves the priority at 50 and the heap
+    // never re-ordered
     ASSERT_EQ(heap.priority(0u), 100);
     ASSERT_EQ(heap.top().first, 0u);
     ASSERT_EQ(heap.top().second, 100);
@@ -375,11 +330,11 @@ GTEST_TEST(updatable_d_ary_heap, demote_actually_reorders) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: the index map stores *byte* offsets -- the unit heap_move()
-// writes and entry_ref() reads -- while contains() compared one against
-// _heap_array.size(), an element count, and then subscripted _heap_array with
-// it. Only the entry at offset 0 answered true; every other live entry came
-// back absent. Every earlier test queried the top, which is exactly that one
-// entry, so the defect was invisible.
+// writes and entry_ref() reads. A contains() that compares one against
+// _heap_array.size(), an element count, and then subscripts _heap_array with
+// it answers true only for the entry at offset 0; every other live entry
+// comes back absent. A test that only queries the top -- exactly that one
+// entry -- cannot see the defect, which is why these query every key.
 GTEST_TEST(updatable_d_ary_heap, contains_answers_for_every_entry) {
     const std::array<int, 4> priorities = {50, 90, 70, 60};
     writable_heap heap(std::greater<int>{},
@@ -414,9 +369,9 @@ GTEST_TEST(updatable_d_ary_heap, contains_answers_for_every_entry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: push() grows a std::vector and sifts through the user's
-// comparator and priority map; declaring it noexcept turned a bad_alloc (or a
-// throwing comparator) into std::terminate. clear() is genuinely noexcept now
-// that it uses vector::clear rather than resize(0).
+// comparator and priority map; declaring it noexcept turns a bad_alloc (or a
+// throwing comparator) into std::terminate. clear() is genuinely noexcept
+// because it uses vector::clear rather than resize(0).
 namespace {
 using plain_heap = d_ary_heap<2, int, std::greater<int>>;
 }  // namespace
@@ -449,10 +404,9 @@ GTEST_TEST(d_ary_heap, clear_empties_the_heap) {
 // a single-argument constructor call cannot hijack the copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: d_ary_heap_base's `template <typename PC> d_ary_heap_base(PC &&)`
-// was unconstrained, so for a non-const lvalue of the heap type it beat the
-// copy constructor (exact match vs an added const) and tried to build a
-// comparator out of a heap.
+// regression: an unconstrained `template <typename PC> d_ary_heap_base(PC &&)`
+// beats the copy constructor for a non-const lvalue of the heap type (exact
+// match vs an added const) and tries to build a comparator out of a heap.
 namespace {
 using heap_base = d_ary_heap_base<d_ary_heap<2, int, std::greater<int>>, 2, int,
                                   std::greater<int>, maps::identity_map>;

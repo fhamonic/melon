@@ -80,6 +80,12 @@ private:
             const vertices_iterator & it, std::default_sentinel_t) noexcept {
             return it._cursor == INVALID_VERTEX;
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const vertices_iterator & it1,
+            const vertices_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
 
     class out_arcs_iterator
@@ -108,6 +114,12 @@ private:
         [[nodiscard]] constexpr friend bool operator==(
             const out_arcs_iterator & it, std::default_sentinel_t) noexcept {
             return it._cursor == it._first;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const out_arcs_iterator & it1,
+            const out_arcs_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
         }
     };
 
@@ -139,6 +151,12 @@ private:
             const in_arcs_iterator & it, std::default_sentinel_t) noexcept {
             return it._cursor == it._first;
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const in_arcs_iterator & it1,
+            const in_arcs_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
 
     class bounding_arcs_iterator
@@ -167,6 +185,12 @@ private:
             const bounding_arcs_iterator & it,
             std::default_sentinel_t) noexcept {
             return it._cursor == it._first;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const bounding_arcs_iterator & it1,
+            const bounding_arcs_iterator & it2) noexcept {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
         }
     };
 

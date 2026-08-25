@@ -106,7 +106,6 @@ GTEST_TEST(pipe_syntax, bound_subgraph_filters_through_the_pipe) {
     filter[1u] = false;
     ASSERT_TRUE(EQ_MULTISETS(sub.vertices(), {0u, 1u}));
 
-    // A named closure is reusable.
     auto adaptor = views::subgraph(filter);
     auto sub2 = graph | adaptor;
     auto sub3 = graph | adaptor;

@@ -67,17 +67,14 @@ public:
         return melon::arcs(_wrapped());
     }
 
-    // Forwarded only when the wrapped graph carries its own arcs_entries, not
-    // when the CPO would synthesise one: forwarding a synthesised one stacks a
-    // transform on a transform for every container in the library, all of which
-    // reach arcs_entries through the fallback. The member cannot be dropped
-    // either -- `graph<G>` is defined in terms of arcs_entries, so a view over
-    // a graph whose arcs_entries is its only arc protocol would silently stop
-    // modeling `graph` and every algorithm would reject it.
+    // Delegated to the wrapped graph even when the CPO would synthesise the
+    // entries there: synthesising on the *view* instead would capture the view
+    // object's address, and a borrowed view's promise -- ranges independent of
+    // the view object -- must cover this range too. Delegation aims the
+    // synthesis capture at the wrapped graph's storage and hands own entries
+    // through untouched.
     [[nodiscard]] constexpr decltype(auto) arcs_entries() const
-        noexcept(noexcept(melon::arcs_entries(std::declval<const G &>())))
-        requires cpo::has_own_arcs_entries<G>
-    {
+        noexcept(noexcept(melon::arcs_entries(std::declval<const G &>()))) {
         return melon::arcs_entries(_wrapped());
     }
 
@@ -233,9 +230,8 @@ public:
     constexpr graph_ref_view & operator=(const graph_ref_view &) = default;
     constexpr graph_ref_view & operator=(graph_ref_view &&) = default;
 
-    // std::ranges::ref_view::base(): one overload, returning the referenced
-    // graph by lvalue reference from a const member. Constness here is shallow,
-    // like the view itself.
+    // Shallow const, mirroring std::ranges::ref_view::base(): a const view
+    // still hands the graph out mutable.
     [[nodiscard]] constexpr G & base() const noexcept { return *_graph; }
 };
 
@@ -339,8 +335,7 @@ struct graph_adaptor_closure {
         return std::forward<Self>(self)(std::forward<G>(g));
     }
 
-    // closure | closure, itself a closure: `g | (c1 | c2)` and
-    // `(g | c1) | c2` build the same type.
+    // closure | closure, itself a closure.
     template <typename Self, typename Other>
         requires std::same_as<std::remove_cvref_t<Self>, Derived> &&
                  detail::adaptor_closure<Other>
@@ -440,8 +435,13 @@ template <typename Graph>
 concept can_graph_ref_view =
     requires { graph_ref_view{std::declval<Graph>()}; };
 
+// A const rvalue cannot be moved from, so without the exclusion the owning
+// branch deduces graph_owning_view<const G> and silently deep-copies -- and
+// the result is not even a graph_view (const G is not movable).
+// std::views::all pins the precedent: const rvalues are not viewable.
 template <typename Graph>
 concept can_graph_owning_view =
+    (!std::is_const_v<std::remove_reference_t<Graph>>) &&
     requires { graph_owning_view{std::declval<Graph>()}; };
 }  // namespace detail
 

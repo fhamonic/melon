@@ -23,7 +23,9 @@ namespace melon {
 // positive, and the budget non-negative. A zero cost divides by zero in the
 // take-count below, and a negative value or cost makes the ratio bound
 // unsound, so in release builds run() answers with a suboptimal solution
-// instead of failing.
+// instead of failing. Value must also be wide enough for the instance's
+// optimum plus one item's value: the take-count and dominance products reach
+// that magnitude and overflow -- not saturate -- beyond it.
 //
 // random_access_range, not range: is_dominated() orders iterators with `<`,
 // which only random-access iterators provide -- with a plain range the error
@@ -139,6 +141,8 @@ private:
     }
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     // Constrained on what the mem-initializers actually do, so
     // std::is_constructible answers what construction actually does instead of
     // hard-erroring outside the immediate context.
@@ -177,6 +181,8 @@ private:
     }
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
     // Moves stay defaulted: _best_sol holds iterators into _value_cost_pairs,
     // whose buffer transfers with the move. A copy would have to rebase them,
@@ -188,6 +194,8 @@ public:
 
     unbounded_knapsack_bnb & operator=(const unbounded_knapsack_bnb &) = delete;
     unbounded_knapsack_bnb & operator=(unbounded_knapsack_bnb &&) = default;
+
+    // ---- Setup --------------------------------------------------------------
 
     unbounded_knapsack_bnb & reset() {
         assert(_budget >= static_cast<Cost>(0));
@@ -226,6 +234,8 @@ public:
         return reset();
     }
 
+    // ---- Execution ----------------------------------------------------------
+
     unbounded_knapsack_bnb & run() {
         iterative_bnb();
         return *this;
@@ -245,6 +255,8 @@ public:
         }
         return true;
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] auto solution_items() const {
         return std::views::transform(_best_sol, [this](auto && p) {

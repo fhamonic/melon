@@ -79,6 +79,9 @@ public:
         for(index_type i = 0; i < static_cast<index_type>(n); ++i) {
             const Prob prob = _probs[i] * scale;
             _probs[i] = prob;
+            // Identity by default: slots the pairing loop below never writes
+            // (exactly-full ones) are still read branchlessly in operator().
+            _aliases[i] = i;
             *overfull_end = *underfull_end = i;
             const bool is_underfull = (prob < 1.0);
             underfull_end += is_underfull;
@@ -143,7 +146,9 @@ public:
         const index_type i = index_distribution(gen);
         const auto prob = _probs[i];
         const auto alias = _aliases[i];
-        return _items[i + (prob_distribution(gen) > prob) * (alias - i)];
+        // `>=`, not `>`: uniform_real can return exactly 0.0, and a
+        // zero-probability slot must send that draw to its alias too.
+        return _items[i + (prob_distribution(gen) >= prob) * (alias - i)];
     }
 };
 

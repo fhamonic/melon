@@ -139,6 +139,7 @@ public:
         // legitimately be empty and every assertion below would pass
         // vacuously. The members are contiguous, so this is also the cheaper
         // scan.
+        assert(_arc_source.size() == _arc_target.size());
         assert(std::ranges::all_of(
             _arc_source, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::all_of(

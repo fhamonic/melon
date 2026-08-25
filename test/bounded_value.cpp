@@ -166,10 +166,10 @@ GTEST_TEST(bounded_value, conversions_test) {
 // mathematically, through std::cmp_*
 ////////////////////////////////////////////////////////////////////////////////
 
-// Plain comparisons converted the negative signed operand to a huge unsigned
-// one: `-10 >= 20u` held, so operator< between int [-10,10] and unsigned
-// [0,20] constant-folded to false for every pair of values, and the
-// conversion constraints accepted int [-10,10] -> unsigned [0,20] -- letting
+// Plain comparisons convert the negative signed operand to a huge unsigned
+// one: `-10 >= 20u` holds, so operator< between int [-10,10] and unsigned
+// [0,20] constant-folds to false for every pair of values, and the
+// conversion constraints accept int [-10,10] -> unsigned [0,20] -- letting
 // a possibly-negative value into an unsigned-bounded type -- while rejecting
 // the valid widening unsigned [0,20] -> int [-100,100].
 GTEST_TEST(bounded_value, comparisons_across_signedness) {
@@ -188,7 +188,7 @@ GTEST_TEST(bounded_value, comparisons_across_signedness) {
     ASSERT_FALSE(s2 < u);
     ASSERT_TRUE(s2 <= u);
 
-    // disjoint ranges still constant-fold, now to the mathematical answer
+    // disjoint ranges still constant-fold, to the mathematical answer
     const auto n = bounded_value<int, -10, -1>(-3);
     ASSERT_TRUE(n < u);
     ASSERT_TRUE(u > n);
@@ -208,9 +208,9 @@ static_assert(!std::is_constructible_v<bounded_value<int, 0, 10>,
 // a reinterpret_cast
 ////////////////////////////////////////////////////////////////////////////////
 
-// value() reached the derived class through reinterpret_cast, which does not
-// perform a derived-to-base downcast: it is UB, and would have been wrong
-// outright had bounded_value ever gained a second base. static_cast now.
+// value() reaches the derived class through static_cast: a reinterpret_cast
+// performs no derived-to-base adjustment -- UB, and wrong outright the day
+// bounded_value gains a second base.
 GTEST_TEST(bounded_value, value_through_the_crtp_base) {
     const auto b = bounded_value<int8_t, -10, 21>(7);
     using base = bounded_value_base<bounded_value<int8_t, -10, 21>, int8_t, -10,
@@ -245,13 +245,14 @@ GTEST_TEST(bounded_value, const_value_rejects_a_mismatched_argument) {
 // nonsense range
 ////////////////////////////////////////////////////////////////////////////////
 
-// It returned `bounded_value<T, -Max, -Min, PS>` for every T. For unsigned T
-// that wraps: negating a bounded_value<unsigned, 0, 10> asked for
-// bounded_value<unsigned, 4294967286, 0>, whose Min exceeds its Max -- bounds
-// that bracket nothing. For signed T with Min == numeric_limits<T>::min(),
-// -Min is not representable and the template-id is ill-formed, so the class
-// simply failed to compile at the point of use. Constrained now: neither case
-// is silently wrong, both name a deleted operator-.
+// Unconstrained, unary operator- returns `bounded_value<T, -Max, -Min, PS>`
+// for every T. For unsigned T that wraps: negating a
+// bounded_value<unsigned, 0, 10> asks for bounded_value<unsigned, 4294967286,
+// 0>, whose Min exceeds its Max -- bounds that bracket nothing. For signed T
+// with Min == numeric_limits<T>::min(), -Min is not representable and the
+// template-id is ill-formed, so the class simply fails to compile at the
+// point of use. Constrained, neither case is silently wrong: both name a
+// deleted operator-.
 //
 // Deleted rather than absent, and that matters: bounded_value has an implicit
 // operator T(), so merely constraining the member away would let `-b` convert
@@ -270,7 +271,7 @@ static_assert(
     !negatable<bounded_value<int8_t, std::numeric_limits<int8_t>::min(), 21>>);
 static_assert(!negatable<bounded_value<int, std::numeric_limits<int>::min(),
                                        std::numeric_limits<int>::max()>>);
-// one below the edge is fine again
+// one below the edge is fine
 static_assert(
     negatable<
         bounded_value<int8_t, std::numeric_limits<int8_t>::min() + 1, 21>>);
@@ -296,11 +297,10 @@ GTEST_TEST(bounded_value, negation_flips_the_bounds) {
 // like the general template
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: bounded_value<T, V, V> took a plain `T`, so any *other*
-// bounded_value reached it through the implicit operator T() and a bound
+// regression: a bounded_value<T, V, V> taking a plain `T` lets any *other*
+// bounded_value reach it through the implicit operator T(), degrading a bound
 // violation the general template rejects outright -- bounded_value<int, 1, 2>
-// from bounded_value<int, 0, 10> is ill-formed -- degraded to a runtime
-// assert.
+// from bounded_value<int, 0, 10> is ill-formed -- to a runtime assert.
 static_assert(!std::is_constructible_v<numeric::bounded_value<int, 1, 2>,
                                        numeric::bounded_value<int, 0, 10>>);
 static_assert(!std::is_constructible_v<numeric::const_value<int, 1>,
@@ -316,3 +316,39 @@ static_assert(std::is_constructible_v<numeric::bounded_value<int, 0, 10>,
 // implicit and one-argument, which is what lets rational initialise a
 // const_value<int, 1> denominator with `_den(1)`
 static_assert(std::is_convertible_v<int, numeric::const_value<int, 1>>);
+
+////////////////////////////////////////////////////////////////////////////////
+// the const_value specialization is copyable both ways: the defaulted move
+// constructor used to delete the implicit copy assignment, making every
+// const_value-carrying composite fail std::copyable while copy construction
+// still worked
+////////////////////////////////////////////////////////////////////////////////
+
+static_assert(std::copyable<const_value<int, 1>>);
+static_assert(std::is_copy_assignable_v<const_value<int, 1>>);
+
+GTEST_TEST(bounded_value, const_value_assigns_from_lvalues) {
+    const_value<int, 1> x, y;
+    x = y;
+    const_value<long, 1L> z;
+    x = z;
+    ASSERT_EQ(x.value(), 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// bound() tightens as well as widens -- it is the remedy the overflow
+// static_asserts name -- through the value constructor's runtime range assert
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(bounded_value, bound_tightens_within_range) {
+    bounded_value<int, -100, 100> wide(7);
+    auto narrow = wide.bound<0, 10>();
+    static_assert(std::same_as<decltype(narrow), bounded_value<int, 0, 10>>);
+    ASSERT_EQ(narrow.value(), 7);
+    ASSERT_EQ((narrow.bound<-100, 100>().value()), 7);
+}
+
+GTEST_TEST(bounded_value, bound_tightening_asserts_the_range) {
+    bounded_value<int, -100, 100> wide(50);
+    EXPECT_DEATH(((void)wide.bound<0, 10>()), "");
+}

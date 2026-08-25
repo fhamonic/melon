@@ -55,7 +55,6 @@ private:
         _dfs_stack;
     std::vector<vertex> _tarjan_stack;
     std::vector<vertex>::iterator _component_begin;
-    component_num _start_index;
     component_num _index;
     component_num _num_components;
     vertex_map_t<Graph, bool> _in_tarjan_stack_map;
@@ -65,6 +64,8 @@ private:
         Traits::store_component_ids, Graph, component_num> _component_id_map;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename G>
         requires detail::not_self<G, strongly_connected_components> &&
                      graph_for<G, Graph> && has_vertex_map<Graph>
@@ -74,7 +75,6 @@ public:
         , _dfs_stack()
         , _tarjan_stack()
         , _component_begin()
-        , _start_index(0)
         , _index(0)
         , _num_components(0)
         , _in_tarjan_stack_map(create_vertex_map<bool>(_graph, false))
@@ -129,7 +129,6 @@ public:
         , _dfs_stack(std::move(o._dfs_stack))
         , _tarjan_stack(std::move(o._tarjan_stack))
         , _component_begin(std::move(o._component_begin))
-        , _start_index(o._start_index)
         , _index(o._index)
         , _num_components(o._num_components)
         , _in_tarjan_stack_map(std::move(o._in_tarjan_stack_map))
@@ -156,7 +155,6 @@ public:
         _dfs_stack = std::move(o._dfs_stack);
         _tarjan_stack = std::move(o._tarjan_stack);
         _component_begin = std::move(o._component_begin);
-        _start_index = o._start_index;
         _index = o._index;
         _num_components = o._num_components;
         _in_tarjan_stack_map = std::move(o._in_tarjan_stack_map);
@@ -168,13 +166,12 @@ public:
     }
 
 private:
-    // Re-asks the *new* _graph for each cached cursor's range; the _consumed
-    // counters restore their positions. Compiles away when nothing points back
-    // at the graph object.
+    // Compiles away when nothing points back at the graph object.
+    // _remaining_vertices is absent on purpose: both move members already
+    // rebuilt it against the new graph through the counted constructor, so a
+    // rebase here would fetch vertices(_graph) and reseek a second time.
     constexpr void _rebase_cursors() {
         if constexpr(!borrowed_graph<Graph>) {
-            if constexpr(!std::ranges::borrowed_range<vertices_range_t<Graph>>)
-                _remaining_vertices.rebase(vertices(_graph));
             if constexpr(!std::ranges::borrowed_range<
                              out_neighbors_range_t<Graph>>)
                 for(auto & [v, cursor] : _dfs_stack)
@@ -183,6 +180,8 @@ private:
     }
 
 public:
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -194,13 +193,14 @@ public:
         return std::move(_graph);
     }
 
+    // ---- Setup --------------------------------------------------------------
+
     // Must restore exactly the state the constructor leaves behind, first
     // component included: _index_map is what reached() consults, so a restarted
     // run that keeps it filled walks _remaining_vertices to the end and yields
     // nothing, and it is the trailing advance() that produces the first
     // component.
     constexpr strongly_connected_components & reset() {
-        _start_index = 0;
         _index = 0;
         _num_components = 0;
         _remaining_vertices = vertices(_graph);
@@ -215,6 +215,8 @@ public:
         if(!finished()) advance();
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_remaining_vertices.empty())) {
@@ -235,6 +237,8 @@ public:
             std::to_address(_component_begin),
             static_cast<std::size_t>(_tarjan_stack.end() - _component_begin));
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     // The number of components yielded so far, current() included -- the
     // component count of the graph once finished(). Not gated on
@@ -269,6 +273,8 @@ private:
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     constexpr void advance() {
         assert(!_remaining_vertices.empty());
 
@@ -290,7 +296,7 @@ public:
                 if(_remaining_vertices.empty()) return;
             }
             const vertex s = _remaining_vertices.current();
-            _index_map[s] = _lowlink_map[s] = _start_index = _index;
+            _index_map[s] = _lowlink_map[s] = _index;
             ++_index;
             _push_tarjan(s);
             _dfs_stack.emplace_back(s, out_neighbors(_graph, s));
@@ -333,6 +339,8 @@ public:
                 std::min(_lowlink_map[parent], _lowlink_map[v]);
         }
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     // The id of the component u belongs to: dense, in emission order -- the
     // k-th component yielded is id k, reverse topological order of the

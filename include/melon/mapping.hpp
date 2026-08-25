@@ -199,7 +199,7 @@ public:
         noexcept(static_cast<Map &>(std::declval<T>())))
         : _map(std::addressof(static_cast<Map &>(std::forward<T>(t)))) {}
 
-    constexpr Map & base() const noexcept { return *_map; }
+    [[nodiscard]] constexpr Map & base() const noexcept { return *_map; }
 
     // Map, not `const Map`: the access goes through `Map &` however const the
     // view object is, so asking about `const Map` would drop the subscript for
@@ -243,9 +243,13 @@ public:
         default;
     constexpr mapping_owning_view & operator=(mapping_owning_view &&) = default;
 
-    constexpr Map & base() & noexcept { return *_map; }
-    constexpr const Map & base() const & noexcept { return *_map; }
-    constexpr Map && base() && noexcept { return *std::move(_map); }
+    [[nodiscard]] constexpr Map & base() & noexcept { return *_map; }
+    [[nodiscard]] constexpr const Map & base() const & noexcept {
+        return *_map;
+    }
+    [[nodiscard]] constexpr Map && base() && noexcept {
+        return *std::move(_map);
+    }
 
     // Each guard asks about the qualification its own overload subscripts
     // through. Spelling both `Map` admits the const overload for a map that is
@@ -340,7 +344,8 @@ template <typename F>
         !detail::has_non_const_call_operator<std::decay_t<F>>,
         "melon: this callable cannot be used as a mapping -- its operator() is "
         "not const (a `mutable` lambda), and melon reads maps through a const "
-        "access (contract Ruling 4). Do not let the map own the state: capture "
+        "access -- the const-readability rule in docs/graphs/mappings.md. Do "
+        "not let the map own the state: capture "
         "the storage and hand out a reference into it, as in "
         "maps::map([&storage](key_t k) -> value_t & { return storage[k]; }).");
     return mapping_owning_view<std::decay_t<F>>(
@@ -404,8 +409,7 @@ public:
 
 }  // namespace maps
 
-template <typename M, typename LengthMap>
-concept mapping_for =
-    std::constructible_from<LengthMap, maps::mapping_all_t<M>>;
+template <typename M, typename Target>
+concept mapping_for = std::constructible_from<Target, maps::mapping_all_t<M>>;
 
 }  // namespace melon

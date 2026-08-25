@@ -60,10 +60,9 @@ GTEST_TEST(kruskal, test) {
     alg.advance();
     ASSERT_TRUE(alg.finished());
 
-    // reset() must give back exactly the run above -- it used to append the
-    // edge list to the one already there and re-push every vertex, so both grew
-    // with each call, and it returned void where every other algorithm returns
-    // *this.
+    // reset() must give back exactly the run above: appending the edge list
+    // to the one already there and re-pushing every vertex grows both with
+    // each call. It also returns *this, like every other algorithm.
     ASSERT_EQ(std::addressof(alg.reset()), std::addressof(alg));
     ASSERT_TRUE(EQ_RANGES(mst_edges(alg), {6, 7, 0, 1, 8}));
     alg.reset().reset();
@@ -71,12 +70,12 @@ GTEST_TEST(kruskal, test) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// degenerate inputs the unconditional first-edge merge used to mishandle
+// degenerate inputs an unconditional first-edge merge mishandles
 ////////////////////////////////////////////////////////////////////////////////
 
-// reset() seeded the cursor by merging *_sorted_edges.begin() outright, with no
-// emptiness test: on a graph with vertices but no edges that dereferenced
-// end(). Such a graph has an empty spanning forest.
+// A reset() that seeds the cursor by merging *_sorted_edges.begin() outright,
+// with no emptiness test, dereferences end() on a graph with vertices but no
+// edges. Such a graph has an empty spanning forest.
 GTEST_TEST(kruskal, edgeless_graph) {
     static_digraph_builder<static_digraph, int> builder(3);
     auto [graph, cost_map] = builder.build();
@@ -90,9 +89,10 @@ GTEST_TEST(kruskal, edgeless_graph) {
     ASSERT_TRUE(alg.finished());
 }
 
-// The same unconditional merge accepted the first edge without asking whether
-// its endpoints were already in one component, so a cheapest self-loop went
-// into the tree. Every other edge went through that test all along.
+// The same unconditional merge accepts the first edge without asking whether
+// its endpoints are already in one component, so a cheapest self-loop goes
+// into the tree -- the one edge exempted from the test every other edge
+// passes through.
 GTEST_TEST(kruskal, cheapest_edge_is_a_self_loop) {
     static_digraph_builder<static_digraph, int> builder(3);
     builder

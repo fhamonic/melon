@@ -56,11 +56,17 @@ public:
         _algorithm->advance();
         return *this;
     }
-    // P0541 : post-increment on input iterators returns void
-    // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0541r0.html
+    // void, per P0541: a returned copy would share the algorithm and, once
+    // dereferenced, yield the entry after the advance -- there is no saved
+    // state to hand back.
     void operator++(int) { operator++(); }
-    friend bool operator==(const algorithm_iterator & it,
-                           std::default_sentinel_t) noexcept {
+    // Conditional, measured on the forwarded call: the generator concept does
+    // not require finished() to be noexcept, so an unconditional marking
+    // turns a user generator's throwing finished() into std::terminate inside
+    // a range-for's loop condition.
+    [[nodiscard]] friend bool operator==(
+        const algorithm_iterator & it,
+        std::default_sentinel_t) noexcept(noexcept(it._algorithm->finished())) {
         return it._algorithm->finished();
     }
     value_type operator*() const { return _algorithm->current(); }

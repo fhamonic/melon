@@ -3,6 +3,9 @@
 
 #include <utility>
 
+#include <ranges>
+#include <vector>
+
 #include "melon/algorithm/traversal_forest.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -42,10 +45,10 @@ GTEST_TEST(traversal_forest, test) {
 // the caller can supply the source range, including as a temporary
 ////////////////////////////////////////////////////////////////////////////////
 
-// The two-argument constructor took std::views::all() of the *named* parameter,
-// an lvalue, so it produced a ref_view where the deduction guide had already
-// committed Sources to std::views::all_t<S> -- an owning_view for a temporary
-// container. Passing one did not compile.
+// The two-argument constructor must forward: std::views::all() of the *named*
+// parameter, an lvalue, produces a ref_view where the deduction guide has
+// already committed Sources to std::views::all_t<S> -- an owning_view for a
+// temporary container. Passing one then does not compile.
 GTEST_TEST(traversal_forest, sources_from_a_temporary_range) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(2, 3);
@@ -66,10 +69,10 @@ GTEST_TEST(traversal_forest, sources_from_a_temporary_range) {
 // reset() replays the run over the same sources, supplied or defaulted
 ////////////////////////////////////////////////////////////////////////////////
 
-// reset() used to assign vertices(_graph) over the sources, which threw a
-// user-supplied range away -- and for the two-argument form did not compile at
-// all, the two ranges' iterators being unrelated types. It also skipped the
-// constructor's advance(), leaving current() naming a stale tree.
+// reset() may not assign vertices(_graph) over the sources: that throws a
+// user-supplied range away -- and for the two-argument form does not compile
+// at all, the two ranges' iterators being unrelated types. The constructor's
+// advance() has to be redone too, or current() names a stale tree.
 GTEST_TEST(traversal_forest, reset_keeps_the_given_sources) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(2, 3);
@@ -120,8 +123,8 @@ GTEST_TEST(traversal_forest, reset_restarts_the_default_sources) {
 // an empty graph or an empty source range is finished() from the start
 ////////////////////////////////////////////////////////////////////////////////
 
-// advance() reads _remaining_sources.current(), so an empty source range used
-// to read past the end of an empty view.
+// advance() reads _remaining_sources.current(), so an unguarded call on an
+// empty source range reads past the end of an empty view.
 GTEST_TEST(traversal_forest, empty_graph) {
     static_digraph_builder<static_digraph> builder(0);
     auto [graph] = builder.build();
@@ -149,11 +152,11 @@ GTEST_TEST(traversal_forest, empty_source_range) {
 // single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// The unconstrained `traversal_forest(G &&)` beat the copy constructor for a
-// non-const lvalue and tried to build the algorithm out of itself;
+// An unconstrained `traversal_forest(G &&)` beats the copy constructor for a
+// non-const lvalue and tries to build the algorithm out of itself;
 // detail::not_self is what excludes it. Only the one-argument form competes:
-// the (graph, sources) overload takes two. Now that copy is deleted, the pin is
-// that an algorithm is not constructible from an algorithm lvalue at all.
+// the (graph, sources) overload takes two. With copy deleted, the pin is that
+// an algorithm is not constructible from an algorithm lvalue at all.
 GTEST_TEST(traversal_forest, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(2, 3);
@@ -170,3 +173,13 @@ GTEST_TEST(traversal_forest, is_not_constructible_from_an_algorithm) {
     relocated.advance();
     ASSERT_TRUE(EQ_MULTISETS(relocated.current(), {2u, 3u}));
 }
+
+// reset() rewinds the sources, so a single-pass source range fails the
+// class-head constraint instead of hard-erroring inside the member
+template <typename Sources>
+concept traversal_forest_accepts = requires(static_digraph & g, Sources s) {
+    traversal_forest(g, std::forward<Sources>(s));
+};
+static_assert(traversal_forest_accepts<std::vector<unsigned int> &>);
+static_assert(!traversal_forest_accepts<
+              std::ranges::basic_istream_view<unsigned int, char>>);

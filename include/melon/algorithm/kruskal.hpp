@@ -29,6 +29,8 @@ private:
     disjoint_sets<vertex, vertex_map_t<UGraph, unsigned int>> _components_sets;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <undirected_graph_for<UGraph> UG, mapping_for<CostMap> CM>
         requires has_vertex_map<UGraph>
     constexpr kruskal(UG && ug, CM && cm)
@@ -49,6 +51,8 @@ public:
 
     constexpr kruskal & operator=(const kruskal &) = delete;
     constexpr kruskal & operator=(kruskal &&) = default;
+
+    // ---- Base access --------------------------------------------------------
 
     [[nodiscard]] constexpr UGraph & base() & noexcept { return _ugraph; }
     [[nodiscard]] constexpr const UGraph & base() const & noexcept {
@@ -72,6 +76,8 @@ private:
     }
 
 public:
+    // ---- Setup --------------------------------------------------------------
+
     // Not noexcept: it refills, sorts and re-seeds, all of which allocate, and
     // the sort runs the user's cost map.
     constexpr kruskal & reset() {
@@ -96,12 +102,15 @@ public:
         return *this;
     }
 
+    // ---- Execution ----------------------------------------------------------
+
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_cursor == _sorted_edges.end())) {
         return _cursor == _sorted_edges.end();
     }
 
-    [[nodiscard]] constexpr edge current() const noexcept(noexcept(*_cursor)) {
+    [[nodiscard]] constexpr edge current() const
+        noexcept(noexcept(edge(*_cursor))) {
         assert(!finished());
         return *_cursor;
     }

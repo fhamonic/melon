@@ -55,8 +55,9 @@ GTEST_TEST(cartesian, point_xy_comparator_orders_by_x_then_y) {
         requires { typename cartesian::point_xy_comparator::is_transparent; });
 }
 
-// regression: the comparator was unconditionally noexcept over user comparison
-// operators -- a throwing coordinate comparison became std::terminate.
+// regression: the comparator runs user comparison operators, so an
+// unconditional noexcept turns a throwing coordinate comparison into
+// std::terminate.
 namespace {
 struct throwing_coordinate {
     int v = 0;
@@ -173,8 +174,8 @@ GTEST_TEST(cartesian, lines_intersection_rejects_parallel_lines) {
 // integral coordinates divide exactly through rationals instead of truncating
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: plain integer coordinates satisfy cartesian_point too, and `/`
-// truncated their intersections -- (1, 1/3) came back as (1, 0).
+// regression: plain integer coordinates satisfy cartesian_point too, and a
+// plain `/` truncates their intersections -- (1, 1/3) comes back as (1, 0).
 GTEST_TEST(cartesian, integral_coordinates_intersect_exactly) {
     using ipoint = std::pair<int, int>;
     using isegment = std::pair<ipoint, ipoint>;
@@ -187,9 +188,9 @@ GTEST_TEST(cartesian, integral_coordinates_intersect_exactly) {
     ASSERT_EQ(std::get<1>(i.value()), R(1, 3));
 }
 
-// regression: line_slope on an integral vertical line divided by zero; it now
-// yields make_rational's 1/0 infinity sentinel, like the rational-coordinate
-// path always did.
+// regression: line_slope on an integral vertical line must yield
+// make_rational's 1/0 infinity sentinel like the rational-coordinate path
+// does, not divide by zero.
 GTEST_TEST(cartesian, integral_vertical_line_slope_is_the_infinity_sentinel) {
     using ipoint = std::pair<int, int>;
     using isegment = std::pair<ipoint, ipoint>;

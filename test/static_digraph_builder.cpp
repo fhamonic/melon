@@ -90,12 +90,11 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
 // preserves the chain's value category
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression (2.8): build() copied the property vectors unconditionally. There
-// is now an rvalue-qualified overload that moves them instead -- and add_arc
-// is ref-qualified so that value category survives a chain: returning
-// `static_digraph_builder &` unconditionally made std::move(b).add_arc(...) an
-// *lvalue*, which sent the following .build() straight back to the copying
-// overload.
+// regression: build() has an rvalue-qualified overload that moves the
+// property vectors instead of copying -- and add_arc is ref-qualified so that
+// value category survives a chain: returning `static_digraph_builder &`
+// unconditionally makes std::move(b).add_arc(...) an *lvalue*, which sends
+// the following .build() straight back to the copying overload.
 namespace build_overloads {
 using builder = static_digraph_builder<static_digraph, int>;
 
@@ -116,8 +115,8 @@ struct counted {
 };
 }  // namespace build_overloads
 
-// This is the fix: an lvalue chain stays an lvalue, an rvalue chain stays an
-// rvalue. Without the ref-qualifiers both were `builder &`.
+// An lvalue chain stays an lvalue, an rvalue chain stays an rvalue; without
+// the ref-qualifiers both are `builder &`.
 static_assert(
     std::same_as<build_overloads::add_arc_result<build_overloads::builder &>,
                  build_overloads::builder &>);

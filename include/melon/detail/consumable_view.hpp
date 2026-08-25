@@ -117,6 +117,15 @@ protected:
             static_cast<std::ranges::range_difference_t<R>>(_consumed));
     }
 
+    // What the special members' conditional noexcept measures beyond the
+    // optional: the reseek's begin() and per-step increment. A filter view's
+    // increment calls its predicate, so those cursors honestly stay
+    // potentially-throwing where an owning_view<vector> cursor does not --
+    // and vectors of the latter relocate by move instead of copy.
+    static constexpr bool _nothrow_reseek =
+        noexcept(std::ranges::begin(*std::declval<std::optional<R> &>())) &&
+        noexcept(++std::declval<std::ranges::iterator_t<R> &>());
+
 public:
     // Constrained away from the class itself: unconstrained, this
     // single-argument template binds a non-const lvalue of the class type
@@ -154,18 +163,24 @@ public:
     // user-provided special member of a class template is only instantiated
     // when called, so without the requires-clause std::copy_constructible
     // would answer true and the failure would move to the call site.
-    constexpr consumable_input_view(const consumable_input_view & o)
+    constexpr consumable_input_view(const consumable_input_view & o) noexcept(
+        std::is_nothrow_copy_constructible_v<std::optional<R>> &&
+        _nothrow_reseek)
         requires std::copy_constructible<R>
         : _range(o._range), _consumed(o._consumed) {
         _reseek();
     }
-    constexpr consumable_input_view(consumable_input_view && o)
+    constexpr consumable_input_view(consumable_input_view && o) noexcept(
+        std::is_nothrow_move_constructible_v<std::optional<R>> &&
+        _nothrow_reseek)
         : _range(std::move(o._range)), _consumed(o._consumed) {
         _reseek();
     }
 
     // See the copy constructor.
-    constexpr consumable_input_view & operator=(const consumable_input_view & o)
+    constexpr consumable_input_view &
+    operator=(const consumable_input_view & o) noexcept(
+        std::is_nothrow_copy_assignable_v<std::optional<R>> && _nothrow_reseek)
         requires std::copy_constructible<R> && std::is_copy_assignable_v<R>
     {
         if(this == std::addressof(o)) return *this;
@@ -174,7 +189,10 @@ public:
         _reseek();
         return *this;
     }
-    constexpr consumable_input_view & operator=(consumable_input_view && o) {
+    constexpr consumable_input_view &
+    operator=(consumable_input_view && o) noexcept(
+        std::is_nothrow_move_assignable_v<std::optional<R>> &&
+        _nothrow_reseek) {
         if(this == std::addressof(o)) return *this;
         _range = std::move(o._range);
         _consumed = o._consumed;
@@ -224,10 +242,48 @@ public:
     [[nodiscard]] decltype(auto) current() { return *_it; }
     [[nodiscard]] decltype(auto) current() const { return *_it; }
 
-    [[nodiscard]] constexpr auto begin() {
-        return consumable_iterator<std::ranges::iterator_t<R>,
-                                   std::ranges::sentinel_t<R>>(_it);
-    }
+private:
+    // Iteration advances through the view, never the raw iterator: ++ must
+    // keep _consumed in step with _it, or the next relocation reseeks to a
+    // stale count and silently rewinds the cursor.
+    class owning_iterator {
+    private:
+        consumable_input_view * _view;
+
+    public:
+        using iterator_concept = std::input_iterator_tag;
+        using iterator_category = std::input_iterator_tag;
+        using value_type = std::ranges::range_value_t<R>;
+        using reference = std::ranges::range_reference_t<R>;
+        using pointer = void;
+        using difference_type = std::ranges::range_difference_t<R>;
+
+        constexpr owning_iterator() = default;
+        constexpr explicit owning_iterator(consumable_input_view & view)
+            : _view(std::addressof(view)) {}
+
+        constexpr owning_iterator & operator++() noexcept(
+            noexcept(++_view->_it)) {
+            _view->advance();
+            return *this;
+        }
+        constexpr void operator++(int) noexcept(noexcept(++_view->_it)) {
+            _view->advance();
+        }
+        [[nodiscard]] constexpr decltype(auto) operator*() const
+            noexcept(noexcept(*_view->_it)) {
+            return *_view->_it;
+        }
+        [[nodiscard]] constexpr friend bool operator==(
+            const owning_iterator & it,
+            const std::ranges::sentinel_t<R> &
+                sentinel) noexcept(noexcept(it._view->_it == sentinel)) {
+            return it._view->_it == sentinel;
+        }
+    };
+
+public:
+    [[nodiscard]] constexpr auto begin() { return owning_iterator(*this); }
     [[nodiscard]] constexpr auto end() const {
         assert(_range.has_value());
         return std::ranges::end(*_range);

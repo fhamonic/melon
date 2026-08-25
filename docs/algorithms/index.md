@@ -62,7 +62,7 @@ The fourth is not hypothetical: it is exactly how [`bidirectional_dijkstra`](sho
 
 ## Which algorithms are ranges
 
-An algorithm is a range exactly when it derives from `algorithm_view_interface`, which is what supplies `begin()` / `end()`. The twelve below do; the rest do not, and a range-`for` over one of them is a compile error, not a silent single-pass.
+An algorithm is a range exactly when it derives from `algorithm_view_interface`, which is what supplies `begin()` / `end()`. The thirteen below do; the rest do not, and a range-`for` over one of them is a compile error, not a silent single-pass.
 
 | Algorithm | `current()` yields |
 | --- | --- |
@@ -73,15 +73,16 @@ An algorithm is a range exactly when it derives from `algorithm_view_interface`,
 | [`connected_components`](traversals.md#connected-components) | a range of vertices |
 | [`traversal_forest`](traversals.md#traversal_forest) | a range of vertices |
 | [`dijkstra`](shortest-paths.md#dijkstra) | `(vertex, distance)` |
+| [`a_star`](shortest-paths.md#a_star) | `(vertex, distance)` |
 | [`network_voronoi`](shortest-paths.md#network_voronoi) | `(vertex, (distance, kernel))` |
 | [`biobjective_dijkstra`](shortest-paths.md#biobjective_dijkstra) | a heap label |
 | [`competing_dijkstras`](shortest-paths.md#competing_dijkstras) | a heap label |
 | [`kruskal`](flows-and-trees.md#kruskal) | an edge |
 | [`bentley_ottmann`](others.md#bentley_ottmann) | `(point, range of segment ids)` |
 
-The rest produce a single answer rather than a sequence, so they expose `run()` and dedicated accessors instead: [`bidirectional_dijkstra`](shortest-paths.md#bidirectional_dijkstra), [`edmonds_karp`](flows-and-trees.md#edmonds_karp), [`dinitz`](flows-and-trees.md#dinitz), [`knapsack_bnb`](others.md#knapsack) and [`unbounded_knapsack_bnb`](others.md#knapsack).
+The rest produce a single answer rather than a sequence, so they expose `run()` and dedicated accessors instead: [`bidirectional_dijkstra`](shortest-paths.md#bidirectional_dijkstra), [`bellman_ford`](shortest-paths.md#bellman_ford), [`bellman_ford_moore`](shortest-paths.md#bellman_ford_moore), [`edmonds_karp`](flows-and-trees.md#edmonds_karp), [`dinitz`](flows-and-trees.md#dinitz), [`knapsack_bnb`](others.md#knapsack) and [`unbounded_knapsack_bnb`](others.md#knapsack).
 
-Even the range-shaped ones offer `run()` — `while(!finished()) advance();` — for when you want the side effects and the accessors but not the values. It returns the algorithm, like `reset()`, so a run and a query chain: `alg.run().dist(t)`. The exceptions are the two that are not generators at all, `dinitz` and `edmonds_karp`; `bidirectional_dijkstra` follows the family shape — `run()` returns the algorithm, and the point-query answer is read through `dist()` afterwards.
+Even the range-shaped ones offer `run()` — `while(!finished()) advance();` — for when you want the side effects and the accessors but not the values. It returns the algorithm, like `reset()`, so a run and a query chain: `alg.run().dist(t)`. The `run()`-only algorithms above share that shape — `run()` returns the algorithm, and the answer is read through the accessors afterwards — without being generators at all: they have no `finished()` / `advance()` to drain.
 
 `finished()` and `current()` are `const` on every generator, so a `const` reference to an algorithm is enough to inspect where it stands; `advance()`, `run()` and `reset()` are the mutating half. Algorithms are **move-only**: `std::copyable` is `false` for every one of them, over every graph, because an algorithm carries the whole search state and copying it is never the cheap operation the syntax suggests. Moving is always available and always sound, mid-traversal included — the algorithms that cache incidence ranges rebase those cursors as part of the move. See [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound). Where `current()` hands back a window onto the algorithm's own buffer — the component of `strongly_connected_components` or `connected_components`, the tree of `traversal_forest` — that window is read-only, since the next `advance()` rewrites it. Where it hands back a single handle it hands back a *value*, never a reference into that buffer.
 
@@ -142,8 +143,10 @@ for(auto && s : terminals) {
 These `reset()` / `run()` / `add_source` semantics are not a per-class
 convention: they are the named concepts `melon::traversal_algorithm` and
 `rooted_traversal_algorithm` (`melon/utility/algorithmic_generator.hpp`),
-statically asserted for every algorithm in the library and frozen for the
-whole 1.x series. In full:
+statically asserted for every generator-shaped algorithm in the library —
+the `run()`-only ones are pinned to the vocabulary they share, `reset()`
+and `run()` returning the algorithm, by the same consistency test — and
+frozen for the whole 1.x series. In full:
 
 - **`reset()` restores exactly the state the constructor leaves behind** —
   blank for an algorithm whose sources are added afterwards, re-seeded and

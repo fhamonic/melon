@@ -195,10 +195,9 @@ GTEST_TEST(graphviz_printer, handles_a_graph_without_arcs) {
 // refuses to bind a temporary graph
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: every std::format_to result was discarded, so a positional
-// iterator like char * rewound to its start on each call and the calls
-// overwrote one another; only stateful inserters like back_insert_iterator
-// came out whole.
+// regression: discarding the std::format_to results rewinds a positional
+// iterator like char * to its start on each call, and the calls overwrite one
+// another; only stateful inserters like back_insert_iterator come out whole.
 GTEST_TEST(graphviz_printer, threads_positional_output_iterators) {
     const auto graph = triangle_digraph();
     printer p(graph);
@@ -210,8 +209,9 @@ GTEST_TEST(graphviz_printer, threads_positional_output_iterators) {
     ASSERT_EQ(std::string(buffer.data(), end), reference);
 }
 
-// regression: a member rename hit the string literal, emitting a spurious
-// node named _graph and losing the graph attributes.
+// regression: the literal is DOT's `graph` keyword, not the _graph member's
+// name -- a rename that hits it emits a spurious node named _graph and loses
+// the graph attributes.
 GTEST_TEST(graphviz_printer, emits_the_graph_attributes_not_a_node) {
     const auto graph = triangle_digraph();
     const auto dot = print(printer(graph));
@@ -220,7 +220,7 @@ GTEST_TEST(graphviz_printer, emits_the_graph_attributes_not_a_node) {
     ASSERT_FALSE(contains(dot, "_graph"));
 }
 
-// _graph is a reference_wrapper: binding a temporary left the printer
+// _graph is a reference_wrapper: binding a temporary leaves the printer
 // pointing at a dead graph, so the rvalue overload is deleted (the
 // mapping_ref_view precedent).
 static_assert(!std::is_constructible_v<printer, static_digraph>);
@@ -231,10 +231,10 @@ static_assert(std::is_constructible_v<printer, const static_digraph &>);
 // labels are escaped, so user data cannot become graph syntax
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: labels were interpolated raw into `label="{}"`. A DOT quoted
-// string ends at the first unescaped '"', so a label carrying one closed the
-// attribute list early and everything after it was parsed as further
-// attributes -- `a" shape=box color="red` silently restyled the node.
+// regression: a label interpolated raw into `label="{}"` becomes syntax. A
+// DOT quoted string ends at the first unescaped '"', so a label carrying one
+// closes the attribute list early and everything after it is parsed as
+// further attributes -- `a" shape=box color="red` silently restyles the node.
 GTEST_TEST(graphviz_printer, quotes_in_labels_do_not_inject_attributes) {
     const auto graph = triangle_digraph();
     printer p(graph);

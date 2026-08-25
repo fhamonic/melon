@@ -34,11 +34,11 @@ GTEST_TEST(erdos_renyi, test) {
 // static
 ////////////////////////////////////////////////////////////////////////////////
 
-// The engine and the distribution were function-local `static`s, so the graph
-// could not be reproduced (no way to seed) and two threads calling
-// erdos_renyi() raced on both -- a distribution carries its own state, so even
-// the distribution was shared mutable state. There is now an overload taking
-// the generator by reference; the two-argument one seeds a local engine.
+// With the engine and the distribution as function-local `static`s, the graph
+// cannot be reproduced (no way to seed) and two threads calling erdos_renyi()
+// race on both -- a distribution carries its own state, so even the
+// distribution is shared mutable state. One overload takes the generator by
+// reference; the two-argument one seeds a local engine.
 GTEST_TEST(erdos_renyi, same_seed_gives_the_same_graph) {
     std::mt19937 gen1(20260729);
     std::mt19937 gen2(20260729);

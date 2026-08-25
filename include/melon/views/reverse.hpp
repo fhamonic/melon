@@ -125,13 +125,13 @@ public:
 
     // Crossed over like the eight above, and for the same reason: the base's
     // version forwards the wrapped graph's entries untouched, which would name
-    // every arc's endpoints the wrong way round. Only reachable when the
-    // wrapped graph carries its own arcs_entries -- otherwise there is no
-    // member here and the CPO synthesises the entries from *this* view's
-    // arc_source / arc_target, which are already swapped.
+    // every arc's endpoints the wrong way round. Unconditional, unlike the
+    // interface's member: letting the CPO synthesise on *this* view instead
+    // would capture the view's address and break the borrowed promise
+    // forwarded below, where delegating to the wrapped graph aims the capture
+    // at storage that outlives any copy of the view.
     [[nodiscard]] constexpr auto arcs_entries() const
-        requires melon::cpo::has_own_arcs_entries<Graph>
-    {
+        noexcept(noexcept(melon::arcs_entries(_graph))) {
         return std::views::transform(
             melon::arcs_entries(_graph), [](auto && entry) {
                 return std::make_pair(

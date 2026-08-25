@@ -1,6 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include "melon/algorithm/dinitz.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -105,8 +107,8 @@ GTEST_TEST(dinitz, no_arcs) {
 ////////////////////////////////////////////////////////////////////////////////
 // a graph without num_vertices takes the no-reserve BFS path: the queue grows
 // while it is being walked, so it reallocates -- the walk must survive that.
-// The iterator version faulted under ASan on a 300-vertex path; the queue has
-// to outgrow every small capacity step for the test to mean anything
+// An iterator-based walk faults under ASan on a 300-vertex path; the queue
+// has to outgrow every small capacity step for the test to mean anything
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(dinitz, graph_without_num_vertices) {
@@ -187,20 +189,11 @@ GTEST_TEST(dinitz, filtered_subgraph_move) {
     ASSERT_EQ(other.reset().run().flow_value(), 7);
 }
 
-// #include "melon/views/complete_digraph.hpp"
-
-// GTEST_TEST(dinitz, complete_digraph_view) {
-//     ASSERT_EQ(dinitz(
-//                   views::complete_digraph(5ul), [](const auto &) { return 1;
-//                   }, 0ul, 1ul) .run() .flow_value(),
-//               4);
-// }
-
 ////////////////////////////////////////////////////////////////////////////////
 // capacity types without a genuine numeric_limits specialization are rejected
 // at the concept level: the primary template's max() returns T{} -- a zero
-// infinity that made the augmenting-path loop spin forever at runtime for a
-// type that compiled cleanly
+// infinity that makes the augmenting-path loop spin forever at runtime for a
+// type that compiles cleanly
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace zero_infinity_probes {
@@ -221,11 +214,11 @@ static_assert(!dinitz_admits<zero_infinity_probes::opaque_capacity>);
 // wrong answers
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: _s and _t were left default-initialised by the two-argument
-// constructor, and run() / flow_value() read them unasserted. minimum_cut()
-// carries a second precondition: it reads the ranks the *final*, failed BFS
-// leaves behind, so before run() converges it names a cut of no particular
-// graph.
+// regression: the two-argument constructor leaves _s and _t
+// default-initialised, so run() / flow_value() must assert rather than read
+// them silently. minimum_cut() carries a second precondition: it reads the
+// ranks the *final*, failed BFS leaves behind, so before run() converges it
+// names a cut of no particular graph.
 namespace {
 auto two_arc_instance() {
     static_digraph_builder<static_digraph, int> builder(3);
@@ -261,4 +254,26 @@ GTEST_TEST(dinitz, minimum_cut_requires_a_converged_run) {
     alg.run();
     alg.set_target(1u);
     EXPECT_DEATH((void)alg.minimum_cut(), "");
+}
+
+GTEST_TEST(dinitz, source_equals_target_is_a_precondition) {
+    auto [graph, capacity_map] = two_arc_instance();
+    dinitz alg(graph, capacity_map, 1u, 1u);
+    EXPECT_DEATH((void)alg.run(), "");
+}
+
+// One call frame per level-graph level used to live on the call stack; a
+// path this long overflowed it before the explicit path stack.
+GTEST_TEST(dinitz, very_long_augmenting_paths_do_not_overflow_the_stack) {
+    const unsigned int n = 500'000;
+    std::vector<unsigned int> sources, targets;
+    std::vector<int> capacities;
+    for(unsigned int i = 0; i + 1 < n; ++i) {
+        sources.push_back(i);
+        targets.push_back(i + 1);
+        capacities.push_back(3);
+    }
+    static_digraph graph(n, std::move(sources), std::move(targets));
+    dinitz alg(graph, capacities, 0u, n - 1);
+    ASSERT_EQ(alg.run().flow_value(), 3);
 }

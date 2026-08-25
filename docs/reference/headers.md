@@ -60,10 +60,13 @@ ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
 | `connected_components.hpp` | [`connected_components`, `weakly_connected_components`](../algorithms/traversals.md#connected-components) |
 | `traversal_forest.hpp` | [`traversal_forest`](../algorithms/traversals.md#traversal_forest) |
 | `dijkstra.hpp` | [`dijkstra`, `dijkstra_default_traits`, `dijkstra_traits`](../algorithms/shortest-paths.md#dijkstra) |
+| `a_star.hpp` | [`a_star`, `a_star_default_traits`, `a_star_traits`](../algorithms/shortest-paths.md#a_star) |
 | `bidirectional_dijkstra.hpp` | [`bidirectional_dijkstra`](../algorithms/shortest-paths.md#bidirectional_dijkstra) |
 | `biobjective_dijkstra.hpp` | [`biobjective_dijkstra`](../algorithms/shortest-paths.md#biobjective_dijkstra) |
 | `competing_dijkstras.hpp` | [`competing_dijkstras`](../algorithms/shortest-paths.md#competing_dijkstras) |
 | `network_voronoi.hpp` | [`network_voronoi`](../algorithms/shortest-paths.md#network_voronoi) |
+| `bellman_ford.hpp` | [`bellman_ford`, `bellman_ford_default_traits`, `bellman_ford_traits`](../algorithms/shortest-paths.md#bellman_ford) |
+| `bellman_ford_moore.hpp` | [`bellman_ford_moore`, `bellman_ford_moore_default_traits`, `bellman_ford_moore_traits`](../algorithms/shortest-paths.md#bellman_ford_moore) |
 | `edmonds_karp.hpp` | [`edmonds_karp`](../algorithms/flows-and-trees.md#edmonds_karp) |
 | `dinitz.hpp` | [`dinitz`](../algorithms/flows-and-trees.md#dinitz) |
 | `kruskal.hpp` | [`kruskal`](../algorithms/flows-and-trees.md#kruskal) |
@@ -118,4 +121,4 @@ The dependency edges worth knowing:
 - `melon/graph.hpp` includes `melon/mapping.hpp` and, at the end, `melon/views/graph_view.hpp` — so having a graph gives you the mapping concepts and `views::graph_all`.
 - the algorithm headers include `melon/graph.hpp` or `melon/undirected_graph.hpp` as needed, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::map` and the concepts. The pure-mapping ones — both knapsacks and `bentley_ottmann` — include only `melon/mapping.hpp`.
 - **container headers do not include `melon/graph.hpp`** — they only need `melon/mapping.hpp`. Including `container/mutable_digraph.hpp` on its own gives you the class but not `create_vertex`, `vertices` or `num_vertices`. Add `melon/graph.hpp` when a container is all you include.
-- no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp`, `utility/make_static_digraph.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (`algorithm/dijkstra.hpp` does pull in `container/d_ary_heap.hpp`, which its default traits need.)
+- no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp`, `utility/make_static_digraph.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (The heap-based algorithms — `dijkstra`, `a_star`, the other Dijkstra variants, `network_voronoi` and `bentley_ottmann` — do pull in `container/d_ary_heap.hpp` for their default traits, and `kruskal` pulls in `container/disjoint_sets.hpp`.)

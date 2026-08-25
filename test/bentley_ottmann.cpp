@@ -4,10 +4,6 @@
 #include <random>
 #include <ranges>
 
-// #include <mp++/integer.hpp>
-
-#include "type_name.hpp"
-
 #include "melon/algorithm/bentley_ottmann.hpp"
 #include "melon/numeric/bounded_value.hpp"
 
@@ -22,6 +18,7 @@ testing::AssertionResult & operator<<(testing::AssertionResult & result,
     return result << "(" << r.num() << '/' << r.den() << ")";
 }
 
+#include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,36 +33,12 @@ auto generate_random_box_segments(std::size_t num_segments) {
     std::vector<segment> segments;
     segments.reserve(num_segments);
 
-    std::random_device dev;
-    std::mt19937 rng(dev());
+    std::mt19937 rng(test_rng()());
     std::uniform_int_distribution<int> dist(BOX_MIN, BOX_MAX);
 
     while(segments.size() < num_segments) {
-        // `s` is only read by the filters below when they are enabled.
-        [[maybe_unused]] const auto & s = segments.emplace_back(
-            point(dist(rng), dist(rng)), point(dist(rng), dist(rng)));
-        // coincident points
-        // if(s.first.first == s.second.first &&
-        //    s.first.second == s.second.second) {
-        //     segments.pop_back();
-        //     continue;
-        // }
-        // vertical segments
-        // if(s.first.first == s.second.first) {
-        //     segments.pop_back();
-        //     continue;
-        // }
-        // colinear segments
-        // if(std::any_of(segments.begin(), std::prev(segments.end()),
-        //                [s](auto && s2) {
-        //                    return cartesian::line_slope(
-        //                               cartesian::segment_to_line(s)) ==
-        //                           cartesian::line_slope(
-        //                               cartesian::segment_to_line(s2));
-        //                })) {
-        //     segments.pop_back();
-        //     continue;
-        // }
+        segments.emplace_back(point(dist(rng), dist(rng)),
+                              point(dist(rng), dist(rng)));
     }
     return segments;
 }
@@ -77,8 +50,7 @@ auto generate_random_vector_segments(std::size_t num_segments) {
     std::vector<segment> segments;
     segments.reserve(num_segments);
 
-    std::random_device dev;
-    std::mt19937 rng(dev());
+    std::mt19937 rng(test_rng()());
     std::uniform_int_distribution<int> box_dist(BOX_MIN + VEC_LENGTH,
                                                 BOX_MAX - VEC_LENGTH);
     std::uniform_int_distribution<int> vec_dist(-VEC_LENGTH, VEC_LENGTH);
@@ -155,9 +127,6 @@ auto naive_intersections(const std::vector<S> segments) {
         naive_intersections_vec.emplace_back(std::make_pair(
             i, std::vector<std::size_t>(intersecting_segments.begin(),
                                         intersecting_segments.end())));
-        // std::cout << std::format("({}/{}, {}/{}) : {}\n", std::get<0>(i).num,
-        //                          std::get<0>(i).den, std::get<1>(i).num,
-        //                          std::get<1>(i).den, intersecting_segments);
     }
     std::ranges::sort(
         naive_intersections_vec, [](const auto & e1, const auto & e2) {
@@ -174,37 +143,12 @@ auto naive_intersections(const std::vector<S> segments) {
 // point with the segments through it
 ////////////////////////////////////////////////////////////////////////////////
 
-// GTEST_TEST(bentley_ottmann, run_example) {
-//     using coord_t = integer<int64_t>;
-//     using segment =
-//         std::tuple<std::tuple<coord_t, coord_t>, std::tuple<coord_t,
-//         coord_t>>;
-
-//     // std::vector<segment> segments = {
-//         // {{0, 0}, {2, 0}}, {{1, 0}, {2, 1}}, {{1, 0}, {2, -1}}, {{0, -1},
-//         // {2, 2}}};
-//     std::vector<segment> segments = {{{0, 0}, {1, 0}},  {{0, -1}, {2, 1}},
-//                                      {{0, 1}, {3, 0}},  {{2, -1}, {2, 4}}};
-//     auto segments_ids = std::views::iota(0uz, segments.size());
-
-//     bentley_ottmann alg(segments_ids, segments);
-
-//     alg.run();
-// }
-
 GTEST_TEST(bentley_ottmann, run_integer_example) {
     using coord = integer<int64_t>;
-    // using coord = integer<bounded_value<int32_t, -16, 16>>;
     using point = std::tuple<coord, coord>;
     using segment = std::tuple<point, point>;
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
-
-    std::cout << type_name<intersection>() << std::endl;
-
-    // point p(1, 1);
-    // intersection i(p);
-    // intersection i(std::get<0>(p), std::get<1>(p));
 
     std::vector<segment> segments = {{{0, 0}, {1, 0}},
                                      {{0, -1}, {2, 1}},
@@ -213,36 +157,69 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
 
     auto segments_ids = std::views::iota(0uz, segments.size());
 
+    std::vector<std::pair<intersection, std::vector<std::size_t>>> found;
     for(auto && [i, intersecting_segments] :
         bentley_ottmann(segments_ids, segments)) {
-#if defined(__cpp_lib_format_ranges) && __cpp_lib_format_ranges >= 202207L
-        std::cout << std::format(
-            "({}/{}, {}/{}) : {}\n", int(std::get<0>(i).num()),
-            int(std::get<0>(i).den()), int(std::get<1>(i).num()),
-            int(std::get<1>(i).den()), intersecting_segments);
-#else
-        std::cout << "(" << int(std::get<0>(i).num()) << "/"
-                  << int(std::get<0>(i).den()) << ", "
-                  << int(std::get<1>(i).num()) << "/"
-                  << int(std::get<1>(i).den()) << ") : {";
-        bool first = true;
-        for(auto id : intersecting_segments) {
-            if(!first) std::cout << ", ";
-            std::cout << id;
-            first = false;
-        }
-        std::cout << "}\n";
-#endif
+        found.emplace_back(
+            i, std::vector<std::size_t>(intersecting_segments.begin(),
+                                        intersecting_segments.end()));
     }
+    const auto expected = naive_intersections(segments);
+    ASSERT_TRUE(
+        EQ_MULTISETS(std::views::keys(found), std::views::keys(expected)));
+    for(std::size_t i = 0; i < found.size(); ++i) {
+        ASSERT_TRUE(EQ_MULTISETS(found[i].second, expected[i].second));
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// report_endpoints = false suppresses endpoint-only intersections
+// symmetrically: segments meeting only at a shared endpoint yield no event
+// whether the point ends both segments or starts both, while interior
+// crossings are still reported
+////////////////////////////////////////////////////////////////////////////////
+
+namespace endpoint_symmetry {
+using coord = integer<int64_t>;
+using point = std::tuple<coord, coord>;
+using segment = std::tuple<point, point>;
+struct no_endpoint_traits : bentley_ottmann_default_traits<segment> {
+    static constexpr bool report_endpoints = false;
+};
+}  // namespace endpoint_symmetry
+
+GTEST_TEST(bentley_ottmann, report_endpoints_off_is_direction_symmetric) {
+    using endpoint_symmetry::no_endpoint_traits;
+    using segment = endpoint_symmetry::segment;
+
+    const auto count_events = [](const std::vector<segment> & segments) {
+        std::size_t reported = 0;
+        for(auto && [i, intersecting_segments] :
+            bentley_ottmann(no_endpoint_traits{},
+                            std::views::iota(0uz, segments.size()), segments)) {
+            reported += static_cast<std::size_t>(
+                std::ranges::distance(intersecting_segments));
+        }
+        return reported;
+    };
+
+    const std::vector<segment> both_ending = {{{0, 0}, {2, 2}},
+                                              {{4, 0}, {2, 2}}};
+    const std::vector<segment> both_starting = {{{2, 2}, {4, 4}},
+                                                {{2, 2}, {0, 4}}};
+    const std::vector<segment> crossing = {{{0, 0}, {4, 4}}, {{0, 4}, {4, 0}}};
+    ASSERT_EQ(count_events(both_ending), 0uz);
+    ASSERT_EQ(count_events(both_starting), 0uz);
+    ASSERT_EQ(count_events(crossing), 2uz);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // mid-run relocation: the trees' comparators reference the heap-anchored
 // event points, whose address a move transfers intact -- so a sweep moved
 // mid-run (construction and assignment, source destroyed either way) yields
-// exactly what an undisturbed sweep yields. Pins the fix for the defaulted
-// moves comparing against the moved-from object's members (ASan-confirmed
-// use-after-free before the anchor).
+// exactly what an undisturbed sweep yields. Without the anchor, defaulted
+// moves compare against the moved-from object's members -- an ASan-visible
+// use-after-free.
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(bentley_ottmann, mid_run_move) {
@@ -308,8 +285,8 @@ GTEST_TEST(bentley_ottmann, mid_run_move) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // reset() re-seeds the event queue from the stored id range and replays the
-// sweep. Pins the fix for reset() clearing the trees with no way to refill
-// them, which left the object permanently finished().
+// sweep. Clearing the trees with no way to refill them leaves the object
+// permanently finished().
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(bentley_ottmann, reset_replays_the_sweep) {
@@ -368,15 +345,6 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
         auto segments =
             generate_random_box_segments<coord, -256, 255>(num_segments);
 
-        // std::cout << std::format("test {}\n", test_i);
-        // for(auto && s : segments) {
-        //     auto && [a, b] = s;
-        //     auto && [ax, ay] = a;
-        //     auto && [bx, by] = b;
-        //     std::cout << std::format("{{{{{},{}}},{{{},{}}}}},\n", ax, ay,
-        //     bx, by);
-        // }
-
         std::vector<std::pair<intersection, std::vector<std::size_t>>>
             intersections_vec;
         intersections_vec.reserve(
@@ -386,12 +354,6 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
             intersections_vec.emplace_back(std::make_pair(
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));
-
-            // std::cout << std::format("({}/{}, {}/{}) : {}\n",
-            // std::get<0>(i).num(),
-            //            std::get<0>(i).den(), std::get<1>(i).num(),
-            //            std::get<1>(i).den(),
-            //            intersecting_segments);
         }
         const std::size_t num_intersections = intersections_vec.size();
         auto naive_intersections_vec = naive_intersections(segments);
@@ -493,8 +455,6 @@ GTEST_TEST(bentley_ottmann, fuzzy_sparse_bounded_value_test) {
     using intersection = decltype(cartesian::segments_intersection(
         std::declval<segment>(), std::declval<segment>()))::value_type;
 
-    // std::cout << type_name<intersection>() << std::endl;
-
     const std::size_t num_tests = 100;
 
     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
@@ -524,40 +484,3 @@ GTEST_TEST(bentley_ottmann, fuzzy_sparse_bounded_value_test) {
         }
     }
 }
-
-// GTEST_TEST(bentley_ottmann, fuzzy_test_mppp) {
-//     using coord = rational<mppp::integer<1>>;
-//     using point = std::tuple<coord, coord>;
-//     using segment = std::tuple<point, point>;
-//     using intersection = decltype(cartesian::segments_intersection(
-//         std::declval<segment>(), std::declval<segment>()))::value_type;
-
-//     const std::size_t num_tests = 100;
-
-//     for(std::size_t test_i = 0; test_i < num_tests; ++test_i) {
-//         const std::size_t & num_segments = 100;
-//         auto segments =
-//             generate_random_box_segments<coord, -128, 127>(num_segments);
-
-//         std::vector<std::pair<intersection, std::vector<std::size_t>>>
-//             intersections_vec;
-//         intersections_vec.reserve(
-//             static_cast<std::size_t>(std::pow(num_segments, 1.5)));
-//         for(const auto & [i, intersecting_segments] :
-//             bentley_ottmann(std::views::iota(0uz, num_segments), segments)) {
-//             intersections_vec.emplace_back(std::make_pair(
-//                 i, std::vector<std::size_t>(intersecting_segments.begin(),
-//                                             intersecting_segments.end())));
-//         }
-//         const std::size_t num_intersections = intersections_vec.size();
-//         auto naive_intersections_vec = naive_intersections(segments);
-
-//         ASSERT_TRUE(EQ_MULTISETS(std::views::keys(intersections_vec),
-//                                  std::views::keys(naive_intersections_vec)));
-
-//         for(std::size_t i = 0; i < num_intersections; ++i) {
-//             ASSERT_TRUE(EQ_MULTISETS(intersections_vec[i].second,
-//                                      naive_intersections_vec[i].second));
-//         }
-//     }
-// }

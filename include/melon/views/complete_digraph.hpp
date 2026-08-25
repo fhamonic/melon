@@ -1,10 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <limits>
 #include <ranges>
+#include <utility>
 
 #include "melon/borrowed_graph.hpp"
 #include "melon/container/static_map.hpp"
@@ -15,7 +17,8 @@
 namespace melon {
 namespace views {
 
-template <std::integral V = unsigned int, std::integral A = unsigned int>
+template <std::unsigned_integral V = unsigned int,
+          std::unsigned_integral A = unsigned int>
 class complete_digraph : public graph_view_base {
 private:
     using vertex = V;
@@ -25,7 +28,9 @@ private:
 
 public:
     constexpr explicit complete_digraph(const std::size_t n = 0)
-        : _vertices_end(static_cast<vertex>(n)) {}
+        : _vertices_end(static_cast<vertex>(n)) {
+        assert(n <= std::numeric_limits<vertex>::max());
+    }
 
     constexpr complete_digraph(const complete_digraph &) = default;
     constexpr complete_digraph(complete_digraph &&) = default;
@@ -82,9 +87,9 @@ public:
 
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(u < _vertices_end);
-        return std::views::iota(
-            static_cast<arc>(u * (_vertices_end - 1)),
-            static_cast<arc>((u + 1) * (_vertices_end - 1)));
+        const std::size_t d = num_vertices() - 1;
+        return std::views::iota(static_cast<arc>(u * d),
+                                static_cast<arc>((u + 1) * d));
     }
 
 private:
@@ -155,18 +160,42 @@ public:
     // from -1 that never reaches its bound.
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(u < _vertices_end);
-        const auto increment = static_cast<arc>(_vertices_end - 1);
+        const std::size_t n = num_vertices();
+        const arc increment = static_cast<arc>(n - 1);
+        // For u == n-1 the second subrange is empty and its untaken start
+        // (u+1)*n - 1 == n*n - 1 can exceed arc's range even when every real
+        // arc id fits; the min clamps it to the (equal) bound instead.
         return melon::detail::views::concat(
             std::ranges::subrange(
                 custom_iota_iterator(static_cast<arc>(u - 1),
-                                     static_cast<arc>(u) * increment,
-                                     increment),
+                                     static_cast<arc>(u * (n - 1)), increment),
                 std::default_sentinel),
             std::ranges::subrange(
                 custom_iota_iterator(
-                    static_cast<arc>((u + 1) * _vertices_end - 1),
+                    static_cast<arc>(std::min((u + 1) * n - 1, num_arcs())),
                     static_cast<arc>(num_arcs()), increment),
                 std::default_sentinel));
+    }
+
+    [[nodiscard]] constexpr auto out_neighbors(const vertex u) const noexcept {
+        assert(u < _vertices_end);
+        return melon::detail::views::concat(
+            std::views::iota(vertex(0), u),
+            std::views::iota(static_cast<vertex>(u + 1), _vertices_end));
+    }
+    [[nodiscard]] constexpr auto in_neighbors(const vertex u) const noexcept {
+        return out_neighbors(u);
+    }
+    [[nodiscard]] constexpr auto arcs_entries() const noexcept {
+        return std::views::transform(
+            arcs(),
+            [d = static_cast<std::size_t>(_vertices_end) - 1](const arc a) {
+                const vertex source = static_cast<vertex>(a / d);
+                const vertex r = static_cast<vertex>(a % d);
+                return std::make_pair(
+                    a, std::make_pair(source,
+                                      static_cast<vertex>(r + (source <= r))));
+            });
     }
 
     // None of the four below are noexcept: they allocate.
@@ -192,10 +221,11 @@ public:
 
 }  // namespace views
 
-// Purely generated: vertices(), arcs() and out_arcs() are iota_views and
-// in_arcs() a concat of subranges over self-contained iterators, none of
-// which refers to the view object.
-template <std::integral V, std::integral A>
+// Purely generated: every range a CPO can hand out -- vertices(), arcs(),
+// out_arcs(), in_arcs(), out/in_neighbors(), arcs_entries() -- is built from
+// stored values, never from the view object's address. A new range member
+// must keep that property or this trait becomes a use-after-free license.
+template <std::unsigned_integral V, std::unsigned_integral A>
 inline constexpr bool enable_borrowed_graph<views::complete_digraph<V, A>> =
     true;
 

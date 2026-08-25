@@ -82,8 +82,14 @@ public:
         return c;
     }
 
+    // Precondition: c1 and c2 are current *roots* -- values returned by
+    // find() with no merge in between. A stale representative re-parents a
+    // subtree out of its component, so find() then splits what was one
+    // component and _size_map feeds wrong sizes into later union-by-size
+    // decisions. merge_keys() re-derives the roots and cannot go stale.
     constexpr component_type merge(const component_type & c1,
                                    const component_type & c2) {
+        assert(_parent_map[c1] == c1 && _parent_map[c2] == c2);
         if(c1 == c2) return c1;
         if(_size_map[c1] < _size_map[c2]) {
             _size_map[c2] += _size_map[c1];

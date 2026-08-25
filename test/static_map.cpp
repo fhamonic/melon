@@ -23,9 +23,9 @@ static_assert(std::ranges::random_access_range<static_map<std::size_t, int>>);
 static_assert(
     output_mapping_of<static_map<std::size_t, int>, std::size_t, int>);
 
-// regression: value_type said std::pair<const K, V &> and reference said the
-// same, while begin()/end() are plain V pointers -- so the container's own
-// typedefs contradicted std::iterator_traits and std::ranges::range_value_t.
+// regression: a value_type and reference saying std::pair<const K, V &> while
+// begin()/end() are plain V pointers make the container's own typedefs
+// contradict std::iterator_traits and std::ranges::range_value_t.
 namespace {
 using probe_map = static_map<std::size_t, int>;
 }  // namespace
@@ -104,10 +104,10 @@ GTEST_TEST(static_map, range_constructor) {
     ASSERT_TRUE(EQ_RANGES(std::as_const(map2), {0, 7, 3, 5, 6, 11}));
 }
 
-// regression: the parameters were `IT && it_begin, IT && it_end`. Deducing IT
-// from lvalues gave IT = T &, which does not model random_access_iterator (so
-// the constructor silently vanished), and mixing value categories gave
-// "deduced conflicting types for parameter 'IT'".
+// regression: parameters spelled `IT && it_begin, IT && it_end` deduce
+// IT = T & from lvalues, which does not model random_access_iterator (so the
+// constructor silently vanishes), and mixing value categories gives "deduced
+// conflicting types for parameter 'IT'".
 GTEST_TEST(static_map, iterator_pair_constructor_accepts_any_value_category) {
     std::vector<int> v = {4, 5, 6};
     auto b = v.begin();
@@ -135,11 +135,12 @@ GTEST_TEST(static_map, copy_constructor) {
 }
 
 // regression: greedy single-argument constructor. static_map's range
-// constructor has the same shape and used to win against the copy constructor
-// for a non-const lvalue. It is the one site where the hijack was harmless --
-// both constructors delegate to the very same iterator constructor -- so this
-// pins the behaviour rather than repairing a break, and checks that guarding
-// it did not cost the range constructor its real job.
+// constructor has the same shape and, unguarded, wins against the copy
+// constructor for a non-const lvalue. It is the one site where the hijack is
+// harmless -- both constructors delegate to the very same iterator
+// constructor -- so this pins the behaviour rather than repairing a break,
+// and checks that guarding it does not cost the range constructor its real
+// job.
 GTEST_TEST(static_map, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     static_map<std::size_t, int> map(3, 7);
     map[1] = 5;
@@ -235,10 +236,10 @@ GTEST_TEST(static_map, for_each_write) {
 // data() exposes the contiguous storage, const-correctly
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: data() const used to return a non-const mapped_type*, so a const
-// static_map handed out a mutable window onto its own storage. It was shaped
-// that way to satisfy contiguous_mapping, which demanded exactly `V *`; the
-// concept was relaxed to accept `const V *` instead.
+// regression: a data() const returning non-const mapped_type* hands a const
+// static_map out as a mutable window onto its own storage. contiguous_mapping
+// accepts `const V *` exactly so that the member need not be shaped that way
+// -- re-tightening the concept to `V *` forces the const hole back.
 GTEST_TEST(static_map, data_is_const_correct) {
     static_map<std::size_t, int> map(3, 7);
     static_assert(std::is_same_v<decltype(map.data()), int *>);
@@ -283,8 +284,9 @@ static_assert(
 // reset() keeps nothing; resize() keeps the elements that still fit
 ////////////////////////////////////////////////////////////////////////////////
 
-// Renamed from resize(): it reallocates and does NOT preserve the contents the
-// way std::vector::resize does, so the old name silently lost callers' data.
+// reset(), not resize(): it reallocates and does NOT preserve the contents
+// the way std::vector::resize does, so under that name it silently loses
+// callers' data.
 GTEST_TEST(static_map, reset) {
     static_map<std::size_t, int> map(20);
     map.reset(10);
@@ -297,7 +299,7 @@ GTEST_TEST(static_map, reset) {
     for(std::size_t i = 0; i < kept.size(); ++i) ASSERT_EQ(kept[i], 7);
 }
 
-// The two names now mean two different things on static_map: reset() keeps
+// The two names mean two different things on static_map: reset() keeps
 // nothing, resize() keeps what still fits. static_filter_map has only reset().
 template <typename M>
 concept has_resize = requires(M & m) { m.resize(std::size_t{1}); };
@@ -379,9 +381,9 @@ GTEST_TEST(static_map, resize_moves_its_elements) {
     ASSERT_EQ(counted::copy_assigns, 0);
 }
 
-// And it allocates before touching _data. Moving _data out first left the map
-// holding a null buffer and its *old* size when the allocation threw, so the
-// next operator[] dereferenced null.
+// And it allocates before touching _data. Moving _data out first leaves the
+// map holding a null buffer and its *old* size when the allocation throws, so
+// the next operator[] dereferences null.
 GTEST_TEST(static_map, a_failed_resize_leaves_the_map_untouched) {
     using throwing = resize_probes::throwing;
     static_map<std::size_t, throwing> map(2);
@@ -399,9 +401,9 @@ GTEST_TEST(static_map, a_failed_resize_leaves_the_map_untouched) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// a moved-from map is a valid empty map. The defaulted move nulled _data but
-// kept _size, so the source answered size() == N over a null buffer and
-// copying it dereferenced null -- a reachable state, since algorithms take
+// a moved-from map is a valid empty map. A defaulted move nulls _data but
+// keeps _size, so the source answers size() == N over a null buffer and
+// copying it dereferences null -- a reachable state, since algorithms take
 // their graph by value.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -430,10 +432,10 @@ GTEST_TEST(static_map, moved_from_is_a_valid_empty_map) {
 // every mutating member is usable in a constant expression
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: fill() was the one member without constexpr, so a static_map
-// could be built, subscripted and assigned at compile time but not filled --
-// and every reset() in the library that calls it, all of them declared
-// constexpr, carried a promise the container could not keep.
+// regression: fill() must be constexpr like every other member. Without it a
+// static_map can be built, subscripted and assigned at compile time but not
+// filled -- and every reset() in the library that calls it, all of them
+// declared constexpr, carries a promise the container cannot keep.
 namespace {
 consteval int filled_then_read() {
     static_map<unsigned int, int> m(4u);

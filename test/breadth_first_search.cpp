@@ -162,7 +162,7 @@ GTEST_TEST(breadth_first_search, traversal_traits) {
 
     breadth_first_search alg(bfs_traversal_traits{}, graph, 0u);
     alg.run();
-    ASSERT_TRUE(EQ_MULTISETS(alg.traversal(), {0u, 1u, 2u, 5u, 3u, 4u}));
+    ASSERT_TRUE(EQ_RANGES(alg.traversal(), {0u, 1u, 2u, 5u, 3u, 4u}));
     for(auto && u : {0u, 1u, 2u, 5u, 3u, 4u}) {
         ASSERT_TRUE(alg.reached(u));
         ASSERT_TRUE(alg.reached_map()[u]);
@@ -172,7 +172,7 @@ GTEST_TEST(breadth_first_search, traversal_traits) {
         ASSERT_FALSE(alg.reached_map()[u]);
     }
     alg.add_source(7u).run();
-    ASSERT_TRUE(EQ_MULTISETS(alg.traversal(), {7u}));
+    ASSERT_TRUE(EQ_RANGES(alg.traversal(), {7u}));
     for(auto && u : {0u, 1u, 2u, 5u, 3u, 4u, 7u}) {
         ASSERT_TRUE(alg.reached(u));
         ASSERT_TRUE(alg.reached_map()[u]);
@@ -182,7 +182,7 @@ GTEST_TEST(breadth_first_search, traversal_traits) {
         ASSERT_FALSE(alg.reached_map()[u]);
     }
     alg.add_source(8u).run();
-    ASSERT_TRUE(EQ_MULTISETS(alg.traversal(), {8u}));
+    ASSERT_TRUE(EQ_RANGES(alg.traversal(), {8u}));
     for(auto && u : {0u, 1u, 2u, 5u, 3u, 4u, 7u, 8u}) {
         ASSERT_TRUE(alg.reached(u));
         ASSERT_TRUE(alg.reached_map()[u]);
@@ -227,7 +227,7 @@ GTEST_TEST(breadth_first_search, all_traits) {
 
     breadth_first_search alg(bfs_all_traits{}, graph, 0u);
     alg.run();
-    ASSERT_TRUE(EQ_MULTISETS(alg.traversal(), {0u, 1u, 2u, 5u, 3u, 4u}));
+    ASSERT_TRUE(EQ_RANGES(alg.traversal(), {0u, 1u, 2u, 5u, 3u, 4u}));
     for(auto && u : {0u, 1u, 2u, 5u, 3u, 4u}) {
         ASSERT_TRUE(alg.reached(u));
         ASSERT_TRUE(alg.reached_map()[u]);
@@ -254,7 +254,7 @@ GTEST_TEST(breadth_first_search, all_traits) {
     ASSERT_EQ(alg.pred_arc(4u), 17u);
 
     alg.add_source(7u).run();
-    ASSERT_TRUE(EQ_MULTISETS(alg.traversal(), {7u}));
+    ASSERT_TRUE(EQ_RANGES(alg.traversal(), {7u}));
     for(auto && u : {0u, 1u, 2u, 5u, 3u, 4u, 7u}) {
         ASSERT_TRUE(alg.reached(u));
         ASSERT_TRUE(alg.reached_map()[u]);
@@ -267,7 +267,7 @@ GTEST_TEST(breadth_first_search, all_traits) {
     ASSERT_EQ(alg.dist(3u), 2);
 
     alg.add_source(8u).run();
-    ASSERT_TRUE(EQ_MULTISETS(alg.traversal(), {8u}));
+    ASSERT_TRUE(EQ_RANGES(alg.traversal(), {8u}));
     for(auto && u : {0u, 1u, 2u, 5u, 3u, 4u, 7u, 8u}) {
         ASSERT_TRUE(alg.reached(u));
         ASSERT_TRUE(alg.reached_map()[u]);
@@ -336,9 +336,8 @@ GTEST_TEST(breadth_first_search, store_distances_alone) {
 
 // std::movable only checks that the assignment *declaration* is valid, so the
 // static_assert in no_arcs_graph above is satisfied without the operator=
-// body ever being instantiated -- which is how the branchless specialisation's
-// hand-written assignment once shipped with no return statement at all.
-// Assigning one is what forces the body.
+// body ever being instantiated -- a hand-written assignment with no return
+// statement at all still passes it. Assigning one is what forces the body.
 namespace {
 struct bfs_pred_arcs_traits {
     static constexpr bool store_pred_vertices = false;
@@ -353,11 +352,9 @@ GTEST_TEST(breadth_first_search, is_move_assignable) {
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
     auto [graph] = builder.build();
 
-    // default traits over a static_digraph select the branchless specialisation
     static_assert(
         detail::enable_branchless_bfs<views::graph_all_t<static_digraph &>,
                                       breadth_first_search_default_traits>);
-    // storing predecessor arcs opts out of it
     static_assert(
         !detail::enable_branchless_bfs<views::graph_all_t<static_digraph &>,
                                        bfs_pred_arcs_traits>);
@@ -401,15 +398,15 @@ GTEST_TEST(breadth_first_search, is_move_assignable_with_pred_arcs) {
 // single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// `template <typename G> breadth_first_search(G &&)` was unconstrained, so for
-// a non-const lvalue of the algorithm type it beat the copy constructor and
-// tried to build the algorithm out of itself -- `graph_all` has no overload for
-// a breadth_first_search. detail::not_self is what excludes it. Now that copy
-// is deleted, the pin is that an algorithm is not constructible from an
+// An unconstrained `template <typename G> breadth_first_search(G &&)` beats
+// the copy constructor for a non-const lvalue of the algorithm type and tries
+// to build the algorithm out of itself -- `graph_all` has no overload for a
+// breadth_first_search. detail::not_self is what excludes it. With copy
+// deleted, the pin is that an algorithm is not constructible from an
 // algorithm lvalue *at all*: with not_self gone the greedy constructor would
 // quietly become viable again where the deleted copy should be chosen. Both
-// specializations carried the original bug, so both are pinned here: default
-// traits select the branchless one, bfs_pred_arcs_traits the general one.
+// specializations are pinned: default traits select the branchless one,
+// bfs_pred_arcs_traits the general one.
 GTEST_TEST(breadth_first_search, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);

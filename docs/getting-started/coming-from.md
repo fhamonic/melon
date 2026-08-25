@@ -25,6 +25,8 @@ If you have written graph code in C++ before, most of melon will be familiar und
 | Filtered view | `views::subgraph(g, vf, af)` | `filtered_graph<G, EF, VF>` | `SubDigraph<G, VF, AF>` |
 | Undirected view | `views::undirect(g)` | — | `Undirector<G>` |
 | Dijkstra | `dijkstra(g, len, s)` | `dijkstra_shortest_paths(g, s, ...)` | `Dijkstra<G, LM>` |
+| Bellman–Ford | `bellman_ford(g, len, s)` | `bellman_ford_shortest_paths(g, ...)` | — |
+| Bellman–Ford–Moore | `bellman_ford_moore(g, len, s)` | — | `BellmanFord<G, LM>` |
 | BFS | `breadth_first_search(g, s)` | `breadth_first_search(g, s, visitor(v))` | `Bfs<G>` |
 | Max flow | `dinitz(g, cap, s, t)` | `boykov_kolmogorov_max_flow(...)` | `Preflow<G, CM>` |
 | Min spanning tree | `kruskal(ug, cost)` | `kruskal_minimum_spanning_tree(...)` | `kruskal(g, cost, out)` |
@@ -138,4 +140,4 @@ Pass a graph without out-arcs and the error names `outward_incidence_graph`, not
 
 ## What melon does not have
 
-Boost.Graph's catalogue is far larger. melon has no planarity testing, no graph isomorphism, no matching, no min-cost flow, no A\*, no Bellman–Ford, no graph I/O formats beyond a [Graphviz printer](../containers/graphs.md#printing-a-graph). LEMON's LP/MIP interfaces have no counterpart either — that is a [separate library](https://github.com/fhamonic/mippp) by the same author. If you need one of those today, melon is a complement rather than a replacement.
+Boost.Graph's catalogue is far larger. melon has no planarity testing, no graph isomorphism, no matching, no min-cost flow, no graph I/O formats beyond a [Graphviz printer](../containers/graphs.md#printing-a-graph). LEMON's LP/MIP interfaces have no counterpart either — that is a [separate library](https://github.com/fhamonic/mippp) by the same author. If you need one of those today, melon is a complement rather than a replacement.

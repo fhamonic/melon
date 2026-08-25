@@ -187,6 +187,37 @@ costs two lines, deleting a real trap costs a bug.
 [`algorithm/dijkstra.hpp`](include/melon/algorithm/dijkstra.hpp) is the
 reference for the resulting density.
 
+### Structural dividers
+
+The discriminator above governs comments that make claims. Headers under
+`include/melon/algorithm/` additionally carry a fixed set of *structural
+dividers* — typography, not documentation, in the same sense as a blank line
+or an access-specifier label:
+
+```cpp
+// ---- Construction -------------------------------------------------------
+```
+
+The dash fill extends the line to the 80-column limit, so a section boundary
+is visible at any scroll speed.
+
+The vocabulary is fixed, in this order:
+
+- `Construction` — constructors and the copy/move operations,
+- `Base access` — the `base()` quartet,
+- `Setup` — the methods that seed or re-arm a run (`reset()`,
+  `add_source()`, `set_source()`, …),
+- `Execution` — the methods that drive it (`finished()` / `current()` /
+  `advance()`, or `run()`),
+- `Queries` — result accessors and the maps and ranges over them.
+
+A divider marks where each group starts — or resumes, when a private
+implementation block interrupts it; the private blocks themselves stay
+unlabeled. A class omits the sections it lacks. Do not invent section names or
+spread dividers beyond `include/melon/algorithm/`: a divider that can say
+anything, anywhere, is no longer navigation but a comment, and then the
+discriminator above applies to it.
+
 ## Versioning
 
 The version number has a single source of truth:

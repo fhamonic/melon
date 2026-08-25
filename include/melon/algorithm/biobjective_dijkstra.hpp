@@ -87,6 +87,8 @@ private:
     heap _heap;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
               mapping_for<RedLengthMap> RLM>
         requires has_vertex_map<Graph>
@@ -111,6 +113,8 @@ public:
     constexpr biobjective_dijkstra & operator=(biobjective_dijkstra &&) =
         default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -121,6 +125,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     template <mapping_for<BlueLengthMap> BLM>
         requires std::assignable_from<BlueLengthMap &, BlueLengthMap>
@@ -177,14 +183,31 @@ private:
         _heap.push(std::make_pair(v, l));
     }
 
+    // Restores the generator invariant after every mutation: either the heap
+    // is empty or its top is a live, non-dominated label. Skipping lazily on
+    // the *next* advance() instead leaves a dominated top for current() to
+    // hand out between the calls -- run() never notices, only iteration does.
+    constexpr void skip_dominated_prefix() {
+        while(!_heap.empty()) {
+            const auto & [t, t_label] = _heap.top();
+            if(!is_dominated(t, t_label)) break;
+            _heap.pop();
+        }
+    }
+
 public:
+    // ---- Setup --------------------------------------------------------------
+
     biobjective_dijkstra & add_source(
         const vertex & s,
-        const blue_length_type blue_length = Traits::blue_semiring::zero,
-        const red_length_type red_length = Traits::red_semiring::zero) {
+        const blue_length_type & blue_length = Traits::blue_semiring::zero,
+        const red_length_type & red_length = Traits::red_semiring::zero) {
         relax(s, std::make_pair(blue_length, red_length));
+        skip_dominated_prefix();
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_heap.empty())) {
@@ -201,32 +224,26 @@ public:
 
     constexpr void advance() {
         assert(!finished());
-        for(;;) {
-            // A copy, not a reference binding: top() returns a reference into
-            // the heap array, and t_label is read after the pop() below
-            // reorders it.
-            const auto [t, t_label] = _heap.top();
-            if(is_dominated(t, t_label)) {
-                _heap.pop();
-                if(_heap.empty()) return;
-                continue;
-            }
-            auto && out_arcs_range = out_arcs(_graph, t);
-            detail::prefetch_keys_and_values(out_arcs_range,
-                                             arc_targets_map(_graph),
-                                             _blue_length_map, _red_length_map);
-            _heap.pop();
-            for(const arc & a : out_arcs_range) {
-                const vertex & w = arc_target(_graph, a);
-                relax(w,
-                      std::make_pair(Traits::blue_semiring::plus(
-                                         t_label.first, _blue_length_map[a]),
-                                     Traits::red_semiring::plus(
-                                         t_label.second, _red_length_map[a])));
-            }
-            return;
+        // A copy, not a reference binding: top() returns a reference into
+        // the heap array, and t_label is read after the pop() below
+        // reorders it.
+        const auto [t, t_label] = _heap.top();
+        auto && out_arcs_range = out_arcs(_graph, t);
+        detail::prefetch_keys_and_values(out_arcs_range,
+                                         arc_targets_map(_graph),
+                                         _blue_length_map, _red_length_map);
+        _heap.pop();
+        for(const arc & a : out_arcs_range) {
+            const vertex & w = arc_target(_graph, a);
+            relax(w, std::make_pair(Traits::blue_semiring::plus(
+                                        t_label.first, _blue_length_map[a]),
+                                    Traits::red_semiring::plus(
+                                        t_label.second, _red_length_map[a])));
         }
+        skip_dominated_prefix();
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] constexpr auto pareto_front(const vertex & v) const
         noexcept(noexcept(std::views::all(_pareto_front_map[v]))) {

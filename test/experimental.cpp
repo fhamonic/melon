@@ -31,10 +31,10 @@ static_assert(!experimental::planar_subdivision<static_digraph>);
 static_assert(!experimental::planar_map<static_digraph>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// the create_face_map ADL probe must not find the CPO itself: for a type
-// living in melon::experimental this used to hard-error with "satisfaction
-// of atomic constraint depends on itself" until the public name became a
-// variable template (invisible to ADL), like create_vertex_map in graph.hpp
+// the create_face_map ADL probe must not find the CPO itself: with the public
+// name a function template, a type living in melon::experimental hard-errors
+// with "satisfaction of atomic constraint depends on itself". A variable
+// template is invisible to ADL, like create_vertex_map in graph.hpp
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace melon::experimental {

@@ -162,11 +162,11 @@ GTEST_TEST(undirected_graph_cpos, over_a_view) {
 
 // melon is an associated namespace of this type (it derives from a melon base),
 // and it has no member create_edge_map -- so the ADL branch of the CPO is the
-// one that gets probed. While create_edge_map was a *function* template in
-// namespace melon, ADL found it from inside has_adl_create_edge_map and the
-// constraint ended up depending on itself ("satisfaction of atomic constraint
-// depends on itself"): merely asking has_edge_map<> about this type was a hard
-// error. It is a variable template now, which ADL cannot see. Same reasoning as
+// one that gets probed. With create_edge_map a *function* template in
+// namespace melon, ADL finds it from inside has_adl_create_edge_map and the
+// constraint ends up depending on itself ("satisfaction of atomic constraint
+// depends on itself"): merely asking has_edge_map<> about this type is a hard
+// error. A variable template is invisible to ADL. Same reasoning as
 // create_vertex_map / create_arc_map in graph.hpp.
 struct melon_associated_ugraph : melon::undirected_graph_view_base {
     adl_triangle _triangle;
@@ -191,12 +191,12 @@ static_assert(!cpo::has_adl_create_edge_map<
 // the CPOs' specifications come from the const overloads they actually call
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression 2.7: every is_noexcept helper in undirected_graph.hpp used
-// std::declval<T &>(), and every call site spelled `is_noexcept<T &>()` --
-// which, since `const T &` with T = U& collapses to U&, made the *branch
-// selection* inside the helper probe a non-const object too. The operators all
-// take `const T &`. For a type with distinct const and non-const overloads the
-// specification was therefore read off the overload that is never called.
+// regression: an is_noexcept helper built on std::declval<T &>() and called
+// as `is_noexcept<T &>()` -- where `const T &` with T = U& collapses to U& --
+// makes the *branch selection* inside the helper probe a non-const object.
+// The operators all take `const T &`, so for a type with distinct const and
+// non-const overloads the specification is read off the overload that is
+// never called.
 namespace const_overloaded {
 
 // Each member below has a throwing non-const overload and a noexcept const
@@ -242,8 +242,8 @@ static_assert(has_incidence<const_overloaded::ugraph>);
 static_assert(has_degree<const_overloaded::ugraph>);
 static_assert(has_num_edges<const_overloaded::ugraph>);
 
-// This is the item: the specification now comes from the overload the CPO
-// actually calls. Every one of these was false before.
+// The specification comes from the overload the CPO actually calls -- read
+// off the non-const overload, every one of these answers false.
 static_assert(
     noexcept(melon::edges(std::declval<const const_overloaded::ugraph &>())));
 static_assert(noexcept(
@@ -258,11 +258,11 @@ static_assert(
     noexcept(melon::degree(std::declval<const const_overloaded::ugraph &>(),
                            std::declval<const unsigned int &>())));
 
-// The aliases were *already* right, and that is worth recording: they go
+// The aliases are right on their own, and that is worth recording: they go
 // through the CPO, whose operator() takes `const T &`, so a non-const declval
 // argument still binds to a const reference and still selects the const
-// overload. Only the noexcept helpers -- which call the member directly rather
-// than through the CPO -- read the wrong one. Spelling them
+// overload. Only noexcept helpers that call the member directly rather than
+// through the CPO can read the wrong one. Spelling them
 // `std::declval<const T &>()` makes them agree with the operators, but it
 // changes no type.
 static_assert(std::same_as<edges_range_t<const_overloaded::ugraph>,

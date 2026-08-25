@@ -1,6 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include <compare>
 #include <concepts>
 #include <cstdint>
@@ -76,7 +78,7 @@ GTEST_TEST(rational, equivalence_of_unnormalized_fractions) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // normalize() reduces to lowest terms, and requires a mutable object
-// (regression: it used to be const over mutable members)
+// (regression: const over mutable members, it rewrites const rationals)
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(rational, normalize) {
@@ -86,9 +88,9 @@ GTEST_TEST(rational, normalize) {
     ASSERT_EQ(r.den(), 2);
 }
 
-// _num/_den were `mutable` and normalize() was `const`, so a const rational
-// could be rewritten under its owner and two threads reading a shared const
-// rational raced -- num()/den() hand out const references into that state.
+// With _num/_den `mutable` and normalize() `const`, a const rational can be
+// rewritten under its owner and two threads reading a shared const rational
+// race -- num()/den() hand out const references into that state.
 namespace {
 template <typename R>
 concept normalizable = requires(R & r) { r.normalize(); };
@@ -114,7 +116,8 @@ GTEST_TEST(rational, normalize_requires_a_mutable_object) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_rational moves the sign to the numerator and preserves the operand
-// types (regression: its auto return type deduction used to be inconsistent)
+// types (regression: without an explicit return type its deduction is
+// inconsistent)
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(rational, make_rational_normalizes_signs) {
@@ -127,10 +130,10 @@ GTEST_TEST(rational, make_rational_normalizes_signs) {
     ASSERT_EQ(z.den(), 0);
 }
 
-// `-a` / `-b` are integer promoted, so the sign-flipping branch deduced
-// rational<int, int> while the other two deduced rational<short, short>:
-// "inconsistent deduction for auto return type", i.e. make_rational did not
-// compile at all for any type narrower than int.
+// `-a` / `-b` are integer promoted, so under auto deduction the sign-flipping
+// branch deduces rational<int, int> while the other two deduce
+// rational<short, short>: "inconsistent deduction for auto return type", i.e.
+// make_rational does not compile at all for any type narrower than int.
 GTEST_TEST(rational, make_rational_with_narrow_integer_types) {
     const short a = 3, b = -4;
     auto r = make_rational(a, b);
@@ -188,16 +191,16 @@ GTEST_TEST(rational, bounded_value_components) {
 // conversion operator
 ////////////////////////////////////////////////////////////////////////////////
 
-// DEFINE_RATIONAL_OPERATOR was never #undef'd, so an unprefixed function-like
-// macro leaked out of rational.hpp into every TU that included it -- and
+// If DEFINE_RATIONAL_OPERATOR is not #undef'd, an unprefixed function-like
+// macro leaks out of rational.hpp into every TU that includes it -- and
 // therefore into every TU including all.hpp.
 #ifdef DEFINE_RATIONAL_OPERATOR
 #error "DEFINE_RATIONAL_OPERATOR escaped rational.hpp"
 #endif
 
-// The converting operator was non-const. Named explicitly rather than through
-// static_cast, which would pick the (non-explicit, already const-correct)
-// converting *constructor* and prove nothing.
+// Pins the converting operator's constness. Named explicitly rather than
+// through static_cast, which would pick the (non-explicit, already
+// const-correct) converting *constructor* and prove nothing.
 template <typename R, typename Target>
 concept has_const_conversion_operator =
     requires(const R & r) { r.operator Target(); };
@@ -300,4 +303,30 @@ GTEST_TEST(rational, heterogeneous_specializations) {
     ASSERT_TRUE(s + rational(1, 2) == 1);
     ASSERT_TRUE(rational(1, 2) + s == 1);
     ASSERT_TRUE(s == rational(1, 2));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the comparison category is deduced: weak for exact components, partial for
+// floating ones, whose cross products can be NaN. A fixed weak_ordering
+// return type made every ordering comparison against a double a hard error
+// while == and the arithmetic compiled.
+////////////////////////////////////////////////////////////////////////////////
+
+static_assert(std::copyable<integer<int>>);
+static_assert(std::same_as<decltype(rational(1, 2) <=> rational(2, 4)),
+                           std::weak_ordering>);
+static_assert(std::same_as<decltype(std::declval<rational<double, double>>() <=>
+                                    std::declval<rational<double, double>>()),
+                           std::partial_ordering>);
+
+GTEST_TEST(rational, floating_components_compare_partially) {
+    ASSERT_TRUE(rational(1, 2) < 0.75);
+    ASSERT_TRUE(0.25 < rational(1, 2));
+    rational<double, double> a(1.0, 2.0), b(3.0, 4.0);
+    ASSERT_TRUE(a < b);
+    const rational<double, double> nan(std::numeric_limits<double>::quiet_NaN(),
+                                       1.0);
+    ASSERT_FALSE(nan < b);
+    ASSERT_FALSE(b < nan);
+    ASSERT_FALSE(nan == b);
 }

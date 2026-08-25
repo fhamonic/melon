@@ -51,18 +51,17 @@ GTEST_TEST(graph_view, test) {
 // the copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: graph_ref_view's guard was `!specialization_of<T,
-// graph_ref_view>`, tested against the deduced T -- `graph_ref_view<G> &` for a
-// mutable lvalue, which is a reference and therefore not a specialization. The
-// guard passed, the template beat the copy constructor, and `static_cast<G &>`
-// hard-errored.
+// regression: a guard spelled `!specialization_of<T, graph_ref_view>` over
+// the deduced T sees `graph_ref_view<G> &` for a mutable lvalue -- a
+// reference, therefore not a specialization. The guard passes, the template
+// beats the copy constructor, and `static_cast<G &>` hard-errors.
 static_assert(std::copy_constructible<melon::graph_ref_view<G>>);
 static_assert(std::constructible_from<melon::graph_ref_view<G>, G &>);
 static_assert(std::constructible_from<melon::graph_ref_view<G>,
                                       melon::graph_ref_view<G> &>);
 static_assert(std::constructible_from<melon::graph_ref_view<const G>, G &>);
 
-// The paired `convertible_to<T, G &>` constraint turns what used to be a hard
+// The paired `convertible_to<T, G &>` constraint turns what would be a hard
 // error inside the constructor body into an ordinary constraint failure.
 static_assert(!std::constructible_from<melon::graph_ref_view<G>,
                                        melon::graph_ref_view<const G> &>);
@@ -101,13 +100,13 @@ static_assert(ref_view_accepts<melon::graph_ref_view<G>, G &>);
 // failing to compile
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: melon::create_vertex_map used to be a *function* template in
-// namespace melon, so the has_adl_create_vertex_map probe inside the CPO found
+// regression: with melon::create_vertex_map a *function* template in
+// namespace melon, the has_adl_create_vertex_map probe inside the CPO finds
 // it by ADL for any graph whose associated namespaces include melon -- i.e.
-// every melon view. Asking has_vertex_map<> about a view wrapping a graph that
-// has no vertex map then made the constraint depend on itself:
+// every melon view. Asking has_vertex_map<> about a view wrapping a graph
+// that has no vertex map then makes the constraint depend on itself:
 //   error: satisfaction of atomic constraint ... depends on itself
-// It has to answer `false`, not fail to compile. The CPOs are now variable
+// It has to answer `false`, not fail to compile. The CPOs are variable
 // templates, which ADL cannot find.
 namespace no_maps {
 struct graph_without_maps {
@@ -122,7 +121,7 @@ static_assert(melon::graph<no_maps::graph_without_maps>);
 static_assert(!melon::has_vertex_map<no_maps::graph_without_maps>);
 static_assert(!melon::has_arc_map<no_maps::graph_without_maps>);
 
-// the wrapped forms are what used to be a hard error
+// the wrapped forms are where the self-dependency strikes
 static_assert(
     !melon::has_vertex_map<melon::graph_ref_view<no_maps::graph_without_maps>>);
 static_assert(
@@ -205,8 +204,8 @@ struct graph_with_throwing_defaults {
 };
 }  // namespace noexcept_probe
 
-// regression: both CPO overloads used to share the 0-argument probe, so the
-// default-value call claimed noexcept while it could throw
+// regression: two CPO overloads sharing the 0-argument probe make the
+// default-value call claim noexcept while it can throw
 static_assert(noexcept(melon::create_vertex_map<int>(
     std::declval<const noexcept_probe::graph_with_throwing_defaults &>())));
 static_assert(!noexcept(melon::create_vertex_map<int>(
@@ -224,9 +223,9 @@ static_assert(!noexcept(melon::create_arc_map<int>(
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace bad_endpoint_maps {
-// regression: arc_sources_map()'s return-type constraint had been commented
-// out while its arc_targets_map twin kept it, so a void-returning member was
-// accepted and the CPO handed back void.
+// regression: without arc_sources_map()'s return-type constraint -- which its
+// arc_targets_map twin carries -- a void-returning member is accepted and the
+// CPO hands back void.
 struct graph_with_void_maps {
     auto vertices() const { return std::views::iota(0u, 3u); }
     auto arcs() const { return std::views::iota(0u, 2u); }
@@ -272,12 +271,12 @@ GTEST_TEST(graph_view, void_endpoint_maps_fall_back_to_synthesised_ones) {
 // wrapped graph does
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression 2.2: graph_ref_view / graph_owning_view spelled the endpoint maps
-// `sources_map()` / `targets_map()` while the CPO has always looked for
-// `arc_sources_map()` / `arc_targets_map()`. Nothing referred to the members,
-// so every graph wrapped in a view silently lost its container's endpoint maps
-// and got the CPO's `maps::map(lambda)` fallback -- one indirect call per
-// lookup where the container had a flat array. The tests below pin every
+// regression: endpoint maps spelled `sources_map()` / `targets_map()` are
+// names the CPO -- which looks for `arc_sources_map()` / `arc_targets_map()`
+// -- never reaches. Nothing refers to such members, so every graph wrapped in
+// a view silently loses its container's endpoint maps and gets the CPO's
+// `maps::map(lambda)` fallback -- one indirect call per lookup where the
+// container has a flat array. The tests below pin every
 // member of both views against the graph they wrap, so a name that no CPO
 // reaches shows up as a changed return *type*, not just as a still-correct
 // value.

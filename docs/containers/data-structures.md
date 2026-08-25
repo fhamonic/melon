@@ -53,7 +53,7 @@ The heaps are described by two concepts in `melon/utility/priority_queue.hpp`:
 
 ```cpp
 template <typename Q>
-concept priority_queue = std::semiregular<Q> &&
+concept priority_queue = std::movable<Q> && std::default_initializable<Q> &&
     requires(Q q, typename Q::value_type v) {
     q.push(v);
     { q.top() } -> std::convertible_to<typename Q::value_type>;
@@ -67,13 +67,13 @@ template <typename Q>
 concept updatable_priority_queue = priority_queue<Q> &&
     requires(Q q, typename Q::id_type i, typename Q::priority_type p) {
     { q.contains(i) } -> std::convertible_to<bool>;
-    { q.priority(i) } -> std::same_as<typename Q::priority_type>;
+    { q.priority(i) } -> std::convertible_to<typename Q::priority_type>;
     q.promote(i, p);
     q.demote(i, p);
 };
 ```
 
-Anything satisfying them can be substituted into an algorithm through its [traits](../algorithms/shortest-paths.md#traits) — a bucket queue of your own for integer priorities, or any heap with the `std::priority_queue` shape: `top()` may return by value or by `const` reference, whichever suits it. (`std::priority_queue` itself falls one member short: it has no `clear()`, which the algorithms' `reset()` relies on.)
+Anything satisfying them can be substituted into an algorithm through its [traits](../algorithms/shortest-paths.md#traits) — a bucket queue of your own for integer priorities, or any heap with the `std::priority_queue` shape: `top()` may return by value or by `const` reference, whichever suits it. Copyability is not required — a heap may own its buffer through a move-only handle; the concepts ask only what the algorithms use, movability and default construction. (`std::priority_queue` itself falls one member short: it has no `clear()`, which the algorithms' `reset()` relies on.)
 
 ### `d_ary_heap`
 
@@ -174,7 +174,7 @@ sets.find(11) == sets.find(20);   // true
 | --- | --- |
 | `push(k)` | adds `k` as a new singleton component |
 | `find(k)` | the component index of `k`, compressing the path |
-| `merge(c1, c2)` | merges two component indices, returns the survivor |
+| `merge(c1, c2)` | merges two component indices, returns the survivor — both must be *current* roots, straight from `find()` (asserted): a stale index would silently re-parent a subtree out of its component |
 | `merge_keys(k1, k2)` | `merge(find(k1), find(k2))` |
 | `size()`, `empty()`, `clear()` | on the number of pushed elements |
 

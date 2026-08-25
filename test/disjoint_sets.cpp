@@ -45,8 +45,8 @@ GTEST_TEST(disjoint_sets, test) {
 // a single-argument constructor call cannot hijack the copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: the unconstrained `disjoint_sets(CM &&)` beat the copy
-// constructor for a non-const lvalue and tried to build the component map out
+// regression: an unconstrained `disjoint_sets(CM &&)` beats the copy
+// constructor for a non-const lvalue and tries to build the component map out
 // of the whole disjoint_sets object.
 GTEST_TEST(disjoint_sets, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     disjoint_sets<int> sets;
@@ -70,4 +70,15 @@ GTEST_TEST(disjoint_sets, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     disjoint_sets<unsigned int, static_map<unsigned int>> from_map(
         static_map<unsigned int>(4u, 0u));
     ASSERT_EQ(from_map.size(), 0u);
+}
+
+// merge() takes current roots; a representative captured before an
+// intervening merge re-parents a subtree out of its component
+GTEST_TEST(disjoint_sets, merge_requires_current_roots) {
+    disjoint_sets<int> sets;
+    for(int e : {1, 2, 3, 4}) sets.push(e);
+    const auto stale = sets.find(2);
+    sets.merge_keys(1, 2);
+    sets.merge_keys(3, 4);
+    EXPECT_DEATH((void)sets.merge(stale, sets.find(3)), "");
 }

@@ -11,7 +11,9 @@ melon has no `Graph` class that algorithms take. It has a hierarchy of [concepts
 ```cpp
 template <typename T>
 concept graph = has_vertices<T> && has_arcs<T> &&
-                requires(const T & t) { melon::arcs_entries(t); };
+                requires(const T & t) {
+                    { melon::arcs_entries(t) } -> cpo::arc_entries_range_of<T>;
+                };
 ```
 
 and refined by capability concepts — `outward_incidence_graph`, `inward_adjacency_graph`, `has_arc_source`, `has_vertex_map<G, T>`, `has_arc_creation`, and so on. Every algorithm states exactly the capabilities it needs in its template signature:

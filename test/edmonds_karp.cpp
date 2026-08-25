@@ -117,8 +117,8 @@ GTEST_TEST(edmonds_karp, complete_digraph_view) {
 ////////////////////////////////////////////////////////////////////////////////
 // a graph without num_vertices takes the no-reserve BFS path: the queue grows
 // while it is being walked, so it reallocates -- the walk must survive that.
-// The iterator version faulted under ASan on a 300-vertex path; the queue has
-// to outgrow every small capacity step for the test to mean anything
+// An iterator-based walk faults under ASan on a 300-vertex path; the queue
+// has to outgrow every small capacity step for the test to mean anything
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(edmonds_karp, graph_without_num_vertices) {
@@ -140,8 +140,8 @@ GTEST_TEST(edmonds_karp, graph_without_num_vertices) {
 ////////////////////////////////////////////////////////////////////////////////
 // capacity types without a genuine numeric_limits specialization are rejected
 // at the concept level: the primary template's max() returns T{} -- a zero
-// infinity that made the augmenting-path loop spin forever at runtime for a
-// type that compiled cleanly
+// infinity that makes the augmenting-path loop spin forever at runtime for a
+// type that compiles cleanly
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace zero_infinity_probes {
@@ -164,12 +164,11 @@ static_assert(!edmonds_karp_admits<zero_infinity_probes::opaque_capacity>);
 // wrong answers
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: _s and _t were left default-initialised by the two-argument
-// constructor, and run()/flow_value() read them -- the only stated
-// preconditions in the library that Ruling 8 did not actually assert.
-// minimum_cut() has a second one: it reads the reachability the *final*,
-// failed augmenting search leaves behind, so before run() converges it names a
-// cut of no particular graph.
+// regression: the two-argument constructor leaves _s and _t
+// default-initialised, so run()/flow_value() must assert rather than read
+// them silently. minimum_cut() has a second precondition: it reads the
+// reachability the *final*, failed augmenting search leaves behind, so before
+// run() converges it names a cut of no particular graph.
 namespace {
 auto two_arc_instance() {
     static_digraph_builder<static_digraph, int> builder(3);
@@ -207,4 +206,12 @@ GTEST_TEST(edmonds_karp, minimum_cut_requires_a_converged_run) {
     alg.run();
     alg.set_target(1u);
     EXPECT_DEATH((void)alg.minimum_cut(), "");
+}
+
+GTEST_TEST(edmonds_karp, source_equals_target_is_a_precondition) {
+    static_digraph_builder<static_digraph, int> builder(3);
+    builder.add_arc(0, 1, 5).add_arc(1, 2, 5);
+    auto [graph, capacity_map] = builder.build();
+    edmonds_karp alg(graph, capacity_map, 1u, 1u);
+    EXPECT_DEATH((void)alg.run(), "");
 }

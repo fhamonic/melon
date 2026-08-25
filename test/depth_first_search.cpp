@@ -119,9 +119,9 @@ GTEST_TEST(depth_first_search, algorithm_iterator) {
 // own accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-// depth_first_search_default_traits sets all three flags to false and nothing
-// ever overrode them, so _pred_vertices_map, _pred_arcs_map and _depth_map --
-// and the accessors gated on them -- were never instantiated.
+// depth_first_search_default_traits sets all three flags to false, so
+// _pred_vertices_map, _pred_arcs_map and _depth_map -- and the accessors
+// gated on them -- are instantiated nowhere but here.
 //
 // Constructed by spelling the type out rather than with the
 // `depth_first_search(traits{}, graph, source)` form the other algorithms
@@ -271,11 +271,11 @@ GTEST_TEST(depth_first_search, depth_equals_pred_chain_length) {
 // regression: depth is a tree depth, not a shortest-hop distance
 ////////////////////////////////////////////////////////////////////////////////
 
-// The flag used to be called store_distances, which invited reading it as the
-// shortest-hop distance breadth_first_search::dist() returns. It is not: it
-// counts arcs along the route DFS took. This pins that difference down, so
-// that "fixing" depth() into a distance fails here rather than silently
-// changing what the flag means.
+// The flag is called store_depth, not store_distances: that name invites
+// reading it as the shortest-hop distance breadth_first_search::dist()
+// returns. It is not: it counts arcs along the route DFS took. This pins that
+// difference down, so that "fixing" depth() into a distance fails here rather
+// than silently changing what the flag means.
 namespace {
 struct bfs_dist_traits : breadth_first_search_default_traits {
     static constexpr bool store_distances = true;
@@ -319,12 +319,12 @@ GTEST_TEST(depth_first_search, depth_is_not_the_shortest_hop_distance) {
 // single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// The unconstrained `depth_first_search(G &&)` beat the copy constructor for a
-// non-const lvalue and tried to build the algorithm out of itself;
-// detail::not_self is what excludes it. Now that copy is deleted, the pin is
-// that an algorithm is not constructible from an algorithm lvalue at all --
-// without not_self the greedy constructor would quietly become viable again
-// where the deleted copy constructor should be chosen.
+// An unconstrained `depth_first_search(G &&)` beats the copy constructor for
+// a non-const lvalue and tries to build the algorithm out of itself;
+// detail::not_self is what excludes it. With copy deleted, the pin is that an
+// algorithm is not constructible from an algorithm lvalue at all -- without
+// not_self the greedy constructor would quietly become viable again where the
+// deleted copy constructor should be chosen.
 GTEST_TEST(depth_first_search, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);

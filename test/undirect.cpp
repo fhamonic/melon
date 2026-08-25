@@ -49,9 +49,9 @@ GTEST_TEST(undirect_views, static_graph) {
 // copying a mutable lvalue view uses the copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: same defect as views::reverse -- the unconstrained
-// `undirect(G &&)` beat the copy constructor for a non-const lvalue and
-// hard-errored in graph_ref_view.
+// regression: same trap as views::reverse -- an unconstrained
+// `undirect(G &&)` beats the copy constructor for a non-const lvalue and
+// hard-errors in graph_ref_view.
 GTEST_TEST(undirect_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     static_digraph_builder<static_digraph> builder(3);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0);
@@ -72,11 +72,12 @@ GTEST_TEST(undirect_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
 // incidence() copies the wrapped view only where the copy buys borrowedness
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: _capture() branched on copy_constructible alone while the
-// enable_borrowed_graph specialisation requires borrowed && copyable, so a
-// copyable non-borrowed graph -- a filtered subgraph carrying its filter map
-// by value -- was deep-copied into both incidence() lambdas on every call,
-// buying a borrowedness the trait (correctly) refused to report anyway.
+// regression: _capture() must branch on the same condition the
+// enable_borrowed_graph specialisation requires (borrowed && copyable).
+// Branching on copy_constructible alone deep-copies a copyable non-borrowed
+// graph -- a filtered subgraph carrying its filter map by value -- into both
+// incidence() lambdas on every call, buying a borrowedness the trait
+// (correctly) refuses to report anyway.
 namespace {
 int filter_map_copies = 0;
 struct counting_filter {
@@ -117,7 +118,7 @@ GTEST_TEST(undirect_views, incidence_copies_the_view_only_when_borrowed) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// the orphan adjacency() member is gone: no CPO ever reached it
+// no orphan adjacency() member: no CPO ever reaches one
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {

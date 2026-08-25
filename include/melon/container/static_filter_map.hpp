@@ -50,15 +50,26 @@ public:
         reference(const reference &) = default;
 
         operator bool() const noexcept { return !!(*_p & _mask); }
-        reference & operator=(bool x) noexcept {
+        // Const-qualified, the C++23 vector<bool>::reference protocol
+        // (P2321): without it the iterator fails indirectly_writable, and
+        // every constrained mutating algorithm -- ranges::sort, ranges::fill
+        // -- rejects the map while the unconstrained loop compiles.
+        const reference & operator=(bool x) const noexcept {
             if(x)
                 *_p |= _mask;
             else
                 *_p &= ~_mask;
             return *this;
         }
-        reference & operator=(const reference & x) noexcept {
+        const reference & operator=(const reference & x) const noexcept {
             return *this = bool(x);
+        }
+        // The protocol's third piece: sort's iter_swap exchanges *prvalue*
+        // proxies, which no lvalue-taking std::swap overload can bind.
+        friend void swap(reference x, reference y) noexcept {
+            const bool tmp = x;
+            x = y;
+            y = tmp;
         }
         bool operator==(const reference & x) const {
             return bool(*this) == bool(x);

@@ -39,7 +39,6 @@ public:
 static_assert(algorithmic_generator<squares>);
 static_assert(std::same_as<traversal_entry_t<squares>, int>);
 
-// The three members are all load-bearing.
 struct no_advance {
     bool finished() const;
     int current() const;
@@ -97,7 +96,6 @@ GTEST_TEST(algorithm_iterator, refers_to_the_algorithm) {
     ASSERT_EQ(*it1, *it2);
 }
 
-// An already finished generator yields an empty range.
 GTEST_TEST(algorithm_iterator, handles_an_empty_run) {
     squares alg(0);
     ASSERT_TRUE(iterator(alg) == std::default_sentinel);
@@ -107,9 +105,9 @@ GTEST_TEST(algorithm_iterator, handles_an_empty_run) {
 // regression: the iterator typedefs advertise only what operator* produces
 ////////////////////////////////////////////////////////////////////////////////
 
-// operator* returns a prvalue and there is no operator->, but the typedefs
-// advertised `value_type const &` and `value_type *`, so std::iterator_traits
-// reported a reference and a pointer this iterator never produces.
+// operator* returns a prvalue and there is no operator->: typedefs saying
+// `value_type const &` and `value_type *` make std::iterator_traits report a
+// reference and a pointer this iterator never produces.
 namespace {
 struct counting_generator {
     int i = 0;
@@ -145,10 +143,10 @@ static_assert(std::input_iterator<counting_iterator>);
 
 static_assert(std::ranges::input_range<squares>);
 // A range but deliberately NOT a std::ranges::view: an algorithm carries
-// O(n) state, so modelling view (which algorithm_view_interface's old
-// view_interface base opted it into) made `alg | std::views::take(3)` on an
-// lvalue deep-copy the whole algorithm and run on the copy. As a plain
-// range, adaptors wrap a ref_view around an lvalue instead.
+// O(n) state, so modelling view (a view_interface base opts it in) makes
+// `alg | std::views::take(3)` on an lvalue deep-copy the whole algorithm and
+// run on the copy. As a plain range, adaptors wrap a ref_view around an
+// lvalue instead.
 static_assert(!std::ranges::view<squares>);
 static_assert(!std::ranges::enable_view<squares>);
 
@@ -171,7 +169,6 @@ GTEST_TEST(algorithm_view_interface, composes_with_std_ranges) {
     ASSERT_EQ(odd_squares, (std::vector<int>{1, 9}));
 }
 
-// And the same works on a real traversal, which is the point of the header.
 GTEST_TEST(algorithm_view_interface, drives_a_real_traversal) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0u, 1u).add_arc(1u, 2u).add_arc(2u, 3u);
@@ -184,3 +181,27 @@ GTEST_TEST(algorithm_view_interface, drives_a_real_traversal) {
     for(const auto & v : alg) visited.push_back(v);
     ASSERT_TRUE(EQ_RANGES(visited, {0, 1, 2, 3}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// the sentinel comparison forwards finished(), whose noexcept the concept
+// does not require -- so the comparison's noexcept is measured, not asserted
+////////////////////////////////////////////////////////////////////////////////
+
+namespace sentinel_noexcept {
+struct throwing_finished_generator {
+    [[nodiscard]] bool finished() const noexcept(false) { return true; }
+    [[nodiscard]] int current() const { return 0; }
+    void advance() {}
+};
+struct nothrow_finished_generator {
+    [[nodiscard]] bool finished() const noexcept { return true; }
+    [[nodiscard]] int current() const { return 0; }
+    void advance() {}
+};
+static_assert(!noexcept(
+    std::declval<const algorithm_iterator<throwing_finished_generator> &>() ==
+    std::default_sentinel));
+static_assert(noexcept(
+    std::declval<const algorithm_iterator<nothrow_finished_generator> &>() ==
+    std::default_sentinel));
+}  // namespace sentinel_noexcept

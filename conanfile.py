@@ -6,6 +6,8 @@ from conan.tools.files import copy, load
 from conan.tools.cmake import cmake_layout, CMake
 from conan.tools.build import check_min_cppstd
 
+required_conan_version = ">=2.0"
+
 
 class MelonConan(ConanFile):
     name = "melon"
@@ -16,7 +18,7 @@ class MelonConan(ConanFile):
     description = "Modern and Efficient Library for Optimization in Networks."
     topics = ("graph", "header-only", "cpp23", "algorithms")
     homepage = "https://github.com/fhamonic/melon"
-    url = "https://github.com/fhamonic/melon.git"
+    url = "https://github.com/fhamonic/melon"
 
     settings = "os", "arch", "compiler", "build_type"
     package_type = "header-library"
@@ -51,9 +53,11 @@ class MelonConan(ConanFile):
             components[level] = match.group(1)
         self.version = "{MAJOR}.{MINOR}.{PATCH}".format(**components)
 
-    def requirements(self):
-        self.test_requires("gtest/[>=1.10.0 <cci]")
-        # self.test_requires("mppp/1.0.3")
+    def build_requirements(self):
+        # Ungated, the test_requires makes skip_test builds fail on a
+        # missing gtest binary that build() would never use.
+        if not self.conf.get("tools.build:skip_test", default=False):
+            self.test_requires("gtest/[>=1.10.0 <cci]")
 
     def validate(self):
         check_min_cppstd(self, 23)
@@ -93,6 +97,11 @@ class MelonConan(ConanFile):
         )
 
     def package_info(self):
+        # The names melonConfig.cmake exports; CMakeDeps' defaults happen
+        # to coincide today, but only the explicit properties keep a rename
+        # on either side from silently changing what consumers link.
+        self.cpp_info.set_property("cmake_file_name", "melon")
+        self.cpp_info.set_property("cmake_target_name", "melon::melon")
         self.cpp_info.bindirs = []
         self.cpp_info.libdirs = []
 

@@ -80,6 +80,8 @@ private:
         _depth_map;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename G>
         requires detail::not_self<G, depth_first_search> &&
                      graph_for<G, Graph> && has_vertex_map<Graph>
@@ -160,6 +162,8 @@ private:
     }
 
 public:
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -170,6 +174,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     constexpr depth_first_search & reset() {
         _stack.resize(0);
@@ -189,6 +195,8 @@ public:
         if constexpr(Traits::store_depth) _depth_map[s] = 0;
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_stack.empty())) {
@@ -241,6 +249,8 @@ public:
             _stack.pop_back();
         } while(!_stack.empty());
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const
         noexcept(noexcept(_reached_map[u])) {

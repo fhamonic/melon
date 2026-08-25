@@ -70,7 +70,7 @@ More on all of this in [Why melon](https://fhamonic.github.io/melon/getting-star
 | **Graph containers** | `static_digraph`, `static_forward_digraph`, `mutable_digraph` |
 | **Graph views** | `reverse`, `subgraph`, `induced_subgraph`, `undirect`, `complete_digraph` |
 | **Traversals** | BFS, DFS, topological sort, traversal forest, strongly and weakly connected components |
-| **Shortest paths** | Dijkstra, bidirectional Dijkstra, bi-objective Dijkstra, competing Dijkstras, network Voronoi |
+| **Shortest paths** | Dijkstra, A\*, bidirectional Dijkstra, bi-objective Dijkstra, competing Dijkstras, Bellman–Ford and Bellman–Ford–Moore (negative lengths), network Voronoi |
 | **Flows and trees** | Edmonds–Karp, Dinitz, Kruskal |
 | **Other** | knapsack and unbounded knapsack branch-and-bound, Bentley–Ottmann segment intersection |
 | **Data structures** | `d_ary_heap`, `updatable_d_ary_heap`, `static_map`, `static_filter_map`, `disjoint_sets` |

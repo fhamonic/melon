@@ -34,6 +34,8 @@ public:
                            T && targets)
         : _out_arc_begin(num_vertices_, 0)
         , _arc_target(std::forward<T>(targets)) {
+        assert(static_cast<std::size_t>(std::ranges::distance(sources)) ==
+               _arc_target.size());
         assert(std::ranges::all_of(
             sources, [n = num_vertices_](auto && v) { return v < n; }));
         assert(std::ranges::all_of(

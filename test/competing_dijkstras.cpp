@@ -10,6 +10,7 @@
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/subgraph.hpp"
 
+#include "random_ranges_helper.hpp"
 #include "ranges_test_helper.hpp"
 
 using namespace melon;
@@ -95,7 +96,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
     static constexpr int min_length = 0;
     static constexpr int max_length = 10;
     std::uniform_int_distribution lower_distr{min_length, max_length};
-    std::mt19937 engine{std::random_device{}()};
+    std::mt19937 engine{test_rng()()};
 
     for(int i = 0; i < num_tests; ++i) {
         auto graph = erdos_renyi<static_digraph>(num_vertices_, density);
@@ -254,7 +255,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
     static constexpr int min_length = 0;
     static constexpr int max_length = 10;
     std::uniform_int_distribution lower_distr{min_length, max_length};
-    std::mt19937 engine{std::random_device{}()};
+    std::mt19937 engine{test_rng()()};
 
     for(int i = 0; i < num_tests; ++i) {
         auto graph = erdos_renyi<static_digraph>(num_vertices_, density);

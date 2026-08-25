@@ -196,7 +196,6 @@ protected:
         }
         heap_move(hole_index, std::move(p));
     }
-    // EXPECTED_CPP23 goto in constexpr functions
     void adjust_heap(size_type hole_index, const size_type end,
                      value_type && p) {
         size_type child_end;
@@ -233,8 +232,13 @@ protected:
 
 public:
     // Not noexcept: emplace_back may reallocate and throw. It also sifts
-    // through the user's comparator and priority map.
-    void push(value_type p) {
+    // through the user's comparator and priority map. The constraint names
+    // what the hole-opening emplace_back() consumes -- without it a
+    // non-default-constructible entry fails deep inside construct_at instead
+    // of at this signature.
+    void push(value_type p)
+        requires std::default_initializable<value_type>
+    {
         const size_type n = _heap_array.size();
         _heap_array.emplace_back();
         heap_push(size_type(n * sizeof(value_type)), std::move(p));
@@ -301,6 +305,11 @@ public:
         : base_class(std::forward<PC>(priority_cmp),
                      std::forward<EPM>(entry_priority_map)) {}
 
+    // A movable heap already swaps correctly through ranges::swap's
+    // move-exchange fallback. These custom swaps strictly improve on it:
+    // memberwise pointer exchange instead of three whole-heap moves through
+    // a temporary, noexcept measured on the members' swaps instead of their
+    // moves, and the member + ADL surface std::priority_queue ships.
     constexpr void swap(d_ary_heap & other) noexcept(
         noexcept(this->swap_members(other))) {
         base_class::swap_members(other);
@@ -373,6 +382,7 @@ public:
         , _entry_id_map(std::forward<EIM>(entry_id_map))
         , _heap_index_map(std::forward<HIM>(heap_index_map)) {}
 
+    // Custom for the same reasons as d_ary_heap::swap.
     constexpr void swap(updatable_d_ary_heap & other) noexcept(
         noexcept(this->swap_members(other)) &&
         std::is_nothrow_swappable_v<EntryIdMap> &&

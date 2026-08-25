@@ -36,8 +36,6 @@ static_assert(std::is_copy_assignable_v<ref_view>);
 static_assert(!std::is_copy_constructible_v<owning_view>);
 static_assert(std::is_move_constructible_v<owning_view>);
 
-// undirected_graph_all lands on ref_view for lvalues, owning_view for rvalues,
-// and passes an existing view through unchanged.
 static_assert(
     std::same_as<views::undirected_graph_all_t<triangle &>, ref_view>);
 static_assert(
@@ -71,10 +69,10 @@ GTEST_TEST(undirected_graph_ref_view, forwards_every_cpo) {
     ASSERT_EQ(emap[0u], 4);
 }
 
-// regression: degree was the one accessor of the protocol the forwarding
-// interface did not forward. The fixture's incidence range is deliberately
-// unsized, so the CPO's sized-incidence fallback cannot answer either and the
-// views lost degree outright.
+// regression: the forwarding interface forwards degree like every other
+// accessor of the protocol. The fixture's incidence range is deliberately
+// unsized, so the CPO's sized-incidence fallback cannot answer either and,
+// without the forwarding member, the views have no degree at all.
 GTEST_TEST(undirected_graph_ref_view, forwards_degree) {
     static_assert(has_degree<triangle>);
     static_assert(has_degree<ref_view>);
@@ -177,16 +175,16 @@ GTEST_TEST(undirected_graph_all, passes_undirect_through) {
 // copying a mutable lvalue view uses the copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: same defect and same fix as graph_ref_view -- the greedy
-// single-argument constructor's guard was tested against the deduced T, which
-// for a mutable lvalue is a reference type.
+// regression: same trap as graph_ref_view -- a greedy single-argument
+// constructor's guard tested against the deduced T never fires for a mutable
+// lvalue, whose deduced T is a reference type.
 static_assert(std::copy_constructible<ref_view>);
 static_assert(std::constructible_from<ref_view, triangle &>);
 static_assert(std::constructible_from<ref_view, ref_view &>);
 static_assert(std::constructible_from<undirected_graph_ref_view<const triangle>,
                                       triangle &>);
 
-// what the paired convertible_to constraint now rejects cleanly
+// what the paired convertible_to constraint rejects cleanly
 static_assert(!std::constructible_from<
               ref_view, undirected_graph_ref_view<const triangle> &>);
 static_assert(!std::constructible_from<ref_view, int &>);

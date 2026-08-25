@@ -37,12 +37,10 @@ public:
 
     constexpr T operator*() const { return _cursor; }
 
-    [[nodiscard]] constexpr friend bool operator==(
-        const intrusive_iterator_base & it1,
-        const intrusive_iterator_base & it2) noexcept {
-        assert(it1._structure == it2._structure);
-        return it1._cursor == it2._cursor;
-    }
+    // No equality here: two handle types can share one underlying id type, so
+    // a base-level operator== makes every list's iterator comparable with
+    // every other's -- and answers true on equal ids from unrelated lists.
+    // Each derived iterator defines its own.
 };
 
 }  // namespace melon::detail

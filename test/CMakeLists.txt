@@ -41,6 +41,7 @@ add_executable(
   depth_first_search.cpp
   d_ary_heap.cpp
   dijkstra.cpp
+  a_star.cpp
   bidirectional_dijkstra.cpp
   competing_dijkstras.cpp
   edmonds_karp.cpp
@@ -80,6 +81,8 @@ add_executable(
   api_consistency.cpp
   api_review.cpp
   differential.cpp
+  bellman_ford.cpp
+  bellman_ford_moore.cpp
 )
 target_include_directories(melon_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(melon_test GTest::gtest)

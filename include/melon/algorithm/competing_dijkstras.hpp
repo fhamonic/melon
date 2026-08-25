@@ -88,6 +88,8 @@ private:
     [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
               mapping_for<RedLengthMap> RLM>
         requires has_vertex_map<Graph>
@@ -112,6 +114,8 @@ public:
         delete;
     constexpr competing_dijkstras & operator=(competing_dijkstras &&) = default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -123,9 +127,12 @@ public:
         return std::move(_graph);
     }
 
+    // ---- Setup --------------------------------------------------------------
+
     template <mapping_for<BlueLengthMap> BLM>
         requires std::assignable_from<BlueLengthMap &, BlueLengthMap>
-    competing_dijkstras & set_blue_length_map(BLM && blue_length_map) {
+    constexpr competing_dijkstras & set_blue_length_map(
+        BLM && blue_length_map) {
         _blue_length_map =
             maps::mapping_all(std::forward<BLM>(blue_length_map));
         return *this;
@@ -133,12 +140,12 @@ public:
 
     template <mapping_for<RedLengthMap> RLM>
         requires std::assignable_from<RedLengthMap &, RedLengthMap>
-    competing_dijkstras & set_red_length_map(RLM && red_length_map) {
+    constexpr competing_dijkstras & set_red_length_map(RLM && red_length_map) {
         _red_length_map = maps::mapping_all(std::forward<RLM>(red_length_map));
         return *this;
     }
 
-    competing_dijkstras & reset() {
+    constexpr competing_dijkstras & reset() {
         _vertex_status_map.fill(PRE_HEAP);
         _heap.clear();
         _num_blue_candidates = 0;
@@ -150,8 +157,8 @@ public:
     // overloads end by restoring the class invariant -- "the heap top, if any
     // blue candidate remains, is blue" -- so a sourced object is immediately
     // ready to iterate.
-    competing_dijkstras & add_blue_source(
-        const vertex & s, const length_type dist_v = Traits::semiring::zero) {
+    constexpr competing_dijkstras & add_blue_source(
+        const vertex & s, const length_type & dist_v = Traits::semiring::zero) {
         assert(_vertex_status_map[s] == PRE_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, true}));
         ++_num_blue_candidates;
@@ -159,8 +166,8 @@ public:
         settle_red_prefix();
         return *this;
     }
-    competing_dijkstras & add_red_source(
-        const vertex & s, const length_type dist_v = Traits::semiring::zero) {
+    constexpr competing_dijkstras & add_red_source(
+        const vertex & s, const length_type & dist_v = Traits::semiring::zero) {
         assert(_vertex_status_map[s] == PRE_HEAP);
         _heap.push(std::make_pair(s, entry_t{dist_v, false}));
         _vertex_status_map[s] = IN_HEAP;
@@ -168,7 +175,12 @@ public:
         return *this;
     }
 
-    void relax_blue_vertex(const vertex & w, const length_type new_dist_v) {
+private:
+    // A public relax would let callers alter claims behind the traversal's
+    // back without settle_red_prefix() restoring the heap-top invariant that
+    // finished() and current() read.
+    constexpr void relax_blue_vertex(const vertex & w,
+                                     const length_type & new_dist_v) {
         const entry_t new_dist = {new_dist_v, true};
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
@@ -186,7 +198,8 @@ public:
         }
     }
 
-    void relax_red_vertex(const vertex & w, const length_type new_dist_v) {
+    constexpr void relax_red_vertex(const vertex & w,
+                                    const length_type & new_dist_v) {
         const entry_t new_dist = {new_dist_v, false};
         auto && w_status = _vertex_status_map[w];
         if(w_status == IN_HEAP) {
@@ -202,6 +215,9 @@ public:
             _vertex_status_map[w] = IN_HEAP;
         }
     }
+
+public:
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_num_blue_candidates == 0)) {
@@ -241,6 +257,8 @@ private:
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     constexpr void advance() {
         assert(!finished());
         // The class invariant leaves a blue vertex on top here.

@@ -407,7 +407,14 @@ public:
 
     template <T NMIN, T NMAX>
     constexpr auto bound() const {
-        return bounded_value<T, NMIN, NMAX, PS>(*this);
+        // The converting constructor admits widening only, so tightening --
+        // the direction the overflow static_asserts recommend this member
+        // for -- routes through the value instead, trading the compile-time
+        // bound proof for that constructor's runtime range assert.
+        if constexpr(NMIN <= Min && Max <= NMAX)
+            return bounded_value<T, NMIN, NMAX, PS>(*this);
+        else
+            return bounded_value<T, NMIN, NMAX, PS>(value());
     }
 };
 
@@ -440,6 +447,11 @@ public:
     constexpr bounded_value() = default;
     constexpr bounded_value(const bounded_value &) = default;
     constexpr bounded_value(bounded_value &&) = default;
+    // Explicit, not implicit: the defaulted move constructor above deletes
+    // the implicit copy assignment, which made `integer<T>` fail
+    // std::copyable while its copy *construction* still worked.
+    constexpr bounded_value & operator=(const bounded_value &) = default;
+    constexpr bounded_value & operator=(bounded_value &&) = default;
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
         requires(detail::cmp_equal(OMIN, V) && detail::cmp_equal(OMAX, V))
@@ -447,7 +459,8 @@ public:
 
     template <typename OT, OT OMIN, OT OMAX, typename OPS>
         requires(detail::cmp_equal(OMIN, V) && detail::cmp_equal(OMAX, V))
-    constexpr bounded_value & operator=(const bounded_value<OT, V, V, OPS> &) {
+    constexpr bounded_value & operator=(
+        const bounded_value<OT, OMIN, OMAX, OPS> &) {
         return *this;
     }
     template <typename OT, OT OMIN, OT OMAX, typename OPS>

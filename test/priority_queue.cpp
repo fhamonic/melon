@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <functional>
+#include <memory>
 #include <queue>
 #include <utility>
 #include <vector>
@@ -49,8 +50,6 @@ static_assert(!priority_queue<std::priority_queue<int>>);
 static_assert(!priority_queue<std::vector<int>>);
 static_assert(!priority_queue<int>);
 
-// Every requirement of the concept is load-bearing: dropping any single one
-// must make the concept reject the type.
 namespace {
 struct complete_queue {
     using value_type = int;
@@ -127,8 +126,6 @@ static_assert(!updatable_priority_queue<no_demote>);
 // expects
 ////////////////////////////////////////////////////////////////////////////////
 
-// The concept only describes the surface; these check the surface actually
-// behaves as an algorithm would expect when driven through it alone.
 template <priority_queue Q>
 void drain(Q & q, std::vector<typename Q::value_type> & out) {
     while(!q.empty()) {
@@ -208,3 +205,25 @@ struct by_const_ref_queue {
 };
 }  // namespace
 static_assert(updatable_priority_queue<by_const_ref_queue>);
+
+////////////////////////////////////////////////////////////////////////////////
+// movable + default_initializable, not semiregular: a heap owning its buffer
+// through a move-only handle still parameterizes traits
+////////////////////////////////////////////////////////////////////////////////
+
+namespace move_only {
+struct heap {
+    using value_type = int;
+    using size_type = std::size_t;
+    std::unique_ptr<std::vector<int>> _buffer =
+        std::make_unique<std::vector<int>>();
+    void push(value_type v) { _buffer->push_back(v); }
+    [[nodiscard]] value_type top() const { return _buffer->back(); }
+    void pop() { _buffer->pop_back(); }
+    [[nodiscard]] size_type size() const { return _buffer->size(); }
+    [[nodiscard]] bool empty() const { return _buffer->empty(); }
+    void clear() { _buffer->clear(); }
+};
+}  // namespace move_only
+static_assert(!std::copyable<move_only::heap>);
+static_assert(priority_queue<move_only::heap>);

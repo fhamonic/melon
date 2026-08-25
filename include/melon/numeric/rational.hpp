@@ -214,16 +214,23 @@ public:
 
     // Cross-multiplication keeps order because den() >= 0 is a class invariant
     // (asserted in the constructor, preserved by normalize() and
-    // make_rational). weak_ordering, not strong: unnormalized representations
-    // make 1/2 and 2/4 equivalent, not equal.
+    // make_rational). The category caps at weak_ordering, not strong:
+    // unnormalized representations make 1/2 and 2/4 equivalent, not equal.
+    // It is *deduced* down to partial_ordering for floating components --
+    // their cross products compare partially (NaN), and a hard-coded
+    // weak_ordering return type makes every ordering comparison against a
+    // double ill-formed while == and the arithmetic compile fine.
     template <typename N2, typename D2>
     [[nodiscard]] friend constexpr bool operator==(
         const rational & r1, const rational<N2, D2> & r2) {
         return r1.num() * r2.den() == r2.num() * r1.den();
     }
     template <typename N2, typename D2>
-    [[nodiscard]] friend constexpr std::weak_ordering operator<=>(
-        const rational & r1, const rational<N2, D2> & r2) {
+    [[nodiscard]] friend constexpr auto operator<=>(const rational & r1,
+                                                    const rational<N2, D2> & r2)
+        -> std::common_comparison_category_t<decltype((r1.num() * r2.den()) <=>
+                                                      (r2.num() * r1.den())),
+                                             std::weak_ordering> {
         return (r1.num() * r2.den()) <=> (r2.num() * r1.den());
     }
     template <typename T>
@@ -234,8 +241,9 @@ public:
     }
     template <typename T>
         requires scalar_operand<T>
-    [[nodiscard]] friend constexpr std::weak_ordering operator<=>(
-        const rational & r, const T & a) {
+    [[nodiscard]] friend constexpr auto operator<=>(const rational & r,
+                                                    const T & a)
+        -> decltype(r <=> numeric::rational(a)) {
         return r <=> numeric::rational(a);
     }
 

@@ -6,8 +6,12 @@
 namespace melon {
 
 // clang-format off
+// movable + default_initializable, not semiregular: no algorithm copies a
+// heap (they are move-only by ruling) but biobjective_dijkstra
+// default-constructs one, so demanding copyability only locks out heaps that
+// own their buffer through a move-only handle.
 template <typename Q>
-concept priority_queue = std::semiregular<Q> &&
+concept priority_queue = std::movable<Q> && std::default_initializable<Q> &&
     requires(Q q, typename Q::value_type v) {
     q.push(v);
     // convertible_to, not same_as: top() may return by value or by const

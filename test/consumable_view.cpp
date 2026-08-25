@@ -3,6 +3,9 @@
 
 #include <span>
 
+#include <ranges>
+#include <vector>
+
 #include "melon/detail/consumable_view.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -126,10 +129,10 @@ GTEST_TEST(consumable_view, test_vector_for_loop) {
 // assigning a new range rewinds the cursor to its begin and returns *this
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: operator=(R &) of both specializations fell off the end of a
-// non-void function; the assignment was a hard error ("no return statement in
-// constexpr function") the moment it was instantiated, so the overload was
-// simply unusable.
+// regression: an operator=(R &) that falls off the end of a non-void function
+// is a hard error ("no return statement in constexpr function") the moment it
+// is instantiated -- the overload is simply unusable, in both
+// specializations.
 GTEST_TEST(consumable_view, assign_from_range_returns_self) {
     std::vector<unsigned int> v = {3u, 1u, 4u};
     std::vector<unsigned int> w = {9u, 2u};
@@ -270,7 +273,7 @@ GTEST_TEST(consumable_input_view, reseeds_from_an_externally_held_range) {
 // cursor maps can default-construct their slots even when the range -- a
 // filter_view over a capturing lambda, every filtered subgraph's incidence
 // shape -- cannot be default-constructed. dinitz over any filtered subgraph
-// was unconstructible without it.
+// is unconstructible without it.
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace disengaged_probes {
@@ -324,8 +327,8 @@ GTEST_TEST(consumable_input_view, disengaged_cursor_survives_relocation) {
 // Cpp17 category
 ////////////////////////////////////////////////////////////////////////////////
 
-// iterator_concept, and no iterator_category -- `*it++` is void, so the Cpp17
-// category the old typedef advertised was unmeetable.
+// iterator_concept, and no iterator_category -- `*it++` is void, so any Cpp17
+// category the typedef advertised would be unmeetable.
 namespace {
 template <typename T>
 constexpr bool advertises_cpp17_category_cv =
@@ -342,9 +345,9 @@ static_assert(!advertises_cpp17_category_cv<consumable_it>);
 // detail::consumable_iterator forwards noexcept-ness instead of claiming it
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: increment and both comparisons were unconditionally noexcept
-// while forwarding into an arbitrary wrapped iterator -- a throwing increment
-// became std::terminate.
+// regression: increment and both comparisons forward into an arbitrary
+// wrapped iterator, so an unconditional noexcept on them turns a throwing
+// increment into std::terminate.
 namespace {
 struct throwing_iterator {
     using value_type = int;
@@ -375,4 +378,21 @@ GTEST_TEST(consumable_iterator, noexcept_follows_the_wrapped_iterator) {
     static_assert(
         noexcept(std::declval<const PI &>() == std::declval<const PI &>()));
     SUCCEED();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// iterating an owning cursor advances through the view, so the relocation
+// counter stays in step: a moved cursor resumes where iteration stopped
+// instead of silently rewinding
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(consumable_input_view, iteration_keeps_the_relocation_counter) {
+    detail::consumable_input_view cursor(std::vector<int>{10, 11, 12, 13});
+    auto it = cursor.begin();
+    ++it;
+    ++it;
+    ASSERT_EQ(cursor.consumed(), 2u);
+    ASSERT_EQ(cursor.current(), 12);
+    auto moved = std::move(cursor);
+    ASSERT_EQ(moved.current(), 12);
 }

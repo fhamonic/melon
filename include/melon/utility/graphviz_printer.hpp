@@ -136,7 +136,7 @@ public:
         return *this;
     }
 
-    graphviz_printer<G> & set_arc_label(const arc & a, const std::string l) {
+    graphviz_printer<G> & set_arc_label(const arc & a, const std::string & l) {
         if(!_arc_label_map.has_value())
             _arc_label_map.emplace(
                 create_arc_map<std::string>(_graph.get(), ""));
@@ -241,8 +241,14 @@ public:
 
         std::vector<std::pair<arc, std::pair<vertex, vertex>>>
             color_sorted_arcs_entries;
+        // Element-wise rather than emplacing the entry whole: the graph
+        // concept pins std::get access on entries, not convertibility to this
+        // pair-of-pairs.
         for(const auto & arc_entry : arcs_entries(_graph.get()))
-            color_sorted_arcs_entries.emplace_back(arc_entry);
+            color_sorted_arcs_entries.emplace_back(
+                std::get<0>(arc_entry),
+                std::make_pair(std::get<0>(std::get<1>(arc_entry)),
+                               std::get<1>(std::get<1>(arc_entry))));
         std::sort(color_sorted_arcs_entries.begin(),
                   color_sorted_arcs_entries.end(), [&](auto && a, auto && b) {
                       return _arc_color_map[a.first] < _arc_color_map[b.first];

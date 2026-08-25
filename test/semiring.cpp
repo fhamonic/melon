@@ -18,11 +18,32 @@ static_assert(semiring<max_capacity_path_semiring<int>>);
 static_assert(semiring<minimum_spanning_tree_semiring<int>>);
 
 ////////////////////////////////////////////////////////////////////////////////
+// infty_is_absorbing is a promise plus must keep, and absence means false
+////////////////////////////////////////////////////////////////////////////////
+
+// bellman_ford drops its unreached-vertex guard wherever this is true, so a
+// semiring may only declare it when plus(infty, x) == infty for every
+// producible x -- which no integer plus satisfies.
+static_assert(has_absorbing_infty<shortest_path_semiring<double>>);
+static_assert(!has_absorbing_infty<shortest_path_semiring<int>>);
+static_assert(has_absorbing_infty<most_reliable_path_semiring<double>>);
+static_assert(has_absorbing_infty<max_capacity_path_semiring<int>>);
+// No flag declared at all: plus keeps the last arc's length, absorbing
+// nothing.
+static_assert(!has_absorbing_infty<minimum_spanning_tree_semiring<int>>);
+
+using S_dbl = shortest_path_semiring<double>;
+static_assert(S_dbl::infty == std::numeric_limits<double>::infinity());
+// The negative operand is the case the guard exists for: with a max()
+// sentinel, max() + negative compares less than max() and an unreached
+// vertex would relax as reached.
+static_assert(S_dbl::plus(S_dbl::infty, -1e308) == S_dbl::infty);
+static_assert(!S_dbl::less(S_dbl::plus(S_dbl::infty, -1e308), S_dbl::infty));
+
+////////////////////////////////////////////////////////////////////////////////
 // the concept rejects a type missing any of the four members
 ////////////////////////////////////////////////////////////////////////////////
 
-// The concept is what the algorithm traits check, so it must reject a type
-// missing any of the four members.
 struct no_less {
     using value_type = int;
     using plus_t = std::plus<int>;

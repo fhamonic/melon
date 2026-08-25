@@ -232,10 +232,10 @@ GTEST_TEST(mapping_all, selects_the_right_adaptor) {
                                mapping_owning_view<std::vector<int>>>);
 }
 
-// regression: mapping_all_fn::operator() used to be unconstrained, so its
-// noexcept-specifier was instantiated for every argument and hard-errored
-// outside the immediate context. `requires { maps::mapping_all(x); }` blew up
-// instead of yielding false, which made maps::mapping_all_t unusable in a
+// regression: with mapping_all_fn::operator() unconstrained, its
+// noexcept-specifier is instantiated for every argument and hard-errors
+// outside the immediate context. `requires { maps::mapping_all(x); }` blows
+// up instead of yielding false, which makes maps::mapping_all_t unusable in a
 // constraint.
 namespace {
 struct not_a_mapping {
@@ -261,9 +261,9 @@ static_assert(!can_mapping_all<not_a_mapping>);
 // *asking* `mapping<M, K>` about a map the dispatch rejects fails to compile
 // instead of yielding false.
 //
-// A mutable lambda is what reaches this: its operator() is non-const, so it is
-// not readable through a const access and is correctly not a mapping (contract
-// Ruling 4) -- but it has to *say* so rather than hard-error.
+// A mutable lambda is what reaches this: its operator() is non-const, so it
+// is not readable through a const access and is correctly not a mapping --
+// but it has to *say* so rather than hard-error.
 // Built through mapping_owning_view directly, not maps::map: the factory
 // rejects a mutable lambda outright with a friendly static_assert (below), and
 // what is under test here is the layer beneath it -- that the *concepts* answer
@@ -402,7 +402,7 @@ GTEST_TEST(canned_maps, element_map_projects_tuple_elements) {
 
 // regression: std::get is noexcept for tuple/pair/array but throws
 // bad_variant_access for std::variant, so an unconditional noexcept on the
-// accessor chain turned that throw into std::terminate.
+// accessor chain turns that throw into std::terminate.
 namespace {
 using int_pair = std::pair<int, int>;
 using nested_pair = std::pair<std::pair<int, int>, int>;
@@ -430,10 +430,10 @@ GTEST_TEST(element_map, variant_access_propagates_instead_of_terminating) {
 // map_if's const subscript returns a reference, not a copy
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: detail::vertex_map_if / detail::arc_map_if returned `auto` from
-// the const subscript and decltype(auto) from the mutable one, so every read
-// through a const algorithm object copied the mapped value (dijkstra reads its
-// distance and predecessor maps that way).
+// regression: a detail::vertex_map_if / detail::arc_map_if returning `auto`
+// from the const subscript and decltype(auto) from the mutable one copies the
+// mapped value on every read through a const algorithm object (dijkstra reads
+// its distance and predecessor maps that way).
 static_assert(std::same_as<decltype(std::declval<detail::vertex_map_if<
                                         true, static_digraph, std::string> &>()
                                         [std::declval<const unsigned &>()]),

@@ -189,6 +189,8 @@ private:
     std::vector<segment_id_type> _intersections;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename SIR, mapping_for<SegmentMap> SM = maps::identity_map>
         requires detail::not_self<SIR, bentley_ottmann> &&
                      std::ranges::forward_range<SIR> &&
@@ -215,6 +217,8 @@ public:
 
     constexpr bentley_ottmann & operator=(const bentley_ottmann &) = delete;
     constexpr bentley_ottmann & operator=(bentley_ottmann &&) = default;
+
+    // ---- Setup --------------------------------------------------------------
 
     constexpr bentley_ottmann & reset() {
         _events_tree.clear();
@@ -298,7 +302,20 @@ private:
         while(after_last_removed_it != _segments_tree.end() &&
               after_last_removed_it->sweepline_y_intersection(i) ==
                   std::get<1>(i)) {
-            _intersections.emplace_back(after_last_removed_it->segment_id);
+            // Without report_endpoints, a segment *ending* at the point is
+            // suppressed like the starting ones handled below -- otherwise
+            // the same endpoint-only geometry reports one event or zero
+            // depending on which side of the point the segments lie.
+            if constexpr(Traits::report_endpoints) {
+                _intersections.emplace_back(after_last_removed_it->segment_id);
+            } else {
+                const auto sid = after_last_removed_it->segment_id;
+                if(std::ranges::none_of(evts, [&](const auto & se) {
+                       return std::get<0>(se) == sid &&
+                              std::get<1>(se) == event_type::ending;
+                   }))
+                    _intersections.emplace_back(sid);
+            }
 
             if constexpr(requires {
                              _segments_tree.extract_and_get_next(
@@ -362,6 +379,8 @@ private:
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_events_tree.empty())) {
         return _events_tree.empty();

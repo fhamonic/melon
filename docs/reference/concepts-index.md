@@ -101,23 +101,29 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | `algorithmic_generator<A>` | `utility/algorithmic_generator.hpp` | `finished()`, `current()`, `advance()` |
 | `traversal_algorithm<A>` | `utility/algorithmic_generator.hpp` | the [lifecycle contract](../algorithms/index.md#the-lifecycle-contract): a movable generator range with chaining `reset()` and `run()` |
 | `rooted_traversal_algorithm<A, S>` | `utility/algorithmic_generator.hpp` | `traversal_algorithm` plus chaining `add_source(s)` |
-| `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::semiregular`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
+| `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::movable`, `std::default_initializable`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
 | `updatable_priority_queue<Q>` | `utility/priority_queue.hpp` | `priority_queue` plus `contains`, `priority`, `promote`, `demote` |
-| `semiring<S>` | `utility/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less` |
+| `mutable_entry_priority_map<Map, Entry>` | `container/d_ary_heap.hpp` | a `mapping` whose subscript yields a non-`const` lvalue reference into the entry — `promote()`/`demote()` write the priority through it |
+| `semiring<S>` | `utility/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less`; optional `infty_is_absorbing` promise, read through `has_absorbing_infty<S>` |
 | `breadth_first_search_traits<T>` | `algorithm/breadth_first_search.hpp` | the four BFS flags: `store_pred_vertices`, `store_pred_arcs`, `store_distances`, `store_traversal_range` |
 | `depth_first_search_traits<T>` | `algorithm/depth_first_search.hpp` | `store_pred_vertices`, `store_pred_arcs`, `store_depth` |
 | `topological_sort_traits<T>` | `algorithm/topological_sort.hpp` | `store_ranks`, `store_critical_paths` |
 | `strongly_connected_components_traits<T>` | `algorithm/strongly_connected_components.hpp` | `store_component_ids` |
 | `dijkstra_traits<T>` | `algorithm/dijkstra.hpp` | a `semiring`, an `updatable_priority_queue`, `store_distances`, `store_paths` |
+| `a_star_traits<T>` | `algorithm/a_star.hpp` | a `semiring`, an `updatable_priority_queue`, `store_distances`, `store_paths` |
 | `bidirectional_dijkstra_traits<T>` | `algorithm/bidirectional_dijkstra.hpp` | a `semiring`, an `updatable_priority_queue`, `store_paths` |
 | `network_voronoi_traits<T>` | `algorithm/network_voronoi.hpp` | a `semiring`, an `updatable_priority_queue`, and three flags: `store_distances`, `store_clusters`, `store_cluster_adjacency` |
 | `biobjective_dijkstra_traits<T>` | `algorithm/biobjective_dijkstra.hpp` | the two-objective label and heap types |
 | `competing_dijkstras_traits<T>` | `algorithm/competing_dijkstras.hpp` | a `semiring`, an `updatable_priority_queue`, a `(value, is_blue)`-shaped `entry`, and a strict-weak-order `entry_cmp` over it |
+| `bellman_ford_traits<T>` | `algorithm/bellman_ford.hpp` | a `semiring`, `store_paths`, `detect_negative_cycles` |
+| `bellman_ford_moore_traits<T>` | `algorithm/bellman_ford_moore.hpp` | a `semiring`, `store_paths`, `detect_negative_cycles` |
 | `alias_method_sampler_traits<T>` | `utility/alias_method_sampler.hpp` | `heuristic_preprocessing` |
 | `bentley_ottmann_traits<T>` | `algorithm/bentley_ottmann.hpp` | `Traits::report_endpoints` convertible to `bool` — the geometric kernel types are members of `bentley_ottmann_default_traits`, not concept requirements |
 | `cartesian_point<T>` | `utility/geometry.hpp` | `std::get<0>` and `std::get<1>` of the point |
 | `cartesian_segment<T>` | `utility/geometry.hpp` | two `cartesian_point`s |
 | `cartesian_line<T>` | `utility/geometry.hpp` | the line coefficients |
+| `numeric::promotion_strategy<Traits, T>` | `numeric/bounded_value.hpp` | `plus_overflows`, `substract_overflows`, `multiply_overflows` predicates over `T` |
+| `numeric::rational_scalar_operand<T>` | `numeric/rational.hpp` | an arithmetic type or a `bounded_value` — the scalar side of mixed `rational` arithmetic |
 
 **Aliases.** `traversal_entry_t<A>`.
 

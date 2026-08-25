@@ -57,11 +57,12 @@ private:
     static_assert(!Traits::store_pred_arcs || outward_incidence_graph<Graph>,
                   "storing predecessor arcs requires outward_incidence_graph.");
 
-    // size_type, not int: the fallback cursor is an index into _queue and is
-    // compared against _queue.size().
-    using cursor = std::conditional_t<has_num_vertices<Graph>,
-                                      typename std::vector<vertex>::iterator,
-                                      typename std::vector<vertex>::size_type>;
+    // An index, not an iterator into _queue: begin() of the empty queue is
+    // the insertion point of the first push_back, which formally invalidates
+    // it ([vector.modifiers]) even when a reserve prevents reallocation --
+    // exactly what checked-iterator builds flag. The index survives growth,
+    // and against a reserved vector it compiles to the same walk.
+    using cursor = typename std::vector<vertex>::size_type;
 
 private:
     Graph _graph;
@@ -80,6 +81,8 @@ private:
                                                 int> _dist_map;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
                      graph_for<G, Graph> && has_vertex_map<Graph>
@@ -92,10 +95,8 @@ public:
         , _dist_map(_graph) {
         if constexpr(has_num_vertices<Graph>) {
             _queue.reserve(num_vertices(_graph));
-            _queue_current = _queue.begin();
-        } else {
-            _queue_current = 0;
         }
+        _queue_current = 0;
     }
 
     template <typename G>
@@ -112,12 +113,6 @@ public:
         : breadth_first_search(std::forward<Args>(args)...) {}
 
     // Move-only; see the melon::traversal_algorithm concept for the ruling.
-    // Both moves stay defaulted: with has_num_vertices the cursor is an
-    // iterator *into* _queue, whose buffer transfers with the move, and the
-    // constructor's reserve() keeps it stable across the push_backs. A copy
-    // cannot be defaulted -- it would hand the new object an iterator into the
-    // source's buffer, so finished() would compare iterators from two different
-    // vectors and advance() would read freed memory.
     constexpr breadth_first_search(const breadth_first_search &) = delete;
     constexpr breadth_first_search(breadth_first_search &&) = default;
 
@@ -125,6 +120,8 @@ public:
         delete;
     constexpr breadth_first_search & operator=(breadth_first_search &&) =
         default;
+
+    // ---- Base access --------------------------------------------------------
 
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
@@ -137,19 +134,17 @@ public:
         return std::move(_graph);
     }
 
+    // ---- Setup --------------------------------------------------------------
+
     constexpr breadth_first_search & reset() {
         _queue.resize(0);
-        if constexpr(has_num_vertices<Graph>) {
-            _queue_current = _queue.begin();
-        } else {
-            _queue_current = 0;
-        }
+        _queue_current = 0;
         _reached_map.fill(false);
         return *this;
     }
     // Strict precondition: the vertex must not have been reached. Re-seeding
-    // one queues it twice, overrunning the reserve _queue_current's stability
-    // depends on.
+    // one queues it twice, overrunning the reserve that advance()'s
+    // by-reference vertex binding depends on.
     constexpr breadth_first_search & add_source(const vertex & s) {
         assert(!_reached_map[s]);
         _queue.push_back(s);
@@ -161,26 +156,22 @@ public:
         return *this;
     }
 
+    // ---- Execution ----------------------------------------------------------
+
     [[nodiscard]] constexpr bool finished() const noexcept {
-        if constexpr(has_num_vertices<Graph>) {
-            return _queue_current == _queue.end();
-        } else {
-            return _queue_current == _queue.size();
-        }
+        return _queue_current == _queue.size();
     }
 
 private:
     // What advance() walks with, kept separate from current() so that the
     // public accessor returning by value costs the hot loop nothing.
     [[nodiscard]] constexpr const vertex & _current_ref() const noexcept {
-        if constexpr(has_num_vertices<Graph>) {
-            return *_queue_current;
-        } else {
-            return _queue[_queue_current];
-        }
+        return _queue[_queue_current];
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     // By value: a reference into _queue would name storage the next advance()
     // writes into. The noexcept measures the copy the by-value return performs,
     // not just reaching the element.
@@ -222,6 +213,8 @@ public:
             }
         }
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const
         noexcept(noexcept(_reached_map[u])) {
@@ -307,17 +300,9 @@ public:
     [[nodiscard]] constexpr std::span<const vertex> traversal() const noexcept
         requires(Traits::store_traversal_range)
     {
-        if constexpr(has_num_vertices<Graph>) {
-            return std::span<const vertex>(
-                std::to_address(_queue_traversal_begin),
-                static_cast<std::size_t>(_queue_current -
-                                         _queue_traversal_begin));
-        } else {
-            return std::span<const vertex>(
-                _queue.data() + _queue_traversal_begin,
-                static_cast<std::size_t>(_queue_current -
-                                         _queue_traversal_begin));
-        }
+        return std::span<const vertex>(
+            _queue.data() + _queue_traversal_begin,
+            static_cast<std::size_t>(_queue_current - _queue_traversal_begin));
     }
 };
 
@@ -337,6 +322,8 @@ private:
     vertex_map_t<Graph, bool> _reached_map;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
                      graph_for<G, Graph> && has_vertex_map<Graph>
@@ -374,6 +361,8 @@ public:
     constexpr breadth_first_search & operator=(breadth_first_search &&) =
         default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -384,6 +373,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     constexpr breadth_first_search & reset() {
         _queue_traversal_begin = _queue_current = _queue_traversal_end =
@@ -401,6 +392,8 @@ public:
         _reached_map[s] = true;
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_queue_current == _queue_traversal_end)) {
@@ -426,6 +419,9 @@ public:
             _reached_map[w] = true;
         }
     }
+
+    // ---- Queries ------------------------------------------------------------
+
     [[nodiscard]] constexpr bool reached(const vertex & u) const
         noexcept(noexcept(_reached_map[u])) {
         return _reached_map[u];

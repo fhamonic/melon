@@ -154,11 +154,12 @@ public:
                 [this](const vertex & v) { return _vertex_filter[v]; });
         }
     }
+    // Absent under a vertex filter: filtering melon::arcs(_graph) by the arc
+    // filter alone keeps arcs whose ends are filtered out. Without this
+    // member, melon::arcs(g) falls back to detail::join_incidence over
+    // out_arcs, which does see the vertex filter.
     [[nodiscard]] constexpr auto arcs() const
-        requires std::same_as<VertexFilter,
-                              maps::true_map>  // if false, use the incidence
-                                               // join hierarchy of
-                                               // melon::arcs(g)
+        requires std::same_as<VertexFilter, maps::true_map>
     {
         if constexpr(std::same_as<ArcFilter, maps::true_map>) {
             return melon::arcs(_graph);
@@ -169,14 +170,15 @@ public:
         }
     }
 
-    // Forwarded only when the wrapped graph carries its *own* arcs_entries:
-    // forwarding the synthesised fallback would stack a transform on a
-    // transform, and dropping the member makes an entries-only graph stop
-    // modeling `graph` once wrapped.
+    // Delegated to the wrapped graph even when the CPO would synthesise the
+    // entries there: synthesising on the *view* would capture this object's
+    // address, which the filterless specialisation's borrowed promise below
+    // forbids. The filtered twin keeps the own-entries requirement -- it is
+    // never borrowed, and filtering the base's own entries is what lets an
+    // entries-only graph survive filtering at all.
     [[nodiscard]] constexpr decltype(auto) arcs_entries() const
         noexcept(noexcept(melon::arcs_entries(_graph)))
-        requires cpo::has_own_arcs_entries<Graph> &&
-                 std::same_as<VertexFilter, maps::true_map> &&
+        requires std::same_as<VertexFilter, maps::true_map> &&
                  std::same_as<ArcFilter, maps::true_map>
     {
         return melon::arcs_entries(_graph);
@@ -192,8 +194,8 @@ public:
     {
         return std::views::filter(
             melon::arcs_entries(_graph), [this](const auto & entry) {
-                return _vertex_filter[std::get<1>(entry).first] &&
-                       _vertex_filter[std::get<1>(entry).second] &&
+                return _vertex_filter[std::get<0>(std::get<1>(entry))] &&
+                       _vertex_filter[std::get<1>(std::get<1>(entry))] &&
                        _arc_filter[std::get<0>(entry)];
             });
     }
@@ -295,11 +297,11 @@ public:
                 melon::in_neighbors(_graph, v),
                 [this](const vertex & u) { return _vertex_filter[u]; });
         } else {
-            return std::views::filter(
-                std::views::transform(
-                    in_arcs(v),
-                    [&](const arc & a) -> vertex { return arc_source(a); }),
-                [&](const vertex & u) -> bool { return _vertex_filter[u]; });
+            // No vertex filter on top: the both-filters in_arcs above already
+            // rejected arcs whose source fails it.
+            return std::views::transform(
+                in_arcs(v),
+                [&](const arc & a) -> vertex { return arc_source(a); });
         }
     }
     [[nodiscard]] constexpr auto out_neighbors(const vertex & v) const
@@ -314,11 +316,11 @@ public:
                 melon::out_neighbors(_graph, v),
                 [&](const vertex & u) { return _vertex_filter[u]; });
         } else {
-            return std::views::filter(
-                std::views::transform(
-                    out_arcs(v),
-                    [&](const arc & a) -> vertex { return arc_target(a); }),
-                [&](const vertex & u) -> bool { return _vertex_filter[u]; });
+            // No vertex filter on top: the both-filters out_arcs above
+            // already rejected arcs whose target fails it.
+            return std::views::transform(
+                out_arcs(v),
+                [&](const arc & a) -> vertex { return arc_target(a); });
         }
     }
 

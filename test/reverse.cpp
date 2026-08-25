@@ -92,12 +92,12 @@ GTEST_TEST(reverse_views, static_graph) {
 // the endpoint maps are the wrapped graph's own, swapped -- not synthesised
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression 2.2: `reverse` spelled its endpoint maps `sources_map()` /
-// `targets_map()`, names no CPO ever looks for, so
-// arc_sources_map(reverse_view) fell back to the synthesised lambda instead of
-// handing back the wrapped graph's *targets* map. Values stayed right -- the
-// fallback calls arc_source, which reverse does swap correctly -- so only the
-// return type tells the two apart.
+// regression: endpoint maps spelled `sources_map()` / `targets_map()` are
+// names no CPO ever looks for, so arc_sources_map(reverse_view) falls back to
+// the synthesised lambda instead of handing back the wrapped graph's
+// *targets* map. The values stay right -- the fallback calls arc_source,
+// which reverse does swap correctly -- so only the return type tells the two
+// apart.
 GTEST_TEST(reverse_views, endpoint_maps_are_swapped_and_not_synthesised) {
     using G = static_digraph;
 
@@ -187,11 +187,11 @@ GTEST_TEST(reverse_views, dijkstra) {
 // copying a mutable lvalue view uses the copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// regression: `template <typename G> reverse(G &&)` was unconstrained, so for
-// a non-const lvalue of the view type it beat the copy constructor -- it
-// deduces an exact match where the copy constructor needs an added const --
-// and hard-errored on `static_cast<static_digraph &>` inside graph_ref_view.
-// `explicit` masked it: the copy-initialisation spelling `auto r2 = r;` never
+// regression: an unconstrained `template <typename G> reverse(G &&)` beats
+// the copy constructor for a non-const lvalue of the view type -- it deduces
+// an exact match where the copy constructor needs an added const -- and
+// hard-errors on `static_cast<static_digraph &>` inside graph_ref_view.
+// `explicit` masks it: the copy-initialisation spelling `auto r2 = r;` never
 // reaches the template.
 GTEST_TEST(reverse_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     static_digraph_builder<static_digraph> builder(3);

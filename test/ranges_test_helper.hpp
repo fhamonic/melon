@@ -7,10 +7,9 @@
 #include <algorithm>
 #include <initializer_list>
 #include <ranges>
+#include <utility>
+#include <vector>
 
-// template <typename T1, typename T2>
-// testing::AssertionResult & operator<<(testing::AssertionResult & result,
-//                                       const std::pair<T1, T2> & p);
 template <typename T1, typename T2>
 testing::AssertionResult & operator<<(testing::AssertionResult & result,
                                       const std::pair<T1, T2> & p) {
@@ -40,7 +39,7 @@ testing::AssertionResult & operator<<(testing::AssertionResult & result,
 template <std::ranges::range R>
 testing::AssertionResult SIZE(R && r, auto expected_size) {
     const auto size = std::ranges::distance(r);
-    if(size > 0) {
+    if(std::cmp_not_equal(size, expected_size)) {
         return ::testing::AssertionFailure()
                << "size is " << size << ", but expected to be "
                << expected_size;
@@ -52,7 +51,13 @@ testing::AssertionResult EMPTY(R && r) {
     return SIZE(std::forward<R>(r), 0);
 }
 
+// r1 is walked twice -- a distance() then the element loop -- so a
+// single-pass range (a live melon algorithm) takes the materializing
+// overload below: distance() alone would consume it, and the loop would
+// then compare zero elements, silently turning the check into a size-only
+// one.
 template <typename R1, typename R2>
+    requires std::ranges::forward_range<R1>
 testing::AssertionResult EQ_RANGES(R1 && r1, R2 && r2) {
     const auto r1_size = std::ranges::distance(r1);
     const auto r2_size = std::ranges::distance(r2);
@@ -74,6 +79,15 @@ testing::AssertionResult EQ_RANGES(R1 && r1, R2 && r2) {
         ++pos;
     }
     return ::testing::AssertionSuccess();
+}
+
+template <typename R1, typename R2>
+    requires std::ranges::input_range<R1> && (!std::ranges::forward_range<R1>)
+testing::AssertionResult EQ_RANGES(R1 && r1, R2 && r2) {
+    auto materialized =
+        std::ranges::to<std::vector<std::ranges::range_value_t<R1>>>(
+            std::forward<R1>(r1));
+    return EQ_RANGES(materialized, std::forward<R2>(r2));
 }
 
 template <typename R, typename T>

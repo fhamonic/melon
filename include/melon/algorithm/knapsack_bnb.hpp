@@ -63,9 +63,14 @@ private:
                             Cost bound_budget_left) const {
         for(; it < end; ++it) {
             if(bound_budget_left < it->second)
-                return static_cast<Value>(bound_value +
-                                          bound_budget_left * it->first /
-                                              static_cast<double>(it->second));
+                // The ratio is taken in double *before* the multiplication:
+                // budget * value first would multiply in the integer operand
+                // types, whose product overflows on instances whose bound
+                // itself fits comfortably.
+                return static_cast<Value>(
+                    bound_value +
+                    bound_budget_left *
+                        (it->first / static_cast<double>(it->second)));
             bound_budget_left -= it->second;
             bound_value += it->first;
         }
@@ -138,6 +143,8 @@ private:
     }
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     // Constrained on what the mem-initializers actually do, so
     // std::is_constructible answers what construction actually does instead of
     // hard-erroring outside the immediate context.
@@ -165,6 +172,8 @@ public:
 
     knapsack_bnb & operator=(const knapsack_bnb &) = delete;
     knapsack_bnb & operator=(knapsack_bnb &&) = default;
+
+    // ---- Setup --------------------------------------------------------------
 
     knapsack_bnb & reset() {
         _permuted_items.resize(0);
@@ -199,6 +208,8 @@ public:
         return reset();
     }
 
+    // ---- Execution ----------------------------------------------------------
+
     knapsack_bnb & run() {
         iterative_bnb();
         return *this;
@@ -218,6 +229,8 @@ public:
         }
         return true;
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] auto solution_items() const {
         return std::views::transform(_best_sol, [this](auto && it) {

@@ -10,7 +10,10 @@
 
 namespace melon {
 
-template <graph_view Graph, std::ranges::range Sources>
+// forward_range, not range: reset() rewinds the sources, so a single-pass
+// range must fail this constraint instead of hard-erroring inside the
+// consumable_view member below.
+template <graph_view Graph, std::ranges::forward_range Sources>
     requires std::same_as<std::ranges::range_value_t<Sources>, vertex_t<Graph>>
 class traversal_forest
     : public algorithm_view_interface<traversal_forest<Graph, Sources>> {
@@ -43,6 +46,8 @@ private:
     bool _sources_from_base = false;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename G>
         requires detail::not_self<G, traversal_forest> && graph_for<G, Graph> &&
                      std::constructible_from<
@@ -129,6 +134,8 @@ public:
         return *this;
     }
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _bfs.base(); }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _bfs.base();
@@ -139,6 +146,8 @@ public:
     [[nodiscard]] constexpr const Graph && base() const && noexcept {
         return std::move(_bfs).base();
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     // Rewinds the sources the constructor was given -- re-deriving them from
     // the graph would throw a caller-supplied source range away, and for the
@@ -151,6 +160,8 @@ public:
         if(!finished()) advance();
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_remaining_sources.empty())) {
@@ -172,6 +183,8 @@ public:
         _bfs.add_source(_remaining_sources.current()).run();
     }
 
+    // ---- Queries ------------------------------------------------------------
+
     [[nodiscard]] constexpr bool reached(const vertex & u) const
         noexcept(noexcept(_bfs.reached(u))) {
         return _bfs.reached(u);
@@ -186,7 +199,7 @@ public:
         noexcept(std::move(_bfs).reached_map())) {
         return std::move(_bfs).reached_map();
     }
-};  // namespace melon
+};
 
 template <typename Graph>
 traversal_forest(Graph &&)

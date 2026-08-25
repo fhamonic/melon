@@ -436,9 +436,9 @@ GTEST_TEST(strongly_connected_components, subgraph_lambda_test) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // reset() has to restore the constructor's state exactly, first component
-// included. It used to leave _index_map behind -- and reached() is what reads
-// it -- so every vertex still looked visited and the restarted run walked
-// straight to finished(). It also skipped the constructor's advance().
+// included. _index_map left behind -- and reached() is what reads it -- makes
+// every vertex still look visited, so a restarted run walks straight to
+// finished(); the constructor's advance() has to be redone as well.
 GTEST_TEST(strongly_connected_components, reset_restarts_the_whole_run) {
     // one 3-cycle plus an isolated vertex: two components
     static_digraph_builder<static_digraph> builder(4);
@@ -479,9 +479,9 @@ GTEST_TEST(strongly_connected_components, reset_restarts_the_whole_run) {
 // a graph with no vertices is finished() from the start
 ////////////////////////////////////////////////////////////////////////////////
 
-// advance() reads _remaining_vertices.current(); the constructor used to call
-// it unconditionally, so a graph with no vertices read past the end of an empty
-// view. Such a graph is finished() from the start.
+// advance() reads _remaining_vertices.current(); called unconditionally from
+// the constructor, it reads past the end of an empty view on a graph with no
+// vertices. Such a graph is finished() from the start.
 GTEST_TEST(strongly_connected_components, empty_graph) {
     static_digraph_builder<static_digraph> builder(0);
     auto [graph] = builder.build();
@@ -510,10 +510,10 @@ struct scc_store_ids_traits {
     static constexpr bool store_component_ids = true;
 };
 
-// The lowlink counterexample of the design review: for the single-component
-// graph 0->1, 0->2, 1->0, 2->1 the finished lowlinks are not uniform, so the
-// old same_component() -- which compared lowlinks -- said same_component(0,1)
-// but not same_component(0,2). The stored ids are uniform.
+// The lowlink counterexample: for the single-component graph 0->1, 0->2,
+// 1->0, 2->1 the finished lowlinks are not uniform, so a same-component query
+// answered by comparing lowlinks says yes for (0,1) but no for (0,2). The
+// stored ids are uniform.
 GTEST_TEST(strongly_connected_components, component_ids_single_scc) {
     static_digraph_builder<static_digraph> builder(3);
     builder.add_arc(0, 1).add_arc(0, 2).add_arc(1, 0).add_arc(2, 1);
@@ -528,7 +528,7 @@ GTEST_TEST(strongly_connected_components, component_ids_single_scc) {
 }
 
 // Ids are dense and follow emission order -- the k-th component yielded is id
-// k -- and same_component() separates what it should separate.
+// k -- and equal ids answer the same-component question.
 GTEST_TEST(strongly_connected_components, component_ids_emission_order) {
     static_digraph_builder<static_digraph> builder(8);
 
@@ -590,8 +590,8 @@ GTEST_TEST(strongly_connected_components, component_ids_emission_order) {
 }
 
 // Without the flag the map is not stored and the id queries do not exist --
-// and there is no same_component() at all anymore: the old one answered from
-// lowlinks, which are not uniform within a finished component.
+// and there is no same_component() at all: one answering from lowlinks would
+// compare values that are not uniform within a finished component.
 template <typename A>
 concept answers_component_id = requires(
     const A & a, const vertex_t<static_digraph> & v) { a.component_id(v); };
@@ -617,7 +617,7 @@ GTEST_TEST(strongly_connected_components, no_ids_without_the_flag) {
                                       scc_store_ids_traits>;
     static_assert(answers_component_id<ids_alg>);
     static_assert(answers_component_ids_map<ids_alg>);
-    // same_component() is gone in every configuration
+    // no configuration exposes a same_component()
     static_assert(!answers_same_component<default_alg>);
     static_assert(!answers_same_component<ids_alg>);
     // the guarded map is [[no_unique_address]] air when the flag is off
@@ -629,11 +629,10 @@ GTEST_TEST(strongly_connected_components, no_ids_without_the_flag) {
 // single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// The unconstrained `strongly_connected_components(T &&)` beat the copy
-// constructor for a non-const lvalue and tried to build the algorithm out of
-// itself; detail::not_self is what excludes it. Now that copy is deleted, the
-// pin is that an algorithm is not constructible from an algorithm lvalue at
-// all.
+// An unconstrained `strongly_connected_components(T &&)` beats the copy
+// constructor for a non-const lvalue and tries to build the algorithm out of
+// itself; detail::not_self is what excludes it. With copy deleted, the pin is
+// that an algorithm is not constructible from an algorithm lvalue at all.
 GTEST_TEST(strongly_connected_components,
            is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);

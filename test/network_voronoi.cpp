@@ -43,7 +43,6 @@ GTEST_TEST(network_voronoi, test) {
     network_voronoi alg(graph, length_map, kernels);
 
     static_assert(std::movable<decltype(alg)> && !std::copyable<decltype(alg)>);
-    std::cout << "network_voronoi size: " << sizeof(decltype(alg)) << std::endl;
 
     ASSERT_FALSE(alg.finished());
     ASSERT_EQ(alg.current(), std::make_pair(0u, std::make_pair(0, 0u)));
@@ -170,9 +169,9 @@ GTEST_TEST(network_voronoi, store_cluster_adjacency_is_inert) {
 // guides
 ////////////////////////////////////////////////////////////////////////////////
 
-// Same as dijkstra: the default lived on the deduction guides only, so
-// `network_voronoi<G, LM>` did not compile and CTAD's result could not be
-// named. It is on the class now, and the guides no longer carry one.
+// Same as dijkstra: with the default on the deduction guides only,
+// `network_voronoi<G, LM>` does not compile and CTAD's result cannot be
+// named. It lives on the class, and the guides carry none.
 namespace traits_default {
 using G = views::graph_all_t<static_digraph &>;
 using LM = maps::mapping_all_t<static_map<arc_t<static_digraph>, int> &>;
@@ -232,10 +231,10 @@ struct network_voronoi_storing_traits
 
 static_assert(network_voronoi_traits<network_voronoi_storing_traits>);
 
-// regression: the default traits hardcoded cluster_id_t = unsigned int, so a
-// graph with wider vertex ids silently truncated its kernel ids (std::pair's
-// forwarding constructor bypasses the braced-init narrowing check). A cluster
-// id names a kernel vertex, so it is the graph's vertex type.
+// regression: a cluster id names a kernel vertex, so it is the graph's vertex
+// type. A hardcoded cluster_id_t = unsigned int silently truncates kernel ids
+// on a graph with wider vertex ids (std::pair's forwarding constructor
+// bypasses the braced-init narrowing check).
 static_assert(std::same_as<
               network_voronoi_default_traits<static_digraph, int>::cluster_id_t,
               vertex_t<static_digraph>>);

@@ -101,6 +101,8 @@ private:
     length_type _st_dist = Traits::semiring::infty;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
         requires has_vertex_map<Graph>
     constexpr bidirectional_dijkstra(G && g, LM && lm)
@@ -138,6 +140,8 @@ public:
     constexpr bidirectional_dijkstra & operator=(bidirectional_dijkstra &&) =
         default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -149,7 +153,9 @@ public:
         return std::move(_graph);
     }
 
-    bidirectional_dijkstra & reset() {
+    // ---- Setup --------------------------------------------------------------
+
+    constexpr bidirectional_dijkstra & reset() {
         _forward_heap.clear();
         _reverse_heap.clear();
         _vertex_status_map.fill(std::make_pair(PRE_HEAP, PRE_HEAP));
@@ -160,16 +166,16 @@ public:
     // Strict precondition: the vertex must be untouched in the direction being
     // seeded. Re-seeding a settled one silently corrupts the stored paths and
     // the meeting distance.
-    bidirectional_dijkstra & add_source(
-        const vertex & s, const length_type dist = Traits::semiring::zero) {
+    constexpr bidirectional_dijkstra & add_source(
+        const vertex & s, const length_type & dist = Traits::semiring::zero) {
         assert(_vertex_status_map[s].first == PRE_HEAP);
         _forward_heap.push(std::make_pair(s, dist));
         _vertex_status_map[s].first = IN_HEAP;
         if constexpr(Traits::store_paths) _forward_pred_arcs_map[s].reset();
         return *this;
     }
-    bidirectional_dijkstra & add_target(
-        const vertex & t, const length_type dist = Traits::semiring::zero) {
+    constexpr bidirectional_dijkstra & add_target(
+        const vertex & t, const length_type & dist = Traits::semiring::zero) {
         assert(_vertex_status_map[t].second == PRE_HEAP);
         _reverse_heap.push(std::make_pair(t, dist));
         _vertex_status_map[t].second = IN_HEAP;
@@ -178,6 +184,8 @@ public:
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     // Idempotent: the loop resumes from the member state and re-derives the
     // same stopping condition, so a second call is a no-op.
     constexpr bidirectional_dijkstra & run() {
@@ -293,9 +301,12 @@ public:
         return *this;
     }
 
+    // ---- Queries ------------------------------------------------------------
+
     // The best s-t distance found; Traits::semiring::infty when no path
     // connects a source to a target. Meaningful once run() has returned.
-    [[nodiscard]] constexpr length_type dist() const noexcept {
+    [[nodiscard]] constexpr length_type dist() const
+        noexcept(std::is_nothrow_copy_constructible_v<length_type>) {
         return _st_dist;
     }
 
@@ -353,6 +364,13 @@ private:
             const forward_path_iterator & it, std::default_sentinel_t) {
             return !it._cursor.has_value();
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const forward_path_iterator & it1,
+            const forward_path_iterator & it2) noexcept(noexcept(it1._cursor ==
+                                                                 it2._cursor)) {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
     class reverse_path_iterator
         : public detail::intrusive_iterator_base<bidirectional_dijkstra,
@@ -382,9 +400,18 @@ private:
             const reverse_path_iterator & it, std::default_sentinel_t) {
             return !it._cursor.has_value();
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const reverse_path_iterator & it1,
+            const reverse_path_iterator & it2) noexcept(noexcept(it1._cursor ==
+                                                                 it2._cursor)) {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
 
 public:
+    // ---- Queries ------------------------------------------------------------
+
     [[nodiscard]] constexpr auto
     path() const noexcept(noexcept(detail::views::concat(
         std::ranges::subrange(

@@ -33,6 +33,8 @@ private:
     vertex_map_t<UGraph, bool> _reached_map;
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename UG>
         requires detail::not_self<UG, connected_components> &&
                      undirected_graph_for<UG, UGraph> && has_vertex_map<UGraph>
@@ -94,6 +96,8 @@ public:
         return *this;
     }
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr UGraph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const UGraph & base() const & noexcept {
         return _graph;
@@ -104,6 +108,8 @@ public:
     [[nodiscard]] constexpr const UGraph && base() const && noexcept {
         return std::move(_graph);
     }
+
+    // ---- Setup --------------------------------------------------------------
 
     // Restores the constructor's state, first component included: without the
     // advance() the queue stays empty while finished() still says false, so
@@ -119,6 +125,8 @@ public:
         }
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_remaining_vertices.empty())) {
@@ -158,6 +166,8 @@ private:
     }
 
 public:
+    // ---- Execution ----------------------------------------------------------
+
     constexpr void advance() {
         assert(_finished_component());
         assert(!finished());
@@ -182,6 +192,8 @@ public:
             ++_queue_current;
         }
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     [[nodiscard]] constexpr bool reached(const vertex & u) const
         noexcept(noexcept(_reached_map[u])) {

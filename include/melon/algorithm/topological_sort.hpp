@@ -98,11 +98,15 @@ private:
             }
         }
         if constexpr(Traits::store_ranks) _rank_map.fill(0);
-        // After the push_backs above, never before them.
+        // Taken after the push_backs: an iterator grabbed while the vector is
+        // empty sits at the insertion point, which push_back formally
+        // invalidates -- checked-iterator builds flag the traversal.
         _queue_current = _queue.begin();
     }
 
 public:
+    // ---- Construction -------------------------------------------------------
+
     template <typename G>
         requires detail::not_self<G, topological_sort> && graph_for<G, Graph> &&
                      has_vertex_map<Graph>
@@ -136,6 +140,8 @@ public:
     constexpr topological_sort & operator=(const topological_sort &) = delete;
     constexpr topological_sort & operator=(topological_sort &&) = default;
 
+    // ---- Base access --------------------------------------------------------
+
     [[nodiscard]] constexpr Graph & base() & noexcept { return _graph; }
     [[nodiscard]] constexpr const Graph & base() const & noexcept {
         return _graph;
@@ -148,10 +154,14 @@ public:
     }
 
 public:
+    // ---- Setup --------------------------------------------------------------
+
     constexpr topological_sort & reset() {
         push_start_vertices();
         return *this;
     }
+
+    // ---- Execution ----------------------------------------------------------
 
     [[nodiscard]] constexpr bool finished() const
         noexcept(noexcept(_queue_current == _queue.end())) {
@@ -182,6 +192,8 @@ public:
             }
         }
     }
+
+    // ---- Queries ------------------------------------------------------------
 
     // Whether the graph carried no directed cycle. Precondition: finished() --
     // a vertex on a cycle, or behind one, keeps a positive remaining in-degree
@@ -260,9 +272,18 @@ private:
             const path_iterator & it, std::default_sentinel_t) {
             return !it._structure->_pred_arcs_map[it._cursor].has_value();
         }
+        [[nodiscard]] constexpr friend bool operator==(
+            const path_iterator & it1,
+            const path_iterator & it2) noexcept(noexcept(it1._cursor ==
+                                                         it2._cursor)) {
+            assert(it1._structure == it2._structure);
+            return it1._cursor == it2._cursor;
+        }
     };
 
 public:
+    // ---- Queries ------------------------------------------------------------
+
     [[nodiscard]] constexpr auto critical_path_to(const vertex & t) const
         noexcept(noexcept(std::ranges::subrange(path_iterator(this, t),
                                                 std::default_sentinel)))

@@ -1,18 +1,12 @@
-// NDEBUG-INDEPENDENT: static assertions only, so the `#undef NDEBUG` every
-// other test file opens with would guard nothing here. The marker is what
-// the source-hygiene CI job accepts in its place.
-// Regression tests from the second and third pre-1.0 API-review passes, run
-// after the first pass's findings were fixed. Like api_consistency.cpp these
-// are mostly family-wide invariants; every test here was checked to fail before
-// the fix it guards and passes after. The file is organised by theme, not by
-// review pass.
+// Regression tests from the pre-1.0 API-review passes. Like api_consistency.cpp
+// these are mostly family-wide invariants. The file is organised by theme, not
+// by review pass.
 //
 // The relocation tests deliberately destroy the source before reading the
 // moved-to object: a cursor that still points into a *live* source reads
-// plausible values, which is why the original defects survived a full suite.
-// They were written against copy, which no longer exists -- algorithms are
-// move-only (see the melon::traversal_algorithm concept) -- so each now
-// relocates by move, which is the operation the cursor rebasing still serves.
+// plausible values, which is how a full suite can miss the defect. Algorithms
+// are move-only (see the melon::traversal_algorithm concept), so each test
+// relocates by move -- the operation the cursor rebasing serves.
 
 #undef NDEBUG
 #include <gtest/gtest.h>
@@ -20,6 +14,8 @@
 #include <concepts>
 #include <memory>
 #include <ranges>
+#include <string>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -43,11 +39,14 @@
 #include "melon/container/static_forward_digraph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
+#include "melon/views/complete_digraph.hpp"
 #include "melon/views/graph_view.hpp"
 #include "melon/views/reverse.hpp"
 #include "melon/views/subgraph.hpp"
 #include "melon/views/undirect.hpp"
 #include "melon/views/undirected_graph_view.hpp"
+
+#include "ranges_test_helper.hpp"
 
 using namespace melon;
 
@@ -163,16 +162,15 @@ GTEST_TEST(api_review, generic_bfs_move_keeps_its_cursor) {
 
 // A cursor over a non-borrowed range keeps an iterator that refers back into
 // the range it holds (a filter_view iterator holds a parent pointer), and these
-// cursors live inside a std::vector. Relocating that vector therefore used to
-// leave every stack frame's cursor aimed at freed memory -- with no copy
+// cursors live inside a std::vector. Relocating that vector without rebasing
+// leaves every stack frame's cursor aimed at freed memory -- with no copy
 // anywhere in the program. The branch at the root is what makes it reachable:
 // without it the traversal never increments a relocated cursor.
 //
 // This one only *fails* under a sanitizer -- the read lands on freed memory
 // that still holds the right bytes -- so it is written for the
-// linux-gcc15-sanitize job (-DMELON_SANITIZE=address,undefined), where the old
-// code reported a heap-use-after-free in
-// detail::consumable_input_view::current().
+// linux-gcc15-sanitize job (-DMELON_SANITIZE=address,undefined), which reports
+// the heap-use-after-free in detail::consumable_input_view::current().
 GTEST_TEST(api_review, dfs_cursors_survive_stack_reallocation) {
     constexpr unsigned n = 12;
     static_digraph_builder<static_digraph> b(n);
@@ -198,18 +196,17 @@ GTEST_TEST(api_review, dfs_cursors_survive_stack_reallocation) {
 // object's cursors at the old object's graph. Every cached cursor is keyed by
 // the vertex it walks from, so relocation *re-asks the new graph* for each
 // frame's range and the consumed counter restores the position -- which is
-// what makes the move sound, where the defaulted move it replaces was not
-// (the old pin here claimed soundness the ASan trace refuted).
+// what makes the move sound where a defaulted memberwise move is not.
 GTEST_TEST(api_review, algorithms_caching_ranges_rebase_on_relocation) {
     static_digraph static_g;
     mutable_digraph mutable_g;
 
-    // Move-only, and uniformly so. This used to be the family's most confusing
-    // corner: copyability depended on the algorithm, on whether a view sat in
-    // between, and on whether the container underneath handed out std-borrowed
-    // incidence ranges -- depth_first_search over a subgraph of a
-    // static_digraph was not copyable while the same over a mutable_digraph
-    // was. There is one answer for every combination now.
+    // Move-only, and uniformly so: left to the members, copyability would
+    // depend on the algorithm, on whether a view sat in between, and on
+    // whether the container underneath hands out std-borrowed incidence
+    // ranges -- depth_first_search over a subgraph of a static_digraph not
+    // copyable while the same over a mutable_digraph is. One answer for every
+    // combination.
     using dfs_static = decltype(depth_first_search(static_g, 0u));
     using dfs_mutable = decltype(depth_first_search(mutable_g, 0u));
     using dfs_reverse =
@@ -263,8 +260,8 @@ GTEST_TEST(api_review, algorithms_caching_ranges_rebase_on_relocation) {
     EXPECT_EQ(visited, expected);
 }
 
-// views::undirect promised its ranges survive the view being relocated while
-// its incidence lambdas captured `this`.
+// views::undirect promises its ranges survive the view being relocated, so
+// its incidence lambdas must not capture `this`.
 GTEST_TEST(api_review, undirect_ranges_do_not_capture_the_view) {
     using RV = graph_ref_view<static_digraph>;
     using OWN = graph_owning_view<static_digraph>;
@@ -285,7 +282,7 @@ GTEST_TEST(api_review, undirect_ranges_do_not_capture_the_view) {
     for(auto && e : range) expected.emplace_back(e.first, e.second);
 
     U relocated = *held;  // a copy the trait licenses
-    held.reset();         // the object the lambdas used to point at
+    held.reset();         // the object this-capturing lambdas would point at
 
     std::vector<std::pair<unsigned, unsigned>> got;
     for(auto && e : melon::incidence(relocated, 1u))
@@ -298,8 +295,9 @@ GTEST_TEST(api_review, undirect_ranges_do_not_capture_the_view) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // induced_subgraph over an *rvalue* range: std::views::all_t of a temporary
-// container is a move-only owning_view, so a vertices() returning by value was
-// ill-formed and the whole type silently stopped modelling graph.
+// container is a move-only owning_view, so a vertices() that returns the
+// member by value is ill-formed and the whole type silently stops modelling
+// graph.
 GTEST_TEST(api_review, induced_subgraph_accepts_an_owned_vertex_range) {
     static_digraph_builder<static_digraph> b(4);
     b.add_arc(0u, 1u).add_arc(1u, 2u).add_arc(2u, 3u);
@@ -314,8 +312,8 @@ GTEST_TEST(api_review, induced_subgraph_accepts_an_owned_vertex_range) {
     EXPECT_EQ(seen, (std::vector<unsigned>{0u, 1u, 2u}));
 }
 
-// traversal_forest used to store the graph view twice -- once itself, once
-// inside its breadth_first_search -- and built the second from the first as an
+// Storing the graph view twice -- once in traversal_forest itself, once
+// inside its breadth_first_search -- builds the second from the first as an
 // lvalue, which needs a copy graph_owning_view does not have.
 GTEST_TEST(api_review, traversal_forest_accepts_an_owned_graph) {
     static_digraph_builder<static_digraph> b(4);
@@ -329,8 +327,8 @@ GTEST_TEST(api_review, traversal_forest_accepts_an_owned_graph) {
 }
 
 // The re-seeding idiom detail::consumable_input_view exists for --
-// `_remaining_out_arcs[u] = out_arcs(_graph, u)` -- is a prvalue, which never
-// bound to the old `operator=(R &)`.
+// `_remaining_out_arcs[u] = out_arcs(_graph, u)` -- is a prvalue, which an
+// `operator=(R &)` can never bind.
 GTEST_TEST(api_review, consumable_cursor_is_assignable_from_a_prvalue_range) {
     static_digraph_builder<static_digraph> b(3);
     b.add_arc(0u, 1u).add_arc(0u, 2u);
@@ -345,12 +343,12 @@ GTEST_TEST(api_review, consumable_cursor_is_assignable_from_a_prvalue_range) {
     detail::consumable_input_view<range> cursor(melon::out_arcs(sub, 0u));
     cursor.advance();
     ASSERT_FALSE(cursor.empty());
-    cursor = melon::out_arcs(sub, 0u);  // did not compile before
+    cursor = melon::out_arcs(sub, 0u);  // the prvalue assignment is the pin
     EXPECT_FALSE(cursor.empty());
 }
 
-// views::graph_all had no constructible_from guard, so asking the question at
-// all hard-errored for an lvalue move-only view instead of picking a branch.
+// Without its constructible_from guard, views::graph_all hard-errors for an
+// lvalue move-only view instead of picking a branch.
 GTEST_TEST(api_review, graph_all_is_sfinae_friendly) {
     using OWN = graph_owning_view<static_digraph>;
     static_assert(requires(OWN & v) { views::graph_all(v); });
@@ -393,9 +391,9 @@ struct entries_only_digraph {
 };
 }  // namespace
 
-// graph_forwarding_interface forwarded sixteen accessors and not arcs_entries,
-// so views::graph_all -- which every algorithm and every view calls -- turned a
-// graph of the shape above into a non-graph.
+// If graph_forwarding_interface forwards the other accessors but not
+// arcs_entries, views::graph_all -- which every algorithm and every view
+// calls -- turns a graph of the shape above into a non-graph.
 GTEST_TEST(api_review, views_do_not_drop_arcs_entries) {
     static_assert(melon::graph<entries_only_digraph>);
     static_assert(melon::graph<graph_ref_view<entries_only_digraph>>);
@@ -408,6 +406,66 @@ GTEST_TEST(api_review, views_do_not_drop_arcs_entries) {
         std::same_as<decltype(melon::arcs_entries(std::declval<const MD &>())),
                      decltype(melon::arcs_entries(
                          std::declval<const graph_ref_view<MD> &>()))>);
+    SUCCEED();
+}
+
+namespace {
+// arcs_entries with the wrong shape: flat (arc, source, target) triples
+// instead of an (arc, (source, target)) entry.
+struct flat_entries_digraph {
+    auto vertices() const { return std::views::iota(0u, 3u); }
+    auto arcs() const { return std::views::iota(0u, 2u); }
+    auto arcs_entries() const {
+        return std::views::transform(
+            arcs(), [](unsigned a) { return std::make_tuple(a, a, a + 1u); });
+    }
+};
+// The same wrong shape, plus the accessors the CPO can synthesise correct
+// entries from.
+struct flat_entries_with_endpoints_digraph : flat_entries_digraph {
+    auto arc_source(unsigned a) const { return a; }
+    auto arc_target(unsigned a) const { return a + 1u; }
+};
+// The right shape carrying foreign element types.
+struct string_entries_digraph {
+    auto vertices() const { return std::views::iota(0u, 3u); }
+    auto arcs() const { return std::views::iota(0u, 2u); }
+    auto arcs_entries() const {
+        return std::views::transform(arcs(), [](unsigned a) {
+            return std::make_pair(
+                a, std::make_pair(std::string("u"), std::string("v")));
+        });
+    }
+};
+}  // namespace
+
+// A wrong-shaped arcs_entries member is not the protocol -- the way a member
+// begin() returning a non-iterator is invisible to std::ranges::begin. Without
+// this pin the type above satisfies `graph` and the shape mismatch surfaces as
+// a template avalanche inside the transform lambda of whichever view or
+// algorithm first touches an entry.
+GTEST_TEST(api_review, arcs_entries_entry_shape_is_pinned) {
+    static_assert(!melon::graph<flat_entries_digraph>);
+    static_assert(!melon::cpo::has_own_arcs_entries<flat_entries_digraph>);
+
+    // With endpoint accessors present the misshapen member is bypassed, not
+    // forwarded: the graph stays a `graph` through the synthesised entries.
+    static_assert(melon::graph<flat_entries_with_endpoints_digraph>);
+    static_assert(
+        !melon::cpo::has_own_arcs_entries<flat_entries_with_endpoints_digraph>);
+    static_assert(
+        std::same_as<
+            std::ranges::range_value_t<decltype(melon::arcs_entries(
+                std::declval<const flat_entries_with_endpoints_digraph &>()))>,
+            std::pair<unsigned, std::pair<unsigned, unsigned>>>);
+
+    // Detection is shape-only, so entries of foreign element types are still
+    // the graph's own protocol -- a vertex-filtered subgraph of an
+    // entries-only graph must keep its member detectable with no arcs() route
+    // (subgraph_keeps_arcs_entries below). Type coherence with arc_t /
+    // vertex_t is `graph`'s half of the check.
+    static_assert(melon::cpo::has_own_arcs_entries<string_entries_digraph>);
+    static_assert(!melon::graph<string_entries_digraph>);
     SUCCEED();
 }
 
@@ -434,9 +492,10 @@ GTEST_TEST(api_review, reverse_crosses_over_arcs_entries) {
 }
 
 // A view forwards the validity *question* without forwarding the mutation, so
-// views::subgraph can ask it. It used to ask has_vertex_removal, which no view
-// satisfies, leaving the branch dead: a vertex removed from the graph came back
-// valid from its subgraph while vertices() had already stopped listing it.
+// views::subgraph can ask it. Gating the branch on has_vertex_removal, which
+// no view satisfies, leaves it dead: a vertex removed from the graph comes
+// back valid from its subgraph while vertices() has already stopped listing
+// it.
 GTEST_TEST(api_review, subgraph_sees_removals_in_the_graph_underneath) {
     using MD = mutable_digraph;
     using RV = graph_ref_view<MD>;
@@ -462,10 +521,10 @@ GTEST_TEST(api_review, subgraph_sees_removals_in_the_graph_underneath) {
     EXPECT_TRUE(sg.is_valid_vertex(b));
 }
 
-// subgraph dropped arcs_entries the same way graph_forwarding_interface once
-// did (views_do_not_drop_arcs_entries above): a filterless subgraph of an
-// entries-only graph stopped modeling `graph` at all, and a graph with its
-// own arcs_entries got the synthesized fallback. And since an entry names the
+// subgraph can drop arcs_entries the same way graph_forwarding_interface can
+// (views_do_not_drop_arcs_entries above): a filterless subgraph of an
+// entries-only graph then stops modeling `graph` at all, and a graph with its
+// own arcs_entries gets the synthesized fallback. And since an entry names the
 // arc and both endpoints -- everything the filters need -- a *filtered*
 // subgraph filters the base's own entries too, which is the only possible
 // protocol for a graph with no endpoint accessors. (An arc-filtered subgraph
@@ -558,7 +617,6 @@ GTEST_TEST(api_review, filterless_subgraph_is_borrowed) {
 // noexcept specifications are honest in both directions
 ////////////////////////////////////////////////////////////////////////////////
 
-// subgraph.hpp was missed entirely by the sweep the other views got.
 GTEST_TEST(api_review, subgraph_does_not_lie_about_noexcept) {
     static_digraph g;
     auto sub = views::subgraph(g);
@@ -576,8 +634,8 @@ GTEST_TEST(api_review, subgraph_does_not_lie_about_noexcept) {
     SUCCEED();
 }
 
-// num_vertices was the one member of every view that carried no specification
-// at all, while its num_arcs / num_edges sibling carried a conditional one.
+// num_vertices carries the same conditional specification as its num_arcs /
+// num_edges siblings on every view.
 GTEST_TEST(api_review, views_keep_the_num_vertices_guarantee) {
     static_digraph g;
     auto ref = graph_ref_view(g);
@@ -590,12 +648,11 @@ GTEST_TEST(api_review, views_keep_the_num_vertices_guarantee) {
     SUCCEED();
 }
 
-// Each CPO used to carry a private is_noexcept() that re-ran the same
-// `if constexpr` its operator() ran, in a different place -- and in
-// undirected_graph.hpp the two drifted, so the specification came from an
-// overload the operator never called. Twenty-three of the twenty-six are now
-// one constrained overload per protocol, with the noexcept beside the
-// expression it measures. This pins both directions.
+// A private is_noexcept() that re-runs the operator()'s `if constexpr` in a
+// different place drifts from it -- in undirected_graph.hpp the specification
+// then comes from an overload the operator never calls. The CPOs keep the
+// noexcept beside the expression it measures, one constrained overload per
+// protocol. This pins both directions.
 namespace {
 struct throwing_graph {
     std::vector<unsigned> _v{0u, 1u};
@@ -643,10 +700,9 @@ GTEST_TEST(api_review, cpo_noexcept_follows_the_branch_it_takes) {
 
 // current() returns the vertex by value, and the copy that return performs is
 // part of what its noexcept must measure: with a throwing-copy vertex type a
-// nothrow claim turns the first throw into std::terminate. BFS, DFS and
-// topological_sort only measured reaching the element; dijkstra carried no
-// specification at all -- three spellings in one family, now all the
-// competing_dijkstras one.
+// nothrow claim turns the first throw into std::terminate. Measuring only the
+// reach of the element, or carrying no specification at all, both make that
+// claim.
 namespace {
 struct throwing_copy_vertex {
     unsigned id = 0;
@@ -712,8 +768,7 @@ GTEST_TEST(api_review, current_noexcept_measures_the_returned_copy) {
         !noexcept(std::declval<const topological_sort<TG> &>().current()));
 
     // Positive control: a nothrow-copy vertex keeps the guarantee, and
-    // dijkstra -- the family member with no specification at all -- now
-    // reports it like the rest.
+    // dijkstra reports it like the rest.
     using G = views::graph_all_t<static_digraph &>;
     using L =
         maps::mapping_all_t<static_map<arc_t<static_digraph>, unsigned> &>;
@@ -733,7 +788,7 @@ GTEST_TEST(api_review, current_noexcept_measures_the_returned_copy) {
 
 // A deduction guide that defaults Traits computes it over the *deduced* graph
 // type -- a reference -- while the class computes it over graph_all_t, so the
-// two named different specialisations of <algo>_default_traits.
+// two would name different specialisations of <algo>_default_traits.
 GTEST_TEST(api_review, deduced_type_equals_the_spelled_out_one) {
     static_digraph g;
     std::vector<double> length_map;
@@ -765,8 +820,8 @@ concept run_returns_self = requires(A a) {
 };
 }  // namespace
 
-// run() answered void in ten algorithms and Algo & in four; reset() already
-// returned Algo & everywhere. Returning the reference is the additive fix.
+// run() returns Algo & family-wide, matching reset() -- a void run() breaks
+// the `alg.run().dist()` idiom, and only for some family members.
 GTEST_TEST(api_review, run_returns_the_algorithm) {
     static_digraph g;
     std::vector<double> length_map;
@@ -821,7 +876,7 @@ template <typename T>
 concept has_traversal = requires(const T & t) { t.traversal(); };
 
 // Both flags off: whichever specialisation a graph selects, traversal() must
-// be absent. It used to be unconditional in the branchless one.
+// be absent.
 struct plain_bfs_traits {
     static constexpr bool store_pred_vertices = false;
     static constexpr bool store_pred_arcs = false;
@@ -851,8 +906,7 @@ concept reports_reached =
 
 // Three shapes, each matching the std::ranges view it corresponds to:
 // ref_view (one overload, reference), owning_view (four, ref-qualified) and
-// the adaptors (a copy of the adapted view). There used to be three
-// *different* conventions and no base() at all on subgraph or undirect.
+// the adaptors (a copy of the adapted view).
 GTEST_TEST(api_review, base_follows_the_std_ranges_shapes) {
     using SD = static_digraph;
     using RV = graph_ref_view<SD>;
@@ -876,15 +930,15 @@ GTEST_TEST(api_review, base_follows_the_std_ranges_shapes) {
     static_assert(std::same_as<decltype(std::declval<REV>().base()), RV>);
     static_assert(!has_const_base<reverse_view<OWN>>);
     static_assert(has_rvalue_base<reverse_view<OWN>>);
-    // Both of these had none before.
     static_assert(
         has_const_base<subgraph_view<RV, maps::true_map, maps::true_map>>);
     static_assert(has_const_base<undirect_view<RV>>);
     SUCCEED();
 }
 
-// store_traversal_range was silently ignored by the branchless specialisation,
-// and the two returned different types for the same member.
+// Both specialisations honour store_traversal_range and return the same type
+// for the same member -- a flag silently ignored by one of them drifts the
+// two APIs apart.
 GTEST_TEST(api_review, both_bfs_specialisations_expose_the_same_api) {
     using RV = graph_ref_view<static_digraph>;
     using vertex = melon::vertex_t<static_digraph>;
@@ -918,7 +972,7 @@ GTEST_TEST(api_review, both_bfs_specialisations_expose_the_same_api) {
     SUCCEED();
 }
 
-// reached_map() sat on two of the eight algorithms that answer reached().
+// reached_map() accompanies reached() on every algorithm that answers it.
 GTEST_TEST(api_review, reached_map_accompanies_reached) {
     using RV = graph_ref_view<static_digraph>;
     using LM = maps::mapping_all_t<std::vector<double> &>;
@@ -1100,8 +1154,7 @@ GTEST_TEST(api_review, expiring_map_accessors_extract_the_stored_map) {
         EXPECT_EQ(owned_reached[v], expected_reached[v]) << "vertex " << v;
 }
 
-// vertices/edges were the only CPOs returning decltype(auto), so their range
-// aliases were the only ones that could name a reference type.
+// No CPO returns decltype(auto), so no range alias can name a reference type.
 GTEST_TEST(api_review, range_aliases_are_never_references) {
     static_assert(!std::is_reference_v<vertices_range_t<static_digraph>>);
     static_assert(
@@ -1114,9 +1167,9 @@ GTEST_TEST(api_review, range_aliases_are_never_references) {
 // melon's ranges and containers conform to what std expects of them
 ////////////////////////////////////////////////////////////////////////////////
 
-// out_arcs() built its iota from a ternary mixing `arc` with num_arcs()'s
-// std::size_t, so its common type was size_t: a non-common range twice the
-// size of the one arcs() produced from explicitly cast ends. The size is
+// An iota built from a ternary mixing `arc` with num_arcs()'s std::size_t
+// widens its common type to size_t: a non-common range twice the size of the
+// one arcs() produces from explicitly cast ends. The size is
 // multiplied by where these cursors live -- one per depth_first_search stack
 // frame, one per vertex in each of dinitz's two maps.
 GTEST_TEST(api_review, incidence_ranges_are_common_and_narrow) {
@@ -1138,7 +1191,7 @@ GTEST_TEST(api_review, incidence_ranges_are_common_and_narrow) {
     SUCCEED();
 }
 
-// The container interface every standard container has and these two did not.
+// The container interface every standard container has; both maps offer it.
 GTEST_TEST(api_review, maps_offer_the_standard_container_interface) {
     using SM = static_map<unsigned, int>;
     using SFM = static_filter_map<unsigned>;
@@ -1170,3 +1223,115 @@ GTEST_TEST(api_review, maps_offer_the_standard_container_interface) {
     EXPECT_THROW((void)m.at(9u), std::out_of_range);
     EXPECT_THROW((void)f.at(9u), std::out_of_range);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// the range- and closure-returning CPOs reject rvalue graphs whose result
+// would dangle: a temporary is admitted only where the graph's borrowed
+// promise covers its own handed-out ranges, and never for a synthesized
+// result, which captures the graph object's address
+////////////////////////////////////////////////////////////////////////////////
+
+namespace rvalue_cpos {
+template <typename G>
+concept rvalue_vertices = requires { melon::vertices(G{}); };
+template <typename G>
+concept rvalue_arcs = requires { melon::arcs(G{}); };
+template <typename G>
+concept rvalue_arcs_entries = requires { melon::arcs_entries(G{}); };
+template <typename G>
+concept rvalue_out_arcs =
+    requires(melon::vertex_t<G> v) { melon::out_arcs(G{}, v); };
+template <typename G>
+concept rvalue_out_neighbors =
+    requires(melon::vertex_t<G> v) { melon::out_neighbors(G{}, v); };
+template <typename G>
+concept rvalue_arc_targets_map = requires { melon::arc_targets_map(G{}); };
+}  // namespace rvalue_cpos
+
+static_assert(!rvalue_cpos::rvalue_vertices<static_digraph>);
+static_assert(!rvalue_cpos::rvalue_arcs<static_digraph>);
+static_assert(!rvalue_cpos::rvalue_arcs_entries<static_digraph>);
+static_assert(!rvalue_cpos::rvalue_out_arcs<static_digraph>);
+static_assert(!rvalue_cpos::rvalue_out_neighbors<static_digraph>);
+static_assert(!rvalue_cpos::rvalue_arc_targets_map<static_digraph>);
+// the borrowed graph with its own members keeps rvalue support
+static_assert(rvalue_cpos::rvalue_vertices<views::complete_digraph<>>);
+static_assert(rvalue_cpos::rvalue_arcs_entries<views::complete_digraph<>>);
+static_assert(rvalue_cpos::rvalue_out_neighbors<views::complete_digraph<>>);
+
+////////////////////////////////////////////////////////////////////////////////
+// views::graph_all rejects const rvalues instead of silently deep-copying
+// into a graph_owning_view<const G> that is not even a graph_view --
+// std::views::all's precedent
+////////////////////////////////////////////////////////////////////////////////
+
+namespace graph_all_categories {
+template <typename T>
+concept accepted = requires(T && t) { views::graph_all(std::forward<T>(t)); };
+}  // namespace graph_all_categories
+static_assert(graph_all_categories::accepted<static_digraph &>);
+static_assert(graph_all_categories::accepted<const static_digraph &>);
+static_assert(graph_all_categories::accepted<static_digraph>);
+static_assert(!graph_all_categories::accepted<const static_digraph>);
+
+////////////////////////////////////////////////////////////////////////////////
+// on an equal-rank incidence tie the synthesized arcs() and arcs_entries()
+// join the same direction, so the two CPOs enumerate one order
+////////////////////////////////////////////////////////////////////////////////
+
+namespace tiebreak {
+struct two_arc_graph {
+    auto vertices() const { return std::views::iota(0u, 2u); }
+    auto out_arcs(unsigned int u) const {
+        return std::views::single(u == 0u ? 0u : 1u);
+    }
+    auto in_arcs(unsigned int u) const {
+        return std::views::single(u == 0u ? 1u : 0u);
+    }
+    unsigned int arc_source(unsigned int a) const { return a; }
+    unsigned int arc_target(unsigned int a) const { return 1u - a; }
+};
+}  // namespace tiebreak
+
+GTEST_TEST(api_review, synthesized_arcs_and_entries_agree_on_the_tiebreak) {
+    static_assert(melon::graph<tiebreak::two_arc_graph>);
+    tiebreak::two_arc_graph g;
+    ASSERT_TRUE(EQ_RANGES(melon::arcs(g), {0u, 1u}));
+    std::vector<unsigned int> entry_arcs;
+    for(auto && e : melon::arcs_entries(g))
+        entry_arcs.push_back(std::get<0>(e));
+    ASSERT_TRUE(EQ_RANGES(entry_arcs, {0u, 1u}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// the creation capabilities accept convertible handle returns, like the
+// arc_entries_range_of precedent: a member the CPO dispatches to is not
+// invisible to the capability concept
+////////////////////////////////////////////////////////////////////////////////
+
+namespace convertible_creation {
+struct widening_creation_graph : mutable_digraph {
+    unsigned long create_vertex() { return mutable_digraph::create_vertex(); }
+};
+}  // namespace convertible_creation
+static_assert(
+    has_vertex_creation<convertible_creation::widening_creation_graph>);
+
+////////////////////////////////////////////////////////////////////////////////
+// neighbor member detection probes the element type through
+// range_reference_t: a self-contained but non-borrowed member range (a
+// filter/concat view) is a member all the same
+////////////////////////////////////////////////////////////////////////////////
+
+namespace nonborrowed_neighbors {
+struct filtering_graph : static_digraph {
+    using static_digraph::static_digraph;
+    auto out_neighbors(const unsigned int & u) const {
+        return std::views::filter(
+            melon::out_neighbors(static_cast<const static_digraph &>(*this), u),
+            [](unsigned int) { return true; });
+    }
+};
+}  // namespace nonborrowed_neighbors
+static_assert(melon::cpo::has_member_out_neighbors<
+              nonborrowed_neighbors::filtering_graph>);

@@ -6,6 +6,7 @@ Every accessor in melon — `melon::vertices`, `melon::out_arcs`, `melon::arc_ta
 2. **They cannot be hijacked by ADL at the call site.** `vertices(g)` inside a `using namespace melon;` scope resolves to the CPO, which then does the lookup itself.
 3. **Several of them fall back.** When a graph does not provide a function directly, the CPO synthesizes it from what the graph *does* provide — which is why a structure with three members is already a `graph`.
 4. **They all return by value.** Every range-returning CPO decay-copies, so `vertices_range_t<G>`, `arcs_range_t<G>` and friends are never reference types. Return a *view*, not a reference to a container: if your graph stores its vertices in a `std::vector`, return `std::views::all(_vertices)` — a `std::ranges::ref_view`, which copies nothing. Returning `const std::vector<vertex> &` would be copied by the CPO on every call. The same rule is why `arc_targets_map()` returns a `mapping_ref_view` rather than a `const static_map &`.
+5. **They demand an lvalue graph.** A range- or closure-returning CPO rejects a temporary at compile time: `melon::arcs_entries(build_graph())` would hand back a view into an object that dies at the end of the expression, exactly as `std::ranges::begin` refuses rvalue containers. Bind the graph to a name first. The one exception is a [borrowed](../views/ownership.md#borrowed-graphs) graph providing the protocol itself — its handed-out ranges outlive the object, so a temporary is admitted there.
 
 ## The full table
 
@@ -75,7 +76,7 @@ None of these has a fallback; providing one is what makes the corresponding conc
 
 For `arcs_entries` the priority is:
 
-1. a member or ADL `arcs_entries` — always wins;
+1. a member or ADL `arcs_entries` — always wins, *provided its entries have the documented shape*: tuple-likes of size 2 pairing the arc with a tuple-like `(source, target)` pair. A member with any other shape is not the protocol — the way `std::ranges::begin` ignores a member `begin()` that returns a non-iterator — and the CPO moves on to the routes below;
 2. listing `arcs` and pairing each with `arc_source`/`arc_target`, when the `arcs` range ranks at least as high as the incidence ranges;
 3. joining the out-incidences, when they rank above the in-incidences;
 4. joining the in-incidences otherwise.

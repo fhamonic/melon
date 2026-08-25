@@ -253,12 +253,12 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: remove_vertex() relinks each incidence chain through
-// .next_in_arc and splices it onto the free list, but published the chain's
-// *tail* as the new head instead of its first arc. Only one arc per chain came
-// back; the rest were unreachable forever, so _arcs grew without bound under
-// churn -- and with it every create_arc_map, which sizes on _arcs.size()
-// rather than num_arcs(). Nothing above catches it: the structure stays
-// perfectly consistent, only the ids leak.
+// .next_in_arc and splices it onto the free list. Publishing the chain's
+// *tail* as the new head instead of its first arc brings only one arc per
+// chain back; the rest are unreachable forever, so _arcs grows without bound
+// under churn -- and with it every create_arc_map, which sizes on
+// _arcs.size() rather than num_arcs(). Nothing above catches it: the
+// structure stays perfectly consistent, only the ids leak.
 GTEST_TEST(mutable_digraph, remove_vertex_frees_every_incident_arc) {
     mutable_digraph graph;
     const auto hub = create_vertex(graph);
@@ -325,9 +325,9 @@ GTEST_TEST(mutable_digraph, arc_ids_stay_bounded_by_the_peak_arc_count) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// a moved-from graph is a valid empty graph. The vectors empty on move but
-// the defaulted member-wise move kept the counts and list heads, so the
-// source claimed vertices its vectors no longer held.
+// a moved-from graph is a valid empty graph. The vectors empty on move, but a
+// defaulted member-wise move keeps the counts and list heads, so the source
+// claims vertices its vectors no longer hold.
 ////////////////////////////////////////////////////////////////////////////////
 
 GTEST_TEST(mutable_digraph, moved_from_is_a_valid_empty_graph) {
@@ -391,3 +391,23 @@ static_assert(std::same_as<std::iterator_traits<vertices_it>::iterator_category,
                            std::input_iterator_tag>);
 static_assert(
     std::same_as<vertices_it::iterator_concept, std::forward_iterator_tag>);
+
+////////////////////////////////////////////////////////////////////////////////
+// vertex and arc handles share one id type, so iterator equality is defined
+// per derived iterator: cursors from unrelated lists must not compare at all
+// rather than compare equal on equal ids
+////////////////////////////////////////////////////////////////////////////////
+
+static_assert(!std::equality_comparable_with<
+              std::ranges::iterator_t<decltype(out_arcs(
+                  std::declval<const mutable_digraph &>(),
+                  std::declval<vertex_t<mutable_digraph>>()))>,
+              std::ranges::iterator_t<decltype(in_arcs(
+                  std::declval<const mutable_digraph &>(),
+                  std::declval<vertex_t<mutable_digraph>>()))>>);
+static_assert(!std::equality_comparable_with<
+              std::ranges::iterator_t<
+                  decltype(vertices(std::declval<const mutable_digraph &>()))>,
+              std::ranges::iterator_t<decltype(out_arcs(
+                  std::declval<const mutable_digraph &>(),
+                  std::declval<vertex_t<mutable_digraph>>()))>>);

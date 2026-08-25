@@ -109,8 +109,8 @@ GTEST_TEST(topological_sort, algorithm_iterator) {
 // store_ranks: rank() is the longest-path level of a vertex, gated on its flag
 ////////////////////////////////////////////////////////////////////////////////
 
-// The flag used to be called store_distances and assigned _dist_map[w] from
-// whichever predecessor happened to bring w's in-degree to zero, which is an
+// The flag is store_ranks, not store_distances: a "distance" assigned from
+// whichever predecessor happens to bring w's in-degree to zero is an
 // arbitrary choice among them. A rank has to clear *every* predecessor, so it
 // accumulates with max -- these tests pin that down.
 //
@@ -208,11 +208,10 @@ GTEST_TEST(topological_sort, rank_strictly_increases_along_every_arc) {
 // reached() tells the sorted vertices apart from those stuck on a cycle
 ////////////////////////////////////////////////////////////////////////////////
 
-// Regression: _reached_map was filled with false and read by reached(), but
-// nothing ever wrote true to it. Every accessor guarded by
-// assert(reached(u)) -- rank(), pred_vertex(), pred_arc() -- therefore fired
-// in a debug build, which no test noticed because none of the three flags was
-// ever switched on.
+// Regression: _reached_map is filled with false and read by reached(); if
+// nothing writes true to it, every accessor guarded by assert(reached(u)) --
+// rank(), pred_vertex(), pred_arc() -- fires in a debug build, and only a
+// test that switches one of the three flags on can notice.
 GTEST_TEST(topological_sort, reached_marks_the_sorted_vertices) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(0, 3);
@@ -400,9 +399,9 @@ GTEST_TEST(topological_sort, critical_paths_without_arc_source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Regression: the run decrements every remaining in-degree to zero, so
-// clearing the queue and the reached map was not enough to restart: nothing
-// re-seeded the start vertices, and reset() left an object that reported
-// finished() immediately and yielded nothing. reset() now goes through
+// clearing the queue and the reached map is not enough to restart: with
+// nothing re-seeding the start vertices, reset() leaves an object that
+// reports finished() immediately and yields nothing. reset() goes through
 // push_start_vertices().
 GTEST_TEST(topological_sort, reset_re_seeds_the_queue) {
     static_digraph_builder<static_digraph> builder(5);
@@ -447,10 +446,10 @@ GTEST_TEST(topological_sort, reset_re_seeds_the_queue) {
 // single-argument constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-// The unconstrained `topological_sort(G &&)` beat the copy constructor for a
-// non-const lvalue and tried to build the algorithm out of itself;
-// detail::not_self is what excludes it. Now that copy is deleted, the pin is
-// that an algorithm is not constructible from an algorithm lvalue at all.
+// An unconstrained `topological_sort(G &&)` beats the copy constructor for a
+// non-const lvalue and tries to build the algorithm out of itself;
+// detail::not_self is what excludes it. With copy deleted, the pin is that an
+// algorithm is not constructible from an algorithm lvalue at all.
 GTEST_TEST(topological_sort, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
     builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);

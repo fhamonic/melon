@@ -100,9 +100,21 @@ GTEST_TEST(biobjective_dijkstra, test) {
     biobjective_dijkstra alg(graph, blue_length_map, red_length_map);
     alg.add_source(0u);
 
-    // for(auto && [v, label] : alg) {
-    //     std::print("{} : ({},{})\n", v, label.first, label.second);
-    // }
+    // Iteration is the contract run() never checks: every yielded label is
+    // non-dominated at yield time, in nondecreasing blue order, and kept in
+    // the vertex's final front.
+    std::vector<std::pair<unsigned int, std::pair<int, int>>> yields;
+    for(auto && [v, label] : alg) {
+        if(!yields.empty()) {
+            ASSERT_LE(yields.back().second.first, label.first);
+        }
+        ASSERT_FALSE(alg.is_dominated(v, label));
+        yields.emplace_back(v, label);
+    }
+    ASSERT_TRUE(alg.finished());
+    for(const auto & [v, label] : yields) {
+        ASSERT_EQ(std::ranges::count(alg.pareto_front(v), label), 1);
+    }
 
     alg.run();
     ASSERT_TRUE(alg.finished());

@@ -165,7 +165,7 @@ auto dist = [&](auto a) {
 for(auto && [v, d] : dijkstra(cd, dist, 0u)) { ... }
 ```
 
-The template parameters are the integer types for vertices and arcs, both `unsigned int` by default — worth widening for large `n`, since the arc count is quadratic.
+The template parameters are the *unsigned* integer types for vertices and arcs, both `unsigned int` by default — worth widening for large `n`, since the arc count is quadratic. Signed handles are rejected at the concept: the view's empty incidence subranges rely on unsigned wraparound.
 
 ## Composition
 

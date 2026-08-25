@@ -51,10 +51,9 @@ GTEST_TEST(bidirectional_dijkstra, test) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // bidirectional_dijkstra is the one algorithm whose flag defaults to *true*,
-// so the distance-only configuration was never instantiated: neither the
-// detail::vertex_map_if that drops both predecessor maps, nor the
-// requires-clauses that are supposed to withdraw the path accessors along with
-// them.
+// so nothing but this test instantiates the distance-only configuration:
+// neither the detail::vertex_map_if that drops both predecessor maps, nor the
+// requires-clauses that withdraw the path accessors along with them.
 namespace {
 struct bidirectional_dijkstra_pathless_traits
     : bidirectional_dijkstra_default_traits<static_digraph, int> {
@@ -134,9 +133,9 @@ GTEST_TEST(bidirectional_dijkstra, store_path_false) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Same defect as dijkstra::pred_arc: add_source() and add_target() reset the
-// optionals of the source and the target, and both accessors returned them
-// with .value() from a noexcept function, so querying either endpoint threw
-// into std::terminate. Both now assert the precondition.
+// optionals of the source and the target, so an accessor returning them with
+// .value() from a noexcept function throws straight into std::terminate when
+// an endpoint is queried. Both assert the precondition instead.
 GTEST_TEST(bidirectional_dijkstra, endpoint_pred_arcs_are_preconditions) {
     static_digraph_builder<static_digraph, int> builder(4);
     builder.add_arc(0, 1, 1)
@@ -161,9 +160,9 @@ GTEST_TEST(bidirectional_dijkstra, endpoint_pred_arcs_are_preconditions) {
 // type can be named and matches CTAD
 ////////////////////////////////////////////////////////////////////////////////
 
-// Same as dijkstra: the default lived on the deduction guides only, so
-// `bidirectional_dijkstra<G, LM>` did not compile and CTAD's result could not
-// be named. It is on the class now, and the guides no longer carry one.
+// Same as dijkstra: with the default on the deduction guides only,
+// `bidirectional_dijkstra<G, LM>` does not compile and CTAD's result cannot
+// be named. It lives on the class, and the guides carry none.
 namespace traits_default {
 using G = views::graph_all_t<static_digraph &>;
 using LM = maps::mapping_all_t<static_map<arc_t<static_digraph>, int> &>;
