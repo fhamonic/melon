@@ -6,6 +6,7 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <utility>
 
 #include "melon/numeric/bounded_value.hpp"
 
@@ -219,7 +220,11 @@ public:
     // It is *deduced* down to partial_ordering for floating components --
     // their cross products compare partially (NaN), and a hard-coded
     // weak_ordering return type makes every ordering comparison against a
-    // double ill-formed while == and the arithmetic compile fine.
+    // double ill-formed while == and the arithmetic compile fine. The
+    // category argument is spelled with declval rather than the body's
+    // r1.num() * r2.den(): member access on rational in the trailing return
+    // type is instantiated by clang while the class is still incomplete
+    // (gcc defers it).
     template <typename N2, typename D2>
     [[nodiscard]] friend constexpr bool operator==(
         const rational & r1, const rational<N2, D2> & r2) {
@@ -228,9 +233,12 @@ public:
     template <typename N2, typename D2>
     [[nodiscard]] friend constexpr auto operator<=>(const rational & r1,
                                                     const rational<N2, D2> & r2)
-        -> std::common_comparison_category_t<decltype((r1.num() * r2.den()) <=>
-                                                      (r2.num() * r1.den())),
-                                             std::weak_ordering> {
+        -> std::common_comparison_category_t<
+            decltype((std::declval<const NumT &>() *
+                      std::declval<const D2 &>()) <=>
+                     (std::declval<const N2 &>() *
+                      std::declval<const DenT &>())),
+            std::weak_ordering> {
         return (r1.num() * r2.den()) <=> (r2.num() * r1.den());
     }
     template <typename T>
@@ -239,11 +247,14 @@ public:
                                                    const T & a) {
         return r == numeric::rational(a);
     }
+    // Deduced return, not `-> decltype(r <=> numeric::rational(a))`: clang
+    // substitutes trailing return types before checking constraints, so a
+    // rational right-hand operand would re-enter this very overload
+    // resolution and blow past the instantiation depth limit.
     template <typename T>
         requires scalar_operand<T>
     [[nodiscard]] friend constexpr auto operator<=>(const rational & r,
-                                                    const T & a)
-        -> decltype(r <=> numeric::rational(a)) {
+                                                    const T & a) {
         return r <=> numeric::rational(a);
     }
 

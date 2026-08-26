@@ -1,13 +1,3 @@
-// Regression tests from the pre-1.0 API-review passes. Like api_consistency.cpp
-// these are mostly family-wide invariants. The file is organised by theme, not
-// by review pass.
-//
-// The relocation tests deliberately destroy the source before reading the
-// moved-to object: a cursor that still points into a *live* source reads
-// plausible values, which is how a full suite can miss the defect. Algorithms
-// are move-only (see the melon::traversal_algorithm concept), so each test
-// relocates by move -- the operation the cursor rebasing serves.
-
 #undef NDEBUG
 #include <gtest/gtest.h>
 

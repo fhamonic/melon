@@ -1,12 +1,3 @@
-// Regression tests from the pre-1.0 API review: naming and const-ness drift
-// across the algorithm family, encapsulation slips, noexcept that would call
-// std::terminate, and [[nodiscard]] where it buys nothing.
-//
-// These are family-wide invariants rather than per-algorithm behaviour, so
-// they live together: the point of each one is that it holds for *every*
-// member of a list, and a new algorithm that breaks the pattern should fail
-// here rather than in whichever file happens to cover it.
-
 #undef NDEBUG
 #include <gtest/gtest.h>
 

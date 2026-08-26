@@ -76,11 +76,13 @@ public:
     // O(1), and the only way in_degree exists at all: in_arcs below is a
     // concat of two subranges, which is not a sized_range, so the CPO's
     // size-of-the-range fallback never fires for it.
-    [[nodiscard]] constexpr vertex out_degree(const vertex u) const noexcept {
+    [[nodiscard]] constexpr vertex out_degree(
+        [[maybe_unused]] const vertex u) const noexcept {
         assert(u < _vertices_end);
         return static_cast<vertex>(_vertices_end - 1);
     }
-    [[nodiscard]] constexpr vertex in_degree(const vertex u) const noexcept {
+    [[nodiscard]] constexpr vertex in_degree(
+        [[maybe_unused]] const vertex u) const noexcept {
         assert(u < _vertices_end);
         return static_cast<vertex>(_vertices_end - 1);
     }

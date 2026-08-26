@@ -110,13 +110,13 @@ GTEST_TEST(a_star, perfect_heuristic_prunes_to_the_shortest_path) {
 
     ASSERT_EQ(alg.dist(3u), 21);
     int walked = 0;
-    std::size_t num_arcs = 0;
+    std::size_t arcs_count = 0;
     for(auto && a : alg.path_to(3u)) {
         walked += length_map[a];
-        ++num_arcs;
+        ++arcs_count;
     }
     ASSERT_EQ(walked, 21);
-    ASSERT_EQ(num_arcs, 2u);
+    ASSERT_EQ(arcs_count, 2u);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
