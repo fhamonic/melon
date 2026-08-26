@@ -74,12 +74,12 @@ GTEST_TEST(dumb_digraph, create_arcs) {
 
     ASSERT_TRUE(EQ_MULTISETS(vertices(graph), {0, 1, 2}));
 
-    ASSERT_EQ(arc_source(graph, 0), 0);
-    ASSERT_EQ(arc_source(graph, 1), 0);
-    ASSERT_EQ(arc_source(graph, 2), 2);
-    ASSERT_EQ(arc_target(graph, 0), 1);
-    ASSERT_EQ(arc_target(graph, 1), 2);
-    ASSERT_EQ(arc_target(graph, 2), 1);
+    ASSERT_EQ(arc_source(graph, 0), 0u);
+    ASSERT_EQ(arc_source(graph, 1), 0u);
+    ASSERT_EQ(arc_source(graph, 2), 2u);
+    ASSERT_EQ(arc_target(graph, 0), 1u);
+    ASSERT_EQ(arc_target(graph, 1), 2u);
+    ASSERT_EQ(arc_target(graph, 2), 1u);
 
     ASSERT_TRUE(
         EQ_MULTISETS(arcs_entries(graph),

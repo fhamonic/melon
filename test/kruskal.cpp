@@ -44,19 +44,19 @@ GTEST_TEST(kruskal, test) {
     kruskal alg(ugraph, cost_map);
 
     ASSERT_FALSE(alg.finished());
-    ASSERT_EQ(alg.current(), 6);
+    ASSERT_EQ(alg.current(), 6u);
     alg.advance();
     ASSERT_FALSE(alg.finished());
-    ASSERT_EQ(alg.current(), 7);
+    ASSERT_EQ(alg.current(), 7u);
     alg.advance();
     ASSERT_FALSE(alg.finished());
-    ASSERT_EQ(alg.current(), 0);
+    ASSERT_EQ(alg.current(), 0u);
     alg.advance();
     ASSERT_FALSE(alg.finished());
-    ASSERT_EQ(alg.current(), 1);
+    ASSERT_EQ(alg.current(), 1u);
     alg.advance();
     ASSERT_FALSE(alg.finished());
-    ASSERT_EQ(alg.current(), 8);
+    ASSERT_EQ(alg.current(), 8u);
     alg.advance();
     ASSERT_TRUE(alg.finished());
 

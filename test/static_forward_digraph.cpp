@@ -26,8 +26,8 @@ static_assert(melon::has_arc_map<static_forward_digraph>);
 
 GTEST_TEST(static_forward_digraph, empty_constructor) {
     static_forward_digraph graph;
-    ASSERT_EQ(num_vertices(graph), 0);
-    ASSERT_EQ(num_arcs(graph), 0);
+    ASSERT_EQ(num_vertices(graph), 0u);
+    ASSERT_EQ(num_arcs(graph), 0u);
     ASSERT_TRUE(EMPTY(vertices(graph)));
     ASSERT_TRUE(EMPTY(arcs(graph)));
     ASSERT_TRUE(EMPTY(arcs_entries(graph)));
@@ -44,8 +44,8 @@ GTEST_TEST(static_forward_digraph, empty_vectors_constructor) {
     std::vector<vertex_t<static_forward_digraph>> targets;
 
     static_forward_digraph graph(0, std::move(sources), std::move(targets));
-    ASSERT_EQ(num_vertices(graph), 0);
-    ASSERT_EQ(num_arcs(graph), 0);
+    ASSERT_EQ(num_vertices(graph), 0u);
+    ASSERT_EQ(num_arcs(graph), 0u);
     ASSERT_TRUE(EMPTY(vertices(graph)));
     ASSERT_TRUE(EMPTY(arcs(graph)));
     ASSERT_TRUE(EMPTY(arcs_entries(graph)));
@@ -68,8 +68,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_1) {
     static_forward_digraph graph(
         3, std::views::keys(std::views::values(arc_pairs)),
         std::views::values(std::views::values(arc_pairs)));
-    ASSERT_EQ(num_vertices(graph), 3);
-    ASSERT_EQ(num_arcs(graph), 5);
+    ASSERT_EQ(num_vertices(graph), 3u);
+    ASSERT_EQ(num_arcs(graph), 5u);
 
     ASSERT_TRUE(EQ_RANGES(vertices(graph), {0, 1, 2}));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), {0, 1, 2, 3, 4}));
@@ -105,8 +105,8 @@ GTEST_TEST(static_forward_digraph, vectors_constructor_2) {
     static_forward_digraph graph(
         8, std::views::keys(std::views::values(arc_pairs)),
         std::views::values(std::views::values(arc_pairs)));
-    ASSERT_EQ(num_vertices(graph), 8);
-    ASSERT_EQ(num_arcs(graph), 9);
+    ASSERT_EQ(num_vertices(graph), 8u);
+    ASSERT_EQ(num_arcs(graph), 9u);
 
     ASSERT_TRUE(EQ_RANGES(vertices(graph), {0, 1, 2, 3, 4, 5, 6, 7}));
     ASSERT_TRUE(EQ_RANGES(arcs(graph), {0, 1, 2, 3, 4, 5, 6, 7, 8}));

@@ -269,10 +269,11 @@ static_assert(!can_mapping_all<not_a_mapping>);
 // what is under test here is the layer beneath it -- that the *concepts* answer
 // false about such a view instead of hard-erroring.
 namespace {
-auto mutable_lambda = [counter = std::ptrdiff_t{0}](unsigned k) mutable {
-    return k + (counter++);
-};
-using mutable_lambda_map_t = mapping_owning_view<decltype(mutable_lambda)>;
+using mutable_lambda_t =
+    decltype([counter = std::ptrdiff_t{0}](unsigned k) mutable {
+        return k + (counter++);
+    });
+using mutable_lambda_map_t = mapping_owning_view<mutable_lambda_t>;
 }  // namespace
 
 // Named concepts rather than bare requires-expressions: outside a template
@@ -330,7 +331,7 @@ struct ref_qualified_functor {
 };
 }  // namespace
 
-static_assert(detail::has_non_const_call_operator<decltype(mutable_lambda)>);
+static_assert(detail::has_non_const_call_operator<mutable_lambda_t>);
 static_assert(detail::has_non_const_call_operator<mutable_functor>);
 static_assert(detail::has_non_const_call_operator<noexcept_mutable_functor>);
 

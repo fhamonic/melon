@@ -218,8 +218,10 @@ GTEST_TEST(mutable_digraph, fuzzy_test) {
 
             ASSERT_TRUE(EQ_MULTISETS(vertices(graph), dummy_graph.vertices()));
             ASSERT_TRUE(EQ_MULTISETS(arcs(graph), dummy_graph.arcs()));
-            ASSERT_EQ(num_vertices(graph), dummy_graph.num_vertices());
-            ASSERT_EQ(num_arcs(graph), dummy_graph.num_arcs());
+            ASSERT_EQ(num_vertices(graph),
+                      static_cast<std::size_t>(dummy_graph.num_vertices()));
+            ASSERT_EQ(num_arcs(graph),
+                      static_cast<std::size_t>(dummy_graph.num_arcs()));
             ASSERT_TRUE(
                 EQ_MULTISETS(arcs_entries(graph), dummy_graph.arcs_entries()));
 

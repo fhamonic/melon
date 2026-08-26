@@ -288,7 +288,7 @@ GTEST_TEST(topological_sort, pred_chain_walks_a_longest_path) {
         ASSERT_EQ(steps, alg.rank(v)) << "vertex " << v;
     }
 
-    std::vector<std::size_t> expected_ranks = {0, 0, 1, 1, 2, 3, 4, 1, 5};
+    std::vector<int> expected_ranks = {0, 0, 1, 1, 2, 3, 4, 1, 5};
     for(const auto & v : vertices(graph)) {
         ASSERT_EQ(alg.rank(v), expected_ranks[v]);
     }

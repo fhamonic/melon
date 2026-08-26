@@ -54,31 +54,31 @@ static_assert(std::same_as<probe_map::difference_type,
 
 GTEST_TEST(static_map, empty_constructor) {
     static_map<std::size_t, int> map;
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 }
 
 GTEST_TEST(static_map, size_constructor) {
     static_map<std::size_t, int> map(0);
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
     static_map<std::size_t, int> map2(5);
-    ASSERT_EQ(map2.size(), 5);
+    ASSERT_EQ(map2.size(), 5u);
     ASSERT_NE(map2.begin(), map.end());
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 }
 
 GTEST_TEST(static_map, size_init_constructor) {
     static_map<std::size_t, int> map(0, 0);
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
     static_map<std::size_t, int> map2(5, 113);
-    ASSERT_EQ(map2.size(), 5);
+    ASSERT_EQ(map2.size(), 5u);
     ASSERT_NE(map2.begin(), map.end());
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
@@ -89,7 +89,7 @@ GTEST_TEST(static_map, size_init_constructor) {
 
 GTEST_TEST(static_map, range_constructor) {
     static_map<std::size_t, int> map(0, 0);
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
@@ -208,7 +208,7 @@ GTEST_TEST(static_map, write_operator) {
     for(std::size_t i = 0; i < map.size(); ++i) {
         ASSERT_EQ(map[i], datas[i]);
         map[i] = 3 * static_cast<int>(i) + 1;
-        ASSERT_EQ(map[i], 3 * i + 1);
+        ASSERT_EQ(map[i], 3 * static_cast<int>(i) + 1);
     }
 }
 GTEST_TEST(static_map, for_each_read) {
@@ -290,12 +290,12 @@ static_assert(
 GTEST_TEST(static_map, reset) {
     static_map<std::size_t, int> map(20);
     map.reset(10);
-    ASSERT_EQ(map.size(), 10);
+    ASSERT_EQ(map.size(), 10u);
 
     // reset() to the same size is a no-op and keeps the contents
     static_map<std::size_t, int> kept(4, 7);
     kept.reset(4);
-    ASSERT_EQ(kept.size(), 4);
+    ASSERT_EQ(kept.size(), 4u);
     for(std::size_t i = 0; i < kept.size(); ++i) ASSERT_EQ(kept[i], 7);
 }
 

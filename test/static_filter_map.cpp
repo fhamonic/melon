@@ -29,36 +29,36 @@ static_assert(
 
 GTEST_TEST(static_map_bool, empty_constructor) {
     static_map<std::size_t, bool> map;
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 }
 
 GTEST_TEST(static_map_bool, size_constructor) {
     static_map<std::size_t, bool> map(0);
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
     static_map<std::size_t, bool> map2(5);
-    ASSERT_EQ(map2.size(), 5);
+    ASSERT_EQ(map2.size(), 5u);
     ASSERT_NE(map2.begin(), map.end());
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 }
 
 GTEST_TEST(static_map_bool, size_init_constructor) {
     static_map<std::size_t, bool> map(0, false);
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_EQ(map.begin(), map.end());
     ASSERT_EQ(std::as_const(map).begin(), std::as_const(map).end());
 
     static_map<std::size_t, bool> map2(5, true);
-    ASSERT_EQ(map2.size(), 5);
+    ASSERT_EQ(map2.size(), 5u);
     ASSERT_NE(map2.begin(), map.end());
     ASSERT_NE(std::as_const(map2).begin(), std::as_const(map).end());
 
     static_map<std::size_t, bool> map3(5, false);
-    ASSERT_EQ(map3.size(), 5);
+    ASSERT_EQ(map3.size(), 5u);
     ASSERT_NE(map3.begin(), map.end());
     ASSERT_NE(std::as_const(map3).begin(), std::as_const(map).end());
 }
@@ -220,7 +220,7 @@ GTEST_TEST(static_filter_map, filter) {
 GTEST_TEST(static_filter_map, filter_on_empty_map) {
     static_filter_map<std::size_t> map;
     const std::vector<std::size_t> none;
-    ASSERT_EQ(map.size(), 0);
+    ASSERT_EQ(map.size(), 0u);
     ASSERT_TRUE(EQ_RANGES(
         map.filter(std::views::iota(std::size_t{0}, std::size_t{0})), none));
 }

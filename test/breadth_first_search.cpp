@@ -237,11 +237,11 @@ GTEST_TEST(breadth_first_search, all_traits) {
         ASSERT_FALSE(alg.reached_map()[u]);
     }
     ASSERT_EQ(alg.dist(0u), 0);
-    ASSERT_EQ(alg.dist(1u), 1u);
-    ASSERT_EQ(alg.dist(2u), 1u);
-    ASSERT_EQ(alg.dist(5u), 1u);
-    ASSERT_EQ(alg.dist(3u), 2u);
-    ASSERT_EQ(alg.dist(4u), 2u);
+    ASSERT_EQ(alg.dist(1u), 1);
+    ASSERT_EQ(alg.dist(2u), 1);
+    ASSERT_EQ(alg.dist(5u), 1);
+    ASSERT_EQ(alg.dist(3u), 2);
+    ASSERT_EQ(alg.dist(4u), 2);
     ASSERT_EQ(alg.pred_vertex(1u), 0u);
     ASSERT_EQ(alg.pred_vertex(2u), 0u);
     ASSERT_EQ(alg.pred_vertex(5u), 0u);

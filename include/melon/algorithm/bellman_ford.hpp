@@ -159,6 +159,11 @@ public:
             if(_found_negative_cycle) return *this;
         }
 
+        // The witness recorder comes in as a callable, not a bool tag: an
+        // `if constexpr` on such a tag around `_cycle_witness.emplace(v)`
+        // makes clang type-check the non-dependent discarded branch while
+        // substituting the generic lambda -- and no_cycle_witness has no
+        // emplace.
         auto relax = [this](auto record_witness) -> bool {
             bool updated = false;
             for(auto && [a, uv] : arcs_entries(_graph)) {
@@ -195,15 +200,14 @@ public:
                             if constexpr(!has_arc_source<Graph>)
                                 _pred_vertices_map[v] = u;
                         }
-                        if constexpr(decltype(record_witness)::value &&
-                                     _stores_witness)
-                            _cycle_witness.emplace(v);
+                        record_witness(v);
                         updated = true;
                     }
                 }
             }
             return updated;
         };
+        auto ignore_witness = [](const vertex &) {};
 
         // n-1 passes compute every shortest distance -- a shortest path has
         // at most n-1 arcs -- and stop at the first quiet one. An n-th pass
@@ -212,18 +216,23 @@ public:
         if constexpr(has_num_vertices<Graph>) {
             const std::size_t n = num_vertices(_graph);
             for(std::size_t pass = 1; pass < n; ++pass) {
-                if(!relax(std::false_type{})) return *this;
+                if(!relax(ignore_witness)) return *this;
             }
         } else {
             for([[maybe_unused]] auto && v :
                 vertices(_graph) | std::views::drop(1)) {
-                if(!relax(std::false_type{})) return *this;
+                if(!relax(ignore_witness)) return *this;
             }
         }
         if constexpr(Traits::detect_negative_cycles) {
             // An improvement after n-1 complete passes is something only a
             // negative cycle reachable from the sources can produce.
-            _found_negative_cycle = relax(std::true_type{});
+            if constexpr(_stores_witness) {
+                _found_negative_cycle = relax(
+                    [this](const vertex & v) { _cycle_witness.emplace(v); });
+            } else {
+                _found_negative_cycle = relax(ignore_witness);
+            }
         }
         return *this;
     }
