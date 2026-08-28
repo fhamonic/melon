@@ -4,7 +4,7 @@ Notable changes to melon. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [semantic versioning](https://semver.org) starting at 1.0.0.
 
-## [Unreleased]
+## [1.0.0] - 2026-08-28
 
 First stable release. Every header outside `melon/detail/` and
 `melon/experimental/` is frozen API for the 1.x series — see
@@ -82,4 +82,5 @@ for the exact scope of the guarantee. All changes below are relative to
   `semiregular`), and the synthesized `arcs()`/`arcs_entries()` join the
   same incidence direction on an equal-rank tie.
 
-[Unreleased]: https://github.com/fhamonic/melon/compare/v1.0.0-alpha.1...HEAD
+[1.0.0]: https://github.com/fhamonic/melon/compare/v1.0.0-alpha.1...v1.0.0
+[Unreleased]: https://github.com/fhamonic/melon/compare/v1.0.0...HEAD
