@@ -452,7 +452,10 @@ jobs:
         run: make CONAN_PROFILE=.github/conan-profiles/mingw15_c++26
 
   windows-msvc17-11-build:
-    runs-on: windows-latest
+    # Not windows-latest: that image carries only Visual Studio 2026, and
+    # both the "Visual Studio 17 2022" generator conan derives from
+    # compiler.version=194 and the 14.41 toolset need a VS 2022 instance.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v7
       - name: Install the MSVC 14.41 (VS 17.11) toolset
