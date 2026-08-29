@@ -450,3 +450,29 @@ jobs:
         run: conan profile detect --name=default
       - name: Build and run unit tests
         run: make CONAN_PROFILE=.github/conan-profiles/mingw15_c++26
+
+  windows-msvc17-11-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the MSVC 14.41 (VS 17.11) toolset
+        # The runner image ships only the newest v14.4x toolset; the profile
+        # pins 14.41 because it is melon's MSVC floor, so the side-by-side
+        # toolset must be added. Exit code 3010 is success-needs-reboot.
+        shell: pwsh
+        run: |
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+          $vs = & "$installer\vswhere.exe" -latest -products * -property installationPath
+          $proc = Start-Process -Wait -PassThru -FilePath "$installer\setup.exe" `
+            -ArgumentList ('modify --installPath "' + $vs + '" ' +
+              '--add Microsoft.VisualStudio.Component.VC.14.41.17.11.x86.x64 ' +
+              '--quiet --norestart --nocache')
+          if (($proc.ExitCode -ne 0) -and ($proc.ExitCode -ne 3010)) {
+            throw "VS installer exited with $($proc.ExitCode)"
+          }
+      - name: Install Conan 2.0
+        run: pip install conan
+      - name: Autodetect a default conan profile
+        run: conan profile detect --name=default
+      - name: Build and run unit tests
+        run: make CONAN_PROFILE=.github/conan-profiles/msvc17.11_c++23

@@ -49,6 +49,11 @@ private:
 
     class vertices_iterator
         : public detail::intrusive_iterator_base<mutable_digraph, vertex> {
+        // MSVC (through at least VS 18.6) denies hidden friends of a nested
+        // class the enclosing class's private access: a friend comparing
+        // against INVALID_VERTEX directly fails to compile there.
+        static constexpr vertex _invalid_cursor = INVALID_VERTEX;
+
     public:
         using detail::intrusive_iterator_base<mutable_digraph,
                                               vertex>::intrusive_iterator_base;
@@ -64,7 +69,7 @@ private:
         }
         [[nodiscard]] constexpr friend bool operator==(
             const vertices_iterator & it, std::default_sentinel_t) noexcept {
-            return it._cursor == INVALID_VERTEX;
+            return it._cursor == _invalid_cursor;
         }
         [[nodiscard]] constexpr friend bool operator==(
             const vertices_iterator & it1,
@@ -76,6 +81,11 @@ private:
 
     class out_arcs_iterator
         : public detail::intrusive_iterator_base<mutable_digraph, arc> {
+        // MSVC (through at least VS 18.6) denies hidden friends of a nested
+        // class the enclosing class's private access: a friend comparing
+        // against INVALID_ARC directly fails to compile there.
+        static constexpr arc _invalid_cursor = INVALID_ARC;
+
     public:
         using detail::intrusive_iterator_base<mutable_digraph,
                                               arc>::intrusive_iterator_base;
@@ -91,7 +101,7 @@ private:
         }
         [[nodiscard]] constexpr friend bool operator==(
             const out_arcs_iterator & it, std::default_sentinel_t) noexcept {
-            return it._cursor == INVALID_ARC;
+            return it._cursor == _invalid_cursor;
         }
         [[nodiscard]] constexpr friend bool operator==(
             const out_arcs_iterator & it1,
@@ -103,6 +113,11 @@ private:
 
     class in_arcs_iterator
         : public detail::intrusive_iterator_base<mutable_digraph, arc> {
+        // MSVC (through at least VS 18.6) denies hidden friends of a nested
+        // class the enclosing class's private access: a friend comparing
+        // against INVALID_ARC directly fails to compile there.
+        static constexpr arc _invalid_cursor = INVALID_ARC;
+
     public:
         using detail::intrusive_iterator_base<mutable_digraph,
                                               arc>::intrusive_iterator_base;
@@ -118,7 +133,7 @@ private:
         }
         [[nodiscard]] constexpr friend bool operator==(
             const in_arcs_iterator & it, std::default_sentinel_t) noexcept {
-            return it._cursor == INVALID_ARC;
+            return it._cursor == _invalid_cursor;
         }
         [[nodiscard]] constexpr friend bool operator==(
             const in_arcs_iterator & it1,

@@ -1,0 +1,17 @@
+[settings]
+os=Windows
+arch=x86_64
+build_type=Release
+compiler=msvc
+# 194 + update=1 makes CMakeToolchain pin the generator toolset to
+# "v143,version=14.41" (VS 17.11) — the oldest MSVC that compiles melon;
+# the CI job installs that exact side-by-side toolset. cppstd=23 maps to
+# /std:c++latest, since MSVC has no committed C++23 switch.
+compiler.version=194
+compiler.update=1
+compiler.cppstd=23
+compiler.runtime=dynamic
+compiler.runtime_type=Release
+
+[tool_requires]
+cmake/4.3.2

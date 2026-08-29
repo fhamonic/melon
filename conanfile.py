@@ -75,7 +75,11 @@ class MelonConan(ConanFile):
                 },
             )
             cmake.build()
-            cmake.test(cli_args=["CTEST_OUTPUT_ON_FAILURE=1"])
+            # Not cmake.test(cli_args=["CTEST_OUTPUT_ON_FAILURE=1"]): that
+            # token reaches the native tool, and while make exports it to
+            # ctest as an environment variable, MSBuild rejects a bare
+            # NAME=VALUE argument and the MSVC job fails before testing.
+            cmake.ctest(cli_args=["--output-on-failure"])
 
     def package(self):
         copy(

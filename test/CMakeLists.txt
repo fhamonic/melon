@@ -92,6 +92,11 @@ set_project_warnings(melon_test)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_compile_options(melon_test PRIVATE -fconcepts-diagnostics-depth=20)
 endif()
+if(MSVC)
+  # Without this the template-heavy test TUs exceed the default COFF
+  # section limit and die with C1128.
+  target_compile_options(melon_test PRIVATE /bigobj)
+endif()
 
 # ################# Sanitizers ###################
 set(MELON_SANITIZE
