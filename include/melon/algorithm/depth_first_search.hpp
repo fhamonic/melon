@@ -12,6 +12,7 @@
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/map_if.hpp"
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -72,11 +73,14 @@ private:
     std::vector<std::pair<vertex, stack_cursor>> _stack;
     vertex_map_t<Graph, bool> _reached_map;
 
-    [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_pred_vertices, Graph, vertex> _pred_vertices_map;
-    [[no_unique_address]] detail::vertex_map_if<Traits::store_pred_arcs, Graph,
-                                                arc> _pred_arcs_map;
-    [[no_unique_address]] detail::vertex_map_if<Traits::store_depth, Graph, int>
+    MELON_NO_UNIQUE_ADDRESS
+    detail::vertex_map_if<Traits::store_pred_vertices, Graph, vertex>
+        _pred_vertices_map;
+    MELON_NO_UNIQUE_ADDRESS
+    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc>
+        _pred_arcs_map;
+    MELON_NO_UNIQUE_ADDRESS
+    detail::vertex_map_if<Traits::store_depth, Graph, int>
         _depth_map;
 
 public:

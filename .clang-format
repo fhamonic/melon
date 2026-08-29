@@ -9,4 +9,5 @@
     SpaceBeforeParens: Never,
     AccessModifierOffset: -4,
     IncludeBlocks: Preserve,
+    AttributeMacros: [MELON_NO_UNIQUE_ADDRESS],
 }

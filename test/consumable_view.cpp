@@ -167,9 +167,14 @@ GTEST_TEST(consumable_view, rewind_owning_range) {
     // owns the range and can ask it for begin() again -- so rewinding costs it
     // no extra state at all
     auto cv = detail::consumable_view(std::vector<unsigned int>{3u, 1u, 4u});
+#ifndef _MSC_VER
+    // Not pinned under MSVC: [[msvc::no_unique_address]] never overlaps an
+    // empty member with a preceding non-empty base class, so the no_state
+    // member costs 8 bytes there and only there.
     static_assert(sizeof(cv) ==
                   sizeof(detail::consumable_input_view<
                          std::views::all_t<std::vector<unsigned int>>>));
+#endif
     static_assert(!std::copy_constructible<decltype(cv)>);
 
     cv.advance();

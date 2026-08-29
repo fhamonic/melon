@@ -13,6 +13,7 @@
 
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -69,16 +70,17 @@ private:
     std::vector<vertex> _next_queue;
     vertex_map_t<Graph, bool> _in_queue_map;
 
-    [[no_unique_address]] detail::vertex_map_if<
+    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<
         Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
         _pred_vertices_map;
-    [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_paths, Graph, std::optional<arc>> _pred_arcs_map;
+    MELON_NO_UNIQUE_ADDRESS
+    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
+        _pred_arcs_map;
 
     struct no_cycle_witness {};
-    [[no_unique_address]] std::conditional_t<Traits::detect_negative_cycles,
-                                             std::optional<vertex>,
-                                             no_cycle_witness> _cycle_witness{};
+    MELON_NO_UNIQUE_ADDRESS std::conditional_t<
+        Traits::detect_negative_cycles, std::optional<vertex>, no_cycle_witness>
+        _cycle_witness{};
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -317,6 +319,13 @@ public:
 private:
     class path_iterator
         : public detail::intrusive_iterator_base<bellman_ford_moore, vertex> {
+        // MSVC (through at least VS 18.6) denies hidden friends of a nested
+        // class the enclosing class's private access: a sentinel friend
+        // reading _pred_arcs_map directly fails to compile there.
+        [[nodiscard]] constexpr bool _at_path_end() const {
+            return !this->_structure->_pred_arcs_map[this->_cursor].has_value();
+        }
+
     public:
         using value_type = arc;
         using reference = arc;
@@ -340,7 +349,7 @@ private:
         }
         [[nodiscard]] constexpr friend bool operator==(
             const path_iterator & it, std::default_sentinel_t) {
-            return !it._structure->_pred_arcs_map[it._cursor].has_value();
+            return it._at_path_end();
         }
         [[nodiscard]] constexpr friend bool operator==(
             const path_iterator & it1,

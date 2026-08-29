@@ -155,9 +155,10 @@ GTEST_TEST(subgraph_views, lvalue_filter_direct_call_references_pipe_copies) {
         sub.disable_vertex(1u);
         ASSERT_FALSE(keep[1u]);
     }
-    {  // a self-contained direct call: hand it a prvalue
+    {  // a self-contained direct call: hand it a prvalue -- spelled
+       // decltype(keep)(keep), since MSVC rejects auto(keep) (C3537)
         auto keep = create_vertex_map<bool>(graph, true);
-        auto sub = views::subgraph(graph, auto(keep));
+        auto sub = views::subgraph(graph, decltype(keep)(keep));
         sub.disable_vertex(1u);
         ASSERT_TRUE(keep[1u]);
         ASSERT_FALSE(sub.is_valid_vertex(1u));

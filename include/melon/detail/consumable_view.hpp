@@ -8,6 +8,8 @@
 #include <ranges>
 #include <type_traits>
 
+#include "melon/detail/no_unique_address.hpp"
+
 namespace melon::detail {
 
 template <typename Iterator, typename Sentinel>
@@ -274,11 +276,19 @@ private:
             noexcept(noexcept(*_view->_it)) {
             return *_view->_it;
         }
+        // MSVC (through at least VS 18.6) denies hidden friends of a nested
+        // class the enclosing class's non-public access: the sentinel friend
+        // below cannot reach _it itself.
+        [[nodiscard]] constexpr bool _at_end(
+            const std::ranges::sentinel_t<R> & sentinel) const
+            noexcept(noexcept(_view->_it == sentinel)) {
+            return _view->_it == sentinel;
+        }
         [[nodiscard]] constexpr friend bool operator==(
             const owning_iterator & it,
             const std::ranges::sentinel_t<R> &
-                sentinel) noexcept(noexcept(it._view->_it == sentinel)) {
-            return it._view->_it == sentinel;
+                sentinel) noexcept(noexcept(it._at_end(sentinel))) {
+            return it._at_end(sentinel);
         }
     };
 
@@ -298,7 +308,7 @@ template <std::ranges::borrowed_range R>
 class consumable_input_view<R> : public std::ranges::view_base {
 protected:
     std::ranges::iterator_t<R> _it;
-    [[no_unique_address]] std::ranges::sentinel_t<R> _sentinel;
+    MELON_NO_UNIQUE_ADDRESS std::ranges::sentinel_t<R> _sentinel;
 
 public:
     // See the primary template, including the `explicit`: whether a range
@@ -363,9 +373,9 @@ private:
     struct no_state {};
     // Only the borrowed specialisation of the base needs a remembered begin:
     // the primary one owns the range and can ask it for begin() again.
-    [[no_unique_address]] std::conditional_t<std::ranges::borrowed_range<R>,
-                                             std::ranges::iterator_t<R>,
-                                             no_state> _begin;
+    MELON_NO_UNIQUE_ADDRESS std::conditional_t<
+        std::ranges::borrowed_range<R>, std::ranges::iterator_t<R>, no_state>
+        _begin;
 
     constexpr void remember_begin() {
         if constexpr(std::ranges::borrowed_range<R>) _begin = base::_it;

@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 
 #include "melon/container/d_ary_heap.hpp"
@@ -179,8 +180,8 @@ private:
 
 private:
     SegmentIdRange _segment_ids_range;
-    [[no_unique_address]] SegmentMap _segment_map;
-    [[no_unique_address]] event_cmp _event_cmp;
+    MELON_NO_UNIQUE_ADDRESS SegmentMap _segment_map;
+    MELON_NO_UNIQUE_ADDRESS event_cmp _event_cmp;
     std::unique_ptr<event_points> _event_points;
     segments_tree _segments_tree;
     segments_tree _tmp_tree;

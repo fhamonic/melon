@@ -4,6 +4,7 @@
 #include <cassert>
 #include <ranges>
 
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -25,8 +26,8 @@ private:
     using arc = arc_t<Graph>;
 
     Graph _graph;
-    [[no_unique_address]] VertexFilter _vertex_filter;
-    [[no_unique_address]] ArcFilter _arc_filter;
+    MELON_NO_UNIQUE_ADDRESS VertexFilter _vertex_filter;
+    MELON_NO_UNIQUE_ADDRESS ArcFilter _arc_filter;
 
 public:
     // not_self goes first, and the storability checks stay in the trailing

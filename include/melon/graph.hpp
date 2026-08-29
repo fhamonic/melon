@@ -1267,26 +1267,39 @@ template <typename G>
 concept has_arc_targets_map =
     requires(const G & g) { melon::arc_targets_map(g); };
 
-namespace cpo {
+}  // namespace melon
+
+// The create-map CPOs live OUTSIDE namespace melon, unlike every other CPO in
+// this file. Their unqualified calls must reach, besides ADL, customization
+// functions declared at *global scope* before this header is included -- the
+// protocol test/cpo.cpp pins for std containers, which ADL cannot serve. Put
+// inside melon, that lookup walks through namespace melon, and MSVC re-runs
+// it at instantiation time, when the melon::create_vertex_map variable
+// further down exists: it finds the variable and re-enters the operator() it
+// is still compiling (C3779, C2131). From here the enclosing-scope chain is
+// global scope alone, so no compiler's lookup can meet the variable. An
+// in-namespace poison pill cannot substitute: it shadows the global-scope
+// protocol on every compiler.
+namespace melon_create_map_cpo {
 template <typename T, typename ValueType>
 concept has_member_create_vertex_map =
     requires(const T & t, const ValueType & d) {
         {
             t.template create_vertex_map<ValueType>()
-        } -> output_mapping_of<vertex_t<T>, ValueType>;
+        } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
         {
             t.template create_vertex_map<ValueType>(d)
-        } -> output_mapping_of<vertex_t<T>, ValueType>;
+        } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
     };
 
 template <typename T, typename ValueType>
 concept has_adl_create_vertex_map = requires(const T & t, const ValueType & d) {
     {
         create_vertex_map<ValueType>(t)
-    } -> output_mapping_of<vertex_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
     {
         create_vertex_map<ValueType>(t, d)
-    } -> output_mapping_of<vertex_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
 };
 
 // Parameterised on ValueType so that the public name can be a *variable*
@@ -1352,18 +1365,20 @@ template <typename T, typename ValueType>
 concept has_member_create_arc_map = requires(const T & t, const ValueType & d) {
     {
         t.template create_arc_map<ValueType>()
-    } -> output_mapping_of<arc_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
     {
         t.template create_arc_map<ValueType>(d)
-    } -> output_mapping_of<arc_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
 };
 
 template <typename T, typename ValueType>
 concept has_adl_create_arc_map = requires(const T & t, const ValueType & d) {
-    { create_arc_map<ValueType>(t) } -> output_mapping_of<arc_t<T>, ValueType>;
+    {
+        create_arc_map<ValueType>(t)
+    } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
     {
         create_arc_map<ValueType>(t, d)
-    } -> output_mapping_of<arc_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
 };
 
 // Parameterised on ValueType so the public name can be a variable template,
@@ -1416,14 +1431,18 @@ public:
             return create_arc_map<ValueType>(t, d);
     }
 };
-}  // namespace cpo
+}  // namespace melon_create_map_cpo
+
+namespace melon {
 
 inline namespace cust {
 template <typename ValueType>
-inline constexpr cpo::create_vertex_map_fn<ValueType> create_vertex_map{};
+inline constexpr melon_create_map_cpo::create_vertex_map_fn<ValueType>
+    create_vertex_map{};
 
 template <typename ValueType>
-inline constexpr cpo::create_arc_map_fn<ValueType> create_arc_map{};
+inline constexpr melon_create_map_cpo::create_arc_map_fn<ValueType>
+    create_arc_map{};
 }  // namespace cust
 
 template <typename T, typename ValueType>

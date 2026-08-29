@@ -15,7 +15,28 @@
 #include "ranges_test_helper.hpp"
 #include "undirected_triangle.hpp"
 
-using namespace melon;
+// Not `using namespace melon;`: with the directive at file scope, MSVC's
+// instantiation-time lookup meets the melon::create_*_map variables from
+// inside the create-map CPOs' ADL branch and re-enters the operator() it is
+// compiling (C3779/C2131) for every graph that provides maps through free
+// functions, adl_ugraph::triangle included. Named using-declarations for
+// everything but the create-map names keep the file readable without arming
+// that trap.
+using melon::edge_map_t;
+using melon::edge_t;
+using melon::edges_range_t;
+using melon::has_degree;
+using melon::has_edge_map;
+using melon::has_incidence;
+using melon::has_num_edges;
+using melon::incidence_range_t;
+using melon::output_mapping_of;
+using melon::static_digraph;
+using melon::static_digraph_builder;
+using melon::undirected_graph;
+using melon::undirected_graph_ref_view;
+using melon::vertex_t;
+namespace views = melon::views;
 
 using adl_triangle = adl_ugraph::triangle;
 
@@ -180,11 +201,12 @@ struct melon_associated_ugraph : melon::undirected_graph_view_base {
 
 static_assert(undirected_graph<melon_associated_ugraph>);
 static_assert(!has_edge_map<melon_associated_ugraph, int>);
-static_assert(!cpo::has_adl_create_edge_map<melon_associated_ugraph, int>);
+static_assert(!melon_create_map_cpo::has_adl_create_edge_map<
+              melon_associated_ugraph, int>);
 
 // The same trap one level up: create_edge_map must not be reachable by ADL for
 // the shipped views either, which all live in melon.
-static_assert(!cpo::has_adl_create_edge_map<
+static_assert(!melon_create_map_cpo::has_adl_create_edge_map<
               undirected_graph_ref_view<melon_associated_ugraph>, int>);
 
 ////////////////////////////////////////////////////////////////////////////////

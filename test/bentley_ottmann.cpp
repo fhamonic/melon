@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <random>
 #include <ranges>
 
@@ -155,7 +156,7 @@ GTEST_TEST(bentley_ottmann, run_integer_example) {
                                      {{0, 1}, {3, 0}},
                                      {{2, -1}, {2, 4}}};
 
-    auto segments_ids = std::views::iota(0uz, segments.size());
+    auto segments_ids = std::views::iota(std::size_t{0}, segments.size());
 
     std::vector<std::pair<intersection, std::vector<std::size_t>>> found;
     for(auto && [i, intersecting_segments] :
@@ -194,9 +195,9 @@ GTEST_TEST(bentley_ottmann, report_endpoints_off_is_direction_symmetric) {
 
     const auto count_events = [](const std::vector<segment> & segments) {
         std::size_t reported = 0;
-        for(auto && [i, intersecting_segments] :
-            bentley_ottmann(no_endpoint_traits{},
-                            std::views::iota(0uz, segments.size()), segments)) {
+        for(auto && [i, intersecting_segments] : bentley_ottmann(
+                no_endpoint_traits{},
+                std::views::iota(std::size_t{0}, segments.size()), segments)) {
             reported += static_cast<std::size_t>(
                 std::ranges::distance(intersecting_segments));
         }
@@ -208,9 +209,9 @@ GTEST_TEST(bentley_ottmann, report_endpoints_off_is_direction_symmetric) {
     const std::vector<segment> both_starting = {{{2, 2}, {4, 4}},
                                                 {{2, 2}, {0, 4}}};
     const std::vector<segment> crossing = {{{0, 0}, {4, 4}}, {{0, 4}, {4, 0}}};
-    ASSERT_EQ(count_events(both_ending), 0uz);
-    ASSERT_EQ(count_events(both_starting), 0uz);
-    ASSERT_EQ(count_events(crossing), 2uz);
+    ASSERT_EQ(count_events(both_ending), std::size_t{0});
+    ASSERT_EQ(count_events(both_starting), std::size_t{0});
+    ASSERT_EQ(count_events(crossing), std::size_t{2});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +233,7 @@ GTEST_TEST(bentley_ottmann, mid_run_move) {
     std::vector<segment> segments = {{{0, 0}, {8, 8}}, {{0, 8}, {8, 0}},
                                      {{0, 4}, {8, 4}}, {{2, 0}, {2, 8}},
                                      {{6, 0}, {6, 8}}, {{0, 2}, {8, 6}}};
-    auto segments_ids = std::views::iota(0uz, segments.size());
+    auto segments_ids = std::views::iota(std::size_t{0}, segments.size());
 
     std::vector<std::pair<intersection, std::vector<std::size_t>>> expected;
     for(const auto & [i, intersecting_segments] :
@@ -268,7 +269,8 @@ GTEST_TEST(bentley_ottmann, mid_run_move) {
     // move assignment over an algorithm holding live trees of its own
     {
         bentley_ottmann alg(segments_ids, segments);
-        bentley_ottmann other(std::views::iota(0uz, 2uz), segments);
+        bentley_ottmann other(std::views::iota(std::size_t{0}, std::size_t{2}),
+                              segments);
         alg.advance();
         other = std::move(alg);
         std::vector<std::pair<intersection, std::vector<std::size_t>>> found = {
@@ -299,7 +301,7 @@ GTEST_TEST(bentley_ottmann, reset_replays_the_sweep) {
     std::vector<segment> segments = {{{0, 0}, {8, 8}}, {{0, 8}, {8, 0}},
                                      {{0, 4}, {8, 4}}, {{2, 0}, {2, 8}},
                                      {{6, 0}, {6, 8}}, {{0, 2}, {8, 6}}};
-    auto segments_ids = std::views::iota(0uz, segments.size());
+    auto segments_ids = std::views::iota(std::size_t{0}, segments.size());
 
     bentley_ottmann alg(segments_ids, segments);
 
@@ -349,8 +351,8 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_test) {
             intersections_vec;
         intersections_vec.reserve(
             static_cast<std::size_t>(std::pow(num_segments, 1.5)));
-        for(const auto & [i, intersecting_segments] :
-            bentley_ottmann(std::views::iota(0uz, num_segments), segments)) {
+        for(const auto & [i, intersecting_segments] : bentley_ottmann(
+                std::views::iota(std::size_t{0}, num_segments), segments)) {
             intersections_vec.emplace_back(std::make_pair(
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));
@@ -386,8 +388,8 @@ GTEST_TEST(bentley_ottmann, fuzzy_sparse_test) {
             intersections_vec;
         intersections_vec.reserve(
             static_cast<std::size_t>(std::pow(num_segments, 1.5)));
-        for(const auto & [i, intersecting_segments] :
-            bentley_ottmann(std::views::iota(0uz, num_segments), segments)) {
+        for(const auto & [i, intersecting_segments] : bentley_ottmann(
+                std::views::iota(std::size_t{0}, num_segments), segments)) {
             intersections_vec.emplace_back(std::make_pair(
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));
@@ -429,8 +431,8 @@ GTEST_TEST(bentley_ottmann, fuzzy_dense_bounded_value_test) {
             intersections_vec;
         intersections_vec.reserve(
             static_cast<std::size_t>(std::pow(num_segments, 1.5)));
-        for(const auto & [i, intersecting_segments] :
-            bentley_ottmann(std::views::iota(0uz, num_segments), segments)) {
+        for(const auto & [i, intersecting_segments] : bentley_ottmann(
+                std::views::iota(std::size_t{0}, num_segments), segments)) {
             intersections_vec.emplace_back(std::make_pair(
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));
@@ -466,8 +468,8 @@ GTEST_TEST(bentley_ottmann, fuzzy_sparse_bounded_value_test) {
             intersections_vec;
         intersections_vec.reserve(
             static_cast<std::size_t>(std::pow(num_segments, 1.5)));
-        for(const auto & [i, intersecting_segments] :
-            bentley_ottmann(std::views::iota(0uz, num_segments), segments)) {
+        for(const auto & [i, intersecting_segments] : bentley_ottmann(
+                std::views::iota(std::size_t{0}, num_segments), segments)) {
             intersections_vec.emplace_back(std::make_pair(
                 i, std::vector<std::size_t>(intersecting_segments.begin(),
                                             intersecting_segments.end())));

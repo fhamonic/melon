@@ -15,6 +15,7 @@
 
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -54,12 +55,14 @@ private:
     reached_map_t _reached_map;
     remaining_in_degree_map_t _remaining_in_degree_map;
 
-    [[no_unique_address]] detail::vertex_map_if<
+    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<
         Traits::store_critical_paths && !has_arc_source<Graph>, Graph, vertex>
         _pred_vertices_map;
-    [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_critical_paths, Graph, std::optional<arc>> _pred_arcs_map;
-    [[no_unique_address]] detail::vertex_map_if<Traits::store_ranks, Graph, int>
+    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<Traits::store_critical_paths,
+                                                  Graph, std::optional<arc>>
+        _pred_arcs_map;
+    MELON_NO_UNIQUE_ADDRESS
+    detail::vertex_map_if<Traits::store_ranks, Graph, int>
         _rank_map;
 
     constexpr void push_start_vertices() {
@@ -248,6 +251,13 @@ public:
 private:
     class path_iterator
         : public detail::intrusive_iterator_base<topological_sort, vertex> {
+        // MSVC (through at least VS 18.6) denies hidden friends of a nested
+        // class the enclosing class's private access: a sentinel friend
+        // reading _pred_arcs_map directly fails to compile there.
+        [[nodiscard]] constexpr bool _at_path_end() const {
+            return !this->_structure->_pred_arcs_map[this->_cursor].has_value();
+        }
+
     public:
         using value_type = arc;
         using reference = arc;
@@ -271,7 +281,7 @@ private:
         }
         [[nodiscard]] constexpr friend bool operator==(
             const path_iterator & it, std::default_sentinel_t) {
-            return !it._structure->_pred_arcs_map[it._cursor].has_value();
+            return it._at_path_end();
         }
         [[nodiscard]] constexpr friend bool operator==(
             const path_iterator & it1,

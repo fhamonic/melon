@@ -174,17 +174,19 @@ GTEST_TEST(dinitz, filtered_subgraph_move) {
     builder.add_arc(2, 3, 6);
     auto [graph, capacity] = std::move(builder).build();
 
-    dinitz alg(
-        views::subgraph(auto(graph), create_vertex_map<bool>(graph, true),
-                        create_arc_map<bool>(graph, true)),
-        capacity, 0u, 3u);
+    // static_digraph(graph) copies, like auto(graph) would -- MSVC rejects
+    // the auto(x) spelling (C3537).
+    dinitz alg(views::subgraph(static_digraph(graph),
+                               create_vertex_map<bool>(graph, true),
+                               create_arc_map<bool>(graph, true)),
+               capacity, 0u, 3u);
     dinitz moved = std::move(alg);
     ASSERT_EQ(moved.run().flow_value(), 7);
 
-    dinitz other(
-        views::subgraph(auto(graph), create_vertex_map<bool>(graph, true),
-                        create_arc_map<bool>(graph, true)),
-        capacity, 0u, 3u);
+    dinitz other(views::subgraph(static_digraph(graph),
+                                 create_vertex_map<bool>(graph, true),
+                                 create_arc_map<bool>(graph, true)),
+                 capacity, 0u, 3u);
     other = std::move(moved);
     ASSERT_EQ(other.reset().run().flow_value(), 7);
 }

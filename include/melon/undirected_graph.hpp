@@ -247,26 +247,32 @@ concept has_degree =
     undirected_graph<T> &&
     requires(const T & t, const vertex_t<T> & v) { melon::degree(t, v); };
 
-namespace cpo {
+}  // namespace melon
+
+// Outside namespace melon for the reason spelled out on graph.hpp's
+// melon_create_map_cpo: the unqualified calls must reach global-scope
+// customization functions without MSVC's instantiation-time lookup meeting
+// the melon::create_edge_map variable below.
+namespace melon_create_map_cpo {
 template <typename T, typename ValueType>
 concept has_member_create_edge_map =
     requires(const T & t, const ValueType & d) {
         {
             t.template create_edge_map<ValueType>()
-        } -> output_mapping_of<edge_t<T>, ValueType>;
+        } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
         {
             t.template create_edge_map<ValueType>(d)
-        } -> output_mapping_of<edge_t<T>, ValueType>;
+        } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
     };
 
 template <typename T, typename ValueType>
 concept has_adl_create_edge_map = requires(const T & t, const ValueType & d) {
     {
         create_edge_map<ValueType>(t)
-    } -> output_mapping_of<edge_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
     {
         create_edge_map<ValueType>(t, d)
-    } -> output_mapping_of<edge_t<T>, ValueType>;
+    } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
 };
 
 // Parameterised on ValueType so that the public name can be a *variable*
@@ -323,11 +329,14 @@ public:
             return create_edge_map<ValueType>(t, d);
     }
 };
-}  // namespace cpo
+}  // namespace melon_create_map_cpo
+
+namespace melon {
 
 inline namespace cust {
 template <typename ValueType>
-inline constexpr cpo::create_edge_map_fn<ValueType> create_edge_map{};
+inline constexpr melon_create_map_cpo::create_edge_map_fn<ValueType>
+    create_edge_map{};
 }  // namespace cust
 
 template <typename T, typename ValueType>

@@ -16,6 +16,7 @@
 #include <ranges>
 #include <vector>
 
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/mapping.hpp"
 
 namespace melon::experimental {
@@ -58,8 +59,8 @@ private:
     node_idx_type _root;
     std::size_t _num_nodes;
 
-    [[no_unique_address]] KeyComparator _key_cmp;
-    [[no_unique_address]] EntryKeyMap _entry_key_map;
+    MELON_NO_UNIQUE_ADDRESS KeyComparator _key_cmp;
+    MELON_NO_UNIQUE_ADDRESS EntryKeyMap _entry_key_map;
 
 private:
     template <typename T>

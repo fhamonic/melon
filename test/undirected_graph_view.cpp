@@ -13,7 +13,25 @@
 #include "ranges_test_helper.hpp"
 #include "undirected_triangle.hpp"
 
-using namespace melon;
+// Not `using namespace melon;`: with the directive at file scope, MSVC's
+// instantiation-time lookup meets the melon::create_*_map variables from
+// inside the create-map CPOs' ADL branch and re-enters the operator() it is
+// compiling (C3779/C2131) for every graph that provides maps through free
+// functions, adl_ugraph::triangle included. Named using-declarations for
+// everything but the create-map names keep the file readable without arming
+// that trap.
+using melon::has_degree;
+using melon::has_edge_map;
+using melon::has_incidence;
+using melon::has_num_edges;
+using melon::num_edges;
+using melon::static_digraph;
+using melon::static_digraph_builder;
+using melon::undirected_graph;
+using melon::undirected_graph_owning_view;
+using melon::undirected_graph_ref_view;
+using melon::undirected_graph_view;
+namespace views = melon::views;
 
 using triangle = adl_ugraph::triangle;
 using ref_view = undirected_graph_ref_view<triangle>;

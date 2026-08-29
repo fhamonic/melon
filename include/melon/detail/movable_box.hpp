@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "melon/detail/no_unique_address.hpp"
+
 namespace melon {
 namespace detail {
 
@@ -17,7 +19,7 @@ template <typename T>
     requires std::move_constructible<T> && std::is_object_v<T>
 class movable_box {
 private:
-    [[no_unique_address]] T _value;
+    MELON_NO_UNIQUE_ADDRESS T _value;
 
 public:
     constexpr movable_box()

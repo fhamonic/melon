@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/no_unique_address.hpp"
 #include "melon/mapping.hpp"
 
 namespace melon {
@@ -44,8 +45,8 @@ public:
 
 protected:
     std::vector<value_type> _heap_array;
-    [[no_unique_address]] PriorityComparator _priority_cmp;
-    [[no_unique_address]] EntryPriorityMap _entry_priority_map;
+    MELON_NO_UNIQUE_ADDRESS PriorityComparator _priority_cmp;
+    MELON_NO_UNIQUE_ADDRESS EntryPriorityMap _entry_priority_map;
 
 public:
     constexpr d_ary_heap_base()
@@ -354,8 +355,8 @@ public:
     using id_type = mapped_value_t<EntryIdMap, Entry>;
 
 private:
-    [[no_unique_address]] EntryIdMap _entry_id_map;
-    [[no_unique_address]] IndicesMap _heap_index_map;
+    MELON_NO_UNIQUE_ADDRESS EntryIdMap _entry_id_map;
+    MELON_NO_UNIQUE_ADDRESS IndicesMap _heap_index_map;
 
 public:
     updatable_d_ary_heap() : base_class() {}
