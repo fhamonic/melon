@@ -4,6 +4,19 @@ Notable changes to melon. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [semantic versioning](https://semver.org) starting at 1.0.0.
 
+## [Unreleased]
+
+### Added
+
+- MSVC support: Visual Studio 2022 17.11 (toolset v14.41) and newer build
+  the library and pass the full test suite, exercised by a new
+  MSVC 17.11 / C++23 CI job on Windows. One documented MSVC front-end
+  limitation remains for graphs that provide their map factories as free
+  functions in translation units with a file-scope `using namespace melon`
+  — see the installation page's MSVC note.
+- `detail/prefetch.hpp` emits real prefetch hints under MSVC on x86-64;
+  they were previously GCC/Clang-only.
+
 ## [1.0.0] - 2026-08-28
 
 First stable release. Every header outside `melon/detail/` and

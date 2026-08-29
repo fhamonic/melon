@@ -85,7 +85,7 @@ melon is header-only and dependency-free: putting `include/` on your include pat
 | GCC | 14 | GCC 14 / C++23, GCC 15 / C++26 |
 | Clang | 18 | Clang 18 / C++23 (libstdc++ 14) |
 | MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
-| MSVC | — | not supported |
+| MSVC | VS 2022 17.11 | MSVC 17.11 / C++23 (Windows) |
 
 GCC 15 / C++26 is the recommended configuration; GCC 14 / C++23 is supported through a bundled fallback for `std::views::concat`, which costs one view's range category — the [C++23-versus-C++26 note](https://fhamonic.github.io/melon/getting-started/installation/) has the details and the option that checks portability from a C++26 build.
 
@@ -135,7 +135,7 @@ Concepts and containers: tree graphs, planar graphs, bipartite graphs.
 Algorithms: network simplex, Laplacian combinatorial solver, planar map intersection.
 Utility: JSON serialization, SVG printer (the Graphviz printer ships since 1.0).
 
-melon is a young, single-maintainer library: the roadmap lists things that do not exist yet, not things being polished. If you need Boost.Graph's full catalogue (planarity testing, matching, isomorphism, min-cost flow), an older standard, or MSVC, stay with the incumbents.
+melon is a young, single-maintainer library: the roadmap lists things that do not exist yet, not things being polished. If you need Boost.Graph's full catalogue (planarity testing, matching, isomorphism, min-cost flow) or an older standard, stay with the incumbents.
 
 ## Contributing
 

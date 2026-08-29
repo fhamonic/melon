@@ -113,7 +113,7 @@ The same applies to `num_vertices`, `out_degree` and `in_degree`: melon only der
 
 ## Adapting a type you do not own
 
-When the type comes from another library, define the same functions as **free functions in the type's own namespace**. Every melon accessor is a customization point object that looks for a member first and an ADL free function second, so nothing needs to be declared inside `melon`.
+When the type comes from another library, define the same functions as **free functions in the type's own namespace**. Every melon accessor is a customization point object that looks for a member first and an ADL free function second, so nothing needs to be declared inside `melon`. (Building with MSVC? The map factories defined this way come with one caveat about `using namespace melon` — see the [installation page's MSVC note](../getting-started/installation.md).)
 
 The example below also shows a graph that is *adjacent but not incident*: it holds a flat arc list and per-vertex neighbor lists, so it can name all its arcs and answer `out_neighbors`, but there is no range of "the arcs leaving `v`".
 

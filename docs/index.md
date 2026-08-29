@@ -86,7 +86,7 @@ The documentation follows the way the library is layered: the concepts first, th
 
 ## Requirements
 
-Header-only and dependency-free. **C++23** is the baseline — GCC 14 and Clang 18 at minimum, GCC 15 / C++26 recommended; on Windows the supported toolchain is MinGW-w64, not MSVC. [Installation](getting-started/installation.md) has the full CI matrix and the C++23-versus-C++26 note.
+Header-only and dependency-free. **C++23** is the baseline — GCC 14 and Clang 18 at minimum, GCC 15 / C++26 recommended; on Windows both MinGW-w64 and MSVC (VS 2022 17.11 or newer) are supported. [Installation](getting-started/installation.md) has the full CI matrix, the C++23-versus-C++26 note and the MSVC note.
 
 ## Status
 

@@ -11,7 +11,22 @@ melon is header-only and dependency-free: adding its `include/` directory to you
 | GCC | 14 | GCC 14 / C++23, GCC 15 / C++26 |
 | Clang | 18 | Clang 18 / C++23 (with libstdc++ 14) |
 | MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
-| MSVC | — | not supported |
+| MSVC | VS 2022 17.11 (toolset v14.41) | MSVC 17.11 / C++23 (Windows) |
+
+!!! note "MSVC"
+
+    melon builds with `/std:c++latest` on MSVC (the CMake and Conan routes
+    select it automatically from C++23). Two MSVC-specific facts are worth
+    knowing. First, MSVC ignores `[[no_unique_address]]`, so melon objects
+    carry a few extra bytes there — behaviour is identical. Second, an MSVC
+    front-end limitation (present through VS 2026): in a translation unit
+    with a file-scope `using namespace melon;`, creating maps over a graph
+    that provides `create_vertex_map` / `create_arc_map` / `create_edge_map`
+    as [free functions](../graphs/custom-graphs.md#adapting-a-type-you-do-not-own)
+    fails to compile, because MSVC's instantiation-time lookup reaches the
+    customization point object itself. Qualify melon names, or use targeted
+    using-declarations, in such files. Graphs with member map factories —
+    every melon container and view included — are unaffected.
 
 CMake 3.24 or later is required for the CMake integration, and Conan 2.0 or later for the Conan one. Asking CMake for a **C++26** build needs **3.30**: `CXX_STANDARD 26` became a valid value in 3.25, but no `-std=c++26` mapping exists for GCC before 3.30, where the `cxx_std_26` compile feature was finally implemented. Older CMake is not an error — the `melon::melon` target requires only `cxx_std_23`, so you get a working C++23 build with the range shapes noted below.
 

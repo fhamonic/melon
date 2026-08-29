@@ -107,9 +107,9 @@ The same principle drives the [views](../views/graphs.md): `views::reverse(g)`, 
 
 **melon is a good fit if** you write graph or network-optimization code in modern C++ and want algorithms that work directly on *your* data structure; if you need to run the same algorithm over a graph, its reverse, and a filtered subgraph without duplicating memory; or if you are looking for a maintained replacement for LEMON that compiles under C++23.
 
-**Know the limits.** melon is a young, single-maintainer library. Its API is frozen for the 1.x series as of 1.0.0, but the [roadmap](https://github.com/fhamonic/melon#roadmap) — network simplex, Laplacian solvers, planar map intersection, JSON serialization, tree and bipartite graph concepts — is a list of things that do not exist yet, not of things being polished. Everything under `melon/experimental/` carries no stability guarantee at all. There is no MSVC support; on Windows the supported toolchain is MinGW-w64. And the price of concept-based genericity is C++23 fluency: ranges, concepts, CTAD, and the diagnostics that come with them.
+**Know the limits.** melon is a young, single-maintainer library. Its API is frozen for the 1.x series as of 1.0.0, but the [roadmap](https://github.com/fhamonic/melon#roadmap) — network simplex, Laplacian solvers, planar map intersection, JSON serialization, tree and bipartite graph concepts — is a list of things that do not exist yet, not of things being polished. Everything under `melon/experimental/` carries no stability guarantee at all. And the price of concept-based genericity is C++23 fluency: ranges, concepts, CTAD, and the diagnostics that come with them.
 
-**Stay with the incumbents if** you need the breadth of Boost.Graph's algorithm catalogue (planarity testing, matching, isomorphism, min-cost flow — melon has none of these yet), if you are pinned to an older standard, or if you build with MSVC.
+**Stay with the incumbents if** you need the breadth of Boost.Graph's algorithm catalogue (planarity testing, matching, isomorphism, min-cost flow — melon has none of these yet), or if you are pinned to an older standard.
 
 ## Next steps
 
