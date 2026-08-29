@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "melon/detail/movable_box.hpp"
-#include "melon/detail/no_unique_address.hpp"
 
 namespace melon {
 
@@ -228,7 +227,7 @@ template <typename Map>
     requires std::move_constructible<Map> && std::is_object_v<Map>
 class mapping_owning_view : public mapping_view_base {
 private:
-    MELON_NO_UNIQUE_ADDRESS detail::movable_box<Map> _map;
+    [[no_unique_address]] detail::movable_box<Map> _map;
 
 public:
     constexpr mapping_owning_view()

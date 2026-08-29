@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/numeric/bounded_value.hpp"
 
 namespace melon {
@@ -62,8 +61,8 @@ private:
     // which num()/den() hand out const references into, so a const normalize()
     // would change a rational under its caller and race between two threads
     // reading a shared const one.
-    MELON_NO_UNIQUE_ADDRESS NumT _num;
-    MELON_NO_UNIQUE_ADDRESS DenT _den;
+    [[no_unique_address]] NumT _num;
+    [[no_unique_address]] DenT _den;
 
     template <typename T>
     static constexpr bool scalar_operand = rational_scalar_operand<T>;

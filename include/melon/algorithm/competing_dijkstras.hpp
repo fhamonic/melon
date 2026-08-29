@@ -6,7 +6,6 @@
 #include <utility>
 
 #include "melon/container/d_ary_heap.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -86,7 +85,7 @@ private:
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
     heap _heap;
     std::size_t _num_blue_candidates;
-    MELON_NO_UNIQUE_ADDRESS entry_cmp _entry_cmp;
+    [[no_unique_address]] entry_cmp _entry_cmp;
 
 public:
     // ---- Construction -------------------------------------------------------

@@ -13,7 +13,6 @@
 
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 #include "melon/utility/semiring.hpp"
@@ -67,19 +66,19 @@ private:
     LengthMap _length_map;
     vertex_map_t<Graph, length_type> _distances_map;
 
-    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<
+    [[no_unique_address]] detail::vertex_map_if<
         Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
         _pred_vertices_map;
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
         _pred_arcs_map;
 
     struct no_found_negative_cycle {};
-    MELON_NO_UNIQUE_ADDRESS std::conditional_t<Traits::detect_negative_cycles,
-                                               bool, no_found_negative_cycle>
+    [[no_unique_address]] std::conditional_t<Traits::detect_negative_cycles,
+                                             bool, no_found_negative_cycle>
         _found_negative_cycle{};
     struct no_cycle_witness {};
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     std::conditional_t<_stores_witness, std::optional<vertex>, no_cycle_witness>
         _cycle_witness{};
 

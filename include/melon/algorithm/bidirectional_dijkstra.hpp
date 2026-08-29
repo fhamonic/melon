@@ -16,7 +16,6 @@
 #include "melon/detail/concat_view.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -97,9 +96,9 @@ private:
     vertex_map_t<Graph, std::pair<vertex_status, vertex_status>>
         _vertex_status_map;
 
-    MELON_NO_UNIQUE_ADDRESS forward_pred_arcs_map _forward_pred_arcs_map;
-    MELON_NO_UNIQUE_ADDRESS reverse_pred_arcs_map _reverse_pred_arcs_map;
-    MELON_NO_UNIQUE_ADDRESS optional_midpoint _midpoint;
+    [[no_unique_address]] forward_pred_arcs_map _forward_pred_arcs_map;
+    [[no_unique_address]] reverse_pred_arcs_map _reverse_pred_arcs_map;
+    [[no_unique_address]] optional_midpoint _midpoint;
     length_type _st_dist = Traits::semiring::infty;
 
 public:

@@ -8,8 +8,6 @@
 #include <ranges>
 #include <type_traits>
 
-#include "melon/detail/no_unique_address.hpp"
-
 namespace melon::detail {
 
 template <typename Iterator, typename Sentinel>
@@ -308,7 +306,7 @@ template <std::ranges::borrowed_range R>
 class consumable_input_view<R> : public std::ranges::view_base {
 protected:
     std::ranges::iterator_t<R> _it;
-    MELON_NO_UNIQUE_ADDRESS std::ranges::sentinel_t<R> _sentinel;
+    [[no_unique_address]] std::ranges::sentinel_t<R> _sentinel;
 
 public:
     // See the primary template, including the `explicit`: whether a range
@@ -373,9 +371,9 @@ private:
     struct no_state {};
     // Only the borrowed specialisation of the base needs a remembered begin:
     // the primary one owns the range and can ask it for begin() again.
-    MELON_NO_UNIQUE_ADDRESS std::conditional_t<
-        std::ranges::borrowed_range<R>, std::ranges::iterator_t<R>, no_state>
-        _begin;
+    [[no_unique_address]] std::conditional_t<std::ranges::borrowed_range<R>,
+                                             std::ranges::iterator_t<R>,
+                                             no_state> _begin;
 
     constexpr void remember_begin() {
         if constexpr(std::ranges::borrowed_range<R>) _begin = base::_it;

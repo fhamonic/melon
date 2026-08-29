@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "melon/borrowed_graph.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 
@@ -354,8 +353,8 @@ template <typename C1, typename C2>
 class composed_adaptor_closure
     : public graph_adaptor_closure<composed_adaptor_closure<C1, C2>> {
 private:
-    MELON_NO_UNIQUE_ADDRESS C1 _first;
-    MELON_NO_UNIQUE_ADDRESS C2 _second;
+    [[no_unique_address]] C1 _first;
+    [[no_unique_address]] C2 _second;
 
 public:
     constexpr composed_adaptor_closure(C1 first, C2 second) noexcept(
@@ -386,8 +385,8 @@ template <typename Fn, typename... Args>
 class adaptor_partial
     : public graph_adaptor_closure<adaptor_partial<Fn, Args...>> {
 private:
-    MELON_NO_UNIQUE_ADDRESS Fn _fn;
-    MELON_NO_UNIQUE_ADDRESS std::tuple<Args...> _args;
+    [[no_unique_address]] Fn _fn;
+    [[no_unique_address]] std::tuple<Args...> _args;
 
 public:
     template <typename... Ts>

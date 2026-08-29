@@ -13,7 +13,6 @@
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -99,12 +98,12 @@ private:
     LengthMap _length_map;
     heap _heap;
     vertex_map_t<Graph, vertex_status> _vertex_status_map;
-    MELON_NO_UNIQUE_ADDRESS entry_cmp _entry_cmp;
+    [[no_unique_address]] entry_cmp _entry_cmp;
 
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     detail::vertex_map_if<Traits::store_distances, Graph, length_type>
         _distances_map;
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     detail::vertex_map_if<Traits::store_clusters, Graph, cluster_id_t>
         _clusters_map;
 

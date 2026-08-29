@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -68,21 +67,19 @@ private:
 private:
     Graph _graph;
     std::vector<vertex> _queue;
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     std::conditional_t<Traits::store_traversal_range, cursor, std::monostate>
         _queue_traversal_begin;
     cursor _queue_current;
     vertex_map_t<Graph, bool> _reached_map;
 
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     detail::vertex_map_if<Traits::store_pred_vertices, Graph, vertex>
         _pred_vertices_map;
-    MELON_NO_UNIQUE_ADDRESS
-    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc>
-        _pred_arcs_map;
-    MELON_NO_UNIQUE_ADDRESS
-    detail::vertex_map_if<Traits::store_distances, Graph, int>
-        _dist_map;
+    [[no_unique_address]]
+    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc> _pred_arcs_map;
+    [[no_unique_address]]
+    detail::vertex_map_if<Traits::store_distances, Graph, int> _dist_map;
 
 public:
     // ---- Construction -------------------------------------------------------

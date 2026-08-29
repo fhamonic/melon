@@ -16,7 +16,6 @@
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -61,7 +60,7 @@ private:
     vertex_map_t<Graph, bool> _in_tarjan_stack_map;
     vertex_map_t<Graph, component_num> _index_map;
     vertex_map_t<Graph, component_num> _lowlink_map;
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     detail::vertex_map_if<Traits::store_component_ids, Graph, component_num>
         _component_id_map;
 

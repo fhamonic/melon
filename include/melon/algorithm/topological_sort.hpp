@@ -15,7 +15,6 @@
 
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -55,15 +54,13 @@ private:
     reached_map_t _reached_map;
     remaining_in_degree_map_t _remaining_in_degree_map;
 
-    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<
+    [[no_unique_address]] detail::vertex_map_if<
         Traits::store_critical_paths && !has_arc_source<Graph>, Graph, vertex>
         _pred_vertices_map;
-    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<Traits::store_critical_paths,
-                                                  Graph, std::optional<arc>>
-        _pred_arcs_map;
-    MELON_NO_UNIQUE_ADDRESS
-    detail::vertex_map_if<Traits::store_ranks, Graph, int>
-        _rank_map;
+    [[no_unique_address]] detail::vertex_map_if<
+        Traits::store_critical_paths, Graph, std::optional<arc>> _pred_arcs_map;
+    [[no_unique_address]]
+    detail::vertex_map_if<Traits::store_ranks, Graph, int> _rank_map;
 
     constexpr void push_start_vertices() {
         _queue.resize(0);

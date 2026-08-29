@@ -2,14 +2,13 @@
 
 #include <type_traits>
 
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/graph.hpp"
 
 namespace melon::detail {
 
 // DiscriminatingT takes no part in the type; it exists so that two disabled
 // maps of the same Graph and Type are still *distinct* empty types. Two
-// MELON_NO_UNIQUE_ADDRESS members of the same type may not share an address, so
+// [[no_unique_address]] members of the same type may not share an address, so
 // giving them the same DiscriminatingT costs a byte of padding in every
 // algorithm holding a pair of them (bidirectional_dijkstra).
 template <bool Cond, typename Graph, typename Type,

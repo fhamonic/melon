@@ -13,7 +13,6 @@
 
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
-#include "melon/detail/no_unique_address.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -70,17 +69,17 @@ private:
     std::vector<vertex> _next_queue;
     vertex_map_t<Graph, bool> _in_queue_map;
 
-    MELON_NO_UNIQUE_ADDRESS detail::vertex_map_if<
+    [[no_unique_address]] detail::vertex_map_if<
         Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
         _pred_vertices_map;
-    MELON_NO_UNIQUE_ADDRESS
+    [[no_unique_address]]
     detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
         _pred_arcs_map;
 
     struct no_cycle_witness {};
-    MELON_NO_UNIQUE_ADDRESS std::conditional_t<
-        Traits::detect_negative_cycles, std::optional<vertex>, no_cycle_witness>
-        _cycle_witness{};
+    [[no_unique_address]] std::conditional_t<Traits::detect_negative_cycles,
+                                             std::optional<vertex>,
+                                             no_cycle_witness> _cycle_witness{};
 
 public:
     // ---- Construction -------------------------------------------------------
