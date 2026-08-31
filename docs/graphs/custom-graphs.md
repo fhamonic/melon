@@ -169,6 +169,8 @@ BFS runs, because it only requires adjacency. Dijkstra would not compile on this
 
 **Ranges may be lazy, but they must be re-iterable.** melon walks `vertices(g)` and the incidence ranges more than once. Return a view over stable storage, or an `iota`; do not return a one-shot input range.
 
+**A default-constructed range must be empty — or not default-constructible at all.** melon's augmenting views (the `melon::experimental` supersource constructions) answer a virtual vertex's empty incidence with a default-constructed instance of *your* range type, gated only on `std::default_initializable`. An iterator that value-initializes to something other than past-the-end makes that stand-in walk garbage silently; if your iterators cannot default to at-end, delete their default constructor and the views fall back safely by rejecting the feature.
+
 **Identifiers must be unique and stable.** No duplicates in `vertices(g)` or `arcs(g)`, and an identifier must keep meaning the same element for as long as the algorithm runs.
 
 **Accessors must be const-callable.** Every concept is written against `const T &`. A non-const `out_arcs` is invisible to melon.

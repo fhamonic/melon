@@ -71,7 +71,7 @@ More on all of this in [Why melon](https://fhamonic.github.io/melon/getting-star
 | **Graph views** | `reverse`, `subgraph`, `induced_subgraph`, `undirect`, `complete_digraph` |
 | **Traversals** | BFS, DFS, topological sort, traversal forest, strongly and weakly connected components |
 | **Shortest paths** | Dijkstra, A\*, bidirectional Dijkstra, bi-objective Dijkstra, competing Dijkstras, Bellman–Ford and Bellman–Ford–Moore (negative lengths), network Voronoi |
-| **Flows and trees** | Edmonds–Karp, Dinitz, Kruskal |
+| **Flows and trees** | Edmonds–Karp, Dinitz, network simplex (minimum-cost flow), Kruskal |
 | **Other** | knapsack and unbounded knapsack branch-and-bound, Bentley–Ottmann segment intersection |
 | **Data structures** | `d_ary_heap`, `updatable_d_ary_heap`, `static_map`, `static_filter_map`, `disjoint_sets` |
 | **Utilities** | graph builder, `make_static_digraph` (rebuild any graph as a renumbered `static_digraph`, translating its maps), Graphviz printer, Erdős–Rényi generator, alias-method sampler, semirings, rationals |
@@ -132,10 +132,10 @@ The guarantee rests on a handful of design decisions — algorithms are move-onl
 ## Roadmap
 
 Concepts and containers: tree graphs, planar graphs, bipartite graphs.
-Algorithms: network simplex, Laplacian combinatorial solver, planar map intersection.
+Algorithms: Laplacian combinatorial solver, planar map intersection.
 Utility: JSON serialization, SVG printer (the Graphviz printer ships since 1.0).
 
-melon is a young, single-maintainer library: the roadmap lists things that do not exist yet, not things being polished. If you need Boost.Graph's full catalogue (planarity testing, matching, isomorphism, min-cost flow) or an older standard, stay with the incumbents.
+melon is a young, single-maintainer library: the roadmap lists things that do not exist yet, not things being polished. If you need Boost.Graph's full catalogue (planarity testing, matching, isomorphism) or an older standard, stay with the incumbents.
 
 ## Contributing
 

@@ -8,6 +8,38 @@ Notable changes to melon. The format follows
 
 ### Added
 
+- `network_simplex`: exact minimum-cost flow by the primal network simplex,
+  in the implementation lineage of LEMON's — but with no renumbering, no
+  problem copy, and no materialized artificial root: it runs in the
+  graph's own id spaces, keeps every piece of state in the graph's own
+  maps (the root is as implicit as its virtual arcs, marked by a vertex
+  being its own parent in the basis tree), and reads capacities, costs and
+  supplies live through the given mappings. Steppable one pivot at a time,
+  reports `optimal` / `infeasible` / `unbounded`, and exposes the dual
+  potentials alongside the flow (`flows_map()` / `potentials_map()`, with
+  terminal move-out). Requires `num_vertices` / `num_arcs` and the map
+  factories; neither vertex nor arc ids need be integral — any copyable,
+  equality-comparable id type the factories and mappings accept runs, so a
+  `mutable_digraph` with id holes from removals qualifies (the
+  entering-arc search walks the graph's own `arcs()` range through a
+  resumable cursor), and so does a graph whose handles are structs. Arc
+  endpoints are delegated to `arc_source` / `arc_target` where the graph
+  answers them, so an arc-list graph with map factories qualifies too.
+- `experimental::views::add_virtual_vertices`
+  (`melon/experimental/add_virtual_vertices.hpp`): augments a graph with
+  `count` fresh vertices by extending the integral vertex id space past
+  its largest id — dense ids not required, arcs untouched. Virtual
+  vertices have empty incidence, the vertex-map factory covers them, and
+  stacked views mint past each other's virtual ids. Experimental: no
+  stability guarantee.
+- `experimental::views::unify_sources`
+  (`melon/experimental/unify_sources.hpp`): augments a dense-id graph with
+  a virtual root vertex and one virtual arc per given source — the
+  supersource construction of multi-source flow problems — by extending
+  the integer id spaces; its map factories cover the virtual elements, and
+  the inward interface follows the wrapped graph. Experimental: no
+  stability guarantee.
+
 - MSVC support: Visual Studio 2022 17.11 (toolset v14.41) and newer build
   the library and pass the full test suite, exercised by a new
   MSVC 17.11 / C++23 CI job on Windows. One documented MSVC front-end
@@ -16,6 +48,14 @@ Notable changes to melon. The format follows
   — see the installation page's MSVC note.
 - `detail/prefetch.hpp` emits real prefetch hints under MSVC on x86-64;
   they were previously GCC/Clang-only.
+
+### Fixed
+
+- `mutable_digraph`: default-constructed iterators now compare equal to
+  the end sentinel, so a value-initialized incidence or vertex range is
+  empty instead of walking a null structure — which graph views rely on to
+  stand in an empty range (fixes `experimental::views::unify_sources` root
+  incidence over a hole-free `mutable_digraph`).
 
 ## [1.0.0] - 2026-08-28
 

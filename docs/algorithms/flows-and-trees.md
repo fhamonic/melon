@@ -90,6 +90,122 @@ for(auto && [s, t] : pairs) {
     [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
     Extraction is terminal: call nothing else on the algorithm afterwards.
 
+## Minimum-cost flow
+
+### `network_simplex`
+
+```cpp
+#include "melon/algorithm/network_simplex.hpp"
+
+std::vector<int> capacity = ...;   // one per arc
+std::vector<int> cost = ...;       // one per arc
+std::vector<int> supply = ...;     // one per vertex, summing to zero
+
+network_simplex alg(graph, capacity, cost, supply);
+alg.run();
+
+if(alg.status() == mcf_status::optimal)
+    std::println("min cost = {}", alg.total_cost());
+```
+
+The primal network simplex, in the implementation lineage of LEMON's: it
+minimizes `sum cost(a) * flow(a)` subject to `0 <= flow(a) <= capacity(a)`
+and, at every vertex, outflow minus inflow equal to `supply(v)`. Supplies
+must sum to zero (asserted); a capacity equal to
+`std::numeric_limits<...>::max()` means *unbounded above*. Worst-case
+exponential pivots like every simplex — and in practice the fastest exact
+method known for the problem.
+
+Nothing is renumbered, no problem copy is made, and the artificial root is
+not even materialized: the algorithm runs in the graph's own id spaces,
+keeps every piece of state in maps the graph itself hands out
+(`create_vertex_map` / `create_arc_map`), and reads capacities, costs and
+supplies through the given mappings — the root is as implicit as its
+virtual arcs, marked by a vertex being its own parent in the basis tree.
+Arc endpoints come from `arc_source` / `arc_target` where the graph
+answers them; each endpoint the graph cannot answer gets a map built once
+from `arcs_entries`, so — like
+[`bellman_ford`](shortest-paths.md#bellman_ford) — an arc-list graph
+qualifies as long as it has the map factories. **Neither id space carries
+an integrality requirement**: vertex and arc ids may be any copyable,
+equality-comparable type the graph's factories and the mappings accept —
+the entering-arc search walks the graph's own `arcs()` range through a
+resumable cursor — so a `mutable_digraph` with holes from removals
+qualifies, and so does a graph whose handles are structs.
+
+Speed still favors a static rebuild for a graph whose `arcs()` range
+pointer-chases: the search lands in the innermost pivot loop, and solving
+directly on a `mutable_digraph` measures 2–3× slower than one
+[`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph)
+call (maps translated in the same call) followed by the solve, builder
+included. That rebuild is `O(n + m)`, which any solve worth timing
+dominates: the simplex is worst-case exponential in pivots, and every
+pivot already scans a block of arcs.
+
+```cpp
+auto [sg, new_supply, new_capacity, new_cost] = make_static_digraph(
+    g, std::less{}, std::tie(supply), std::tie(capacity, cost));
+network_simplex alg(sg, new_capacity, new_cost, new_supply);
+```
+
+Capacities and supplies share one value domain — their `std::common_type`,
+so mixed widths widen instead of truncating — and it must be a **signed**
+number type, like the cost type. Both are enforced at the constraint:
+in unsigned arithmetic no reduced cost ever tests negative, so the algorithm
+would silently report every feasible instance infeasible.
+
+`run()` leaves one of three verdicts in `status()`:
+
+| `mcf_status` | Meaning |
+| --- | --- |
+| `optimal` | `flow(a)` is a minimum-cost flow, `potential(v)` its dual certificate |
+| `infeasible` | the supplies cannot be routed within the capacities |
+| `unbounded` | a negative-cost cycle of unbounded capacity exists — no finite optimum |
+
+`status()` is meaningful once `finished()` is true; while pivots remain it
+still reads `optimal`, because infeasibility is only detectable at
+termination.
+
+The algorithm is steppable: one `advance()` is one simplex pivot, so pivots
+can be capped, counted or watched, with `finished()` a `const` read as in
+every melon algorithm. `run()` is `while(!finished()) advance();`.
+
+With `status() == optimal`, `total_cost()` sums `cost * flow` in a widened
+accumulator (`int64_t` for integral inputs — the default traits'
+`total_cost_type`), `flow(a)` reads one arc and `potential(v)` one vertex:
+every arc satisfies complementary slackness against the potentials, with
+reduced cost `cost(a) + potential(source) - potential(target)`. Bulk access
+mirrors the flow pair: `flows_map()` / `potentials_map()` refer into the
+algorithm, and `std::move(alg).flows_map()` extracts an owning map as a
+terminal operation — see
+[Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
+
+`reset()` re-reads the maps, so mutating costs or supplies and calling
+`reset().run()` re-solves the new problem while reusing every allocation.
+The mappings are read **live** during the pivots: they must keep answering,
+with unchanged values, from `reset()` until the last query — mutating one
+mid-`run()` corrupts the basis silently, and a lambda mapping is
+re-evaluated on every read, so cache anything expensive yourself.
+
+Any [mapping](../graphs/mappings.md) fits each slot, and their read
+patterns differ: capacities and costs are read from the pivot loops, but
+the supply mapping is read exactly once per vertex, inside `reset()` only.
+That makes a lambda the natural supply for the common case of a handful of
+terminals — a single-source, single-sink problem needs no vertex-sized
+vector at all:
+
+```cpp
+// route q units from s to t, every other vertex balanced
+network_simplex alg(graph, capacity, cost, [s, t, q](const auto & v) {
+    return v == s ? q : v == t ? -q : 0;
+});
+```
+
+The entering-arc pivot rule is LEMON's block search, tunable through a
+traits type (`network_simplex_traits`) passed dijkstra-style as a leading
+constructor argument — `network_simplex(my_traits{}, graph, capacity, cost,
+supply)` — which also carries `total_cost_type`.
+
 ## Minimum spanning tree
 
 ### `kruskal`
@@ -130,4 +246,4 @@ Since `views::undirect` keeps the arc identifiers as edge identifiers, the cost 
 
 ## What is missing
 
-melon has no min-cost flow, no bipartite matching, no general matching, and no network simplex — the last is on the [roadmap](https://github.com/fhamonic/melon#roadmap). For those today, Boost.Graph or LEMON remain the answer.
+melon has no bipartite matching and no general matching. For those today, Boost.Graph or LEMON remain the answer.

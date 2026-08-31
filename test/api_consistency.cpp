@@ -23,6 +23,7 @@
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/knapsack_bnb.hpp"
 #include "melon/algorithm/kruskal.hpp"
+#include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/algorithm/topological_sort.hpp"
@@ -576,6 +577,15 @@ static_assert(
         melon::edmonds_karp<RG, RLM> &> &&
     !std::copy_constructible<melon::edmonds_karp<RG, RLM>> &&
     std::movable<melon::edmonds_karp<RG, RLM>>);
+// network_simplex shares the flow pair's vocabulary, plus the steppable
+// finished()/advance() half, whose finished() must be a const read.
+using NS = melon::network_simplex<RG, RLM, RLM, RLM>;
+static_assert(std::same_as<decltype(std::declval<NS &>().run()), NS &> &&
+              std::same_as<decltype(std::declval<NS &>().reset()), NS &> &&
+              !std::copy_constructible<NS> && std::movable<NS> &&
+              requires(const NS & alg) {
+                  { alg.finished() } -> std::same_as<bool>;
+              });
 static_assert(
     melon::traversal_algorithm<melon::strongly_connected_components<RG>>);
 using UG = melon::undirect_view<RG>;

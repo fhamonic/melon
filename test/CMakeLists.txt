@@ -83,6 +83,10 @@ add_executable(
   differential.cpp
   bellman_ford.cpp
   bellman_ford_moore.cpp
+  network_simplex.cpp
+  unify_sources.cpp
+  add_virtual_vertices.cpp
+  map_if.cpp
 )
 target_include_directories(melon_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(melon_test GTest::gtest)

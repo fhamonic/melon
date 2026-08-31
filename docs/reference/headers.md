@@ -69,6 +69,7 @@ ownership views `graph_ref_view` / `graph_owning_view` and their mapping twins
 | `bellman_ford_moore.hpp` | [`bellman_ford_moore`, `bellman_ford_moore_default_traits`, `bellman_ford_moore_traits`](../algorithms/shortest-paths.md#bellman_ford_moore) |
 | `edmonds_karp.hpp` | [`edmonds_karp`](../algorithms/flows-and-trees.md#edmonds_karp) |
 | `dinitz.hpp` | [`dinitz`](../algorithms/flows-and-trees.md#dinitz) |
+| `network_simplex.hpp` | [`network_simplex`, `network_simplex_default_traits`, `network_simplex_traits`, `mcf_status`](../algorithms/flows-and-trees.md#network_simplex) |
 | `kruskal.hpp` | [`kruskal`](../algorithms/flows-and-trees.md#kruskal) |
 | `knapsack_bnb.hpp` | [`knapsack_bnb`](../algorithms/others.md#knapsack) |
 | `unbounded_knapsack_bnb.hpp` | [`unbounded_knapsack_bnb`](../algorithms/others.md#knapsack) |
@@ -108,6 +109,8 @@ The same applies to anything under `melon/detail/` or in a `detail` namespace �
 | Header | Status |
 | --- | --- |
 | `planar_map.hpp` | compiles, covered by `test/experimental.cpp` |
+| `add_virtual_vertices.hpp` | augments a graph with fresh vertex ids; covered by `test/add_virtual_vertices.cpp` |
+| `unify_sources.hpp` | the supersource construction (virtual root + per-source arcs); covered by `test/unify_sources.cpp` |
 | `dual.hpp` | compiles, covered by `test/experimental.cpp` |
 | `scapegoat_tree.hpp` | **unfinished, does not compile — not shipped** |
 | `doubly_connected_digraph.hpp` | **unfinished, does not compile — not shipped** |

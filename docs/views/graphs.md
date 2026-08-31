@@ -180,5 +180,5 @@ Each layer is a thin object holding a pointer (or, for an rvalue, the graph itse
 
 Two things to keep in mind:
 
-- **Identifiers pass through unchanged.** `reverse`, `subgraph` and `undirect` never renumber, which is precisely why maps built on the base graph stay usable at every level.
+- **Identifiers pass through unchanged.** `reverse`, `subgraph` and `undirect` never renumber — which is precisely why maps built on the base graph stay usable at every level.
 - **Lifetime follows the reference.** `views::subgraph(graph, keep)` keeps pointers to `graph` and `keep`; both must outlive the view and any algorithm holding it. Passing a temporary graph makes the view own it instead — see [Ownership and mapping views](ownership.md).

@@ -18,6 +18,7 @@
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/knapsack_bnb.hpp"
 #include "melon/algorithm/kruskal.hpp"
+#include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/algorithm/topological_sort.hpp"
@@ -1035,6 +1036,13 @@ GTEST_TEST(api_review, stored_maps_are_exposed_as_map_views) {
     static_assert(requires(const edmonds_karp<RV, CM> & alg, const A & a) {
         { alg.flow(a) } -> std::convertible_to<int>;
         { alg.flows_map()[a] } -> std::convertible_to<int>;
+    });
+    static_assert(requires(const network_simplex<RV, CM, CM, CM> & alg,
+                           const A & a, const V & v) {
+        { alg.flow(a) } -> std::convertible_to<int>;
+        { alg.flows_map()[a] } -> std::convertible_to<int>;
+        { alg.potential(v) } -> std::convertible_to<int>;
+        { alg.potentials_map()[v] } -> std::convertible_to<int>;
     });
     static_assert(requires(
         const dijkstra<RV, LM, distance_dijkstra_traits> & alg, const V & v) {

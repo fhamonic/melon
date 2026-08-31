@@ -58,6 +58,13 @@ private:
         using detail::intrusive_iterator_base<mutable_digraph,
                                               vertex>::intrusive_iterator_base;
 
+        // At-end, not zero: std::ranges::subrange value-initializes its
+        // stored iterator, and a zero cursor claims element 0 of a null
+        // structure -- graph views stand in an empty incidence range with a
+        // default-constructed one (unify_sources at its root).
+        constexpr vertices_iterator() noexcept
+            : vertices_iterator(nullptr, _invalid_cursor) {}
+
         constexpr vertices_iterator & operator++() noexcept {
             _cursor = _structure->_vertices[_cursor].next_vertex;
             return *this;
@@ -90,6 +97,10 @@ private:
         using detail::intrusive_iterator_base<mutable_digraph,
                                               arc>::intrusive_iterator_base;
 
+        // At-end, not zero -- see vertices_iterator.
+        constexpr out_arcs_iterator() noexcept
+            : out_arcs_iterator(nullptr, _invalid_cursor) {}
+
         constexpr out_arcs_iterator & operator++() noexcept {
             _cursor = _structure->_arcs[_cursor].next_out_arc;
             return *this;
@@ -121,6 +132,10 @@ private:
     public:
         using detail::intrusive_iterator_base<mutable_digraph,
                                               arc>::intrusive_iterator_base;
+
+        // At-end, not zero -- see vertices_iterator.
+        constexpr in_arcs_iterator() noexcept
+            : in_arcs_iterator(nullptr, _invalid_cursor) {}
 
         constexpr in_arcs_iterator & operator++() noexcept {
             _cursor = _structure->_arcs[_cursor].next_in_arc;

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <vector>
 
@@ -413,3 +414,21 @@ static_assert(!std::equality_comparable_with<
               std::ranges::iterator_t<decltype(out_arcs(
                   std::declval<const mutable_digraph &>(),
                   std::declval<vertex_t<mutable_digraph>>()))>>);
+
+////////////////////////////////////////////////////////////////////////////////
+// default-constructed range objects are empty: std::ranges::subrange
+// value-initializes its stored iterator, and a zero cursor would claim
+// element 0 of a null structure -- graph views stand in an empty incidence
+// range with a default-constructed one (unify_sources at its root)
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(mutable_digraph, default_constructed_ranges_are_empty) {
+    ASSERT_TRUE(std::ranges::empty(
+        decltype(vertices(std::declval<const mutable_digraph &>()))()));
+    ASSERT_TRUE(std::ranges::empty(
+        decltype(out_arcs(std::declval<const mutable_digraph &>(),
+                          std::declval<vertex_t<mutable_digraph>>()))()));
+    ASSERT_TRUE(std::ranges::empty(
+        decltype(in_arcs(std::declval<const mutable_digraph &>(),
+                         std::declval<vertex_t<mutable_digraph>>()))()));
+}

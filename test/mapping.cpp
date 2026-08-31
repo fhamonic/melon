@@ -461,7 +461,8 @@ GTEST_TEST(map_if, const_subscript_returns_a_reference) {
     // same object, not a copy
     ASSERT_EQ(std::addressof(cmap[0u]), std::addressof(map[0u]));
 
-    // the disabled specialization is still an empty, freely constructible stub
+    // the disabled specialization is still an empty stub; its constructor
+    // mirrors (and constructibility matrix) are pinned in map_if.cpp
     static_assert(std::is_empty_v<
                   detail::vertex_map_if<false, static_digraph, std::string>>);
 }

@@ -110,6 +110,16 @@ clang-format -i <files you changed>
   compiles: add it to `test/experimental.cpp` and to the install rules
   (`CMakeLists.txt` and the `package()` exclusion list in `conanfile.py`)
   in the same change that makes it work.
+- Trait- or capability-gated map members use `detail::vertex_map_if` /
+  `detail::arc_map_if` from `melon/detail/map_if.hpp`, declared
+  `[[no_unique_address]]`. The disabled variant is an empty type whose
+  constructors *mirror* the enabled signatures — never widen them back to a
+  variadic, or a malformed construction only fails for the first user whose
+  flags turn the map on. Two disabled maps in one class need distinct
+  `DiscriminatingT` tags to overlap to zero bytes. Gated members that are
+  not maps use a local named empty struct as the disabled alternative, not
+  a shared detail type, for the same address-overlap reason. The machinery's
+  contract is pinned in `test/map_if.cpp`.
 - User-visible changes (features, fixes, deprecations) get a line in
   `CHANGELOG.md` under the upcoming release.
 
