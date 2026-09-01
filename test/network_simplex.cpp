@@ -5,10 +5,13 @@
 #include <concepts>
 #include <limits>
 #include <optional>
+#include <ranges>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "melon/algorithm/network_simplex.hpp"
+#include "melon/borrowed_graph.hpp"
 #include "melon/container/mutable_digraph.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/mapping.hpp"
@@ -96,6 +99,48 @@ GTEST_TEST(network_simplex, fixed_transportation_instance) {
     for(auto && v : vertices(graph))
         ASSERT_EQ(alg.potentials_map()[v], alg.potential(v));
 }
+
+// The algorithm only ever reads the graph and the capacity and cost mappings,
+// so const references model all three. A running test rather than a
+// constructible_from assert, which would leave the pivot loop uninstantiated.
+GTEST_TEST(network_simplex, const_graph_and_const_mappings) {
+    static_digraph_builder<static_digraph, int, int> builder(4);
+    builder.add_arc(0u, 1u, 4, 1);
+    builder.add_arc(0u, 2u, 2, 2);
+    builder.add_arc(1u, 2u, 2, 1);
+    builder.add_arc(1u, 3u, 3, 3);
+    builder.add_arc(2u, 3u, 5, 1);
+    auto [graph, upper, cost] = builder.build();
+    std::vector<int> supply = {4, 0, 0, -4};
+
+    const static_digraph & const_graph = graph;
+    const std::vector<int> & const_upper = upper;
+    const std::vector<int> & const_cost = cost;
+    network_simplex alg(const_graph, const_upper, const_cost, supply);
+    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_EQ(alg.total_cost(), 12);
+}
+
+namespace {
+using ref_graph = views::graph_all_t<static_digraph &>;
+using ref_ns =
+    network_simplex<ref_graph, maps::mapping_all_t<std::vector<int> &>,
+                    maps::mapping_all_t<std::vector<int> &>,
+                    maps::mapping_all_t<std::vector<int> &>>;
+}  // namespace
+
+// Where the bulk accessors are *called* nothing can throw: the const& pair
+// build a closure over `this` and nothing else, and the terminal pair only
+// move the map they hand over. That move is what keeps the terminal pair
+// conditional -- an unconditional noexcept would turn a throwing map into
+// std::terminate.
+static_assert(noexcept(std::declval<const ref_ns &>().flows_map()));
+static_assert(noexcept(std::declval<const ref_ns &>().potentials_map()));
+static_assert(noexcept(std::declval<ref_ns>().flows_map()) ==
+              std::is_nothrow_move_constructible_v<arc_map_t<ref_graph, int>>);
+static_assert(
+    noexcept(std::declval<ref_ns>().potentials_map()) ==
+    std::is_nothrow_move_constructible_v<vertex_map_t<ref_graph, int>>);
 
 GTEST_TEST(network_simplex, terminal_maps_survive_the_algorithm) {
     static_digraph_builder<static_digraph, int, int, int> builder(4);
@@ -368,13 +413,23 @@ GTEST_TEST(network_simplex, complete_digraph_view_with_lambda_maps) {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
+// first_eligible IS block_search<0.0, 1>, so this one config covers both
+// the single-arc-block wrap stress and the first-eligible rule.
 struct single_arc_block_traits {
-    static constexpr double block_size_factor = 0.0;
-    static constexpr int min_block_size = 1;
+    using pivot_rule = pivot_rules::first_eligible;
+    static constexpr bool arc_mixing = false;
+    using total_cost_type = long long;
+};
+struct best_eligible_traits {
+    using pivot_rule = pivot_rules::best_eligible;
+    static constexpr bool arc_mixing = true;
     using total_cost_type = long long;
 };
 }  // namespace
 static_assert(network_simplex_traits<single_arc_block_traits>);
+static_assert(network_simplex_traits<best_eligible_traits>);
+static_assert(std::same_as<pivot_rules::first_eligible,
+                           pivot_rules::block_search<0.0, 1>>);
 
 GTEST_TEST(network_simplex, traits_plug_in_through_the_leading_constructor) {
     static_digraph_builder<static_digraph, int, int> builder(4);
@@ -618,6 +673,77 @@ GTEST_TEST(network_simplex, unbalanced_supplies_are_a_precondition) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// the artificial arcs' cost has to outrun a whole residual path, so the
+// bound it is built from is num_vertices * max|cost| -- a magnitude, and
+// data-dependent. Both halves are pinned: instances under the bound solve,
+// instances over it are a precondition rather than a silent verdict
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(network_simplex, all_negative_costs_need_the_cost_magnitude) {
+    // Every cost here is <= 0, so a bound taken from max(cost) alone yields an
+    // artificial cost of 3 while a residual path -- which traverses a -4 arc
+    // backwards at +4 -- reaches 8. The artificial basis then looks cheaper
+    // than the real route and this feasible instance comes back `infeasible`.
+    static_digraph_builder<static_digraph, int, int> builder(3);
+    builder.add_arc(0u, 2u, 2, -4);
+    builder.add_arc(2u, 2u, 1, 0);
+    builder.add_arc(1u, 2u, 2, -1);
+    builder.add_arc(0u, 0u, 3, -3);
+    builder.add_arc(2u, 0u, 2, -1);
+    auto [graph, upper, cost] = builder.build();
+    std::vector<int> supply = {-2, 2, 0};
+
+    // v1 must push its 2 units down 1>2, which forces 2>0 to 2 and 0>2 to 0;
+    // both negative self-loops saturate: 2*(-1) + 3*(-3) + 2*(-1) = -13
+    network_simplex alg(graph, upper, cost, supply);
+    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_EQ(alg.total_cost(), -13);
+    check_flow_is_feasible(alg, graph, upper, supply);
+    check_dual_certificate(alg, graph, upper, cost);
+}
+
+namespace {
+// one unit down a path of `len` arcs, each costing a fifth of int's max/2
+auto unit_along_a_costly_path(int len) {
+    static_digraph_builder<static_digraph, int, int> builder(
+        static_cast<std::size_t>(len + 1));
+    for(int i = 0; i < len; ++i)
+        builder.add_arc(static_cast<unsigned int>(i),
+                        static_cast<unsigned int>(i + 1), 1, 200'000'000);
+    return builder.build();
+}
+}  // namespace
+
+GTEST_TEST(network_simplex, costs_are_bounded_by_the_path_not_the_arc) {
+    // Five arcs: the path costs 1e9, under the 1.07e9 an artificial arc used
+    // to cost unconditionally, and the whole instance fits an int with room.
+    auto [graph, upper, cost] = unit_along_a_costly_path(5);
+    std::vector<int> supply(6, 0);
+    supply.front() = 1;
+    supply.back() = -1;
+
+    network_simplex alg(graph, upper, cost, supply);
+    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_EQ(alg.total_cost(), 1'000'000'000);
+}
+
+GTEST_TEST(network_simplex, oversized_costs_are_a_precondition) {
+    // One arc more, and no artificial cost both outruns the 1.2e9 path and
+    // leaves the potentials room inside an int: the instance needs a wider
+    // cost type, and every verdict would be a guess. It used to be answered
+    // `infeasible`.
+    auto [graph, upper, cost] = unit_along_a_costly_path(6);
+    std::vector<int> supply(7, 0);
+    supply.front() = 1;
+    supply.back() = -1;
+    auto construct = [&]() {
+        network_simplex alg(graph, upper, cost, supply);
+        (void)alg;
+    };
+    EXPECT_DEATH(construct(), "");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // differential: on random tiny instances the status and optimum match an
 // exhaustive enumeration of every integral flow vector. Tiny and dense on
 // purpose -- parallel arcs, self-loops, zero capacities and infeasibility all
@@ -750,6 +876,13 @@ GTEST_TEST(network_simplex, mutable_digraph_with_id_holes_matches_exhaustive) {
     }
 }
 
+// The shape that separates the two branches of the cursor's relocation: the
+// arcs range is not borrowed, so a borrowed-range test alone would rebuild,
+// yet a moved graph_ref_view left the graph exactly where it was.
+static_assert(borrowed_graph<views::graph_all_t<mutable_digraph &>> &&
+              !std::ranges::borrowed_range<
+                  arcs_range_t<views::graph_all_t<mutable_digraph &>>>);
+
 GTEST_TEST(network_simplex, move_mid_solve_rebuilds_the_arc_cursor) {
     // mutable_digraph's arcs() range is not borrowed, so the entering-arc
     // cursor refers into the graph; when the algorithm owns the graph, a
@@ -771,6 +904,20 @@ GTEST_TEST(network_simplex, move_mid_solve_rebuilds_the_arc_cursor) {
     }
     for(unsigned int v = 0; v < I.num_vertices; ++v)
         supply[H.vertex_of[v]] = I.supply[v];
+
+    // An lvalue graph takes the other branch: only a graph_ref_view moved, so
+    // the cursor is kept where it stands rather than walked back to its
+    // offset. Same answer, and ASan still sees a kept cursor that should not
+    // have been.
+    {
+        network_simplex ref_alg(H.graph, upper, cost, supply);
+        ASSERT_FALSE(ref_alg.finished());
+        ref_alg.advance();
+        auto ref_moved = std::move(ref_alg);
+        ref_moved.run();
+        ASSERT_EQ(ref_moved.status(), mcf_status::optimal);
+        ASSERT_EQ(ref_moved.total_cost(), 12);
+    }
 
     network_simplex alg(std::move(H.graph), upper, cost, supply);
     ASSERT_FALSE(alg.finished());
@@ -803,15 +950,21 @@ GTEST_TEST(network_simplex, differential_matches_exhaustive_enumeration) {
 
         ASSERT_EQ(alg.status() == mcf_status::optimal, reference.has_value());
 
-        // a block size of one takes different pivot sequences through the
-        // same instances, stressing the wrap-around entering-arc search
+        // every pivot rule takes a different pivot sequence through the same
+        // instance -- first-eligible (a block of one) stresses the
+        // wrap-around search, and best_eligible's traits turn the mixed
+        // scan order on
         network_simplex blocked(single_arc_block_traits{}, graph, upper, cost,
                                 I.supply);
         ASSERT_EQ(blocked.run().status(), alg.status());
+        network_simplex best(best_eligible_traits{}, graph, upper, cost,
+                             I.supply);
+        ASSERT_EQ(best.run().status(), alg.status());
 
         if(!reference) continue;
         ASSERT_EQ(alg.total_cost(), *reference);
         ASSERT_EQ(blocked.total_cost(), *reference);
+        ASSERT_EQ(best.total_cost(), *reference);
         check_flow_is_feasible(alg, graph, upper, I.supply);
         check_dual_certificate(alg, graph, upper, cost);
     }

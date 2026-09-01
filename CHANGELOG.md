@@ -24,7 +24,14 @@ Notable changes to melon. The format follows
   entering-arc search walks the graph's own `arcs()` range through a
   resumable cursor), and so does a graph whose handles are structs. Arc
   endpoints are delegated to `arc_source` / `arc_target` where the graph
-  answers them, so an arc-list graph with map factories qualifies too.
+  answers them, so an arc-list graph with map factories qualifies too. The
+  entering-arc pivot rule is selectable through the traits
+  (`pivot_rules::block_search` — the default — `first_eligible` and
+  `best_eligible`, each carrying its own tuning constants; custom rules
+  plug in through a small search-context interface), along with an
+  `arc_mixing` flag providing LEMON's mixed sampling order as a strided
+  scan over random-access arc ranges (off by default; see the traits
+  documentation for when it pays).
 - `experimental::views::add_virtual_vertices`
   (`melon/experimental/add_virtual_vertices.hpp`): augments a graph with
   `count` fresh vertices by extending the integral vertex id space past

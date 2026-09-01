@@ -154,6 +154,16 @@ number type, like the cost type. Both are enforced at the constraint:
 in unsigned arithmetic no reduced cost ever tests negative, so the algorithm
 would silently report every feasible instance infeasible.
 
+The cost type needs room for one more thing: the artificial arcs that carry
+the initial basis have to be more expensive than any real route, and a route
+here is a path in the *residual* network — up to `num_vertices - 1` arcs, an
+arc traversed backwards contributing `-cost`. So **`num_vertices *
+max|cost|` must stay inside the cost type's range**, and it is asserted, as
+every precondition in melon is. Costs in the thousands over a graph of a
+million vertices are comfortable for a 32-bit cost type; if an instance
+trips the assert, widen the cost type — no value the type can hold would
+make its verdicts trustworthy.
+
 `run()` leaves one of three verdicts in `status()`:
 
 | `mcf_status` | Meaning |
@@ -201,10 +211,28 @@ network_simplex alg(graph, capacity, cost, [s, t, q](const auto & v) {
 });
 ```
 
-The entering-arc pivot rule is LEMON's block search, tunable through a
-traits type (`network_simplex_traits`) passed dijkstra-style as a leading
-constructor argument — `network_simplex(my_traits{}, graph, capacity, cost,
-supply)` — which also carries `total_cost_type`.
+The entering-arc pivot rule is selectable through a traits type
+(`network_simplex_traits`) passed dijkstra-style as a leading constructor
+argument — `network_simplex(my_traits{}, graph, capacity, cost, supply)` —
+which also carries `total_cost_type`. The traits name a `pivot_rule` type
+from LEMON's catalog, each rule carrying its own tuning constants:
+`pivot_rules::block_search<Factor, MinSize>` (the default — most negative
+reduced cost of a √m-sized block), `pivot_rules::first_eligible`, and
+`pivot_rules::best_eligible` (Dantzig's rule, a full scan per pivot). A
+custom rule is a value type constructed from the arc count whose
+`find_entering_arc(context)` reads reduced costs and a resumable
+wraparound scan through the context and returns the entering arc as an
+`std::optional` — it must hold no references into the algorithm, which is
+what keeps the algorithm movable with any rule plugged in.
+
+The traits also carry `arc_mixing`, the scan-order analogue of LEMON's
+storage mixing: with it on (and a random-access `arcs()` range) the search
+samples arcs with stride `max(m/n, 3)`, so a block sees sources from the
+whole graph even when the layout packs same-source arcs together. It
+defaults to **off**, unlike LEMON's: mixing melon's *scan order* strides
+through the per-arc reads that LEMON's mixed *storage* keeps sequential —
+measured 7–15% slower on instance families whose packing never inflated
+the pivot count. Reach for it when a packed layout measurably does.
 
 ## Minimum spanning tree
 
