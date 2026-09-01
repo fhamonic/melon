@@ -10,23 +10,15 @@ on:
     branches: ["main"]
 
 jobs:
-  clang-format-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      # Same pinned version as the one the tree is formatted with; a different
-      # major version would flag different lines.
-      - name: Install clang-format
-        run: pipx install clang-format==18.1.8
-      - name: Check formatting
-        run: |
-          find include test -name "*.hpp" -o -name "*.cpp" \
-            | xargs clang-format --dry-run -Werror
-
-  # Two invariants that no compiler enforces and that both fail silently: a
-  # header that only builds because another one included the std header it
-  # needs, and a test file that quietly stops exercising melon's precondition
-  # asserts.
+  # Source-level invariants, none of which any compiler enforces and all of
+  # which fail silently: a header that only builds because another one included
+  # the std header it needs, a test file that quietly stops exercising melon's
+  # precondition asserts, and formatting drift.
+  #
+  # The checks needing no toolchain run first, and every step after the first
+  # carries `if: !cancelled()` so one failure still reports the others -- steps
+  # stop at the first failure by default, which would take two round-trips to
+  # surface two independent problems.
   source-hygiene:
     runs-on: ubuntu-latest
     steps:
@@ -45,6 +37,7 @@ jobs:
       # the library code too. A file missing the line silently stops testing
       # every precondition it was written to check.
       - name: Every test file either undefines NDEBUG or opts out explicitly
+        if: ${{ !cancelled() }}
         run: |
           missing=$(for f in test/*.cpp; do
                       head -8 "$f" \
@@ -57,6 +50,16 @@ jobs:
             echo "$missing"
             exit 1
           fi
+      # Same pinned version as the one the tree is formatted with; a different
+      # major version would flag different lines.
+      - name: Install clang-format
+        if: ${{ !cancelled() }}
+        run: pipx install clang-format==18.1.8
+      - name: Check formatting
+        if: ${{ !cancelled() }}
+        run: |
+          find include test -name "*.hpp" -o -name "*.cpp" \
+            | xargs clang-format --dry-run -Werror
 
   linux-gcc15-build:
     runs-on: ubuntu-latest
