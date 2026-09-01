@@ -1,4 +1,4 @@
-# ![MELON](misc/melon_title.png)
+# ![MELON](misc/logo/melon_title.png)
 
 **M**odern and **E**fficient **L**ibrary for **O**ptimization in **N**etworks — a header-only, dependency-free C++23 graph library built on concepts and ranges.
 

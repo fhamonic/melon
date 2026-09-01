@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <memory>
 #include <ranges>
 #include <tuple>
 #include <type_traits>

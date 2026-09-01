@@ -3,6 +3,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 
 #include "melon/container/d_ary_heap.hpp"

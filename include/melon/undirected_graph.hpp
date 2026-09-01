@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"

@@ -29,8 +29,10 @@
 #include <cassert>
 #include <cmath>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <type_traits>

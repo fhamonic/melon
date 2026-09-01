@@ -6,6 +6,7 @@
 #include <numeric>
 #include <ranges>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "melon/container/static_map.hpp"

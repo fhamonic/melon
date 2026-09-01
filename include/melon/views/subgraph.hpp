@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <ranges>
+#include <type_traits>
+#include <utility>
 
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"

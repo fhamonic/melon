@@ -8,12 +8,15 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <memory>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 #include "melon/mapping.hpp"

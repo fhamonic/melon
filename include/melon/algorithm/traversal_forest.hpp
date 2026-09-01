@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cassert>
+#include <memory>
 #include <ranges>
+#include <utility>
 
 #include "melon/algorithm/breadth_first_search.hpp"
 #include "melon/detail/consumable_view.hpp"

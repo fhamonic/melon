@@ -4,7 +4,9 @@
 #include <cassert>
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 #include "melon/borrowed_graph.hpp"

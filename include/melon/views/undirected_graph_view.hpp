@@ -1,7 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <ranges>
+#include <type_traits>
+#include <utility>
 
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/not_self.hpp"

@@ -4,9 +4,11 @@
 #include <chrono>
 #include <cstddef>
 #include <future>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <ranges>
+#include <stop_token>
 #include <thread>
 #include <type_traits>
 #include <utility>

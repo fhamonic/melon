@@ -24,22 +24,20 @@ jobs:
             | xargs clang-format --dry-run -Werror
 
   # Two invariants that no compiler enforces and that both fail silently: a
-  # header that only builds because another one included <cstddef> first, and
-  # a test file that quietly stops exercising melon's precondition asserts.
+  # header that only builds because another one included the std header it
+  # needs, and a test file that quietly stops exercising melon's precondition
+  # asserts.
   source-hygiene:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Every header naming std::size_t includes <cstddef>
-        run: |
-          missing=$(grep -rl 'std::size_t' include --include='*.hpp' \
-                    | xargs grep -L '#include <cstddef>')
-          if [ -n "$missing" ]; then
-            echo "These headers use std::size_t without including <cstddef>;"
-            echo "they compile today only because another header drags it in:"
-            echo "$missing"
-            exit 1
-          fi
+      # Every build job but the MSVC one uses libstdc++, whose <ranges> drags
+      # in <bits/move.h>, <bits/stl_pair.h> and <type_traits>, so a header
+      # missing <utility> or <type_traits> compiles across the whole matrix and
+      # breaks in a consumer's translation unit instead. Only a source-level
+      # check sees it.
+      - name: "Every header includes what provides the std:: symbols it names"
+        run: python3 misc/tools/check_std_includes.py include
       # melon's preconditions are asserts (contract Ruling 8), and a Release
       # build defines NDEBUG. Each test file re-enables them for itself before
       # including anything: <cassert> is designed to be re-included and

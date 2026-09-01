@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
 #include <iterator>
+#include <type_traits>
 
 namespace melon::detail {
 

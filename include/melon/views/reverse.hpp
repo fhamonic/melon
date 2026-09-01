@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 
 #include "melon/detail/not_self.hpp"
 #include "melon/detail/specialization_of.hpp"

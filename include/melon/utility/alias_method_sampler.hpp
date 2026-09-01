@@ -7,6 +7,7 @@
 #include <memory>
 #include <random>
 #include <ranges>
+#include <type_traits>
 #include <utility>
 #include <vector>
 

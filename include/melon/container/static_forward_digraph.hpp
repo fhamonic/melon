@@ -7,6 +7,7 @@
 #include <numeric>
 #include <ranges>
 #include <span>
+#include <utility>
 
 #include "melon/container/static_map.hpp"
 #include "melon/mapping.hpp"

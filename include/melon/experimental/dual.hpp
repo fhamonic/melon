@@ -4,6 +4,7 @@
 // stability guarantee: anything in melon::experimental may change or
 // disappear in any release, including a patch release.
 
+#include <functional>
 #include <ranges>
 #include <utility>
 

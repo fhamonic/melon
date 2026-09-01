@@ -4,6 +4,8 @@
 #include <memory>
 #include <ranges>
 #include <span>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "melon/borrowed_graph.hpp"

@@ -9,6 +9,7 @@
 #include <memory>
 #include <ranges>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 

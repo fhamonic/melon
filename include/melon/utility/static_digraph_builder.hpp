@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <numeric>
 #include <ranges>
+#include <tuple>
 #include <utility>
 #include <vector>
 

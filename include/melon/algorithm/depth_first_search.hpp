@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <memory>
 #include <ranges>
 #include <stack>
 #include <type_traits>
