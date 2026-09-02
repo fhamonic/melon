@@ -66,6 +66,11 @@ Notable changes to melon. The format follows
 
 ### Changed
 
+- `alias_method_sampler` takes its probability map as a mapping rather than
+  a callable: a vector indexed by the item or a graph's vertex/arc map now
+  passes directly, callables still need no wrapping, and the sampled value
+  type deduces decayed (a map handing out `const double &` used to fail the
+  `floating_point` constraint on the reference).
 - `maps::map` is renamed `maps::function`; it stays in
   `melon/mapping.hpp`.
 - `maps::true_map`, `maps::false_map` and `maps::element` moved out of

@@ -7,13 +7,13 @@
 #include <memory>
 #include <random>
 #include <ranges>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/container/static_map.hpp"
 #include "melon/detail/stdlib_check.hpp"
+#include "melon/mapping.hpp"
 
 namespace melon {
 
@@ -48,8 +48,12 @@ private:
     index_type _last_index;
 
 public:
-    template <std::ranges::random_access_range R,
-              std::invocable<std::ranges::range_value_t<R>> P>
+    // Not `mapping_for`: the map is read here once and never stored, so
+    // mapping_all serves only the subscript dispatch that lets a callable, a
+    // vector or a vertex map all read as `probs[item]`.
+    template <std::ranges::random_access_range R, typename P>
+        requires mapping<maps::mapping_all_t<P>,
+                         std::ranges::range_reference_t<R>>
     constexpr alias_method_sampler(R && items, P && prob_map)
         : _items(std::views::all(std::forward<R>(items)))
         , _probs(_items.size())
@@ -58,6 +62,7 @@ public:
         // An empty item range would give the index distribution the range
         // [0, -1], whose precondition is a <= b.
         assert(!std::ranges::empty(_items));
+        auto && probs = maps::mapping_all(std::forward<P>(prob_map));
         const std::size_t n = _items.size();
         auto overfull_buckets = std::make_unique_for_overwrite<index_type[]>(n);
         auto underfull_buckets =
@@ -70,7 +75,7 @@ public:
         // they must be non-negative and not all zero, both asserted.
         Prob weights_sum = Prob{0};
         for(auto && [i, item] : std::views::enumerate(_items)) {
-            const Prob w = prob_map(item);
+            const Prob w = probs[item];
             assert(w >= Prob{0});
             _probs[static_cast<index_type>(i)] = w;
             weights_sum += w;
@@ -84,7 +89,7 @@ public:
             // (exactly-full ones) are still read branchlessly in operator().
             _aliases[i] = i;
             *overfull_end = *underfull_end = i;
-            const bool is_underfull = (prob < 1.0);
+            const bool is_underfull = (prob < Prob{1});
             underfull_end += is_underfull;
             overfull_end += !is_underfull;
         }
@@ -109,18 +114,18 @@ public:
             const auto & underfull_prob = _probs[underfull_index];
             auto & underfull_alias = _aliases[underfull_index];
 
-            overfull_prob = (overfull_prob + underfull_prob) - 1.0;
+            overfull_prob = (overfull_prob + underfull_prob) - Prob{1};
             underfull_alias = overfull_index;
 
             *overfull_end = *underfull_end = overfull_index;
-            const bool became_underfull = (overfull_prob < 1.0);
+            const bool became_underfull = (overfull_prob < Prob{1});
             underfull_end += became_underfull;
             overfull_end += !became_underfull;
         }
         for(; overfull_it != overfull_end; ++overfull_it)
-            _probs[*overfull_it] = 1.0;
+            _probs[*overfull_it] = Prob{1};
         for(; underfull_it != underfull_end; ++underfull_it)
-            _probs[*underfull_it] = 1.0;
+            _probs[*underfull_it] = Prob{1};
     }
 
 public:
@@ -143,7 +148,8 @@ public:
     [[nodiscard]] decltype(auto) operator()(Generator & gen) const {
         std::uniform_int_distribution<index_type> index_distribution(
             index_type{0}, _last_index);
-        std::uniform_real_distribution<Prob> prob_distribution(0.0, 1.0);
+        std::uniform_real_distribution<Prob> prob_distribution(Prob{0},
+                                                               Prob{1});
         const index_type i = index_distribution(gen);
         const auto prob = _probs[i];
         const auto alias = _aliases[i];
@@ -153,17 +159,22 @@ public:
     }
 };
 
+// mapped_value_t is decayed where invoke_result_t is not: a map handing out
+// `const double &` must deduce Prob = double, or `std::floating_point<Prob>`
+// rejects the reference with a deduction failure naming neither.
 template <typename Range, typename ProbMap>
 alias_method_sampler(Range &&, ProbMap &&)
     -> alias_method_sampler<
         std::views::all_t<Range>,
-        std::invoke_result_t<ProbMap, std::ranges::range_value_t<Range>>>;
+        mapped_value_t<maps::mapping_all_t<ProbMap>,
+                       std::ranges::range_reference_t<Range>>>;
 
 template <typename Range, typename ProbMap, typename Traits>
 alias_method_sampler(Traits, Range &&, ProbMap &&)
     -> alias_method_sampler<
         std::views::all_t<Range>,
-        std::invoke_result_t<ProbMap, std::ranges::range_value_t<Range>>,
+        mapped_value_t<maps::mapping_all_t<ProbMap>,
+                       std::ranges::range_reference_t<Range>>,
         Traits>;
 
 }  // namespace melon

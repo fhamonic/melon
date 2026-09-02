@@ -110,11 +110,10 @@ The geometric predicates live in `melon/numeric/geometry.hpp` behind the `cartes
 #include "melon/utility/alias_method_sampler.hpp"
 
 std::vector<double> weight = {0.1, 0.6, 0.3};
-alias_method_sampler sampler(std::views::iota(0ul, weight.size()),
-                             [&](std::size_t i) { return weight[i]; });
+alias_method_sampler sampler(std::views::iota(0ul, weight.size()), weight);
 
 std::mt19937 rng(42);
 auto item = sampler(rng);
 ```
 
-The probability argument is a callable yielding non-negative weights; like `std::discrete_distribution`, they need not sum to 1 — the table is normalized by their sum. Construction is O(n); each sample afterwards is one uniform integer, one uniform real and one branch. Use it for repeated sampling from a fixed distribution — random-restart heuristics, randomized rounding, Monte-Carlo over a fixed graph.
+The probability argument is a [mapping](../graphs/mappings.md) from the items to non-negative floating-point weights — a container indexed by the item, a graph's vertex or arc map when the items are its vertices or arcs, or a callable, which needs no wrapping. It is read once at construction and not stored, so it may go out of scope afterwards. Like `std::discrete_distribution`, the weights need not sum to 1 — the table is normalized by their sum. Construction is O(n); each sample afterwards is one uniform integer, one uniform real and one branch. Use it for repeated sampling from a fixed distribution — random-restart heuristics, randomized rounding, Monte-Carlo over a fixed graph.
