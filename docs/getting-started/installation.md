@@ -191,7 +191,7 @@ or with plain CMake, which falls back to fetching GTest if it is not installed:
 
 ```console
 $ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-$ cmake --build build -j
+$ cmake --build build -j"$(nproc)"
 $ ctest --test-dir build --output-on-failure
 ```
 

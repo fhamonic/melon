@@ -153,8 +153,10 @@ jobs:
             -DCMAKE_CXX_STANDARD=26 \
             -DMELON_PORTABLE_RANGE_SHAPES=ON \
             -DMELON_SANITIZE=address,undefined
+      # A bare -j is unlimited for make: the 64 sanitized test TUs at ~1 GB
+      # each got the whole step OOM-killed (exit 137) on the 16 GB runner.
       - name: Build
-        run: cmake --build build -j
+        run: cmake --build build -j"$(nproc)"
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
 
@@ -310,7 +312,7 @@ jobs:
           cmake -S consumer -B consumer/build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/prefix"
-          cmake --build consumer/build -j
+          cmake --build consumer/build -j"$(nproc)"
       # Dijkstra from vertex 0 settles the vertices in order of distance, so
       # the whole output is checked rather than a single line: that also
       # catches a regression in the traversal order.
@@ -427,7 +429,7 @@ jobs:
           cmake -S consumer -B consumer/build \
             -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/consumer/deps/conan_toolchain.cmake" \
             -DCMAKE_BUILD_TYPE=Release
-          cmake --build consumer/build -j
+          cmake --build consumer/build -j"$(nproc)"
       - name: Run the consumer and check its output
         run: |
           cat > expected.txt << 'EOF'
