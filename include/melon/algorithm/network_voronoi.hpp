@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
@@ -33,7 +34,7 @@ concept network_voronoi_traits =
         { Traits::store_clusters } -> std::convertible_to<bool>;
     };
 
-template <typename Graph, typename ValueType>
+template <has_vertex_map Graph, typename ValueType>
 struct network_voronoi_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     // The graph's own vertex type, not a hardcoded unsigned int: a cluster id
@@ -73,7 +74,7 @@ struct network_voronoi_default_traits {
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           network_voronoi_traits Traits = network_voronoi_default_traits<
               Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class network_voronoi : public algorithm_view_interface<
                             network_voronoi<Graph, LengthMap, Traits>> {
 private:
@@ -112,7 +113,6 @@ public:
     // ---- Construction -------------------------------------------------------
 
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
-        requires has_vertex_map<Graph>
     constexpr network_voronoi(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
@@ -157,7 +157,7 @@ public:
 
     constexpr network_voronoi & reset() {
         _heap.clear();
-        _vertex_status_map.fill(PRE_HEAP);
+        detail::fill(_vertex_status_map, vertices(_graph), PRE_HEAP);
         return *this;
     }
     // Strict precondition: the kernels must be untouched, so seed before

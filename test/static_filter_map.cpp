@@ -23,6 +23,12 @@ static_assert(std::ranges::random_access_range<static_map<std::size_t, bool>>);
 static_assert(
     output_mapping_of<static_map<std::size_t, bool>, std::size_t, bool>);
 
+// The bit-packed map is an output mapping too: its const-assignable proxy
+// returns `const reference &` from the write, so an output_mapping demanding
+// an exact return type of the write expression would reject it -- and with it
+// every subgraph filter stored bit-packed.
+static_assert(output_mapping_of<static_filter_map<unsigned>, unsigned, bool>);
+
 ////////////////////////////////////////////////////////////////////////////////
 // construction sizes the bit storage and fills it uniformly
 ////////////////////////////////////////////////////////////////////////////////

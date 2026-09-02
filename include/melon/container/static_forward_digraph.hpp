@@ -106,22 +106,32 @@ public:
                                     : _arc_target.data() + num_arcs()));
     }
 
-    // None of the four below are noexcept: they allocate.
+    // None of the four below are noexcept: they allocate. Each is constrained
+    // on what static_map's constructor does with T -- default-init, plus
+    // fill-assign for the default-value form -- so the map-creation concepts
+    // answer false for value types the maps cannot hold, instead of the
+    // declaration promising a construction whose body cannot compile.
     template <typename T>
+        requires std::default_initializable<T>
     [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map() const {
         return static_map<vertex, T>(num_vertices());
     }
     template <typename T>
+        requires std::default_initializable<T> &&
+                 std::assignable_from<T &, const T &>
     [[nodiscard]] constexpr static_map<vertex, T> create_vertex_map(
         const T & default_value) const {
         return static_map<vertex, T>(num_vertices(), default_value);
     }
 
     template <typename T>
+        requires std::default_initializable<T>
     [[nodiscard]] constexpr static_map<arc, T> create_arc_map() const {
         return static_map<arc, T>(num_arcs());
     }
     template <typename T>
+        requires std::default_initializable<T> &&
+                 std::assignable_from<T &, const T &>
     [[nodiscard]] constexpr static_map<arc, T> create_arc_map(
         const T & default_value) const {
         return static_map<arc, T>(num_arcs(), default_value);

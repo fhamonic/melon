@@ -11,6 +11,7 @@
 
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 
@@ -24,6 +25,7 @@ namespace melon {
 // O(n^2 m), independent of the capacity values.
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
+             has_vertex_map<Graph> && has_arc_map<Graph> &&
              std::numeric_limits<
                  mapped_value_t<CapacityMap, arc_t<Graph>>>::is_specialized
 class dinitz {
@@ -64,7 +66,6 @@ public:
     // Leaves the terminals unset -- run(), flow_value() and minimum_cut() all
     // read them, so set_source() and set_target() must be called first.
     template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
-        requires has_vertex_map<Graph> && has_arc_map<Graph>
     constexpr dinitz(G && g, CM && cm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))
@@ -179,7 +180,7 @@ public:
 
     constexpr dinitz & reset() {
         _converged = false;
-        _carried_flow_map.fill(0);
+        detail::fill(_carried_flow_map, arcs(_graph), value_t{0});
         for(auto && u : vertices(_graph)) {
             _remaining_out_arcs[u] = out_arcs(_graph, u);
             _remaining_in_arcs[u] = in_arcs(_graph, u);
@@ -189,7 +190,8 @@ public:
 
 private:
     bool bfs_rank_vertices() {
-        _vertex_rank_map.fill(std::numeric_limits<std::size_t>::max());
+        detail::fill(_vertex_rank_map, vertices(_graph),
+                     std::numeric_limits<std::size_t>::max());
         _vertex_rank_map[_t] = 0;
         _bfs_queue.resize(0);
         _bfs_queue.push_back(_t);

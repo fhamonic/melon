@@ -89,9 +89,57 @@ Notable changes to melon. The format follows
   constraint failure; `segment_to_line` keeps accepting them. Types that
   model the documented contract — tuples of numbers of the right shape —
   are unaffected.
+- `output_mapping` no longer constrains the type of the write expression
+  and writes the probe's value from an rvalue with a forwarded key. This
+  admits const-assignable proxies in the C++23 `vector<bool>` style —
+  `static_filter_map` is an output mapping now, so a bit-packed subgraph
+  filter keeps `disable_vertex`/`enable_vertex` — as well as move-only
+  value types and rvalue-only-key subscripts. Computed maps stay
+  rejected; everything previously admitted still is.
+- `priority_queue` probes `top()` and `empty()` on a `const Q`, and
+  `semiring` probes `plus`/`less` on const values — matching how every
+  algorithm actually calls them, so a heap with non-const reads or a
+  mutable-lvalue-only `plus_t` is now rejected by the concept instead of
+  hard-erroring inside the algorithm that admitted it.
+- Factory-created maps need only model `output_mapping`: the algorithms
+  fill and reset through an internal helper that uses a member
+  `fill(value)` when the map offers one and writes per key otherwise. A
+  conforming map without `.fill` — previously an undocumented hard
+  requirement — now runs (and resets) every algorithm.
+- The map-creation requirement (`has_vertex_map` / `has_arc_map`) moved
+  from the algorithms' constructors to their class-level
+  requires-clauses (and their default-traits templates), where
+  `network_simplex` already had it: `std::constructible_from` and CTAD
+  probes on a graph without map factories now answer `false` instead of
+  hard-erroring in a member declaration.
+- The containers' and `complete_digraph`'s map factories are constrained
+  on what construction does with the value type (default-init, plus
+  fill-assign for the default-value form), and the views' delegating
+  factories on the wrapped graph's factory for the exact value type
+  requested — so the creation concepts answer `false` for value types
+  the maps cannot hold, instead of hard-erroring mid-instantiation.
 
 ### Fixed
 
+- The undirected `edges` and `incidence` CPOs no longer accept rvalue
+  graphs, whose returned ranges dangled behind the destroyed temporary —
+  they now carry the same category constraint as every directed
+  range-returning CPO (a temporary is admitted only under the graph's
+  borrowed promise). Their bodies still read through `std::as_const`, so
+  the const overload stays the one called and `edges_range_t` /
+  `incidence_range_t` keep naming the type the call returns.
+- `views::undirected_graph_all` and `maps::mapping_all` reject const
+  rvalues like `views::graph_all` (and `std::views::all`) do, instead of
+  silently deep-copying into an owning view over `const T` that models
+  nothing.
+- `graph<G>` answers `false` instead of hard-erroring for a graph whose
+  vertex or arc handles are move-only: the `arcs_entries` synthesizers
+  now constrain on `copy_constructible` handles rather than failing
+  inside their deduced return types.
+- `bidirectional_dijkstra` iterated incidence ranges through a
+  `const auto &` binding, which fails to compile for graphs whose
+  incidence ranges are not const-iterable (filter- and transform-shaped
+  ranges); it binds `auto &&` like its siblings.
 - `mutable_digraph`: default-constructed iterators now compare equal to
   the end sentinel, so a value-initialized incidence or vertex range is
   empty instead of walking a null structure — which graph views rely on to

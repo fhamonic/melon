@@ -11,6 +11,7 @@
 #include <variant>
 #include <vector>
 
+#include "melon/detail/fill.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
@@ -46,7 +47,7 @@ template <graph_view Graph, breadth_first_search_traits Traits =
 class breadth_first_search;
 
 template <graph_view Graph, breadth_first_search_traits Traits>
-    requires outward_adjacency_graph<Graph> &&
+    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph> &&
              (!detail::enable_branchless_bfs<Graph, Traits>)
 class breadth_first_search<Graph, Traits>
     : public algorithm_view_interface<breadth_first_search<Graph, Traits>> {
@@ -86,7 +87,7 @@ public:
 
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                     graph_for<G, Graph> && has_vertex_map<Graph>
+                     graph_for<G, Graph>
     constexpr explicit breadth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()
@@ -140,7 +141,7 @@ public:
     constexpr breadth_first_search & reset() {
         _queue.resize(0);
         _queue_current = 0;
-        _reached_map.fill(false);
+        detail::fill(_reached_map, vertices(_graph), false);
         return *this;
     }
     // Strict precondition: the vertex must not have been reached. Re-seeding
@@ -308,7 +309,7 @@ public:
 };
 
 template <graph_view Graph, breadth_first_search_traits Traits>
-    requires outward_adjacency_graph<Graph> &&
+    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph> &&
              detail::enable_branchless_bfs<Graph, Traits>
 class breadth_first_search<Graph, Traits>
     : public algorithm_view_interface<breadth_first_search<Graph, Traits>> {
@@ -327,7 +328,7 @@ public:
 
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&
-                     graph_for<G, Graph> && has_vertex_map<Graph>
+                     graph_for<G, Graph>
     constexpr explicit breadth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue(std::make_unique_for_overwrite<vertex[]>(num_vertices(_graph) +
@@ -380,7 +381,7 @@ public:
     constexpr breadth_first_search & reset() {
         _queue_traversal_begin = _queue_current = _queue_traversal_end =
             _queue.get();
-        _reached_map.fill(false);
+        detail::fill(_reached_map, vertices(_graph), false);
         return *this;
     }
     // Strict precondition: the vertex must not have been reached. Re-seeding

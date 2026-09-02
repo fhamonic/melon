@@ -37,15 +37,15 @@ using mapped_value_t = std::decay_t<mapped_const_reference_t<Map, Key>>;
 template <typename Map, typename Key>
 concept output_mapping =
     mapping<Map, Key> &&
-    requires(Map map, Key key, mapped_value_t<Map, Key> value) {
-        { map[key] = value }
-            -> std::same_as<std::add_lvalue_reference_t<mapped_reference_t<Map, Key>>>;
+    !std::same_as<mapped_reference_t<Map, Key>, mapped_value_t<Map, Key>> &&
+    requires(Map & map, Key && key, mapped_value_t<Map, Key> & value) {
+        map[std::forward<Key>(key)] = std::move(value);
     };
 ```
 
-`output_mapping` adds assignment. A mapping that does not satisfy it is read-only. The shape of the requirement — checking the *type of the assignment expression* rather than requiring a plain `T&` — is what lets proxy references qualify, so `std::vector<bool>` is a perfectly good output mapping alongside `std::vector<double>` and your own type.
+`output_mapping` adds assignment. A mapping that does not satisfy it is read-only. No return type is demanded of the write expression, which is what lets proxy references qualify — `std::vector<bool>` is a perfectly good output mapping alongside `std::vector<double>` and your own type, and so is a proxy following the C++23 const-assignable protocol whose assignment returns `const proxy &`, like `static_filter_map`'s. The value is written from an rvalue, so move-only value types model the concept too.
 
-The requirement also demands that a write actually *lands*: the subscript must return an lvalue reference into storage, or a proxy standing in for one. A map whose subscript returns a prvalue of the value type — a computed map, such as `maps::function` over a lambda returning by value — is readable but is not an `output_mapping`, because `m[k] = v` would assign into a temporary.
+The requirement also demands that a write actually *lands*: the subscript must return an lvalue reference into storage, or a proxy standing in for one — that is the disequality between `mapped_reference_t` and `mapped_value_t`. A map whose subscript returns a prvalue of the value type — a computed map, such as `maps::function` over a lambda returning by value — is readable but is not an `output_mapping`, because `m[k] = v` would assign into a temporary.
 
 ```cpp
 template <typename Map, typename Key>

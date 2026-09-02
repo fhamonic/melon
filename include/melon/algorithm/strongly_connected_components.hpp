@@ -15,6 +15,7 @@
 
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
@@ -34,7 +35,7 @@ struct strongly_connected_components_default_traits {
 
 template <graph_view Graph, strongly_connected_components_traits Traits =
                                 strongly_connected_components_default_traits>
-    requires outward_adjacency_graph<Graph>
+    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
 class strongly_connected_components
     : public algorithm_view_interface<
           strongly_connected_components<Graph, Traits>> {
@@ -69,7 +70,7 @@ public:
 
     template <typename G>
         requires detail::not_self<G, strongly_connected_components> &&
-                     graph_for<G, Graph> && has_vertex_map<Graph>
+                     graph_for<G, Graph>
     constexpr explicit strongly_connected_components(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _remaining_vertices(vertices(_graph))
@@ -208,11 +209,12 @@ public:
         _dfs_stack.clear();
         _tarjan_stack.resize(0);
         _component_begin = _tarjan_stack.begin();
-        _in_tarjan_stack_map.fill(false);
-        _index_map.fill(INVALID_COMPONENT);
-        _lowlink_map.fill(INVALID_COMPONENT);
+        detail::fill(_in_tarjan_stack_map, vertices(_graph), false);
+        detail::fill(_index_map, vertices(_graph), INVALID_COMPONENT);
+        detail::fill(_lowlink_map, vertices(_graph), INVALID_COMPONENT);
         if constexpr(Traits::store_component_ids)
-            _component_id_map.fill(INVALID_COMPONENT);
+            detail::fill(_component_id_map, vertices(_graph),
+                         INVALID_COMPONENT);
         if(!finished()) advance();
         return *this;
     }

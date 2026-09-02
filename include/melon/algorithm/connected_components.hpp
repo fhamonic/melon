@@ -10,6 +10,7 @@
 
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/undirected_graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
@@ -18,7 +19,7 @@
 namespace melon {
 
 template <undirected_graph_view UGraph>
-    requires has_incidence<UGraph>
+    requires has_incidence<UGraph> && has_vertex_map<UGraph>
 class connected_components
     : public algorithm_view_interface<connected_components<UGraph>> {
 private:
@@ -39,7 +40,7 @@ public:
 
     template <typename UG>
         requires detail::not_self<UG, connected_components> &&
-                     undirected_graph_for<UG, UGraph> && has_vertex_map<UGraph>
+                     undirected_graph_for<UG, UGraph>
     constexpr explicit connected_components(UG && g)
         : _graph(views::undirected_graph_all(std::forward<UG>(g)))
         , _remaining_vertices(vertices(_graph))
@@ -120,7 +121,7 @@ public:
     constexpr connected_components & reset() {
         _remaining_vertices = vertices(_graph);
         _queue.resize(0);
-        _reached_map.fill(false);
+        detail::fill(_reached_map, vertices(_graph), false);
         if(!finished()) {
             _reset_current_vertex();
             advance();

@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/fill.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -22,6 +23,7 @@ namespace melon {
 // O(n m^2), independent of the capacity values.
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
+             has_vertex_map<Graph> && has_arc_map<Graph> &&
              std::numeric_limits<
                  mapped_value_t<CapacityMap, arc_t<Graph>>>::is_specialized
 class edmonds_karp {
@@ -52,7 +54,6 @@ public:
     // Leaves the terminals unset -- run(), flow_value() and minimum_cut() all
     // read them, so set_source() and set_target() must be called first.
     template <graph_for<Graph> G, mapping_for<CapacityMap> CM>
-        requires has_vertex_map<Graph> && has_arc_map<Graph>
     constexpr edmonds_karp(G && g, CM && cm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _capacity_map(maps::mapping_all(std::forward<CM>(cm)))
@@ -110,7 +111,7 @@ public:
         return *this;
     }
     constexpr edmonds_karp & reset() {
-        _carried_flow_map.fill(0);
+        detail::fill(_carried_flow_map, arcs(_graph), value_t{0});
         _converged = false;
         return *this;
     }
@@ -121,7 +122,7 @@ private:
         detail::prefetch_keys_and_values(out_arcs_range,
                                          arc_targets_map(_graph), _capacity_map,
                                          _carried_flow_map);
-        _bfs_reached_map.fill(false);
+        detail::fill(_bfs_reached_map, vertices(_graph), false);
         _bfs_reached_map[_s] = true;
         _bfs_queue.resize(0);
         _bfs_queue.push_back(_s);

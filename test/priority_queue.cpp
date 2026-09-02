@@ -69,6 +69,16 @@ struct no_clear : complete_queue {
 };
 static_assert(!priority_queue<no_clear>);
 
+// top() and empty() must be const-callable: the algorithms read them through
+// const members (dijkstra's current()/finished()), so a heap declaring them
+// non-const would otherwise model the concept and hard-error inside the
+// algorithm.
+struct nonconst_reads : complete_queue {
+    value_type top();
+    bool empty();
+};
+static_assert(!priority_queue<nonconst_reads>);
+
 // The std::priority_queue shape of top() -- by const reference -- is
 // accepted: the concept asks for convertible_to<value_type>, not
 // same_as, so a heap may hand back either a copy or a reference.

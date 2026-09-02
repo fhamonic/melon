@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
@@ -31,7 +32,7 @@ concept a_star_traits =
         { Traits::store_paths } -> std::convertible_to<bool>;
     };
 
-template <typename Graph, typename ValueType>
+template <has_vertex_map Graph, typename ValueType>
 struct a_star_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
 
@@ -76,7 +77,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           mapping_view<vertex_t<Graph>> HeuristicMap,
           a_star_traits Traits = a_star_default_traits<
               Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> &&
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
              std::same_as<mapped_value_t<HeuristicMap, vertex_t<Graph>>,
                           mapped_value_t<LengthMap, arc_t<Graph>>>
 class a_star : public algorithm_view_interface<
@@ -122,7 +123,6 @@ public:
     // mem-initializer, outside the immediate context.
     template <graph_for<Graph> G, mapping_for<LengthMap> LM,
               mapping_for<HeuristicMap> HM>
-        requires has_vertex_map<Graph>
     constexpr a_star(G && g, LM && lm, HM && hm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
@@ -171,7 +171,7 @@ public:
 
     constexpr a_star & reset() {
         _heap.clear();
-        _vertex_status_map.fill(PRE_HEAP);
+        detail::fill(_vertex_status_map, vertices(_graph), PRE_HEAP);
         return *this;
     }
     // Strict precondition: the vertex must be untouched. Re-seeding a settled

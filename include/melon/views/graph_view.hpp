@@ -164,13 +164,13 @@ public:
     }
 
     template <typename T>
-        requires has_vertex_map<G>
+        requires has_vertex_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept(
         noexcept(melon::create_vertex_map<T>(std::declval<const G &>()))) {
         return melon::create_vertex_map<T>(_wrapped());
     }
     template <typename T>
-        requires has_vertex_map<G>
+        requires has_vertex_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         const T & default_value) const
         noexcept(noexcept(melon::create_vertex_map<T>(std::declval<const G &>(),
@@ -179,13 +179,13 @@ public:
     }
 
     template <typename T>
-        requires has_arc_map<G>
+        requires has_arc_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_arc_map() const noexcept(
         noexcept(melon::create_arc_map<T>(std::declval<const G &>()))) {
         return melon::create_arc_map<T>(_wrapped());
     }
     template <typename T>
-        requires has_arc_map<G>
+        requires has_arc_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_arc_map(
         const T & default_value) const
         noexcept(noexcept(melon::create_arc_map<T>(std::declval<const G &>(),

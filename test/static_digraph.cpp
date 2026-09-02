@@ -1,6 +1,8 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #include "melon/container/static_digraph.hpp"
 #include "melon/graph.hpp"
 
@@ -20,6 +22,18 @@ static_assert(melon::inward_incidence_graph<static_digraph>);
 static_assert(melon::inward_adjacency_graph<static_digraph>);
 static_assert(melon::has_vertex_map<static_digraph>);
 static_assert(melon::has_arc_map<static_digraph>);
+
+// A value type the fill-by-copy factories cannot hold makes the creation
+// concepts answer false -- probeable, where an unconstrained factory with a
+// deduced return type would hard-error during return-type deduction.
+namespace {
+struct no_default_ctor {
+    no_default_ctor(int);
+};
+}  // namespace
+static_assert(!melon::has_vertex_map<static_digraph, std::unique_ptr<int>>);
+static_assert(!melon::has_arc_map<static_digraph, std::unique_ptr<int>>);
+static_assert(!melon::has_vertex_map<static_digraph, no_default_ctor>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // construction from source/target vectors defines the vertices, arcs,

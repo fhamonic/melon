@@ -3,6 +3,7 @@
 #include <concepts>
 #include <type_traits>
 
+#include "melon/detail/fill.hpp"
 #include "melon/graph.hpp"
 
 namespace melon::detail {
@@ -56,8 +57,13 @@ struct vertex_map_if<true, Graph, Type, DiscriminatingT> {
         return _map[v];
     }
     // Present so that a guarded map can be re-initialised between runs the
-    // same way a plain vertex_map_t is; only instantiated where it is called.
-    constexpr void fill(const Type & v) noexcept(noexcept(_map.fill(v))) {
+    // same way a plain vertex_map_t is. Constrained, not merely lazily
+    // instantiated: detail::fill probes for this member, and an unconstrained
+    // declaration over a fill-less map turns that probe into a hard error in
+    // the noexcept-specifier.
+    constexpr void fill(const Type & v) noexcept(noexcept(_map.fill(v)))
+        requires member_fillable<vertex_map_t<Graph, Type>, Type>
+    {
         _map.fill(v);
     }
 };
@@ -92,7 +98,9 @@ struct arc_map_if<true, Graph, Type, DiscriminatingT> {
         noexcept(_map[v])) {
         return _map[v];
     }
-    constexpr void fill(const Type & v) noexcept(noexcept(_map.fill(v))) {
+    constexpr void fill(const Type & v) noexcept(noexcept(_map.fill(v)))
+        requires member_fillable<arc_map_t<Graph, Type>, Type>
+    {
         _map.fill(v);
     }
 };

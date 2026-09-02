@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "melon/detail/fill.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
@@ -50,6 +51,7 @@ struct bellman_ford_default_traits {
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           bellman_ford_traits Traits = bellman_ford_default_traits<
               Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
+    requires has_vertex_map<Graph>
 class bellman_ford {
 private:
     using vertex = vertex_t<Graph>;
@@ -86,7 +88,6 @@ public:
     // ---- Construction -------------------------------------------------------
 
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
-        requires has_vertex_map<Graph>
     constexpr bellman_ford(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
@@ -129,8 +130,9 @@ public:
     // ---- Setup --------------------------------------------------------------
 
     constexpr bellman_ford & reset() {
-        _distances_map.fill(Traits::semiring::infty);
-        if constexpr(Traits::store_paths) _pred_arcs_map.fill(std::nullopt);
+        detail::fill(_distances_map, vertices(_graph), Traits::semiring::infty);
+        if constexpr(Traits::store_paths)
+            detail::fill(_pred_arcs_map, vertices(_graph), std::nullopt);
         if constexpr(Traits::detect_negative_cycles)
             _found_negative_cycle = false;
         if constexpr(_stores_witness) _cycle_witness.reset();

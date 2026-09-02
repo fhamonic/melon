@@ -328,24 +328,24 @@ public:
     }
 
     template <typename T>
-        requires has_vertex_map<Graph>
+        requires has_vertex_map<Graph, T>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const {
         return melon::create_vertex_map<T>(_graph);
     }
     template <typename T>
-        requires has_vertex_map<Graph>
+        requires has_vertex_map<Graph, T>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         const T & default_value) const {
         return melon::create_vertex_map<T>(_graph, default_value);
     }
 
     template <typename T>
-        requires has_arc_map<Graph>
+        requires has_arc_map<Graph, T>
     [[nodiscard]] constexpr decltype(auto) create_arc_map() const {
         return melon::create_arc_map<T>(_graph);
     }
     template <typename T>
-        requires has_arc_map<Graph>
+        requires has_arc_map<Graph, T>
     [[nodiscard]] constexpr decltype(auto) create_arc_map(
         const T & default_value) const {
         return melon::create_arc_map<T>(_graph, default_value);

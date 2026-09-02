@@ -281,12 +281,12 @@ static_assert(
                            std::declval<const unsigned int &>())));
 
 // The aliases are right on their own, and that is worth recording: they go
-// through the CPO, whose operator() takes `const T &`, so a non-const declval
-// argument still binds to a const reference and still selects the const
-// overload. Only noexcept helpers that call the member directly rather than
-// through the CPO can read the wrong one. Spelling them
-// `std::declval<const T &>()` makes them agree with the operators, but it
-// changes no type.
+// through the CPO, whose body reads through std::as_const (the operator()
+// takes `T &&` only to reject dangling rvalues), so a non-const argument
+// still selects the const overload. Only noexcept helpers that call the
+// member directly rather than through the CPO can read the wrong one.
+// Spelling them `std::declval<const T &>()` makes them agree with the
+// operators, but it changes no type.
 static_assert(std::same_as<edges_range_t<const_overloaded::ugraph>,
                            std::span<const unsigned int>>);
 static_assert(std::same_as<edge_t<const_overloaded::ugraph>, unsigned int>);
@@ -305,3 +305,31 @@ GTEST_TEST(undirected_graph, const_overloads_are_the_ones_called) {
               (std::pair<unsigned int, unsigned int>{1u, 2u}));
     ASSERT_EQ(std::ranges::distance(melon::incidence(graph, 0u)), 3);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// the range-returning undirected CPOs reject rvalue graphs whose result would
+// dangle -- the mirror of the directed ruling pinned in api_review.cpp -- and
+// undirected_graph_all rejects const rvalues instead of deep-copying
+////////////////////////////////////////////////////////////////////////////////
+
+namespace rvalue_undirected_cpos {
+template <typename G>
+concept rvalue_edges = requires { melon::edges(G{}); };
+template <typename G>
+concept rvalue_incidence =
+    requires(melon::vertex_t<G> v) { melon::incidence(G{}, v); };
+template <typename T>
+concept all_accepted = requires(T && t) {
+    melon::views::undirected_graph_all(std::forward<T>(t));
+};
+}  // namespace rvalue_undirected_cpos
+
+static_assert(!rvalue_undirected_cpos::rvalue_edges<const_overloaded::ugraph>);
+static_assert(
+    !rvalue_undirected_cpos::rvalue_incidence<const_overloaded::ugraph>);
+static_assert(rvalue_undirected_cpos::all_accepted<const_overloaded::ugraph &>);
+static_assert(
+    rvalue_undirected_cpos::all_accepted<const const_overloaded::ugraph &>);
+static_assert(rvalue_undirected_cpos::all_accepted<const_overloaded::ugraph>);
+static_assert(
+    !rvalue_undirected_cpos::all_accepted<const const_overloaded::ugraph>);

@@ -36,8 +36,11 @@ namespace melon {
 // reason -- hence `static constexpr plus_t plus{}` in every model below,
 // rather than a static member function.
 // clang-format off
+// `v` is const: every relaxation calls plus/less on const lvalues and
+// prvalues, so probing with a mutable one would admit a plus_t taking
+// `value_type &` that no call site can invoke.
 template <typename S>
-concept semiring = requires(typename S::value_type v) {
+concept semiring = requires(const typename S::value_type v) {
     { S::zero } -> std::same_as<const typename S::value_type &>;
     { S::infty } -> std::same_as<const typename S::value_type &>;
     { S::plus } -> std::same_as<const typename S::plus_t &>;

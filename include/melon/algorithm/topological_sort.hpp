@@ -13,6 +13,7 @@
 #include <variant>
 #include <vector>
 
+#include "melon/detail/fill.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/not_self.hpp"
@@ -38,7 +39,8 @@ struct topological_sort_default_traits {
 // fails the constraint instead of hard-erroring inside the constructor.
 template <graph_view Graph,
           topological_sort_traits Traits = topological_sort_default_traits>
-    requires outward_incidence_graph<Graph> && has_num_vertices<Graph>
+    requires outward_incidence_graph<Graph> && has_num_vertices<Graph> &&
+             has_vertex_map<Graph>
 class topological_sort
     : public algorithm_view_interface<topological_sort<Graph, Traits>> {
 private:
@@ -64,7 +66,7 @@ private:
 
     constexpr void push_start_vertices() {
         _queue.resize(0);
-        _reached_map.fill(false);
+        detail::fill(_reached_map, vertices(_graph), false);
         if constexpr(has_in_degree<Graph>) {
             for(auto && u : vertices(_graph)) {
                 _remaining_in_degree_map[u] = in_degree(_graph, u);
@@ -79,7 +81,8 @@ private:
                 }
             }
         } else {
-            _remaining_in_degree_map.fill(0);
+            detail::fill(_remaining_in_degree_map, vertices(_graph),
+                         std::size_t{0});
             for(auto && u : vertices(_graph)) {
                 for(auto && a : out_arcs(_graph, u)) {
                     const vertex & w = arc_target(_graph, a);
@@ -98,7 +101,8 @@ private:
                 }
             }
         }
-        if constexpr(Traits::store_ranks) _rank_map.fill(0);
+        if constexpr(Traits::store_ranks)
+            detail::fill(_rank_map, vertices(_graph), 0);
         // Taken after the push_backs: an iterator grabbed while the vector is
         // empty sits at the insertion point, which push_back formally
         // invalidates -- checked-iterator builds flag the traversal.
@@ -109,8 +113,7 @@ public:
     // ---- Construction -------------------------------------------------------
 
     template <typename G>
-        requires detail::not_self<G, topological_sort> && graph_for<G, Graph> &&
-                     has_vertex_map<Graph>
+        requires detail::not_self<G, topological_sort> && graph_for<G, Graph>
     constexpr explicit topological_sort(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()

@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -83,6 +84,24 @@ static_assert(!output_mapping<computed_map<int>, int>);
 static_assert(!std::same_as<mapped_reference_t<std::vector<bool>, std::size_t>,
                             mapped_value_t<std::vector<bool>, std::size_t>>);
 static_assert(output_mapping_of<std::vector<bool>, std::size_t, bool>);
+
+// The write is probed from an rvalue, so a move-only value type is writable:
+// probing `m[k] = lvalue` instead would eject every such map from the whole
+// output surface, has_vertex_map included.
+static_assert(output_mapping<std::vector<std::unique_ptr<int>>, std::size_t>);
+
+namespace {
+// The key is forwarded with the value category subscriptable_with commits to:
+// an lvalue-key probe would reject a map subscriptable only by rvalue keys
+// that `mapping` already admits.
+struct rvalue_key {};
+struct rvalue_key_map {
+    int & operator[](rvalue_key &&);
+    const int & operator[](rvalue_key &&) const;
+};
+}  // namespace
+static_assert(mapping<rvalue_key_map, rvalue_key>);
+static_assert(output_mapping<rvalue_key_map, rvalue_key>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // only the adaptors and the canned maps are mapping_views; a raw mapping is
@@ -203,6 +222,18 @@ GTEST_TEST(mapping_views, dispatch_the_three_subscript_protocols) {
 // maps::mapping_all references lvalues, owns rvalues, passes views through --
 // and is SFINAE-friendly
 ////////////////////////////////////////////////////////////////////////////////
+
+// Const rvalues are rejected, std::views::all's precedent: the owning branch
+// cannot move from one, so admitting it would silently deep-copy into a
+// mapping_owning_view<const Map>.
+namespace mapping_all_categories {
+template <typename T>
+concept accepted = requires(T && t) { maps::mapping_all(std::forward<T>(t)); };
+}  // namespace mapping_all_categories
+static_assert(mapping_all_categories::accepted<std::vector<int> &>);
+static_assert(mapping_all_categories::accepted<const std::vector<int> &>);
+static_assert(mapping_all_categories::accepted<std::vector<int>>);
+static_assert(!mapping_all_categories::accepted<const std::vector<int>>);
 
 GTEST_TEST(mapping_all, selects_the_right_adaptor) {
     std::vector<int> v{1, 2, 3};

@@ -17,6 +17,26 @@ static_assert(semiring<most_reliable_path_semiring<double>>);
 static_assert(semiring<max_capacity_path_semiring<int>>);
 static_assert(semiring<minimum_spanning_tree_semiring<int>>);
 
+// plus and less are probed on const values: every relaxation passes const
+// lvalues and prvalues, so a plus_t invocable only on mutable lvalues would
+// otherwise model the concept and fail at every call site.
+namespace {
+struct mutable_only_plus {
+    using value_type = int;
+    struct plus_t {
+        int operator()(int &, int &) const;
+    };
+    struct less_t {
+        bool operator()(const int &, const int &) const;
+    };
+    static constexpr value_type zero = 0;
+    static constexpr value_type infty = 1;
+    static constexpr plus_t plus{};
+    static constexpr less_t less{};
+};
+}  // namespace
+static_assert(!semiring<mutable_only_plus>);
+
 ////////////////////////////////////////////////////////////////////////////////
 // infty_is_absorbing is a promise plus must keep, and absence means false
 ////////////////////////////////////////////////////////////////////////////////

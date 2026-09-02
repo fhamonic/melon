@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
@@ -27,6 +28,7 @@ concept competing_dijkstras_traits = semiring<typename Traits::semiring> &&
 // clang-format on
 
 template <outward_incidence_graph Graph, typename ValueType>
+    requires has_vertex_map<Graph>
 struct competing_dijkstras_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     using entry = std::pair<ValueType, bool>;
@@ -60,7 +62,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
           competing_dijkstras_traits Traits =
               competing_dijkstras_default_traits<
                   Graph, mapped_value_t<BlueLengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> &&
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph> &&
              std::is_same_v<mapped_value_t<BlueLengthMap, arc_t<Graph>>,
                             mapped_value_t<RedLengthMap, arc_t<Graph>>>
 class competing_dijkstras
@@ -94,7 +96,6 @@ public:
 
     template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
               mapping_for<RedLengthMap> RLM>
-        requires has_vertex_map<Graph>
     competing_dijkstras(G && g, BLM && blm, RLM && rlm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))
@@ -148,7 +149,7 @@ public:
     }
 
     constexpr competing_dijkstras & reset() {
-        _vertex_status_map.fill(PRE_HEAP);
+        detail::fill(_vertex_status_map, vertices(_graph), PRE_HEAP);
         _heap.clear();
         _num_blue_candidates = 0;
         return *this;

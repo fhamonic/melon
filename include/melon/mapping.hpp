@@ -51,18 +51,19 @@ concept mapping_of =
 // The disequality is not redundant with the requires-expression below. A
 // subscript returning a prvalue of the value type stores nothing -- `m[k] = v`
 // assigns into a temporary -- yet it satisfies that expression, assigning to a
-// class prvalue being well-formed and yielding the same `V &` a real map would.
-// Only scalar value types are rejected without it, so dropping it admits
-// computed maps of class type whose every write is silently discarded.
+// class prvalue being well-formed. Only scalar value types are rejected
+// without it, so dropping it admits computed maps of class type whose every
+// write is silently discarded. The write probe constrains no return type (a
+// const-assignable proxy in the C++23 vector<bool> style returns
+// `const proxy &`, as static_filter_map's does), forwards the key with the
+// value category subscriptable_with committed to, and writes from an rvalue
+// so move-only value types model the concept.
 template <typename Map, typename Key>
 concept output_mapping =
     mapping<Map, Key> &&
     !std::same_as<mapped_reference_t<Map, Key>, mapped_value_t<Map, Key>> &&
-    requires(Map & map, Key key, mapped_value_t<Map, Key> value) {
-        {
-            map[key] = value
-        } -> std::same_as<
-              std::add_lvalue_reference_t<mapped_reference_t<Map, Key>>>;
+    requires(Map & map, Key && key, mapped_value_t<Map, Key> & value) {
+        map[std::forward<Key>(key)] = std::move(value);
     };
 
 template <typename Map, typename Key, typename Value>
@@ -279,9 +280,13 @@ public:
 namespace detail {
 
 // Declared here rather than next to can_mapping_ref_view: the CTAD probe
-// needs mapping_owning_view to be complete.
+// needs mapping_owning_view to be complete. The const exclusion mirrors
+// can_graph_owning_view in views/graph_view.hpp: a const rvalue cannot be
+// moved from, so without it the owning branch silently deep-copies into a
+// mapping_owning_view<const Map>.
 template <typename Map>
 concept can_mapping_owning_view =
+    (!std::is_const_v<std::remove_reference_t<Map>>) &&
     requires { mapping_owning_view{std::declval<Map>()}; };
 
 }  // namespace detail

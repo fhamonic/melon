@@ -83,13 +83,13 @@ public:
     }
 
     template <typename T>
-        requires has_vertex_map<G>
+        requires has_vertex_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept(
         noexcept(melon::create_vertex_map<T>(std::declval<const G &>()))) {
         return melon::create_vertex_map<T>(_wrapped());
     }
     template <typename T>
-        requires has_vertex_map<G>
+        requires has_vertex_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         const T & default_value) const
         noexcept(noexcept(melon::create_vertex_map<T>(std::declval<const G &>(),
@@ -98,13 +98,13 @@ public:
     }
 
     template <typename T>
-        requires has_edge_map<G>
+        requires has_edge_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_edge_map() const noexcept(
         noexcept(melon::create_edge_map<T>(std::declval<const G &>()))) {
         return melon::create_edge_map<T>(_wrapped());
     }
     template <typename T>
-        requires has_edge_map<G>
+        requires has_edge_map<G, T>
     [[nodiscard]] constexpr decltype(auto) create_edge_map(
         const T & default_value) const
         noexcept(noexcept(melon::create_edge_map<T>(std::declval<const G &>(),
@@ -227,8 +227,13 @@ template <typename UndirectedGraph>
 concept can_undirected_graph_ref_view =
     requires { undirected_graph_ref_view{std::declval<UndirectedGraph>()}; };
 
+// The const exclusion mirrors can_graph_owning_view: a const rvalue cannot be
+// moved from, so without it the owning branch silently deep-copies into an
+// undirected_graph_owning_view<const G> that is not even an
+// undirected_graph_view.
 template <typename UndirectedGraph>
 concept can_undirected_graph_owning_view =
+    (!std::is_const_v<std::remove_reference_t<UndirectedGraph>>) &&
     requires { undirected_graph_owning_view{std::declval<UndirectedGraph>()}; };
 }  // namespace detail
 

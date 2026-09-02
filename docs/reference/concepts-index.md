@@ -101,7 +101,7 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | `algorithmic_generator<A>` | `utility/algorithmic_generator.hpp` | `finished()`, `current()`, `advance()` |
 | `traversal_algorithm<A>` | `utility/algorithmic_generator.hpp` | the [lifecycle contract](../algorithms/index.md#the-lifecycle-contract): a movable generator range with chaining `reset()` and `run()` |
 | `rooted_traversal_algorithm<A, S>` | `utility/algorithmic_generator.hpp` | `traversal_algorithm` plus chaining `add_source(s)` |
-| `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::movable`, `std::default_initializable`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
+| `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::movable`, `std::default_initializable`, `push`, `pop`, `size`, `clear`, and const-callable `top`, `empty` |
 | `updatable_priority_queue<Q>` | `utility/priority_queue.hpp` | `priority_queue` plus `contains`, `priority`, `promote`, `demote` |
 | `mutable_entry_priority_map<Map, Entry>` | `container/d_ary_heap.hpp` | a `mapping` whose subscript yields a non-`const` lvalue reference into the entry — `promote()`/`demote()` write the priority through it |
 | `semiring<S>` | `numeric/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less`; optional `infty_is_absorbing` promise, read through `has_absorbing_infty<S>` |

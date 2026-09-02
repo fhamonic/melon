@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
@@ -34,7 +35,7 @@ concept dijkstra_traits =
         { Traits::store_paths } -> std::convertible_to<bool>;
     };
 
-template <typename Graph, typename ValueType>
+template <has_vertex_map Graph, typename ValueType>
 struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     using heap = updatable_d_ary_heap<
@@ -54,7 +55,13 @@ struct dijkstra_default_traits {
 template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           dijkstra_traits Traits = dijkstra_default_traits<
               Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph>
+// has_vertex_map sits on the class -- the shape shared by every algorithm
+// holding factory-created maps: the map members and the default traits
+// name vertex_map_t at class-completion time, so a constructor-level
+// constraint is consulted only after the hard error it was meant to
+// prevent, and std::constructible_from probes error out instead of
+// answering false.
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class dijkstra
     : public algorithm_view_interface<dijkstra<Graph, LengthMap, Traits>> {
 private:
@@ -94,7 +101,6 @@ public:
     // answers what construction actually does instead of hard-erroring in the
     // mem-initializer, outside the immediate context.
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
-        requires has_vertex_map<Graph>
     constexpr dijkstra(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
@@ -140,7 +146,7 @@ public:
 
     constexpr dijkstra & reset() {
         _heap.clear();
-        _vertex_status_map.fill(PRE_HEAP);
+        detail::fill(_vertex_status_map, vertices(_graph), PRE_HEAP);
         return *this;
     }
     // Strict precondition: the vertex must be untouched. Re-seeding a settled

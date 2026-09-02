@@ -16,6 +16,7 @@
 namespace melon {
 
 template <undirected_graph_view UGraph, mapping_view<edge_t<UGraph>> CostMap>
+    requires has_vertex_map<UGraph>
 class kruskal : public algorithm_view_interface<kruskal<UGraph, CostMap>> {
 private:
     using vertex = vertex_t<UGraph>;
@@ -32,7 +33,6 @@ public:
     // ---- Construction -------------------------------------------------------
 
     template <undirected_graph_for<UGraph> UG, mapping_for<CostMap> CM>
-        requires has_vertex_map<UGraph>
     constexpr kruskal(UG && ug, CM && cm)
         : _ugraph(views::undirected_graph_all(std::forward<UG>(ug)))
         , _cost_map(maps::mapping_all(std::forward<CM>(cm)))

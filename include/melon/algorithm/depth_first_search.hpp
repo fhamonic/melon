@@ -12,6 +12,7 @@
 
 #include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
@@ -40,7 +41,7 @@ struct depth_first_search_default_traits {
 
 template <graph_view Graph,
           depth_first_search_traits Traits = depth_first_search_default_traits>
-    requires outward_adjacency_graph<Graph>
+    requires outward_adjacency_graph<Graph> && has_vertex_map<Graph>
 class depth_first_search
     : public algorithm_view_interface<depth_first_search<Graph, Traits>> {
 private:
@@ -85,8 +86,7 @@ public:
     // ---- Construction -------------------------------------------------------
 
     template <typename G>
-        requires detail::not_self<G, depth_first_search> &&
-                     graph_for<G, Graph> && has_vertex_map<Graph>
+        requires detail::not_self<G, depth_first_search> && graph_for<G, Graph>
     constexpr explicit depth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _stack()
@@ -181,7 +181,7 @@ public:
 
     constexpr depth_first_search & reset() {
         _stack.resize(0);
-        _reached_map.fill(false);
+        detail::fill(_reached_map, vertices(_graph), false);
         return *this;
     }
     // Strict precondition: the vertex must not have been reached. Re-seeding

@@ -12,15 +12,19 @@ namespace melon {
 // own their buffer through a move-only handle.
 template <typename Q>
 concept priority_queue = std::movable<Q> && std::default_initializable<Q> &&
-    requires(Q q, typename Q::value_type v) {
+    requires(Q q, const Q cq, typename Q::value_type v) {
     q.push(v);
+    // top() and empty() are probed on a const Q: the algorithms read them
+    // through const members (dijkstra's current()/finished()), so a heap
+    // declaring them non-const would model the concept and hard-error inside
+    // the algorithm.
     // convertible_to, not same_as: top() may return by value or by const
     // reference, and same_as<value_type> would reject every heap with
     // std::priority_queue's return type.
-    { q.top() } -> std::convertible_to<typename Q::value_type>;
+    { cq.top() } -> std::convertible_to<typename Q::value_type>;
     q.pop();
     { q.size() } -> std::same_as<typename Q::size_type>;
-    { q.empty() } -> std::convertible_to<bool>;
+    { cq.empty() } -> std::convertible_to<bool>;
     q.clear();
 };
 

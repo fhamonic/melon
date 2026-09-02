@@ -60,7 +60,7 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> BlueLengthMap,
               biobjective_dijkstra_default_traits<
                   Graph, mapped_value_t<BlueLengthMap, arc_t<Graph>>,
                   mapped_value_t<RedLengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph>
+    requires outward_incidence_graph<Graph> && has_vertex_map<Graph>
 class biobjective_dijkstra
     : public algorithm_view_interface<
           biobjective_dijkstra<Graph, BlueLengthMap, RedLengthMap, Traits>> {
@@ -92,7 +92,6 @@ public:
 
     template <graph_for<Graph> G, mapping_for<BlueLengthMap> BLM,
               mapping_for<RedLengthMap> RLM>
-        requires has_vertex_map<Graph>
     biobjective_dijkstra(G && g, BLM && blm, RLM && rlm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))

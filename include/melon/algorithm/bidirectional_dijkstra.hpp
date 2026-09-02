@@ -14,6 +14,7 @@
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/detail/concat_view.hpp"
+#include "melon/detail/fill.hpp"
 #include "melon/detail/intrusive_iterator_base.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/detail/prefetch.hpp"
@@ -32,7 +33,7 @@ concept bidirectional_dijkstra_traits =
         { Traits::store_paths } -> std::convertible_to<bool>;
     };
 
-template <typename Graph, typename ValueType>
+template <has_vertex_map Graph, typename ValueType>
 struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     using heap = updatable_d_ary_heap<
@@ -56,7 +57,8 @@ template <graph_view Graph, mapping_view<arc_t<Graph>> LengthMap,
           bidirectional_dijkstra_traits Traits =
               bidirectional_dijkstra_default_traits<
                   Graph, mapped_value_t<LengthMap, arc_t<Graph>>>>
-    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
+    requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
+             has_vertex_map<Graph>
 class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<Graph>;
@@ -104,7 +106,6 @@ public:
     // ---- Construction -------------------------------------------------------
 
     template <graph_for<Graph> G, mapping_for<LengthMap> LM>
-        requires has_vertex_map<Graph>
     constexpr bidirectional_dijkstra(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
@@ -158,7 +159,8 @@ public:
     constexpr bidirectional_dijkstra & reset() {
         _forward_heap.clear();
         _reverse_heap.clear();
-        _vertex_status_map.fill(std::make_pair(PRE_HEAP, PRE_HEAP));
+        detail::fill(_vertex_status_map, vertices(_graph),
+                     std::make_pair(PRE_HEAP, PRE_HEAP));
         if constexpr(Traits::store_paths) _midpoint.reset();
         _st_dist = Traits::semiring::infty;
         return *this;
@@ -199,7 +201,7 @@ public:
                                       Traits::semiring::plus(u1_dist, u2_dist)))
                 break;
             if(Traits::semiring::less(u1_dist, u2_dist)) {
-                const auto & out_arcs_range = out_arcs(_graph, u1);
+                auto && out_arcs_range = out_arcs(_graph, u1);
                 detail::prefetch_keys_and_values(
                     out_arcs_range, arc_targets_map(_graph), _length_map);
                 _vertex_status_map[u1].first = POST_HEAP;
@@ -248,7 +250,7 @@ public:
                     }
                 }
             } else {
-                const auto & in_arcs_range = in_arcs(_graph, u2);
+                auto && in_arcs_range = in_arcs(_graph, u2);
                 detail::prefetch_keys_and_values(
                     in_arcs_range, arc_sources_map(_graph), _length_map);
                 _vertex_status_map[u2].second = POST_HEAP;

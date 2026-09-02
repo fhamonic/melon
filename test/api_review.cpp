@@ -1334,3 +1334,116 @@ struct filtering_graph : static_digraph {
 }  // namespace nonborrowed_neighbors
 static_assert(melon::cpo::has_member_out_neighbors<
               nonborrowed_neighbors::filtering_graph>);
+
+////////////////////////////////////////////////////////////////////////////////
+// concept probes stay probes at the boundaries: a graph outside a concept
+// answers false instead of hard-erroring during instantiation
+////////////////////////////////////////////////////////////////////////////////
+
+namespace probe_safety {
+// Move-only arc handles: the synthesized arcs_entries would copy them into
+// pairs, so graph<G> is false -- and, the actual pin, *compilably* false: the
+// synthesizers' copy_constructible constraints keep the failure out of their
+// deduced return types, where no requires-expression could catch it.
+struct move_only_arc {
+    move_only_arc() = default;
+    move_only_arc(move_only_arc &&) = default;
+    move_only_arc & operator=(move_only_arc &&) = default;
+};
+struct move_only_arc_graph {
+    auto vertices() const { return std::views::iota(0, 1); }
+    auto arcs() const { return std::views::empty<move_only_arc>; }
+    int arc_source(const move_only_arc &) const;
+    int arc_target(const move_only_arc &) const;
+};
+static_assert(!melon::graph<move_only_arc_graph>);
+
+// A graph with no map factories: has_vertex_map answers false, and because
+// that constraint sits on each algorithm *class* (and its default traits) --
+// not on a constructor consulted only after the members hard-error -- CTAD
+// and construction probes answer false too.
+struct no_factory_graph {
+    auto vertices() const { return std::views::iota(0u, 2u); }
+    unsigned int num_vertices() const { return 2u; }
+    auto out_arcs(unsigned int) const { return std::views::empty<unsigned>; }
+    unsigned int arc_target(unsigned int) const;
+};
+static_assert(melon::outward_incidence_graph<no_factory_graph>);
+static_assert(!melon::has_vertex_map<no_factory_graph>);
+template <typename G, typename M>
+concept dijkstra_deducible = requires(G & g, M & m) { melon::dijkstra(g, m); };
+template <typename G>
+concept bfs_deducible = requires(G & g) { melon::breadth_first_search(g); };
+static_assert(!dijkstra_deducible<no_factory_graph, std::vector<int>>);
+static_assert(!bfs_deducible<no_factory_graph>);
+static_assert(dijkstra_deducible<static_digraph, std::vector<int>>);
+static_assert(bfs_deducible<static_digraph>);
+}  // namespace probe_safety
+
+////////////////////////////////////////////////////////////////////////////////
+// factory maps only promise output_mapping: construction and reset() fill
+// through detail::fill, so a conforming map without a member fill runs every
+// algorithm all the same
+////////////////////////////////////////////////////////////////////////////////
+
+namespace fill_less_maps {
+template <typename V>
+struct plain_map {
+    std::vector<V> d;
+    // decltype(auto): vector<bool>'s subscript yields a proxy, not a bool &.
+    decltype(auto) operator[](unsigned int k) { return d[k]; }
+    decltype(auto) operator[](unsigned int k) const { return d[k]; }
+};
+struct graph_with_plain_maps {
+    unsigned int n = 3;
+    std::vector<std::pair<unsigned, unsigned>> ends{{0, 1}, {1, 2}};
+
+    auto vertices() const { return std::views::iota(0u, n); }
+    unsigned int num_vertices() const { return n; }
+    auto out_arcs(unsigned int u) const {
+        return std::views::iota(0u, static_cast<unsigned>(ends.size())) |
+               std::views::filter(
+                   [this, u](unsigned int a) { return ends[a].first == u; });
+    }
+    unsigned int arc_target(unsigned int a) const { return ends[a].second; }
+    template <typename V>
+    auto create_vertex_map() const {
+        return plain_map<V>{std::vector<V>(n)};
+    }
+    template <typename V>
+    auto create_vertex_map(const V & v) const {
+        return plain_map<V>{std::vector<V>(n, v)};
+    }
+    template <typename V>
+    auto create_arc_map() const {
+        return plain_map<V>{std::vector<V>(ends.size())};
+    }
+    template <typename V>
+    auto create_arc_map(const V & v) const {
+        return plain_map<V>{std::vector<V>(ends.size(), v)};
+    }
+};
+static_assert(melon::has_vertex_map<graph_with_plain_maps>);
+static_assert(melon::has_arc_map<graph_with_plain_maps>);
+}  // namespace fill_less_maps
+
+GTEST_TEST(api_review, algorithms_run_and_reset_on_fill_less_factory_maps) {
+    fill_less_maps::graph_with_plain_maps g;
+    std::vector<int> lengths{1, 1};
+
+    auto dij = melon::dijkstra(g, lengths);
+    dij.add_source(0u);
+    for([[maybe_unused]] auto && entry : dij) {
+    }
+    // reset() refills the status map -- through the per-key fallback here.
+    dij.reset();
+    dij.add_source(0u);
+    for([[maybe_unused]] auto && entry : dij) {
+    }
+
+    // topological_sort fills at construction, the case that decides whether
+    // the object can even be built on such maps.
+    auto topo = melon::topological_sort(g);
+    for([[maybe_unused]] auto && v : topo) {
+    }
+}

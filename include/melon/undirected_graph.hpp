@@ -22,19 +22,27 @@ concept has_adl_edges = requires(const T & t) {
     { edges(t) } -> std::ranges::input_range;
 };
 
+// Range-returning, so `T &&` + category constraint per the vertices_fn
+// contract in graph.hpp: `const T &` would accept a temporary graph and
+// dangle behind the returned view. The body still reads through as_const --
+// test/undirected_graph.cpp pins that the const overload is the one called,
+// keeping edges_range_t (computed from a const graph) the type the call
+// actually returns.
 struct edges_fn {
-    template <typename T>
-        requires has_member_edges<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(noexcept(t.edges())) {
-        return t.edges();
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_edges<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
+        noexcept(noexcept(std::as_const(t).edges())) {
+        return std::as_const(t).edges();
     }
 
-    template <typename T>
-        requires(!has_member_edges<T>) && has_adl_edges<T>
-    constexpr auto operator() [[nodiscard]] (const T & t) const
-        noexcept(noexcept(edges(t))) {
-        return edges(t);
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_edges<G>) && has_adl_edges<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
+    constexpr auto operator() [[nodiscard]] (T && t) const
+        noexcept(noexcept(edges(std::as_const(t)))) {
+        return edges(std::as_const(t));
     }
 };
 }  // namespace cpo
@@ -138,21 +146,25 @@ concept has_adl_incidence = requires(const T & t, const vertex_t<T> & v) {
     { incidence(t, v) } -> std::ranges::input_range;
 };
 
+// Range-returning, so `T &&` + category constraint per the vertices_fn
+// contract in graph.hpp; as_const in the body per edges_fn above.
 struct incidence_fn {
-    template <typename T>
-        requires has_member_incidence<T>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires has_member_incidence<G> &&
+                 (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(noexcept(t.incidence(v))) {
-        return t.incidence(v);
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
+        noexcept(noexcept(std::as_const(t).incidence(v))) {
+        return std::as_const(t).incidence(v);
     }
 
-    template <typename T>
-        requires(!has_member_incidence<T>) && has_adl_incidence<T>
+    template <typename T, typename G = std::remove_cvref_t<T>>
+        requires(!has_member_incidence<G>) && has_adl_incidence<G> &&
+                (std::is_lvalue_reference_v<T> || borrowed_graph<G>)
     constexpr auto operator()
-        [[nodiscard]] (const T & t, const vertex_t<T> & v) const
-        noexcept(noexcept(incidence(t, v))) {
-        return incidence(t, v);
+        [[nodiscard]] (T && t, const vertex_t<G> & v) const
+        noexcept(noexcept(incidence(std::as_const(t), v))) {
+        return incidence(std::as_const(t), v);
     }
 };
 }  // namespace cpo

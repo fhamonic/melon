@@ -552,12 +552,18 @@ template <typename T>
 concept has_own_arcs_entries =
     has_member_arcs_entries<T> || has_adl_arcs_entries<T>;
 
+// The three synthesisers below carry copy_constructible constraints on the
+// handles their lambdas pair up: the return types are deduced, so probing
+// `graph<T>` for a move-only handle type would otherwise instantiate the
+// bodies and hard-error inside make_pair -- outside the immediate context,
+// where no requires-expression can catch it -- instead of answering false.
 template <typename T>
-    requires requires(const T & t, const arc_t<T> & a) {
-        { arcs_fn{}(t) } -> std::ranges::viewable_range;
-        arc_source_fn{}(t, a);
-        arc_target_fn{}(t, a);
-    }
+    requires std::copy_constructible<arc_t<T>> &&
+             requires(const T & t, const arc_t<T> & a) {
+                 { arcs_fn{}(t) } -> std::ranges::viewable_range;
+                 arc_source_fn{}(t, a);
+                 arc_target_fn{}(t, a);
+             }
 inline constexpr auto list_arcs_entries [[nodiscard]] (const T & t) {
     return std::views::transform(
         melon::arcs(t), [g = std::addressof(t)](const arc_t<T> & a) {
@@ -570,10 +576,12 @@ template <typename T>
 concept can_list_arcs_entries = requires(const T & t) { list_arcs_entries(t); };
 
 template <typename T>
-    requires requires(const T & t, const vertex_t<T> & v, arc_t<T> & a) {
-        { out_arcs_fn{}(t, v) } -> std::ranges::viewable_range;
-        arc_target_fn{}(t, a);
-    }
+    requires std::copy_constructible<arc_t<T>> &&
+             std::copy_constructible<vertex_t<T>> &&
+             requires(const T & t, const vertex_t<T> & v, arc_t<T> & a) {
+                 { out_arcs_fn{}(t, v) } -> std::ranges::viewable_range;
+                 arc_target_fn{}(t, a);
+             }
 inline constexpr auto join_out_arcs_entries [[nodiscard]] (const T & t) {
     return std::views::join(std::views::transform(
         melon::vertices(t), [g = std::addressof(t)](const vertex_t<T> & s) {
@@ -590,10 +598,12 @@ concept can_join_out_arcs_entries =
     requires(const T & t) { join_out_arcs_entries(t); };
 
 template <typename T>
-    requires requires(const T & t, const vertex_t<T> & v, arc_t<T> & a) {
-        { in_arcs_fn{}(t, v) } -> std::ranges::viewable_range;
-        arc_source_fn{}(t, a);
-    }
+    requires std::copy_constructible<arc_t<T>> &&
+             std::copy_constructible<vertex_t<T>> &&
+             requires(const T & t, const vertex_t<T> & v, arc_t<T> & a) {
+                 { in_arcs_fn{}(t, v) } -> std::ranges::viewable_range;
+                 arc_source_fn{}(t, a);
+             }
 inline constexpr auto join_in_arcs_entries [[nodiscard]] (const T & t) {
     return std::views::join(std::views::transform(
         melon::vertices(t), [g = std::addressof(t)](const vertex_t<T> & v) {
