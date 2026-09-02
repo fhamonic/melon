@@ -15,9 +15,10 @@
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/element.hpp"
+#include "melon/numeric/semiring.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/priority_queue.hpp"
-#include "melon/utility/semiring.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace melon {
@@ -47,8 +48,8 @@ struct a_star_default_traits {
     };
     using heap = updatable_d_ary_heap<
         2, std::pair<vertex_t<Graph>, std::pair<ValueType, ValueType>>,
-        priority_less, vertex_map_t<Graph, std::size_t>, maps::element_map<1>,
-        maps::element_map<0>>;
+        priority_less, vertex_map_t<Graph, std::size_t>, maps::element<1>,
+        maps::element<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -266,12 +267,12 @@ public:
     // Refers into the algorithm, like every melon map view: valid while this
     // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & {
-        return maps::map([this](const vertex & u) { return reached(u); });
+        return maps::function([this](const vertex & u) { return reached(u); });
     }
     // Terminal, like std::move(alg).base() -- the member left behind is valid
     // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
-        return maps::map(
+        return maps::function(
             [status_map = std::move(_vertex_status_map)](const vertex & u) {
                 return status_map[u] != PRE_HEAP;
             });

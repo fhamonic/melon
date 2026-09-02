@@ -10,6 +10,7 @@
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/container/static_map.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/element.hpp"
 #include "melon/utility/priority_queue.hpp"
 
 using namespace melon;
@@ -29,7 +30,7 @@ using plain_heap = d_ary_heap<2, int>;
 using dijkstra_heap =
     updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::less<int>,
                          static_map<unsigned int, std::size_t>,
-                         maps::element_map<1>, maps::element_map<0>>;
+                         maps::element<1>, maps::element<0>>;
 
 static_assert(priority_queue<plain_heap>);
 static_assert(priority_queue<d_ary_heap<4, double>>);

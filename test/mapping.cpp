@@ -3,10 +3,8 @@
 
 #include <map>
 #include <string>
-#include <tuple>
 #include <type_traits>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "melon/container/static_digraph.hpp"
@@ -93,10 +91,7 @@ static_assert(output_mapping_of<std::vector<bool>, std::size_t, bool>);
 
 static_assert(!mapping_view<std::vector<int>, std::size_t>);
 static_assert(mapping_view<mapping_ref_view<std::vector<int>>, std::size_t>);
-static_assert(mapping_view<maps::true_map, int>);
-static_assert(mapping_view<maps::false_map, int>);
-static_assert(mapping_view<maps::identity_map, int>);
-static_assert(mapping_view<maps::element_map<0>, std::pair<int, int>>);
+static_assert(mapping_view<maps::identity, int>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // mapping_ref_view is a shallow-const handle that binds to lvalues only
@@ -162,7 +157,7 @@ GTEST_TEST(mapping_owning_view, survives_a_move) {
 
 // A capturing lambda is move-constructible but not assignable. The owning view
 // stores it in a movable-box so that it stays std::movable anyway, which is
-// what lets algorithms hold a `maps::map(...)` by value.
+// what lets algorithms hold a `maps::function(...)` by value.
 GTEST_TEST(mapping_owning_view, keeps_a_lambda_assignable) {
     int offset = 10;
     auto lambda = [offset](std::size_t i) { return offset + int(i); };
@@ -171,16 +166,16 @@ GTEST_TEST(mapping_owning_view, keeps_a_lambda_assignable) {
     static_assert(!std::is_copy_assignable_v<lambda_t>);
     static_assert(std::movable<mapping_owning_view<lambda_t>>);
 
-    auto view = maps::map(lambda);
+    auto view = maps::function(lambda);
     static_assert(std::movable<decltype(view)>);
     static_assert(mapping_view<decltype(view), std::size_t>);
     ASSERT_EQ(view[5u], 15);
 
-    auto other = maps::map([](std::size_t i) { return int(i) * 2; });
+    auto other = maps::function([](std::size_t i) { return int(i) * 2; });
     static_assert(!std::same_as<decltype(other), decltype(view)>);
 
-    auto reassigned = maps::map(lambda);
-    reassigned = maps::map(lambda);
+    auto reassigned = maps::function(lambda);
+    reassigned = maps::function(lambda);
     ASSERT_EQ(reassigned[1u], 11);
 }
 
@@ -198,7 +193,7 @@ GTEST_TEST(mapping_views, dispatch_the_three_subscript_protocols) {
         int at(std::size_t i) const { return v[i]; }
     };
 
-    ASSERT_EQ(maps::map(call_op{})[3u], 4);
+    ASSERT_EQ(maps::function(call_op{})[3u], 4);
 
     at_only m;
     ASSERT_EQ(mapping_ref_view(m)[1u], 8);
@@ -223,8 +218,8 @@ GTEST_TEST(mapping_all, selects_the_right_adaptor) {
     ASSERT_EQ(from_rvalue[1u], 5);
 
     // An existing view is passed through rather than wrapped again.
-    auto passed_through = maps::mapping_all(maps::true_map{});
-    static_assert(std::same_as<decltype(passed_through), maps::true_map>);
+    auto passed_through = maps::mapping_all(maps::identity{});
+    static_assert(std::same_as<decltype(passed_through), maps::identity>);
 
     static_assert(std::same_as<maps::mapping_all_t<std::vector<int> &>,
                                mapping_ref_view<std::vector<int>>>);
@@ -251,7 +246,7 @@ concept can_mapping_all =
 static_assert(can_mapping_all<std::vector<int> &>);
 static_assert(can_mapping_all<std::vector<int>>);
 static_assert(can_mapping_all<const std::vector<int> &>);
-static_assert(can_mapping_all<maps::true_map>);
+static_assert(can_mapping_all<maps::identity>);
 static_assert(!can_mapping_all<not_a_mapping>);
 
 // regression, same shape as the one above one layer down: the subscript
@@ -264,10 +259,10 @@ static_assert(!can_mapping_all<not_a_mapping>);
 // A mutable lambda is what reaches this: its operator() is non-const, so it
 // is not readable through a const access and is correctly not a mapping --
 // but it has to *say* so rather than hard-error.
-// Built through mapping_owning_view directly, not maps::map: the factory
-// rejects a mutable lambda outright with a friendly static_assert (below), and
-// what is under test here is the layer beneath it -- that the *concepts* answer
-// false about such a view instead of hard-erroring.
+// Built through mapping_owning_view directly, not maps::function: the
+// factory rejects a mutable lambda outright with a friendly static_assert
+// (below), and what is under test here is the layer beneath it -- that the
+// *concepts* answer false about such a view instead of hard-erroring.
 namespace {
 using mutable_lambda_t =
     decltype([counter = std::ptrdiff_t{0}](unsigned k) mutable {
@@ -293,28 +288,30 @@ static_assert(!output_mapping<mutable_lambda_map_t, unsigned>);
 // through the non-const one.
 static_assert(subscriptable_mutable<mutable_lambda_map_t>);
 static_assert(!subscriptable_const<mutable_lambda_map_t>);
-static_assert(
-    subscriptable_mutable<decltype(maps::map([](unsigned k) { return k; }))>);
-static_assert(
-    subscriptable_const<decltype(maps::map([](unsigned k) { return k; }))>);
+static_assert(subscriptable_mutable<decltype(maps::function([](unsigned k) {
+    return k;
+}))>);
+static_assert(subscriptable_const<decltype(maps::function([](unsigned k) {
+    return k;
+}))>);
 
 // The supported spelling for a stateful map: a const lambda handing out a
 // reference into storage it does not own. Readable const, and writes land.
 namespace {
 std::vector<int> external_storage(4, 0);
 auto ref_lambda_map =
-    maps::map([](unsigned k) -> int & { return external_storage[k]; });
+    maps::function([](unsigned k) -> int & { return external_storage[k]; });
 using ref_lambda_map_t = decltype(ref_lambda_map);
 }  // namespace
 
 static_assert(mapping_of<ref_lambda_map_t, unsigned, int>);
 static_assert(output_mapping_of<ref_lambda_map_t, unsigned, int>);
 
-// maps::map rejects a mutable lambda with a friendly static_assert naming the
-// remedy. That the assert *fires* cannot be asserted from inside a compiling
-// test, so what is pinned here is the discriminator it fires on -- and above
-// all that it stays silent for everything else, a false positive being the
-// costly direction: it would reject a legitimate map outright.
+// maps::function rejects a mutable lambda with a friendly static_assert
+// naming the remedy. That the assert *fires* cannot be asserted from inside a
+// compiling test, so what is pinned here is the discriminator it fires on --
+// and above all that it stays silent for everything else, a false positive
+// being the costly direction: it would reject a legitimate map outright.
 namespace {
 struct const_functor {
     int operator()(unsigned k) const { return int(k); }
@@ -369,62 +366,12 @@ static_assert(std::same_as<maps::mapping_all_t<std::vector<int>>,
 // the canned maps answer for any key type
 ////////////////////////////////////////////////////////////////////////////////
 
-GTEST_TEST(canned_maps, constant_and_identity) {
-    static_assert(maps::true_map{}[0]);
-    static_assert(!maps::false_map{}[0]);
-    static_assert(maps::identity_map{}[42] == 42);
+GTEST_TEST(canned_maps, identity) {
+    static_assert(maps::identity{}[42] == 42);
 
-    // They answer for any key type, which is what makes them usable as the
-    // default filter/priority map of the algorithms.
-    ASSERT_TRUE(maps::true_map{}[std::string("anything")]);
-    ASSERT_FALSE(maps::false_map{}[std::make_pair(1, 2)]);
-    ASSERT_EQ(maps::identity_map{}[std::string("x")], "x");
-}
-
-GTEST_TEST(canned_maps, element_map_projects_tuple_elements) {
-    const auto entry = std::make_pair(1, std::make_tuple(2, 3.5));
-
-    using first = maps::element_map<0>;
-    using second_first = maps::element_map<1, 0>;
-    using second_second = maps::element_map<1, 1>;
-
-    ASSERT_EQ(first{}[entry], 1);
-    ASSERT_EQ(second_first{}[entry], 2);
-    ASSERT_EQ(second_second{}[entry], 3.5);
-
-    static_assert(first{}[std::make_pair(4, 5)] == 4);
-    static_assert(
-        mapping_of<maps::element_map<1>, std::pair<int, double>, double>);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// maps::element_map's noexcept follows std::get, so variant access propagates
-////////////////////////////////////////////////////////////////////////////////
-
-// regression: std::get is noexcept for tuple/pair/array but throws
-// bad_variant_access for std::variant, so an unconditional noexcept on the
-// accessor chain turns that throw into std::terminate.
-namespace {
-using int_pair = std::pair<int, int>;
-using nested_pair = std::pair<std::pair<int, int>, int>;
-using int_variant = std::variant<int, double>;
-using variant_pair = std::pair<std::variant<int, double>, int>;
-}  // namespace
-
-static_assert(noexcept(
-    std::declval<const maps::element_map<1> &>()[std::declval<int_pair &>()]));
-static_assert(noexcept(std::declval<const maps::element_map<0, 1> &>()
-                           [std::declval<nested_pair &>()]));
-static_assert(
-    !noexcept(std::declval<
-              const maps::element_map<0> &>()[std::declval<int_variant &>()]));
-static_assert(!noexcept(std::declval<const maps::element_map<0, 0> &>()
-                            [std::declval<variant_pair &>()]));
-
-GTEST_TEST(element_map, variant_access_propagates_instead_of_terminating) {
-    int_variant v{3.5};  // holds the double alternative
-    maps::element_map<0> first;
-    ASSERT_THROW((void)first[v], std::bad_variant_access);
+    // It answers for any key type, which is what makes it usable as the
+    // default priority map of the heaps.
+    ASSERT_EQ(maps::identity{}[std::string("x")], "x");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

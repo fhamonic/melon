@@ -104,7 +104,7 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | `priority_queue<Q>` | `utility/priority_queue.hpp` | `std::movable`, `std::default_initializable`, `push`, `top`, `pop`, `size`, `empty`, `clear` |
 | `updatable_priority_queue<Q>` | `utility/priority_queue.hpp` | `priority_queue` plus `contains`, `priority`, `promote`, `demote` |
 | `mutable_entry_priority_map<Map, Entry>` | `container/d_ary_heap.hpp` | a `mapping` whose subscript yields a non-`const` lvalue reference into the entry — `promote()`/`demote()` write the priority through it |
-| `semiring<S>` | `utility/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less`; optional `infty_is_absorbing` promise, read through `has_absorbing_infty<S>` |
+| `semiring<S>` | `numeric/semiring.hpp` | `value_type`, `plus_t`, `less_t`, `zero`, `infty`, `plus`, `less`; optional `infty_is_absorbing` promise, read through `has_absorbing_infty<S>` |
 | `breadth_first_search_traits<T>` | `algorithm/breadth_first_search.hpp` | the four BFS flags: `store_pred_vertices`, `store_pred_arcs`, `store_distances`, `store_traversal_range` |
 | `depth_first_search_traits<T>` | `algorithm/depth_first_search.hpp` | `store_pred_vertices`, `store_pred_arcs`, `store_depth` |
 | `topological_sort_traits<T>` | `algorithm/topological_sort.hpp` | `store_ranks`, `store_critical_paths` |
@@ -119,9 +119,11 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | `bellman_ford_moore_traits<T>` | `algorithm/bellman_ford_moore.hpp` | a `semiring`, `store_paths`, `detect_negative_cycles` |
 | `alias_method_sampler_traits<T>` | `utility/alias_method_sampler.hpp` | `heuristic_preprocessing` |
 | `bentley_ottmann_traits<T>` | `algorithm/bentley_ottmann.hpp` | `Traits::report_endpoints` convertible to `bool` — the geometric kernel types are members of `bentley_ottmann_default_traits`, not concept requirements |
-| `cartesian_point<T>` | `utility/geometry.hpp` | `std::get<0>` and `std::get<1>` of the point |
-| `cartesian_segment<T>` | `utility/geometry.hpp` | two `cartesian_point`s |
-| `cartesian_line<T>` | `utility/geometry.hpp` | the line coefficients |
+| `cartesian_coordinate<T>` | `numeric/geometry.hpp` | an ordered scalar: `==` and `<`, and not itself tuple-like |
+| `cartesian_point<T>` | `numeric/geometry.hpp` | exactly two `cartesian_coordinate`s through `std::tuple_size` and `std::get` |
+| `cartesian_segment<T>` | `numeric/geometry.hpp` | exactly two `cartesian_point`s |
+| `common_cartesian_segment<T>` | `numeric/geometry.hpp` | a `cartesian_segment` whose endpoints share one point type, as `common_range` shares one iterator type — what the extent checks consume |
+| `cartesian_line<T>` | `numeric/geometry.hpp` | exactly three `cartesian_coordinate` line coefficients |
 | `numeric::promotion_strategy<Traits, T>` | `numeric/bounded_value.hpp` | `plus_overflows`, `substract_overflows`, `multiply_overflows` predicates over `T` |
 | `numeric::rational_scalar_operand<T>` | `numeric/rational.hpp` | an arithmetic type or a `bounded_value` — the scalar side of mixed `rational` arithmetic |
 

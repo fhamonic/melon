@@ -5,6 +5,7 @@
 #include "melon/algorithm/competing_dijkstras.hpp"
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/maps/element.hpp"
 #include "melon/utility/erdos_renyi.hpp"
 #include "melon/utility/graphviz_printer.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -151,7 +152,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                 std::cout << "shit!" << std::endl;
                 graphviz_printer printer(graph);
                 printer
-                    .set_vertex_color_map(maps::map(
+                    .set_vertex_color_map(maps::function(
                         [&](auto && w)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -164,7 +165,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                             else
                                 return {255, 255, 255};
                         }))
-                    .set_arc_color_map(maps::map(
+                    .set_arc_color_map(maps::function(
                         [&](auto && a)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -176,7 +177,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                             else
                                 return {64, 64, 64};
                         }))
-                    .set_arc_label_map(maps::map([&](auto && a) {
+                    .set_arc_label_map(maps::function([&](auto && a) {
                         return (std::ostringstream{}
                                 << "[" << std::to_string(lower_length_map[a])
                                 << ',' << std::to_string(upper_length_map[a])
@@ -240,8 +241,8 @@ struct useless_competing_dijkstras_traits {
     };
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
-                             vertex_map_t<Graph, std::size_t>,
-                             maps::element_map<1>, maps::element_map<0>>;
+                             vertex_map_t<Graph, std::size_t>, maps::element<1>,
+                             maps::element<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -321,7 +322,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 std::cout << "shit!" << std::endl;
                 graphviz_printer printer(graph);
                 printer
-                    .set_vertex_color_map(maps::map(
+                    .set_vertex_color_map(maps::function(
                         [&](auto && w)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -334,7 +335,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                             else
                                 return {255, 255, 255};
                         }))
-                    .set_arc_color_map(maps::map(
+                    .set_arc_color_map(maps::function(
                         [&](auto && a)
                             -> std::tuple<unsigned char, unsigned char,
                                           unsigned char> {
@@ -346,7 +347,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                             else
                                 return {64, 64, 64};
                         }))
-                    .set_arc_label_map(maps::map([&](auto && a) {
+                    .set_arc_label_map(maps::function([&](auto && a) {
                         return (std::ostringstream{}
                                 << "[" << std::to_string(lower_length_map[a])
                                 << ',' << std::to_string(upper_length_map[a])

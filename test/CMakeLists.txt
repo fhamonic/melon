@@ -73,6 +73,9 @@ add_executable(
   undirected_graph.cpp
   undirected_graph_view.cpp
   mapping.cpp
+  constant.cpp
+  element.cpp
+  transform.cpp
   semiring.cpp
   priority_queue.cpp
   graphviz_printer.cpp

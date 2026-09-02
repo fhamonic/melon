@@ -257,14 +257,15 @@ public:
     // Refers into the algorithm, like every melon map view: valid while this
     // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & {
-        return maps::map([this](const vertex & v) { return reached(v); });
+        return maps::function([this](const vertex & v) { return reached(v); });
     }
     // Terminal, like std::move(alg).base() -- no other member may be called
     // afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
-        return maps::map([index_map = std::move(_index_map)](const vertex & v) {
-            return index_map[v] != INVALID_COMPONENT;
-        });
+        return maps::function(
+            [index_map = std::move(_index_map)](const vertex & v) {
+                return index_map[v] != INVALID_COMPONENT;
+            });
     }
 
 private:

@@ -1,11 +1,12 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <array>
 #include <optional>
 #include <tuple>
 #include <utility>
 
-#include "melon/utility/geometry.hpp"
+#include "melon/numeric/geometry.hpp"
 
 using namespace melon;
 using namespace melon::numeric;
@@ -29,13 +30,42 @@ static segment S(int x1, int y1, int x2, int y2) {
 // points, segments and lines are structural concepts over coordinate tuples
 ////////////////////////////////////////////////////////////////////////////////
 
+static_assert(cartesian_coordinate<int>);
+static_assert(cartesian_coordinate<coord>);
+static_assert(!cartesian_coordinate<point>);
+
 static_assert(cartesian_point<point>);
 static_assert(cartesian_point<std::pair<int, int>>);
+static_assert(cartesian_point<std::array<int, 2>>);
 static_assert(!cartesian_point<int>);
 static_assert(cartesian_segment<segment>);
 static_assert(!cartesian_segment<point>);
+static_assert(common_cartesian_segment<segment>);
+static_assert(!common_cartesian_segment<point>);
 static_assert(cartesian_line<line>);
+static_assert(cartesian_line<std::array<int, 3>>);
 static_assert(!cartesian_line<int>);
+
+// regression: the categories are arity-exact and pairwise disjoint; without
+// the arity and coordinate constraints a segment or line also satisfies
+// cartesian_point, and point_on_line(lineA, lineB) compiles into the
+// meaningless a*a' + b*b' == c.
+static_assert(!cartesian_point<segment>);
+static_assert(!cartesian_point<line>);
+static_assert(!cartesian_segment<std::tuple<segment, segment>>);
+static_assert(!cartesian_line<std::tuple<point, point, point>>);
+static_assert(!cartesian_point<std::array<int, 5>>);
+static_assert(!cartesian_line<std::array<int, 5>>);
+
+// A point may mix coordinate types -- bentley_ottmann pairs the event
+// abscissa with an ordinate computed in a wider rational specialization.
+static_assert(cartesian_point<std::tuple<coord, rational<int, int>>>);
+// A segment may mix endpoint types, but only segment_to_line consumes it:
+// the extent checks require common_cartesian_segment -- one endpoint type --
+// because they hold "the smaller endpoint" in one variable through std::minmax.
+using hetero_segment = std::pair<std::pair<int, int>, std::pair<long, long>>;
+static_assert(cartesian_segment<hetero_segment>);
+static_assert(!common_cartesian_segment<hetero_segment>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // point_xy_comparator orders points by x, breaking ties by y
@@ -112,6 +142,17 @@ GTEST_TEST(cartesian, segment_to_line_handles_axis_parallel_segments) {
     ASSERT_EQ(std::get<1>(vertical), 0);
     ASSERT_TRUE(cartesian::point_on_line(P(3, -50), vertical));
     ASSERT_FALSE(cartesian::point_on_line(P(4, -50), vertical));
+}
+
+// segment_to_line takes the plain cartesian_segment, not
+// common_cartesian_segment: it only subtracts and multiplies, so mixed endpoint
+// types must keep working.
+GTEST_TEST(cartesian, segment_to_line_accepts_mixed_endpoint_types) {
+    const hetero_segment s{{0, 0}, {2L, 2L}};
+    const auto l = cartesian::segment_to_line(s);
+    ASSERT_EQ(std::get<0>(l), 2);
+    ASSERT_EQ(std::get<1>(l), -2);
+    ASSERT_EQ(std::get<2>(l), 0);
 }
 
 GTEST_TEST(cartesian, line_slope) {

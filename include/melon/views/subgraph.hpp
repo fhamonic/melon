@@ -9,6 +9,7 @@
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/constant.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace melon {

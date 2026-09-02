@@ -3,6 +3,7 @@
 
 #include "melon/algorithm/dijkstra.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/maps/element.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 
 #include "ranges_test_helper.hpp"
@@ -121,7 +122,7 @@ struct dijkstra_path_traits {
         updatable_d_ary_heap<2, std::pair<vertex_t<static_digraph>, int>,
                              semiring::less_t,
                              vertex_map_t<static_digraph, std::size_t>,
-                             maps::element_map<1>, maps::element_map<0>>;
+                             maps::element<1>, maps::element<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = true;

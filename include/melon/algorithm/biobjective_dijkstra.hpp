@@ -9,9 +9,10 @@
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/element.hpp"
+#include "melon/numeric/semiring.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/priority_queue.hpp"
-#include "melon/utility/semiring.hpp"
 
 namespace melon {
 
@@ -35,7 +36,7 @@ struct biobjective_dijkstra_default_traits {
     using label = std::pair<BlueValueType, RedValueType>;
     using heap =
         d_ary_heap<2, std::pair<vertex_t<Graph>, label>,
-                   typename blue_semiring::less_t, maps::element_map<1, 0>>;
+                   typename blue_semiring::less_t, maps::element<1, 0>>;
 };
 
 // Label-setting Pareto search over two independent costs: instead of one
@@ -257,12 +258,12 @@ public:
     }
     // Derived, not stored: valid while this object lives and stays put.
     [[nodiscard]] constexpr auto reached_map() const & {
-        return maps::map([this](const vertex & v) { return reached(v); });
+        return maps::function([this](const vertex & v) { return reached(v); });
     }
     // Terminal, like std::move(alg).base() -- the member left behind is valid
     // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
-        return maps::map(
+        return maps::function(
             [front_map = std::move(_pareto_front_map)](const vertex & v) {
                 return !front_map[v].empty();
             });

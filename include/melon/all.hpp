@@ -12,6 +12,10 @@
 #include "melon/mapping.hpp"
 #include "melon/undirected_graph.hpp"
 
+#include "melon/maps/constant.hpp"
+#include "melon/maps/element.hpp"
+#include "melon/maps/transform.hpp"
+
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/container/disjoint_sets.hpp"
 #include "melon/container/mutable_digraph.hpp"
@@ -50,13 +54,14 @@
 #include "melon/algorithm/unbounded_knapsack_bnb.hpp"
 
 #include "melon/numeric/bounded_value.hpp"
+#include "melon/numeric/geometry.hpp"
 #include "melon/numeric/rational.hpp"
+#include "melon/numeric/semiring.hpp"
+
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/alias_method_sampler.hpp"
 #include "melon/utility/erdos_renyi.hpp"
-#include "melon/utility/geometry.hpp"
 #include "melon/utility/graphviz_printer.hpp"
 #include "melon/utility/make_static_digraph.hpp"
 #include "melon/utility/priority_queue.hpp"
-#include "melon/utility/semiring.hpp"
 #include "melon/utility/static_digraph_builder.hpp"

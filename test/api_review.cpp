@@ -29,6 +29,7 @@
 #include "melon/container/static_filter_map.hpp"
 #include "melon/container/static_forward_digraph.hpp"
 #include "melon/detail/consumable_view.hpp"
+#include "melon/maps/constant.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/complete_digraph.hpp"
 #include "melon/views/graph_view.hpp"

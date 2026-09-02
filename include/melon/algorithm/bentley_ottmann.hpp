@@ -17,8 +17,8 @@
 
 #include "melon/container/d_ary_heap.hpp"
 #include "melon/mapping.hpp"
+#include "melon/numeric/geometry.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
-#include "melon/utility/geometry.hpp"
 
 namespace melon {
 
@@ -65,7 +65,7 @@ struct bentley_ottmann_default_traits {
 // forward_range because seeding walks it once per run, not once per object.
 template <bentley_ottmann_traits Traits, std::ranges::view SegmentIdRange,
           mapping_view<std::ranges::range_value_t<SegmentIdRange>> SegmentMap =
-              maps::identity_map>
+              maps::identity>
     requires std::ranges::forward_range<SegmentIdRange>
 class bentley_ottmann
     : public algorithm_view_interface<
@@ -192,7 +192,7 @@ private:
 public:
     // ---- Construction -------------------------------------------------------
 
-    template <typename SIR, mapping_for<SegmentMap> SM = maps::identity_map>
+    template <typename SIR, mapping_for<SegmentMap> SM = maps::identity>
         requires detail::not_self<SIR, bentley_ottmann> &&
                      std::ranges::forward_range<SIR> &&
                      std::constructible_from<SegmentIdRange,
@@ -409,7 +409,7 @@ template <typename SegmentIdRange>
 bentley_ottmann(SegmentIdRange &&)
     -> bentley_ottmann<bentley_ottmann_default_traits<
                            std::ranges::range_value_t<SegmentIdRange>>,
-                       std::views::all_t<SegmentIdRange>, maps::identity_map>;
+                       std::views::all_t<SegmentIdRange>, maps::identity>;
 
 template <typename SegmentIdRange, typename SegmentMap>
 bentley_ottmann(SegmentIdRange &&, SegmentMap &&)
@@ -422,7 +422,7 @@ bentley_ottmann(SegmentIdRange &&, SegmentMap &&)
 template <typename SegmentIdRange, typename Traits>
 bentley_ottmann(Traits, SegmentIdRange &&)
     -> bentley_ottmann<Traits, std::views::all_t<SegmentIdRange>,
-                       maps::identity_map>;
+                       maps::identity>;
 
 template <typename SegmentIdRange, typename SegmentMap, typename Traits>
 bentley_ottmann(Traits, SegmentIdRange &&, SegmentMap &&)

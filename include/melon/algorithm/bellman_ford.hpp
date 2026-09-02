@@ -15,7 +15,7 @@
 #include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
-#include "melon/utility/semiring.hpp"
+#include "melon/numeric/semiring.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace melon {
@@ -288,12 +288,13 @@ public:
     // Refers into the algorithm, like every melon map view: valid while this
     // object lives and stays put, mapping_ref_view's contract.
     [[nodiscard]] constexpr auto reached_map() const & {
-        return maps::map([this](const vertex & u) { return reached(u); });
+        return maps::function([this](const vertex & u) { return reached(u); });
     }
     // Terminal, like std::move(alg).base() -- the member left behind is valid
     // but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto reached_map() && {
-        return maps::map([dists = std::move(_distances_map)](const vertex & u) {
+        return maps::function([dists = std::move(_distances_map)](
+                                  const vertex & u) {
             return Traits::semiring::less(dists[u], Traits::semiring::infty);
         });
     }

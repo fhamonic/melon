@@ -1,6 +1,6 @@
 # Mappings
 
-A **mapping** is melon's abstraction for "data indexed by something" — lengths per arc, distances per vertex, a boolean filter per element. Like the [graph concepts](concepts.md), it is deliberately minimal: anything with an `operator[]` that can be read through a const access is a candidate, and the refinements say what more you can do with it. Everything here lives in `melon/mapping.hpp`.
+A **mapping** is melon's abstraction for "data indexed by something" — lengths per arc, distances per vertex, a boolean filter per element. Like the [graph concepts](concepts.md), it is deliberately minimal: anything with an `operator[]` that can be read through a const access is a candidate, and the refinements say what more you can do with it. The concepts and the ownership views live in `melon/mapping.hpp`; the [ready-made maps](#the-ready-made-maps) beyond `maps::identity` each have their own header under `melon/maps/`.
 
 ## The concept
 
@@ -45,7 +45,7 @@ concept output_mapping =
 
 `output_mapping` adds assignment. A mapping that does not satisfy it is read-only. The shape of the requirement — checking the *type of the assignment expression* rather than requiring a plain `T&` — is what lets proxy references qualify, so `std::vector<bool>` is a perfectly good output mapping alongside `std::vector<double>` and your own type.
 
-The requirement also demands that a write actually *lands*: the subscript must return an lvalue reference into storage, or a proxy standing in for one. A map whose subscript returns a prvalue of the value type — a computed map, such as `maps::map` over a lambda returning by value — is readable but is not an `output_mapping`, because `m[k] = v` would assign into a temporary.
+The requirement also demands that a write actually *lands*: the subscript must return an lvalue reference into storage, or a proxy standing in for one. A map whose subscript returns a prvalue of the value type — a computed map, such as `maps::function` over a lambda returning by value — is readable but is not an `output_mapping`, because `m[k] = v` would assign into a temporary.
 
 ```cpp
 template <typename Map, typename Key>
@@ -82,9 +82,10 @@ Verified against the concepts as written:
 | `static_map<K, V>` | ✓ | ✓ | ✓ |
 | `static_filter_map<K>` | ✓ | ✓ | |
 | `std::map` / `std::unordered_map` | | | |
-| `maps::true_map`, `maps::false_map` | ✓ | | |
-| `maps::identity_map`, `maps::element_map<I...>` | ✓ | | |
-| `maps::map(callable)` | ✓ | | |
+| `maps::constant<V>` (`true_map`, `false_map`) | ✓ | | |
+| `maps::identity`, `maps::element<I...>` | ✓ | | |
+| `maps::function(callable)` | ✓ | | |
+| `maps::transform(m, f)` | ✓ | | |
 
 ### `std::map` is not a `mapping`
 
@@ -136,22 +137,22 @@ dijkstra b(g, std::move(length), s);            // owning view; `b` holds the ve
 
 `mapping_owning_view` uses a `std::ranges`-style movable box, so an algorithm stays movable even when the mapping it owns is a capturing lambda.
 
-### `maps::map` and the ready-made maps
+### `maps::function`
 
-`maps::map(f)` wraps any callable into a mapping. You do not need it to pass a lambda to an algorithm — that wrapping happens automatically — but you do need it wherever a `mapping` is required *as a type*: a member of your own class, a `static_assert`, an explicit template argument.
+`maps::function(f)` wraps any callable into a mapping. You do not need it to pass a lambda to an algorithm — that wrapping happens automatically — but you do need it wherever a `mapping` is required *as a type*: a member of your own class, a `static_assert`, an explicit template argument.
 
 ```cpp
 // unit lengths, no storage
-auto unit = maps::map([](auto &&) { return 1; });
+auto unit = maps::function([](auto &&) { return 1; });
 
 // lengths derived from coordinates
-auto euclidean = maps::map([&](arc_t<G> a) { return distance(pos[arc_source(g, a)],
+auto euclidean = maps::function([&](arc_t<G> a) { return distance(pos[arc_source(g, a)],
                                                               pos[arc_target(g, a)]); });
 ```
 
 !!! warning "A `mutable` lambda is not a `mapping`"
 
-    A mutable lambda's `operator()` is non-const, so `maps::map` over one is
+    A mutable lambda's `operator()` is non-const, so `maps::function` over one is
     not readable through a const access and fails `mapping` — the same
     const-readability requirement that rules out `std::map`. The map stays
     usable through its non-const subscript; it is only the const one that
@@ -160,22 +161,26 @@ auto euclidean = maps::map([&](arc_t<G> a) { return distance(pos[arc_source(g, a
 
     ```cpp
     std::vector<double> storage(n);
-    auto m = maps::map([&storage](arc_t<G> a) -> double & { return storage[a]; });
+    auto m = maps::function([&storage](arc_t<G> a) -> double & { return storage[a]; });
     ```
 
     This spelling is also an `output_mapping` — the subscript returns a real
     lvalue reference — where the mutable-capture version never could be.
 
-Four ready-made mappings cover the common constant cases:
+### The ready-made maps
 
-| Mapping | `m[k]` yields |
-| --- | --- |
-| `maps::true_map` | `true` for every key |
-| `maps::false_map` | `false` for every key |
-| `maps::identity_map` | the key itself |
-| `maps::element_map<I...>` | `std::get<I>...` applied in sequence to the key |
+`maps::identity` ships with `melon/mapping.hpp` itself; the rest live in [`melon/maps/`](../reference/headers.md#maps--melonmaps), one header each:
 
-`maps::true_map` is the default filter of [`views::subgraph`](../views/graphs.md#subgraph) — and since it is an empty type stored with `[[no_unique_address]]`, an unfiltered subgraph costs nothing and its `vertices()` is the underlying range itself rather than a `filter_view`. `maps::identity_map` and `maps::element_map` are how [`d_ary_heap`](../containers/data-structures.md#heaps) is told where to find an entry's priority and identifier: `maps::element_map<1>` reads `.second` of a `std::pair` entry, `element_map<0>` its `.first`.
+| Mapping | Header | `m[k]` yields |
+| --- | --- | --- |
+| `maps::constant<V>` | `melon/maps/constant.hpp` | `V` for every key — `maps::true_map` / `maps::false_map` are its `<true>` / `<false>` aliases |
+| `maps::identity` | `melon/mapping.hpp` | the key itself |
+| `maps::element<I...>` | `melon/maps/element.hpp` | `std::get<I>...` applied in sequence to the key |
+| `maps::transform(m, f)` | `melon/maps/transform.hpp` | `f(m[k])` — the base's mapped value through a projection |
+
+`maps::constant`'s value is an NTTP, so the map is an empty type — only structural types qualify; a runtime constant is `maps::function` over a capturing lambda. `maps::true_map` is the default filter of [`views::subgraph`](../views/graphs.md#subgraph) — and since it is empty and stored with `[[no_unique_address]]`, an unfiltered subgraph costs nothing and its `vertices()` is the underlying range itself rather than a `filter_view`. `maps::identity` and `maps::element` are how [`d_ary_heap`](../containers/data-structures.md#heaps) is told where to find an entry's priority and identifier: `maps::element<1>` reads `.second` of a `std::pair` entry, `maps::element<0>` its `.first`.
+
+`maps::transform(m, f)` routes its base through `maps::mapping_all` — an lvalue is referenced, an rvalue owned, a view passed through — and applies `f` to the mapped *value*, never to the key. With a value-returning projection the result is read-only; a projection handing back a real lvalue reference keeps the base's writability, and the mutable-lambda rule above applies to `f` exactly as it does to `maps::function`. The returned class is `transform_map_view`, in `melon` itself like the other view classes — take it by `auto`; its exact type depends on the projection's.
 
 ## Next
 

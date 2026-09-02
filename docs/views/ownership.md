@@ -130,7 +130,7 @@ That is what makes a **callable** usable as a mapping, and what rescues `std::ma
 
 ```cpp
 // a lambda becomes a mapping
-auto unit = maps::map([](auto &&) { return 1; });
+auto unit = maps::function([](auto &&) { return 1; });
 
 // std::map is not a mapping on its own (operator[] is non-const);
 // wrapped const, the view reads through at()
@@ -140,7 +140,7 @@ auto length_map = maps::mapping_all(lengths);
 
 The dispatch runs with the constness the wrapped map carries, so the `const` above matters: wrapping a **non-const** `std::map` lvalue finds its inserting `operator[]` at step 1 — a lookup of a missing key default-inserts. The throwing `at()` path is reached only through a const base (`std::as_const(lengths)`, or an owning view read through a const algorithm). See the [mappings chapter](../graphs/mappings.md#stdmap-is-not-a-mapping) for the full mechanism.
 
-`maps::map(f)` is a shorthand for `mapping_owning_view<F>(f)`. Use `maps::mapping_all` when you have an lvalue container you want referenced, `maps::map` when you have a callable to own.
+`maps::function(f)` is a shorthand for `mapping_owning_view<F>(f)`. Use `maps::mapping_all` when you have an lvalue container you want referenced, `maps::function` when you have a callable to own.
 
 !!! note
 
@@ -238,6 +238,6 @@ The mapping side is where constness bites: an algorithm that writes through a ma
 
 - Pass an lvalue when you own the storage and it outlives the algorithm; pass an rvalue, or `std::move`, when it does not.
 - Views hold references too — `views::subgraph(graph, filter)` keeps both alive only if *you* do.
-- Callables and non-const-subscriptable containers need no wrapping to be *passed* to an algorithm; wrap them with `maps::map` / `maps::mapping_all` when you need the mapping as a type.
+- Callables and non-const-subscriptable containers need no wrapping to be *passed* to an algorithm; wrap them with `maps::function` / `maps::mapping_all` when you need the mapping as a type.
 - Derive from `graph_view_base` / `mapping_view_base` to make your own adaptors pass through unwrapped.
 - Algorithms are move-only, uniformly. Those that cache incidence ranges rebase them on the move, so relocating one is always sound — mid-traversal included.

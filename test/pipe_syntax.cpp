@@ -7,6 +7,7 @@
 
 #include "melon/container/static_digraph.hpp"
 #include "melon/graph.hpp"
+#include "melon/maps/constant.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/reverse.hpp"
 #include "melon/views/subgraph.hpp"

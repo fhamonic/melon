@@ -1,9 +1,7 @@
 #pragma once
 
 #include <concepts>
-#include <cstddef>
 #include <memory>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -335,11 +333,11 @@ template <typename Map>
 using mapping_all_t = decltype(mapping_all(std::declval<Map>()));
 
 // The diagnostic belongs here and not in the concepts, which are probed in
-// requires-clauses and must answer false rather than fire. maps::map is probed
-// nowhere, so it can afford to be loud; the same assert added to mapping_all
-// would break `requires { maps::mapping_all(x); }`.
+// requires-clauses and must answer false rather than fire. maps::function
+// is probed nowhere, so it can afford to be loud; the same assert added to
+// mapping_all would break `requires { maps::mapping_all(x); }`.
 template <typename F>
-[[nodiscard]] constexpr auto map(F && f) {
+[[nodiscard]] constexpr auto function(F && f) {
     static_assert(
         !detail::has_non_const_call_operator<std::decay_t<F>>,
         "melon: this callable cannot be used as a mapping -- its operator() is "
@@ -347,63 +345,17 @@ template <typename F>
         "access -- the const-readability rule in docs/graphs/mappings.md. Do "
         "not let the map own the state: capture "
         "the storage and hand out a reference into it, as in "
-        "maps::map([&storage](key_t k) -> value_t & { return storage[k]; }).");
+        "maps::function([&storage](key_t k) -> value_t & { "
+        "return storage[k]; }).");
     return mapping_owning_view<std::decay_t<F>>(
         std::decay_t<F>(std::forward<F>(f)));
 }
 
-struct true_map : public mapping_view_base {
-    [[nodiscard]] constexpr bool operator[](const auto &) const noexcept {
-        return true;
-    }
-};
-
-struct false_map : public mapping_view_base {
-    [[nodiscard]] constexpr bool operator[](const auto &) const noexcept {
-        return false;
-    }
-};
-
-struct identity_map : public mapping_view_base {
+struct identity : public mapping_view_base {
     template <typename T>
     [[nodiscard]] constexpr auto operator[](T && e) const
         noexcept(std::is_nothrow_constructible_v<std::decay_t<T>, T>) {
         return std::forward<T>(e);
-    }
-};
-
-template <std::size_t... I>
-struct element_map : public mapping_view_base {
-private:
-    // std::get is noexcept for tuple/pair/array but *not* for std::variant,
-    // where it throws std::bad_variant_access. An unconditional noexcept on the
-    // chain below turns that throw into std::terminate.
-    template <typename T, std::size_t First, std::size_t... Rest>
-    static consteval bool chain_is_nothrow() {
-        if constexpr(sizeof...(Rest) == 0) {
-            return noexcept(std::get<First>(std::declval<T>()));
-        } else {
-            return noexcept(std::get<First>(std::declval<T>())) &&
-                   chain_is_nothrow<
-                       decltype(std::get<First>(std::declval<T>())), Rest...>();
-        }
-    }
-
-    template <std::size_t First, std::size_t... Rest, typename T>
-    static constexpr decltype(auto) get_chain(T && e) noexcept(
-        chain_is_nothrow<T, First, Rest...>()) {
-        if constexpr(sizeof...(Rest) == 0) {
-            return std::get<First>(std::forward<T>(e));
-        } else {
-            return get_chain<Rest...>(std::get<First>(std::forward<T>(e)));
-        }
-    }
-
-public:
-    template <typename T>
-    [[nodiscard]] constexpr decltype(auto) operator[](T && e) const
-        noexcept(chain_is_nothrow<T, I...>()) {
-        return get_chain<I...>(std::forward<T>(e));
     }
 };
 

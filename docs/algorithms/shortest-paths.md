@@ -72,7 +72,7 @@ struct reliability_traits {
     using heap = updatable_d_ary_heap<
         2, std::pair<vertex_t<static_digraph>, double>,
         typename semiring::less_t, vertex_map_t<static_digraph, std::size_t>,
-        maps::element_map<1>, maps::element_map<0>>;
+        maps::element<1>, maps::element<0>>;
     static constexpr bool store_distances = true;
     static constexpr bool store_paths = false;
 };
@@ -85,7 +85,7 @@ alg.dist(4u);   // probability of the most reliable path 0 -> 4
 
 Note that the heap's comparator must be `semiring::less_t` — the two are not independently chosen. A `static_assert` checks the heap's entry type; the comparator direction is your responsibility.
 
-Writing your own is four members and two types; anything satisfying the `semiring` concept in `melon/utility/semiring.hpp` will do.
+Writing your own is four members and two types; anything satisfying the `semiring` concept in `melon/numeric/semiring.hpp` will do.
 
 An unreached vertex's distance is the semiring's `infty`. For `shortest_path_semiring` over an IEEE floating-point `T` that is `std::numeric_limits<T>::infinity()`; over an integral `T` no value absorbs under `+`, so `max()` stands in and `bellman_ford` — the one algorithm that relaxes arcs out of possibly-unreached vertices — guards each relaxation against it. A semiring whose `plus` genuinely absorbs `infty` may promise so with `static constexpr bool infty_is_absorbing = true` — `shortest_path_semiring` promises it exactly when `T` is IEEE floating point, the reliability and capacity semirings always (their `infty` is `0` under multiply and min), and `minimum_spanning_tree_semiring` never, since its `plus` keeps the last arc's weight — which lifts that guard; promise it falsely and unreached vertices relax as reached — for integral lengths, signed overflow.
 
@@ -110,7 +110,7 @@ The default heap is worth reading once: its index map is a `vertex_map_t<Graph, 
 #include "melon/algorithm/a_star.hpp"
 
 // per-vertex lower bound on the remaining distance to t
-auto h = maps::map(
+auto h = maps::function(
     [&](vertex_t<G> v) { return euclidean_distance(coords[v], coords[t]); });
 
 for(auto && [v, dist] : a_star(graph, length_map, h, s)) {

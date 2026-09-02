@@ -19,8 +19,9 @@
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/element.hpp"
+#include "melon/numeric/semiring.hpp"
 #include "melon/utility/priority_queue.hpp"
-#include "melon/utility/semiring.hpp"
 
 namespace melon {
 
@@ -34,11 +35,9 @@ concept bidirectional_dijkstra_traits =
 template <typename Graph, typename ValueType>
 struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
-    using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, ValueType>,
-                             typename semiring::less_t,
-                             vertex_map_t<Graph, std::size_t>,
-                             maps::element_map<1>, maps::element_map<0>>;
+    using heap = updatable_d_ary_heap<
+        2, std::pair<vertex_t<Graph>, ValueType>, typename semiring::less_t,
+        vertex_map_t<Graph, std::size_t>, maps::element<1>, maps::element<0>>;
 
     static constexpr bool store_paths = true;
 };

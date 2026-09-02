@@ -83,8 +83,17 @@ clang-format -i <files you changed>
 ## Code conventions
 
 - Headers use `#pragma once`.
-- Everything lives directly in `namespace melon`; nothing may be added to a
-  nested umbrella namespace.
+- Everything lives directly in `namespace melon` — algorithms, containers and
+  concepts gain no umbrella namespace. The nested namespaces are few and
+  specific: `views::` and `maps::` hold what users *spell at call sites* —
+  adaptors, factories (`views::reverse`, `maps::mapping_all`,
+  `maps::transform`) and factory-less leaf maps whose type name is the
+  interface (`maps::constant`, `maps::element`) — while a class *returned* by
+  a factory stays in `melon` itself (`subgraph_view`, `reverse_view`, the
+  ownership views, `transform_map_view`): users meet those through `auto`,
+  not by name. Moving a single class into its category namespace breaks this
+  rule rather than serving it. `numeric::` holds the arithmetic value types
+  and `experimental::` the unstable work.
 - **No reserved identifiers.** Nothing may contain a double underscore, or a
   leading underscore followed by an uppercase letter — those are reserved to
   the implementation in every scope ([lex.name]/3), and melon is not a standard

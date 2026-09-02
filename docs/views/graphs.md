@@ -155,7 +155,7 @@ arc_source(cd, 5);  // 1
 arc_target(cd, 5);  // 3
 ```
 
-Arc `a` leaves vertex `a / (n - 1)`; self-loops are skipped, so the targets of vertex `u` are the other `n - 1` vertices in order. `out_degree` and `in_degree` are O(1) `noexcept` members answering the constant `n - 1` — for `in_degree` that member is the only reason the capability exists at all, since `in_arcs` is a concatenation and not sized — and the view is [borrowed](ownership.md#borrowed-graphs). There is no storage and no allocation, which makes it the right input for a dense problem — a TSP instance, a metric closure — where the arc data lives in a `maps::map` over the endpoint coordinates rather than in a container:
+Arc `a` leaves vertex `a / (n - 1)`; self-loops are skipped, so the targets of vertex `u` are the other `n - 1` vertices in order. `out_degree` and `in_degree` are O(1) `noexcept` members answering the constant `n - 1` — for `in_degree` that member is the only reason the capability exists at all, since `in_arcs` is a concatenation and not sized — and the view is [borrowed](ownership.md#borrowed-graphs). There is no storage and no allocation, which makes it the right input for a dense problem — a TSP instance, a metric closure — where the arc data lives in a `maps::function` over the endpoint coordinates rather than in a container:
 
 ```cpp
 auto dist = [&](auto a) {

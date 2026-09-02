@@ -1181,9 +1181,10 @@ concept has_adl_arc_sources_map = requires(const T & t) {
 template <typename T, typename EndPoint>
 [[nodiscard]] inline constexpr auto endpoint_map(const T & t,
                                                  EndPoint end_point_fn) {
-    return maps::map([g = std::addressof(t), end_point_fn](const arc_t<T> & a) {
-        return end_point_fn(*g, a);
-    });
+    return maps::function(
+        [g = std::addressof(t), end_point_fn](const arc_t<T> & a) {
+            return end_point_fn(*g, a);
+        });
 }
 
 struct arc_sources_map_fn {

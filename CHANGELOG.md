@@ -55,6 +55,40 @@ Notable changes to melon. The format follows
   — see the installation page's MSVC note.
 - `detail/prefetch.hpp` emits real prefetch hints under MSVC on x86-64;
   they were previously GCC/Clang-only.
+- `maps::constant<V>` (`melon/maps/constant.hpp`): an empty map
+  answering the NTTP `V` for every key; `maps::true_map` and
+  `maps::false_map` are now its `<true>` / `<false>` aliases.
+- `maps::transform(m, f)` (`melon/maps/transform.hpp`): views a
+  mapping through a value projection — `f(m[k])` — with the base routed
+  through `maps::mapping_all` (lvalue referenced, rvalue owned, view
+  passed through). A reference-returning projection keeps the base's
+  writability.
+
+### Changed
+
+- `maps::map` is renamed `maps::function`; it stays in
+  `melon/mapping.hpp`.
+- `maps::true_map`, `maps::false_map` and `maps::element` moved out of
+  `melon/mapping.hpp` into their own headers under `melon/maps/`
+  (`constant.hpp`, `element.hpp`); `maps::identity` stays in
+  `melon/mapping.hpp`.
+- `melon/utility/semiring.hpp` and `melon/utility/geometry.hpp` moved to
+  `melon/numeric/`: they are pure-math substrate, not graph tooling. The
+  declared names are unchanged.
+- The `cartesian_point`, `cartesian_segment` and `cartesian_line` concepts
+  are now arity-exact (`std::tuple_size` of 2, 2 and 3) over
+  `cartesian_coordinate` leaves — a new public concept: an `==`- and
+  `<`-comparable scalar that is not itself tuple-like. This makes the three
+  categories pairwise disjoint, so passing a segment or line where a point
+  belongs is a constraint failure instead of compiling into a meaningless
+  predicate (`point_on_line(lineA, lineB)` used to compile). The extent
+  checks (`point_on_segment`, `segments_intersection` and the overlaps) now
+  take a `common_cartesian_segment` — a `cartesian_segment` whose endpoints share one
+  point type, in the spirit of `std::ranges::common_range` — turning the
+  `std::minmax` hard error they produced on mixed-endpoint segments into a
+  constraint failure; `segment_to_line` keeps accepting them. Types that
+  model the documented contract — tuples of numbers of the right shape —
+  are unaffected.
 
 ### Fixed
 

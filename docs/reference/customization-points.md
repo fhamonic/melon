@@ -34,8 +34,8 @@ Every accessor in melon — `melon::vertices`, `melon::out_arcs`, `melon::arc_ta
 | `in_degree(g, v)` | `std::ranges::size(in_arcs(g, v))` when sized |
 | `out_neighbors(g, v)` | `out_arcs(g, v)` transformed by `arc_target` |
 | `in_neighbors(g, v)` | `in_arcs(g, v)` transformed by `arc_source` |
-| `arc_sources_map(g)` | `maps::map` over `arc_source` |
-| `arc_targets_map(g)` | `maps::map` over `arc_target` |
+| `arc_sources_map(g)` | `maps::function` over `arc_source` |
+| `arc_targets_map(g)` | `maps::function` over `arc_target` |
 
 ### Data
 

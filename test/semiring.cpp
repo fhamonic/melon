@@ -3,7 +3,7 @@
 
 #include <limits>
 
-#include "melon/utility/semiring.hpp"
+#include "melon/numeric/semiring.hpp"
 
 using namespace melon;
 

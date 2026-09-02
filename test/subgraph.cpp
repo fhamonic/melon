@@ -11,6 +11,7 @@
 #include "melon/detail/concat_view.hpp"
 #include "melon/detail/specialization_of.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/constant.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/graph_view.hpp"
 #include "melon/views/subgraph.hpp"

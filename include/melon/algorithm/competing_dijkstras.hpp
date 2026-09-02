@@ -10,9 +10,10 @@
 #include "melon/detail/prefetch.hpp"
 #include "melon/graph.hpp"
 #include "melon/mapping.hpp"
+#include "melon/maps/element.hpp"
+#include "melon/numeric/semiring.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/utility/priority_queue.hpp"
-#include "melon/utility/semiring.hpp"
 
 namespace melon {
 
@@ -40,8 +41,8 @@ struct competing_dijkstras_default_traits {
     };
     using heap =
         updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
-                             vertex_map_t<Graph, std::size_t>,
-                             maps::element_map<1>, maps::element_map<0>>;
+                             vertex_map_t<Graph, std::size_t>, maps::element<1>,
+                             maps::element<0>>;
 };
 
 // Two Dijkstras racing on the same graph with different length maps: blue

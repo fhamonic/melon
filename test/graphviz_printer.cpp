@@ -117,17 +117,17 @@ GTEST_TEST(graphviz_printer, map_setters_cover_every_element) {
     const auto graph = triangle_digraph();
     printer p(graph);
 
-    auto vertex_names = maps::map(
+    auto vertex_names = maps::function(
         [](const vertex & v) { return std::string("v") + char('0' + v); });
-    auto arc_names = maps::map(
+    auto arc_names = maps::function(
         [](const arc & a) { return std::string("a") + char('0' + a); });
 
     p.set_vertex_label_map(vertex_names)
         .set_vertex_size_map(
-            maps::map([](const vertex & v) { return 1.0 + double(v); }))
+            maps::function([](const vertex & v) { return 1.0 + double(v); }))
         .set_arc_label_map(arc_names)
         .set_arc_size_map(
-            maps::map([](const arc & a) { return 2.0 + double(a); }));
+            maps::function([](const arc & a) { return 2.0 + double(a); }));
 
     const auto dot = print(p);
     for(const auto & name : {"v0", "v1", "v2", "a0", "a1", "a2"})

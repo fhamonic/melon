@@ -17,11 +17,11 @@ namespace melon {
 
 // promote()/demote() rewrite the priority stored *inside* an entry, so the
 // entry-priority map has to hand back a reference into that entry. A map
-// returning a prvalue (maps::identity_map, or any map yielding a copy or a
+// returning a prvalue (maps::identity, or any map yielding a copy or a
 // detached proxy) would make the write land on a temporary and vanish without
 // a diagnostic, leaving the heap silently un-reordered. output_mapping is not
 // enough to express this: assigning to a class prvalue is well-formed and even
-// yields an lvalue, so maps::identity_map satisfies it.
+// yields an lvalue, so maps::identity satisfies it.
 template <typename Map, typename Entry>
 concept mutable_entry_priority_map =
     mapping<Map, Entry> && requires(Map & m, Entry & e) {
@@ -31,7 +31,7 @@ concept mutable_entry_priority_map =
 
 template <typename Derived, std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
-          mapping<Entry> EntryPriorityMap = maps::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity>
     requires std::strict_weak_order<PriorityComparator,
                                     mapped_value_t<EntryPriorityMap, Entry>,
                                     mapped_value_t<EntryPriorityMap, Entry>>
@@ -277,7 +277,7 @@ public:
 
 template <std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
-          mapping<Entry> EntryPriorityMap = maps::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity>
 class d_ary_heap
     : public d_ary_heap_base<
           d_ary_heap<D, Entry, PriorityComparator, EntryPriorityMap>, D, Entry,
@@ -331,8 +331,8 @@ template <std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
           typename IndicesMap =
               mapping_owning_view<std::unordered_map<Entry, std::size_t>>,
-          mapping<Entry> EntryPriorityMap = maps::identity_map,
-          mapping<Entry> EntryIdMap = maps::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity,
+          mapping<Entry> EntryIdMap = maps::identity>
     requires std::strict_weak_order<PriorityComparator,
                                     mapped_value_t<EntryPriorityMap, Entry>,
                                     mapped_value_t<EntryPriorityMap, Entry>> &&

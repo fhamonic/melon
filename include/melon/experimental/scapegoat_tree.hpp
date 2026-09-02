@@ -25,7 +25,7 @@ namespace melon::experimental {
 
 template <float ALPHA, typename Entry,
           typename KeyComparator = std::less<Entry>,
-          mapping<Entry> EntryKeyMap = maps::identity_map>
+          mapping<Entry> EntryKeyMap = maps::identity>
     requires std::strict_weak_order<KeyComparator,
                                     mapped_value_t<EntryKeyMap, Entry>,
                                     mapped_value_t<EntryKeyMap, Entry>>

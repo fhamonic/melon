@@ -176,7 +176,7 @@ The three-argument overload takes your generator by reference — the caller own
 
 ## Printing a graph
 
-`graphviz_printer<G>` renders a graph to a DOT stream, with optional per-vertex and per-arc labels, positions, sizes and colors. Every setter takes a [mapping](../graphs/mappings.md), so a lambda wrapped in `maps::map` is enough and no map has to be materialized. The constructor is `explicit`, references the graph, and refuses a temporary one (the rvalue overload is deleted — the printer would dangle).
+`graphviz_printer<G>` renders a graph to a DOT stream, with optional per-vertex and per-arc labels, positions, sizes and colors. Every setter takes a [mapping](../graphs/mappings.md), so a lambda wrapped in `maps::function` is enough and no map has to be materialized. The constructor is `explicit`, references the graph, and refuses a temporary one (the rvalue overload is deleted — the printer would dangle).
 
 ```cpp
 #include <iterator>
@@ -186,8 +186,8 @@ The three-argument overload takes your generator by reference — the caller own
 using color = std::tuple<unsigned char, unsigned char, unsigned char>;
 
 graphviz_printer printer(graph);
-printer.set_vertex_label_map(maps::map([](auto && v) { return std::to_string(v); }))
-       .set_arc_color_map(maps::map([&](auto && a) -> color {
+printer.set_vertex_label_map(maps::function([](auto && v) { return std::to_string(v); }))
+       .set_arc_color_map(maps::function([&](auto && a) -> color {
            return in_tree[a] ? color{255, 0, 0} : color{64, 64, 64};
        }))
        .print(std::ostream_iterator<char>(std::cout));
@@ -199,7 +199,7 @@ Colors are `(r, g, b)` triples of `unsigned char`; vertex positions are `(x, y)`
 
     Unlike the algorithms, these setters take a `mapping` **directly**
     and do not apply `maps::mapping_all` themselves — so a callable must be
-    wrapped in `maps::map` here, where an algorithm would have accepted it
+    wrapped in `maps::function` here, where an algorithm would have accepted it
     bare.
 
 !!! note

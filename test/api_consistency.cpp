@@ -33,6 +33,7 @@
 #include "melon/container/mutable_digraph.hpp"
 #include "melon/container/static_digraph.hpp"
 #include "melon/container/static_filter_map.hpp"
+#include "melon/maps/constant.hpp"
 #include "melon/numeric/bounded_value.hpp"
 #include "melon/numeric/rational.hpp"
 #include "melon/utility/alias_method_sampler.hpp"
@@ -493,8 +494,8 @@ using all_t = melon::views::graph_all_t<G &>;
 // mapping views are in melon::maps
 using truth = melon::maps::true_map;
 using falsity = melon::maps::false_map;
-using ident = melon::maps::identity_map;
-using elem = melon::maps::element_map<0>;
+using ident = melon::maps::identity;
+using elem = melon::maps::element<0>;
 using map_all_t = melon::maps::mapping_all_t<static_map<arc_t<G>, int> &>;
 
 // the ownership views stay in melon itself, symmetric with their graph twins

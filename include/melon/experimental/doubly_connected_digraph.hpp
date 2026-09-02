@@ -244,7 +244,7 @@ public:
         return _arcs[_arcs[a].twin].target;
     }
     [[nodiscard]] constexpr auto arc_sources_map() const noexcept {
-        return maps::map(
+        return maps::function(
             [this](const arc a) -> vertex { return arc_source(a); });
     }
     [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
@@ -252,7 +252,7 @@ public:
         return _arcs[a].target;
     }
     [[nodiscard]] constexpr auto arc_targets_map() const noexcept {
-        return maps::map(
+        return maps::function(
             [this](const arc a) -> vertex { return _arcs[a].target; });
     }
     [[nodiscard]] constexpr auto out_arcs(const vertex v) const noexcept {

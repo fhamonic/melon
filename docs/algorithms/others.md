@@ -100,7 +100,7 @@ Fractions are not normalized, so the point `(2, 2)` may be reported as `64/32, 6
     [`bounded_value`](../containers/data-structures.md#other-utilities)
     coordinate checks the intermediate widening on top.
 
-The geometric predicates live in `melon/utility/geometry.hpp` behind the `cartesian_point`, `cartesian_segment` and `cartesian_line` concepts, so a point type of yours works as well — provided it speaks the std tuple protocol (`std::tuple_size` plus `std::get`, which `std::tuple`, `std::pair` and `std::array` all do). The concepts probe qualified `std::get`, so a member or ADL `get` alone is not enough.
+The geometric predicates live in `melon/numeric/geometry.hpp` behind the `cartesian_point`, `cartesian_segment` and `cartesian_line` concepts, so a point type of yours works as well — provided it speaks the std tuple protocol (`std::tuple_size` plus `std::get`, which `std::tuple`, `std::pair` and `std::array` all do) with the exact arity and `cartesian_coordinate` leaves — coordinates that compare with `==` and `<` and are not themselves tuples. That last part makes the three categories pairwise disjoint: a segment passed where a point belongs is a constraint failure, not a silently wrong predicate. The extent checks — `point_on_segment`, `segments_intersection` and the overlaps — further require a `common_cartesian_segment`, one whose endpoints share a single point type, in the spirit of `std::ranges::common_range`; only `segment_to_line` accepts mixed endpoint types. The concepts probe qualified `std::get`, so a member or ADL `get` alone is not enough.
 
 ## Sampling
 

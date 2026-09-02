@@ -121,7 +121,7 @@ auto dist = create_vertex_map<double>(g, 0.0);
 dist[v] = 3.0;
 ```
 
-The storage type is the graph's choice, and anything with a const-readable `operator[]` qualifies as a map — `std::vector`, `std::vector<bool>`, your own type, or a lambda wrapped in `maps::map`. (`std::map` is the exception: its inserting `operator[]` has no const form, so it fails `mapping` bare and works only wrapped through `maps::mapping_all` — of a const map.) See [Mappings](../graphs/mappings.md).
+The storage type is the graph's choice, and anything with a const-readable `operator[]` qualifies as a map — `std::vector`, `std::vector<bool>`, your own type, or a lambda wrapped in `maps::function`. (`std::map` is the exception: its inserting `operator[]` has no const form, so it fails `mapping` bare and works only wrapped through `maps::mapping_all` — of a const map.) See [Mappings](../graphs/mappings.md).
 
 ### 4. Concepts replace traits classes — and your type can be the graph
 

@@ -6,6 +6,7 @@
 #include <queue>
 
 #include "melon/container/d_ary_heap.hpp"
+#include "melon/maps/element.hpp"
 #include "melon/utility/priority_queue.hpp"
 
 #include "random_ranges_helper.hpp"
@@ -63,7 +64,7 @@ GTEST_TEST(d_ary_heap, 2_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
-                   maps::element_map<1>>
+                   maps::element<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -89,7 +90,7 @@ GTEST_TEST(d_ary_heap, 3_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<3, std::pair<std::size_t, int>, std::greater<int>,
-                   maps::element_map<1>>
+                   maps::element<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -115,7 +116,7 @@ GTEST_TEST(d_ary_heap, 4_heap_fuzzy_push_pop_test) {
         auto zip_view = std::views::zip(datas, permuted_id);
 
         d_ary_heap<4, std::pair<std::size_t, int>, std::greater<int>,
-                   maps::element_map<1>>
+                   maps::element<1>>
             heap;
         for(std::size_t i = 0; i < size; ++i) {
             heap.push(std::make_pair(i, datas[i]));
@@ -142,7 +143,7 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
     constexpr std::size_t num_elements = 6;
     updatable_d_ary_heap<2, std::pair<unsigned int, int>, std::greater<int>,
                          std::array<std::size_t, num_elements>,
-                         maps::element_map<1>, maps::element_map<0>>
+                         maps::element<1>, maps::element<0>>
         heap;
 
     static_assert(updatable_priority_queue<decltype(heap)>);
@@ -182,11 +183,11 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_test) {
 GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
     std::vector<int> priorities = {0, 7, 3, 5, 6, 11};
     constexpr std::size_t num_elements = 6;
-    auto priority_map = maps::map(
+    auto priority_map = maps::function(
         [&priorities](const unsigned int i) -> int & { return priorities[i]; });
     updatable_d_ary_heap<2, unsigned int, std::greater<int>,
                          std::array<std::size_t, num_elements>,
-                         decltype(priority_map), maps::identity_map>
+                         decltype(priority_map), maps::identity>
         heap(std::greater<int>(), std::array<std::size_t, num_elements>{},
              priority_map);
 
@@ -227,7 +228,7 @@ GTEST_TEST(updatable_d_ary_heap, 2_heap_promote_external_priority_test) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // regression: promote()/demote() rewrite the priority inside an entry via
-// `_entry_priority_map[e] = p`. With maps::identity_map -- the default
+// `_entry_priority_map[e] = p`. With maps::identity -- the default
 // EntryPriorityMap -- operator[] returns a prvalue, so the write lands on a
 // temporary and is discarded: the heap silently keeps the old priority and is
 // never re-ordered. The operations are constrained on a priority map that
@@ -253,17 +254,16 @@ using indices_map = mapping_owning_view<std::vector<std::size_t>>;
 // a priority map handing back a reference into the entry: supported
 using writable_heap =
     updatable_d_ary_heap<2, std::pair<std::size_t, int>, std::greater<int>,
-                         indices_map, maps::element_map<1>,
-                         maps::element_map<0>>;
+                         indices_map, maps::element<1>, maps::element<0>>;
 // a priority map handing back a copy of the entry: rejected
 using copying_heap =
     updatable_d_ary_heap<2, heap_item, heap_item_cmp, indices_map,
-                         maps::identity_map, heap_item_id_map>;
+                         maps::identity, heap_item_id_map>;
 }  // namespace
 
-static_assert(mutable_entry_priority_map<maps::element_map<1>,
-                                         std::pair<std::size_t, int>>);
-static_assert(!mutable_entry_priority_map<maps::identity_map, heap_item>);
+static_assert(
+    mutable_entry_priority_map<maps::element<1>, std::pair<std::size_t, int>>);
+static_assert(!mutable_entry_priority_map<maps::identity, heap_item>);
 
 // the constrained members disappear rather than silently misbehaving
 // (named concepts so the probe stays dependent and actually SFINAEs)
@@ -409,7 +409,7 @@ GTEST_TEST(d_ary_heap, clear_empties_the_heap) {
 // match vs an added const) and tries to build a comparator out of a heap.
 namespace {
 using heap_base = d_ary_heap_base<d_ary_heap<2, int, std::greater<int>>, 2, int,
-                                  std::greater<int>, maps::identity_map>;
+                                  std::greater<int>, maps::identity>;
 }  // namespace
 
 static_assert(std::copy_constructible<heap_base>);
@@ -465,10 +465,9 @@ GTEST_TEST(d_ary_heap, member_and_adl_swap) {
 
 GTEST_TEST(updatable_d_ary_heap, swap_carries_the_maps) {
     using entry = std::pair<unsigned int, int>;
-    using heap_t =
-        updatable_d_ary_heap<2, entry, std::greater<int>,
-                             std::array<std::size_t, 4>, maps::element_map<1>,
-                             maps::element_map<0>>;
+    using heap_t = updatable_d_ary_heap<2, entry, std::greater<int>,
+                                        std::array<std::size_t, 4>,
+                                        maps::element<1>, maps::element<0>>;
     heap_t a(std::greater<int>(), std::array<std::size_t, 4>{});
     heap_t b(std::greater<int>(), std::array<std::size_t, 4>{});
     a.push({0u, 3});

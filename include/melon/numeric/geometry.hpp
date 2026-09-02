@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <cstddef>
 #include <optional>
 #include <tuple>
 #include <type_traits>
@@ -10,21 +11,48 @@
 #include "melon/numeric/rational.hpp"
 
 namespace melon {
+namespace detail {
 template <typename T>
-concept cartesian_point = requires(const T & t) {
-    { std::get<0>(t) };
-    { std::get<1>(t) };
-};
+concept tuple_like =
+    requires { typename std::tuple_size<std::remove_cvref_t<T>>::type; };
+template <typename T, std::size_t N>
+concept tuple_of_arity =
+    tuple_like<T> && (std::tuple_size_v<std::remove_cvref_t<T>> == N);
+}  // namespace detail
+
+// !tuple_like is what keeps point, segment and line pairwise disjoint.
 template <typename T>
-concept cartesian_segment = requires(const T & t) {
-    { std::get<0>(t) } -> cartesian_point;
-    { std::get<1>(t) } -> cartesian_point;
-};
+concept cartesian_coordinate =
+    (!detail::tuple_like<T>) && requires(const std::remove_cvref_t<T> & a,
+                                         const std::remove_cvref_t<T> & b) {
+        { a == b } -> std::convertible_to<bool>;
+        { a < b } -> std::convertible_to<bool>;
+    };
 template <typename T>
-concept cartesian_line = requires(const T & t) {
-    { std::get<0>(t) };
-    { std::get<1>(t) };
-    { std::get<2>(t) };
+concept cartesian_point =
+    detail::tuple_of_arity<T, 2> && requires(const T & t) {
+        { std::get<0>(t) } -> cartesian_coordinate;
+        { std::get<1>(t) } -> cartesian_coordinate;
+    };
+template <typename T>
+concept cartesian_segment =
+    detail::tuple_of_arity<T, 2> && requires(const T & t) {
+        { std::get<0>(t) } -> cartesian_point;
+        { std::get<1>(t) } -> cartesian_point;
+    };
+// Common endpoints type, required for std::minmax.
+template <typename T>
+concept common_cartesian_segment =
+    cartesian_segment<T> && requires(const T & t) {
+        requires std::same_as<std::remove_cvref_t<decltype(std::get<0>(t))>,
+                              std::remove_cvref_t<decltype(std::get<1>(t))>>;
+    };
+// Line represented as the triplet (a, b, c) for `a*x + b*y + c = 0`.
+template <typename T>
+concept cartesian_line = detail::tuple_of_arity<T, 3> && requires(const T & t) {
+    { std::get<0>(t) } -> cartesian_coordinate;
+    { std::get<1>(t) } -> cartesian_coordinate;
+    { std::get<2>(t) } -> cartesian_coordinate;
 };
 
 // Exact for integral and rational coordinates, but nothing here widens: the
@@ -113,7 +141,8 @@ struct cartesian {
                std::get<2>(l);
     }
     [[nodiscard]] static constexpr auto point_on_segment(
-        const cartesian_point auto & p, const cartesian_segment auto & s) {
+        const cartesian_point auto & p,
+        const common_cartesian_segment auto & s) {
         if(!point_on_line(p, segment_to_line(s))) return false;
         const point_xy_comparator cmp;
         const auto & [s_min, s_max] =
@@ -121,7 +150,8 @@ struct cartesian {
         return !cmp(p, s_min) && !cmp(s_max, p);
     }
     [[nodiscard]] static constexpr auto segments_intersection(
-        const cartesian_segment auto & A, const cartesian_segment auto & B) {
+        const common_cartesian_segment auto & A,
+        const common_cartesian_segment auto & B) {
         const auto intersection_opt =
             lines_intersection(segment_to_line(A), segment_to_line(B));
 
@@ -145,7 +175,8 @@ struct cartesian {
                    : intersection_opt;
     }
     [[nodiscard]] static constexpr auto aligned_segments_overlap(
-        const cartesian_segment auto & A, const cartesian_segment auto & B) {
+        const common_cartesian_segment auto & A,
+        const common_cartesian_segment auto & B) {
         const point_xy_comparator cmp;
         const auto & [A_min, A_max] =
             std::minmax(std::get<0>(A), std::get<1>(A), cmp);
@@ -159,7 +190,8 @@ struct cartesian {
                                          std::min(A_max, B_max, cmp)));
     }
     [[nodiscard]] static constexpr auto colinear_segments_overlap(
-        const cartesian_segment auto & A, const cartesian_segment auto & B) {
+        const common_cartesian_segment auto & A,
+        const common_cartesian_segment auto & B) {
         const auto lA = segment_to_line(A);
         const auto lB = segment_to_line(B);
 
@@ -169,7 +201,8 @@ struct cartesian {
                    : aligned_segments_overlap(A, B);
     }
     [[nodiscard]] static constexpr auto segments_overlap(
-        const cartesian_segment auto & A, const cartesian_segment auto & B) {
+        const common_cartesian_segment auto & A,
+        const common_cartesian_segment auto & B) {
         const auto lA = segment_to_line(A);
         const auto lB = segment_to_line(B);
 

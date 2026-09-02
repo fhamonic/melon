@@ -80,7 +80,7 @@ Anything satisfying them can be substituted into an algorithm through its [trait
 ```cpp
 template <std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
-          mapping<Entry> EntryPriorityMap = maps::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity>
 class d_ary_heap;
 ```
 
@@ -110,8 +110,8 @@ Watch the direction: with the default `std::greater` the maximum is on top. Dijk
 template <std::size_t D, typename Entry,
           typename PriorityComparator = std::greater<Entry>,
           typename IndicesMap = mapping_owning_view<std::unordered_map<Entry, std::size_t>>,
-          mapping<Entry> EntryPriorityMap = maps::identity_map,
-          mapping<Entry> EntryIdMap = maps::identity_map>
+          mapping<Entry> EntryPriorityMap = maps::identity,
+          mapping<Entry> EntryIdMap = maps::identity>
 class updatable_d_ary_heap;
 ```
 
@@ -123,15 +123,15 @@ Adds `contains(id)`, `priority(id)`, `promote(id, p)` and `demote(id, p)`, by tr
 
 Stateful maps are passed through the 2-, 3- and 4-argument constructors — `(cmp, indices_map)`, `(cmp, indices_map, entry_priority_map)`, `(cmp, indices_map, entry_priority_map, entry_id_map)`; omitted maps are default-constructed.
 
-For a `std::pair<vertex, distance>` entry, the last two are `maps::element_map<1>` and `maps::element_map<0>`:
+For a `std::pair<vertex, distance>` entry, the last two are `maps::element<1>` and `maps::element<0>`:
 
 ```cpp
 using entry = std::pair<unsigned int, double>;
 
 updatable_d_ary_heap<2, entry, std::less<double>,
                      static_map<unsigned int, std::size_t>,
-                     maps::element_map<1>,   // priority is entry.second
-                     maps::element_map<0>>   // id is entry.first
+                     maps::element<1>,   // priority is entry.second
+                     maps::element<0>>   // id is entry.first
     heap(std::less<double>{}, static_map<unsigned int, std::size_t>(num_vertices));
 
 heap.push({0u, 3.0});
@@ -148,7 +148,7 @@ heap.promote(2u, 0.5);  // now on top
 
 Two more contract points:
 
-- `promote` and `demote` exist only when `EntryPriorityMap` hands back a non-const *lvalue reference* to the priority inside the entry (the `mutable_entry_priority_map` concept) — a map yielding a copy or a detached proxy would make the write land on a temporary and vanish. In particular, with the default `maps::identity_map` — which returns a copy — the heap has **no** `promote`/`demote` at all; `maps::element_map<I>` into a pair or tuple entry qualifies.
+- `promote` and `demote` exist only when `EntryPriorityMap` hands back a non-const *lvalue reference* to the priority inside the entry (the `mutable_entry_priority_map` concept) — a map yielding a copy or a detached proxy would make the write land on a temporary and vanish. In particular, with the default `maps::identity` — which returns a copy — the heap has **no** `promote`/`demote` at all; `maps::element<I>` into a pair or tuple entry qualifies.
 - `contains(id)`, `priority(id)`, `promote` and `demote` require the id to have been *pushed at least once*: the index map is caller-supplied and not initialised by the heap, so looking up a never-pushed key reads indeterminate memory.
 
 ## `disjoint_sets`
@@ -184,9 +184,9 @@ Every key must be `push`ed before it is looked up. `clear()` drops the component
 
 | Header | What it provides |
 | --- | --- |
-| `utility/semiring.hpp` | `shortest_path_semiring`, `most_reliable_path_semiring`, `max_capacity_path_semiring`, `minimum_spanning_tree_semiring` — see [Shortest paths](../algorithms/shortest-paths.md#semirings) |
+| `numeric/semiring.hpp` | `shortest_path_semiring`, `most_reliable_path_semiring`, `max_capacity_path_semiring`, `minimum_spanning_tree_semiring` — see [Shortest paths](../algorithms/shortest-paths.md#semirings) |
 | `numeric/rational.hpp` | `numeric::rational<NumT, DenT>` exact arithmetic, used by the geometric algorithms |
-| `utility/geometry.hpp` | the `cartesian_point`, `cartesian_segment` and `cartesian_line` concepts and the `cartesian` traits |
+| `numeric/geometry.hpp` | the `cartesian_coordinate`, `cartesian_point`, `cartesian_segment`, `common_cartesian_segment` and `cartesian_line` concepts and the `cartesian` traits |
 | `numeric/bounded_value.hpp` | `numeric::bounded_value` — integer types that widen automatically instead of narrowing; unary `-` is deleted where the negated *range* would not fit (unsigned, or a signed range pinned at the type's minimum) |
 | `utility/alias_method_sampler.hpp` | O(1) sampling from a discrete distribution |
 | `utility/algorithmic_generator.hpp` | the [`algorithmic_generator` concept](../algorithms/index.md) and the range adaptor built on it |

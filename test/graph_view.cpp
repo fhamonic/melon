@@ -275,11 +275,10 @@ GTEST_TEST(graph_view, void_endpoint_maps_fall_back_to_synthesised_ones) {
 // names the CPO -- which looks for `arc_sources_map()` / `arc_targets_map()`
 // -- never reaches. Nothing refers to such members, so every graph wrapped in
 // a view silently loses its container's endpoint maps and gets the CPO's
-// `maps::map(lambda)` fallback -- one indirect call per lookup where the
-// container has a flat array. The tests below pin every
-// member of both views against the graph they wrap, so a name that no CPO
-// reaches shows up as a changed return *type*, not just as a still-correct
-// value.
+// `maps::function(lambda)` fallback -- one indirect call per lookup where
+// the container has a flat array. The tests below pin every member of both
+// views against the graph they wrap, so a name that no CPO reaches shows up as
+// a changed return *type*, not just as a still-correct value.
 
 namespace passthrough {
 
@@ -342,7 +341,7 @@ GTEST_TEST(graph_view, owning_view_forwards_every_member) {
 
 // The two views must forward the *members* the CPOs look for, so wrapping a
 // graph never degrades a lookup to the synthesised fallback. Type equality is
-// what says so: the fallback is a `maps::map` over a lambda, never a
+// what says so: the fallback is a `maps::function` over a lambda, never a
 // `mapping_ref_view` over the container's own array.
 template <typename View>
 concept keeps_endpoint_maps =
