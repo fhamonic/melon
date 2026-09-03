@@ -48,13 +48,10 @@ private:
     index_type _last_index;
 
 public:
-    // Not `mapping_for`: the map is read here once and never stored, so
-    // mapping_all serves only the subscript dispatch that lets a callable, a
-    // vector or a vertex map all read as `probs[item]`.
     template <std::ranges::random_access_range R, typename P>
         requires mapping<maps::mapping_all_t<P>,
                          std::ranges::range_reference_t<R>>
-    constexpr alias_method_sampler(R && items, P && prob_map)
+    constexpr alias_method_sampler(R && items, P && probs)
         : _items(std::views::all(std::forward<R>(items)))
         , _probs(_items.size())
         , _aliases(_items.size())
@@ -62,7 +59,7 @@ public:
         // An empty item range would give the index distribution the range
         // [0, -1], whose precondition is a <= b.
         assert(!std::ranges::empty(_items));
-        auto && probs = maps::mapping_all(std::forward<P>(prob_map));
+        auto && prob_map = maps::mapping_all(std::forward<P>(probs));
         const std::size_t n = _items.size();
         auto overfull_buckets = std::make_unique_for_overwrite<index_type[]>(n);
         auto underfull_buckets =
@@ -75,7 +72,7 @@ public:
         // they must be non-negative and not all zero, both asserted.
         Prob weights_sum = Prob{0};
         for(auto && [i, item] : std::views::enumerate(_items)) {
-            const Prob w = probs[item];
+            const Prob w = prob_map[item];
             assert(w >= Prob{0});
             _probs[static_cast<index_type>(i)] = w;
             weights_sum += w;
