@@ -37,33 +37,98 @@ is simply true for it.
 ## Settled shape: the provider is a graph view
 
 The provider plugs in **as a view over the graph**, not as an algorithm
-parameter. `views::with_maps(g, provider)` (name open) is a forwarding
-view that answers the map factories from a caller-supplied provider and
-forwards everything else. An algorithm then takes it like any other graph:
+parameter. Three adaptors, one concern each, pipe-composable like every
+other melon view: `views::with_vertex_maps(g, fs...)`,
+`views::with_arc_maps(g, fs...)` and `views::with_edge_maps(g, fs...)`
+for undirected graphs. Each is a forwarding view that answers its kind of
+map factory from caller-supplied lambdas and forwards everything else.
+An algorithm then takes the view like any other graph. Separate adaptors
+keep the lambda protocol at a single shape, leave the common vertex-only
+case a one-liner, let an arc-only enhancement leave the vertex factories
+alone, and match the storage split of stage two (vertex roles share one
+record, arc roles another).
+
+**The provider is one or more lambdas with an explicit template parameter
+list**, and the protocol has exactly one form — the value type as an
+explicit template argument, the role and the graph as arguments:
 
 ```cpp
-struct vector_provider {
-    template <typename T, typename G>
-    auto create_vertex_map(const G & g) const {
-        return std::vector<T>(num_vertices(g));
-    }
-    template <typename T, typename G>
-    auto create_vertex_map(const G & g, const T & d) const {
-        return std::vector<T>(num_vertices(g), d);
-    }
-};
+f.template operator()<T>(Role{}, g)
+```
 
-for(auto && [v, d] : dijkstra(views::with_maps(g, vector_provider{}), lengths, s))
+The view derives the default-value factory itself: that call, then
+`detail::fill` over the graph's vertices (arcs, edges), which fills
+through a projection into interior storage as well as through a fresh
+container. A graph with no factories then runs every algorithm from a
+single lambda:
+
+```cpp
+auto vectors = []<typename T>(auto /*role*/, const auto & g) {
+    return std::vector<T>(num_vertices(g));
+};
+for(auto && [v, dist] : dijkstra(views::with_vertex_maps(g, vectors), lengths, s))
     ...
 ```
 
+**Several lambdas form an overload set.** The view stores
+`overloaded<Fs...>` (a `using Fs::operator()...` aggregate) and makes the
+call above on it, so ordinary partial ordering dispatches: a lambda that
+names a role as its parameter type beats a generic `auto` one, and the
+order the lambdas are given in does not matter.
+
+```cpp
+auto interior = views::with_vertex_maps(
+    g,
+    [p = slots.data()]<typename T>(dijkstra_roles::heap_index, const auto &)
+        requires std::same_as<T, std::size_t> { return heap_index_field{p}; },
+    []<typename T>(auto /*role*/, const auto & g) { return std::vector<T>(num_vertices(g)); });
+```
+
+Rules of the protocol, all *verified*:
+
+- The view detects a served request with a requires-expression
+  (`f.template operator()<T>(Role{}, g)`), never `std::invocable`, which
+  cannot express an explicit template argument.
+- The view **enhances**: a request no lambda serves falls through to the
+  base graph's own factory when it has one, so a view carrying only
+  role-specific lambdas over `static_digraph` interns those roles and
+  leaves every other map to the container.
+- An ambiguous set (two equally generic lambdas) makes the
+  requires-expression false, `has_vertex_map` false, and the algorithm's
+  class constraint refuses the graph.
+- A lambda with only a default-value form
+  (`<typename T>(auto, const auto & g, const T & d)`) serves nothing: the
+  protocol has one form. A generic lambda **without** an explicit
+  `<typename T>` is rejected too — the explicit argument would land on the
+  invented parameter for `role`.
+- A role-catching lambda's captures must be the stable slot buffer
+  pointer, per the lifetime rule below.
+- The lambdas are stored `[[no_unique_address]]`; captureless ones cost
+  nothing. (Every stacked melon view does carry 8 bytes over its base for
+  an unrelated reason — the shared empty `graph_view_base` cannot overlap
+  between a view and the view it stores.)
+
+**Why one form, recorded because the two-form variant failed silently.**
+With a bare form and a default-value form served by the same overload
+set (a generic lambda taking `const auto &... d`, a role-specific lambda
+taking only the bare form), the default-value request is viable only for
+the generic lambda, overload resolution hands it there, and the interned
+slot is silently bypassed — the probe's record stayed at its old value.
+Overload resolution cannot see that the two calls are one request. The
+single form removes the second overload set; its price is one extra pass
+over a freshly created map, invisible next to a run. If native fills are
+ever wanted, the variant that avoids the bypass is first-match ownership
+over a tuple of lambdas, at the cost of order-dependence.
+
 *Verified:* a ~50-line view deriving from
-`detail::graph_forwarding_interface` and name-hiding the four factories
-ran `dijkstra`, `breadth_first_search` and `depth_first_search` (mid-run
-move included) on a factory-less graph, stacked under `views::subgraph`,
-over an lvalue and an owning rvalue base — with **zero algorithm edits**.
+`detail::graph_forwarding_interface` and name-hiding the factories ran
+`dijkstra`, `breadth_first_search` and `depth_first_search` (mid-run move
+included) on a factory-less graph, stacked under `views::subgraph`, over
+an lvalue and an owning rvalue base — with **zero algorithm edits**.
 `dijkstra_default_traits<view, int>::heap` picked up the provider's
-`std::vector<std::size_t>` as its index map by itself.
+`std::vector<std::size_t>` as its index map by itself. The lambda
+overload set, the base fall-through and the single-form fill were
+verified in a second prototype over the role-aware CPO.
 
 **Rejected: a provider template/constructor parameter on each algorithm**
 (the 2026-09-02 shape). It would rewrite 17 algorithm headers, ~113
@@ -272,8 +337,10 @@ the graph.
    docs example made generic. Pin with `static_assert`s that a legacy
    container answers a role with its standard map and that a role survives
    `graph_ref_view` and `views::subgraph`.
-2. `views::with_maps` against `dijkstra` and `bidirectional_dijkstra`
-   (the same-value-type collision case), including the DFS mid-run move.
+2. `views::with_vertex_maps` / `with_arc_maps` / `with_edge_maps` against
+   `dijkstra`, `dinitz` and `bidirectional_dijkstra` (the same-value-type
+   collision case), including the DFS mid-run move; pin the single-form
+   fill through a projection and the ambiguous-set rejection.
 3. `views::interleave_maps` over the same two, then measure against the
    status + heap-index baseline before naming any container-level work.
 
