@@ -2,9 +2,11 @@
 
 Status: shape settled 2026-09-03, entirely additive, not scheduled. First
 written 2026-09-02 around an algorithm-level provider parameter; rewritten
-2026-09-03 after that shape was compiled against the headers and replaced.
-Everything marked *verified* below was compiled and run with gcc-15 against
-HEAD `caa27db`.
+2026-09-03 after that shape was compiled against the headers and replaced,
+then again the same day to state the projection **co-ownership** rule that
+an ASan probe forced (see "Lifetime"). Everything marked *verified* below
+was compiled and run with gcc-15 against `caa27db`; the interior
+pieces are prototypes, not shipped code.
 
 ## Motivation
 
@@ -245,24 +247,60 @@ range. Two small measures close it:
   section says the index map is the graph's answer for the `heap_index`
   role.
 
-## Lifetime rule for projection maps (unchanged, restated)
+## Lifetime: projections must reference *and* keep alive their storage
 
+A projection owns nothing by itself, so an interior provider moves the
+ownership of every map it serves out of the algorithm and into the view.
+Two separate rules follow, and each was found by a failing probe.
+
+**Rule 1, for moves: point at the slot buffer, never at the object.**
 Algorithms are move-only and moving one moves the stored graph, view
 included. A projection holding a pointer **to the view or graph object**
-dangles on that move. Projections must reference the **stable slot
-buffer** — heap storage the view or graph owns, which a move does not
-relocate — never the object. A record field projection is then a plain
-`{record * p; T & operator[](vertex) const;}` and no rebase machinery is
-needed. Buffer reallocation (`mutable_digraph::create_vertex`) invalidates
+dangles on that move; one holding the address of the heap-allocated slot
+buffer does not, because a move does not relocate that buffer. A record
+field projection is then a plain
+`{record_map * m; T & operator[](vertex) const;}` and no rebase machinery
+is needed. *Verified:* moving an interleaving view leaves projections
+taken before the move reading the same storage.
+
+**Rule 2, for extraction: co-own the slot buffer.** Rule 1 alone silently
+breaks a published contract. `docs/views/ownership.md` promises that an
+expiring algorithm *moves its stored map out* so "the result outlives the
+machinery that computed it", and that promise is inside the API-stability
+scope. With a borrowing projection there is nothing to move: extraction
+hands back a `mapping_owning_view` wrapping a pointer into storage the
+view owns. *Verified under ASan:* `std::move(alg).dists_map()` over a view
+handing out raw-pointer projections compiles, and reading the extracted
+map after the view dies is a heap-use-after-free through
+`mapping_owning_view::operator[]` → `detail::mapping_subscript` → the
+projection. The failure is silent until someone reads the result.
+
+So a projection holds a **shared pointer** to the slot buffer rather than
+a raw one, and the extracted map keeps the storage alive by itself.
+*Verified:* same probe, same extraction, view destroyed first, correct
+distances read back, buffer freed exactly once when the last of the view
+and the extracted maps dies. The cost is 8 extra bytes per map member and
+one atomic increment per map *creation* — never per access, and creation
+happens once per algorithm.
+
+*Rejected alternative:* forbid interior roles for the maps that back
+extractable results (distances, flows, potentials, reached) and allow them
+only for internal state (status, heap index). It preserves the contract
+without shared pointers, but it splits roles into two classes with
+different rules and gives a caller who interns a distance role silence
+rather than a diagnostic.
+
+Buffer reallocation (`mutable_digraph::create_vertex`) still invalidates
 projections the way it invalidates `std::vector` iterators; document it.
 
 ## Constness (unchanged, restated)
 
 Interior slots need mutable access, but algorithms hold the graph
 const-ly. The view is constructed by the caller before the algorithm
-exists and owns the record buffer through a smart pointer whose `get()`
-is const, so a const view hands out mutable slots bound up front; the
-algorithm's const view of the graph never grants writes to anything.
+exists and owns the slot buffer through a smart pointer, from which a
+const view can both read the address and copy a new owning handle, so it
+hands out mutable, co-owning slots bound up front; the algorithm's const
+view of the graph never grants writes to anything.
 Two live algorithms sharing one interior view share its slots: an interior
 view backs at most one live algorithm per role. Documentation-enforced;
 no debug-mode check (the `#ifndef NDEBUG` layout/ODR rule pinned in
@@ -279,14 +317,75 @@ dinitz).
 
 ## Stage two: interior storage lives in a view, not in the graph
 
-Recommended (unruled, measure first): `views::interleave_maps<Roles...>(g)`
-— a view that owns **one** record array sized through the base's own
-factory (so it works on every graph with factories, holes and non-integral
-ids included) and answers each listed role with a field projection,
-falling back to the base for every other role. Roles carry their value
-type (`struct heap_index { using value_type = std::size_t; };`;
-distance-like roles are templates over the length type) so the caller
-names roles only.
+Recommended (unruled, measure first): `views::interleave_maps<Roles...>(g)`.
+
+**It is sugar over `with_vertex_maps`.** Stage one already buys interior
+storage by hand: declare a record type, allocate an array of it, and hand
+`with_vertex_maps` a role-catching lambda that returns a projection into
+one field. `interleave_maps` writes exactly that boilerplate from a list
+of roles:
+
+```cpp
+auto iv = views::interleave_maps<dijkstra_roles::status,
+                                 dijkstra_roles::heap_index>(g);
+```
+
+The view generates one record type with one field per listed role
+(`{char status; std::size_t heap_index;}`), owns one array of it, and
+answers `create_vertex_map<char, status>` with a projection reading
+`record.status`, `create_vertex_map<std::size_t, heap_index>` with one
+reading `record.heap_index`. A projection is a co-owning handle on the
+record array plus a compile-time field index, so the algorithm's map
+members become projections instead of separately allocated arrays.
+
+**What it buys.** Dijkstra settling a vertex touches its status, its heap
+index and its predecessor: three arrays and up to three cache lines per
+vertex, versus one record and one line interleaved. *Verified* on a
+two-role prototype:
+
+| Measurement | Value |
+| --- | --- |
+| Record size for status + heap index (`std::tuple<char, std::size_t>`) | 16 bytes |
+| Distance between the two fields | 8 bytes, same record |
+| Two distinct `std::size_t` roles written independently | stay distinct, no aliasing |
+
+That last row is the collision the roles exist for:
+`bidirectional_dijkstra`'s two heap-index maps are both `std::size_t`, and
+as two roles they become two fields rather than one shared slot.
+
+**Three properties worth stating.** *(1)* The view does not allocate the
+array itself: it calls `create_vertex_map<record>` on the base graph, so
+the record array is whatever the graph's own map is — which is what makes
+it work over id holes, non-integral ids and a custom allocator. *(2)* A
+role no listed role matches falls through to the base graph's own factory,
+so a view over `static_digraph` interns the two or three maps that matter
+and leaves the rest as `static_map`s (*verified* by static assertion).
+*(3)* Projections co-own their storage per Rule 2 above, so extraction
+from an expiring algorithm still outlives it.
+
+**Caveats found while prototyping, to settle when it is picked up.**
+
+- **Roles must declare a `value_type`** for the view to derive the record,
+  since the caller names roles only
+  (`struct heap_index { using value_type = std::size_t; };`, and
+  distance-like roles are templates over the length type). Stage one does
+  not need that — its lambdas receive `T` explicitly — so either every
+  role declares it or `interleave_maps` takes role/type pairs.
+- **Generate a struct, not a `std::tuple`.** Libstdc++ lays tuple members
+  out in reverse and the prototype's two fields cost 7 bytes of padding.
+  Order the generated fields by alignment or part of the locality win is
+  given straight back.
+- **The role pack must precede the deduced graph parameter**
+  (`template <typename... Roles, typename G>`), or an explicit role list
+  binds the graph parameter. The pipe-composable spelling is an adaptor
+  object parameterized on the roles.
+- **It pays off only after stage one.** Roles have to reach the
+  algorithms first; today an algorithm over such a view compiles and runs
+  correctly but takes the roleless path and uses the base graph's maps
+  (*verified*).
+- **A projection is not a `contiguous_mapping`.** That costs nothing in
+  the current algorithms: the prefetch calls target arc-keyed maps
+  (`arc_targets_map`, the length map), not vertex-keyed ones.
 
 Why not the 2026-09-02 graph-embedded byte arena:
 
@@ -341,8 +440,12 @@ the graph.
    `dijkstra`, `dinitz` and `bidirectional_dijkstra` (the same-value-type
    collision case), including the DFS mid-run move; pin the single-form
    fill through a projection and the ambiguous-set rejection.
-3. `views::interleave_maps` over the same two, then measure against the
-   status + heap-index baseline before naming any container-level work.
+3. Pin the extraction contract before any interior view ships: extract
+   `dists_map()` / `flows_map()` from an expiring algorithm over a
+   projection-serving view, destroy the view, read the map — under ASan,
+   which is what caught the borrowing version.
+4. `views::interleave_maps` over the same algorithms, then measure against
+   the status + heap-index baseline before naming any container-level work.
 
 ## Traps met while probing this design
 
@@ -355,3 +458,13 @@ the graph.
   (`melon_create_map_cpo`), with the public names as variable templates in
   `melon::cust` — the MSVC and ADL-self-dependency rulings in `graph.hpp`
   apply unchanged to the two-parameter form.
+- A borrowing projection makes every ownership failure *silent*: the map
+  still models `output_mapping`, extraction still compiles, and
+  `mapping_owning_view` still wraps it — only a read after the view's
+  death shows the bug, and only under a sanitizer. Any prototype in this
+  space should be probed with `-fsanitize=address` from the start.
+- Every stacked melon view is 8 bytes larger than the view it stores,
+  because the shared empty `graph_view_base` cannot overlap between the
+  two. It is pre-existing and unrelated to providers, but it is what a
+  `sizeof` check on a prototype view will show first; do not chase it as
+  a `[[no_unique_address]]` failure of the stored lambdas.
