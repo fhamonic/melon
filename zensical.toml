@@ -10,7 +10,13 @@ repo_name = "fhamonic/melon"
 edit_uri = "edit/main/docs/"
 
 extra_css = ["stylesheets/extra.css"]
-extra_javascript = ["javascripts/benchmark-embed.js"]
+# MathJax: the config file must precede the library, which reads window.MathJax
+# once at load and ignores anything set later.
+extra_javascript = [
+  "javascripts/benchmark-embed.js",
+  "javascripts/mathjax.js",
+  "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js",
+]
 
 nav = [
   { "Home" = "index.md" },
@@ -88,6 +94,8 @@ toggle.name = "Switch to light mode"
 [project.markdown_extensions.tables]
 [project.markdown_extensions.toc]
 permalink = true
+[project.markdown_extensions.pymdownx.arithmatex]
+generic = true
 [project.markdown_extensions.pymdownx.details]
 [project.markdown_extensions.pymdownx.superfences]
 [project.markdown_extensions.pymdownx.highlight]

@@ -19,14 +19,22 @@ alg.solution_value();   // 12
 alg.solution_cost();    // 14
 ```
 
-Branch and bound over items sorted by value/cost ratio, bounded by the fractional (LP) relaxation, and written iteratively rather than recursively. The arguments are a **range of items** — a `std::ranges::random_access_range` — plus a value [mapping](../graphs/mappings.md) and a cost mapping over them — so the items need not be integers and the data need not be materialized:
+$$
+\begin{aligned}
+\max_{x} \quad & \sum_{i} v_i x_i \\
+\text{s.t.} \quad & \sum_{i} c_i x_i \le B, \\
+& x_i \in \{0, 1\} && \forall i.
+\end{aligned}
+$$
+
+Branch and bound over items sorted by value/cost ratio, bounded by the fractional (LP) relaxation $x_i \in [0, 1]$ — solved greedily in ratio order, whole items until the first that does not fit, taken fractionally — so a node whose bound cannot beat the incumbent is pruned. Written iteratively rather than recursively. The arguments are a **range of items** — a `std::ranges::random_access_range` — plus a value [mapping](../graphs/mappings.md) and a cost mapping over them — so the items need not be integers and the data need not be materialized:
 
 ```cpp
 auto alg = knapsack_bnb(std::move(items), std::move(values),
                         [&](auto i) { return costs[i]; }, 15);
 ```
 
-`unbounded_knapsack_bnb` has the identical interface and allows each item to be taken any number of times; it additionally prunes items dominated by a better ratio at no greater cost.
+`unbounded_knapsack_bnb` has the identical interface and allows each item to be taken any number of times — $x_i \in \mathbb{N}$; it additionally prunes items dominated by a better ratio at no greater cost.
 
 ```cpp
 #include "melon/algorithm/unbounded_knapsack_bnb.hpp"
@@ -72,6 +80,8 @@ for(auto && [p, intersecting] : bentley_ottmann(ids, segments)) {
 
 The Bentley–Ottmann sweep-line: a range yielding every intersection point together with **all** the segment identifiers passing through it, in lexicographic order of the point. Reporting the full set per point rather than one pair per crossing is what makes degenerate inputs — three or more segments through one point, overlapping collinear segments — come out right.
 
+For segments $s_1, \dots, s_n$ it reports every point $p \in \bigcup_{i \ne j} s_i \cap s_j$ with its full set $\{\, i : p \in s_i \,\}$. A vertical line sweeps left to right; the segments crossing it are kept ordered by height and only neighbours in that order are tested, so with $k$ reported points the sweep costs $O((n + k) \log n)$ rather than the $O(n^2)$ of all pairs.
+
 The arguments are a range of segment identifiers — a `forward_range`, stored in the class through `std::views::all` — and a mapping from identifier to segment. The range is kept because `reset()` re-seeds the event queue from it and replays the sweep.
 
 `bentley_ottmann_traits` has a single flag, `report_endpoints` (default `true`), and — alone in the library — the `Traits` parameter comes first in the template parameter list.
@@ -104,7 +114,7 @@ The geometric predicates live in `melon/numeric/geometry.hpp` behind the `cartes
 
 ## Sampling
 
-`alias_method_sampler` builds Walker's alias table over a range of items and a probability mapping, then samples in O(1):
+`alias_method_sampler` builds Walker's alias table over a range of items and a probability mapping, then samples in $O(1)$:
 
 ```cpp
 #include "melon/utility/alias_method_sampler.hpp"
@@ -116,4 +126,4 @@ std::mt19937 rng(42);
 auto item = sampler(rng);
 ```
 
-The probability argument is a [mapping](../graphs/mappings.md) from the items to non-negative floating-point weights — a container indexed by the item, a graph's vertex or arc map when the items are its vertices or arcs, or a callable, which needs no wrapping. It is read once at construction and not stored, so it may go out of scope afterwards. Like `std::discrete_distribution`, the weights need not sum to 1 — the table is normalized by their sum. Construction is O(n); each sample afterwards is one uniform integer, one uniform real and one branch. Use it for repeated sampling from a fixed distribution — random-restart heuristics, randomized rounding, Monte-Carlo over a fixed graph.
+The probability argument is a [mapping](../graphs/mappings.md) from the items to non-negative floating-point weights — a container indexed by the item, a graph's vertex or arc map when the items are its vertices or arcs, or a callable, which needs no wrapping. It is read once at construction and not stored, so it may go out of scope afterwards. Like `std::discrete_distribution`, the weights need not sum to 1 — the table is normalized by their sum, $\Pr[X = i] = w_i / \sum_j w_j$. Construction is $O(n)$: the scaled weights are split into $n$ bins holding at most two items each, so a sample is one uniform bin, one uniform real and one branch. Use it for repeated sampling from a fixed distribution — random-restart heuristics, randomized rounding, Monte-Carlo over a fixed graph.

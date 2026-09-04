@@ -13,6 +13,14 @@ for(auto && v : breadth_first_search(graph, 0u)) std::print(" {}", v);
 
 Requires `outward_adjacency_graph` and `has_vertex_map` — arcs are never inspected, so a graph that only lists neighbors is enough.
 
+On a digraph $G = (V, A)$ with $n = |V|$ and $m = |A|$, the search from $s$ settles vertices in nondecreasing hop distance
+
+$$
+d(v) = \min\{\, k : s = v_0 \to v_1 \to \cdots \to v_k = v \,\},
+$$
+
+one layer at a time, in $O(n + m)$.
+
 **Traits.**
 
 | Flag | Default | Effect |
@@ -63,6 +71,14 @@ for(auto && v : depth_first_search(graph, 0u)) std::print(" {}", v);
 
 Same requirements as BFS. The traversal is iterative — an explicit stack of partially consumed incidence ranges — so depth costs heap memory, not call frames, and a path of a million vertices does not overflow the stack.
 
+Vertices come out in preorder of the search tree $T_s$ — each before any vertex first reached through it — in $O(n + m)$. The predecessor chain is the tree path, so
+
+$$
+\mathrm{depth}(v) = \big|\mathrm{path}_{T_s}(s, v)\big| \;\ge\; d(v),
+$$
+
+with equality only when the out-arc order happens to favour it.
+
 **Traits.**
 
 | Flag | Default | Effect |
@@ -91,7 +107,9 @@ for(auto && v : topological_sort(graph)) std::print(" {}", v);
 
 Yields the vertices of a DAG in an order where every arc goes forward. Requires `outward_incidence_graph`, `has_vertex_map` and `has_num_vertices` — the constructor reserves `num_vertices` and keeps an iterator into that buffer, so the count must be known; unlike the searches, it takes no source — it starts from every vertex with no incoming arc and discovers the rest by decrementing in-degrees.
 
-Traits are `store_ranks` and `store_critical_paths`. `store_ranks` enables `rank(v)`: the number of arcs on the longest path from a source down to `v`, so that `rank(u) < rank(v)` for every arc `u -> v`. It is a level, not a position in the emitted sequence — vertices that no path orders relative to each other share a rank. `store_critical_paths` enables `pred_vertex(v)`, `pred_arc(v)` and `critical_path_to(t)`.
+Kahn's algorithm: a numbering $\pi : V \to \{1, \dots, n\}$ with $\pi(u) < \pi(v)$ for every arc $u \to v$ exists exactly when $G$ is acyclic, and is produced by repeatedly emitting a vertex of in-degree zero and deleting its out-arcs, in $O(n + m)$.
+
+Traits are `store_ranks` and `store_critical_paths`. `store_ranks` enables `rank(v)`: the number of arcs on the longest path from a source down to `v`, $\mathrm{rank}(v) = \max_{u \to v} \mathrm{rank}(u) + 1$ with $0$ at the sources, so that `rank(u) < rank(v)` for every arc `u -> v`. It is a level, not a position in the emitted sequence — vertices that no path orders relative to each other share a rank. `store_critical_paths` enables `pred_vertex(v)`, `pred_arc(v)` and `critical_path_to(t)`.
 
 !!! warning
 
@@ -124,6 +142,8 @@ for(auto && component : strongly_connected_components(graph)) {
 ```
 
 Tarjan's algorithm, iterative for the same reason as DFS. Each `current()` is a *range* of the vertices of one component, and components come out in reverse topological order of the condensation — the sinks first.
+
+Two vertices are strongly connected when each reaches the other, $u \sim v \iff u \leadsto v \wedge v \leadsto u$; the classes of $\sim$ are the components, and contracting each to a vertex gives the condensation, always a DAG. One DFS finds them all in $O(n + m)$, popping a component each time the search leaves its root.
 
 With the `store_component_ids` traits flag, the algorithm records a component id
 per vertex as each component is popped — dense, in emission order — and
@@ -160,6 +180,8 @@ auto ugraph = views::undirect(graph);
 for(auto && component : connected_components(ugraph)) { ... }
 ```
 
+The classes of $u \sim v \iff$ some path joins $u$ and $v$, direction ignored: one breadth-first search per component, $O(n + m)$ in all.
+
 For a digraph, `weakly_connected_components(g)` is the wrapper that undirects it first:
 
 ```cpp
@@ -190,6 +212,14 @@ for(auto && tree : traversal_forest(graph, roots)) { ... }
 ```
 
 This is the reachability-partition counterpart of `weakly_connected_components`: the trees partition the vertices, but by *forward* reachability from the chosen roots, so a vertex is placed in the first tree that reaches it.
+
+With roots $r_1, r_2, \dots$ in the given order and $R(r)$ the set of vertices reachable from $r$, the $i$-th tree spans
+
+$$
+T_i = R(r_i) \setminus \bigcup_{j < i} T_j,
+$$
+
+an already-reached root is skipped, and the whole forest costs $O(n + m)$.
 
 ## Choosing
 

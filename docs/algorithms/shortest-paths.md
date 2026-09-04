@@ -13,6 +13,14 @@ for(auto && [v, dist] : dijkstra(graph, length_map, 0u))
 
 Requires `outward_incidence_graph`, `has_vertex_map`, and a length map modelling `mapping<arc_t<G>>`. Vertices come out in nondecreasing distance order, each exactly once, with its final distance.
 
+For nonnegative lengths $\ell$ it computes
+
+$$
+d(v) = \min_{P :\, s \leadsto v} \; \sum_{a \in P} \ell(a)
+$$
+
+by repeatedly settling the unsettled vertex of least tentative distance and relaxing its out-arcs, $d(v) \leftarrow \min\big(d(v),\, d(u) + \ell(a)\big)$ for each $a : u \to v$ — $O((n + m) \log n)$ with a binary heap. Under a [semiring](#semirings), $\min$ and $+$ are its `less` and `plus`.
+
 **Members.**
 
 | Member | Effect |
@@ -125,7 +133,9 @@ for(auto && [v, dist] : a_star(graph, length_map, h, s)) {
 
 `dijkstra` guided by a heuristic: a lower bound, per vertex, on the remaining distance to the target. Same requirements plus the heuristic modelling `mapping<vertex_t<G>>` with the length map's value type, and the same members and traits; each vertex still comes out once with its final plain distance — the heuristic never appears in any result — but ordered by `dist + h` instead of `dist`, so vertices that cannot lie on a good path toward the target are settled late or never, and breaking at the target is the whole point.
 
-The heuristic must be **consistent**: relaxing an arc may never improve `dist + h` — under the default semiring, `h(u) <= length(a) + h(v)` for every arc `a : u -> v`. Exact remaining distances and Euclidean bounds on geometric graphs qualify; a merely *admissible* bound does not — `a_star` never re-settles a vertex, so an inconsistent heuristic silently yields wrong distances. Beware floating-point erosion: a mathematically consistent bound computed in `double` can violate the inequality by a rounding error, so shave it (`h * (1 - 1e-9)`) when in doubt. Debug builds assert consistency at every examined arc.
+Vertices are settled by key $d(v) + h(v)$. A consistent $h$ with $h(t) = 0$ keeps keys nondecreasing along every path, so no settled vertex is ever reopened and $t$ is settled once, at exactly $d(t)$.
+
+The heuristic must be **consistent**: relaxing an arc may never improve `dist + h` — under the default semiring, $h(u) \le \ell(a) + h(v)$ for every arc $a : u \to v$. Exact remaining distances and Euclidean bounds on geometric graphs qualify; a merely *admissible* bound does not — `a_star` never re-settles a vertex, so an inconsistent heuristic silently yields wrong distances. Beware floating-point erosion: a mathematically consistent bound computed in `double` can violate the inequality by a rounding error, so shave it (`h * (1 - 1e-9)`) when in doubt. Debug builds assert consistency at every examined arc.
 
 There is no defaulted zero heuristic: with `h == 0` this is `dijkstra` carrying double-width heap entries, so spell `dijkstra` — the equivalence is pinned by the differential tests instead.
 
@@ -142,6 +152,14 @@ if(alg.path_found())
 ```
 
 Advances a forward search from the source and a backward search from the target in alternation, stopping when their frontiers meet. On a large graph where you want one distance rather than all of them, this typically explores a small fraction of what a one-sided Dijkstra would.
+
+The forward search grows $d_s$, the backward one $d_t$ on the reversed graph, and every relaxed arc updates the best known length
+
+$$
+\mu = \min_{a :\, u \to v} \; d_s(u) + \ell(a) + d_t(v).
+$$
+
+Once the two heap tops sum past $\mu$ no unexplored path can beat it, and $\mu = d(s, t)$.
 
 It requires **both** `outward_incidence_graph` and `inward_incidence_graph` — the backward search walks in-arcs — so it does not accept a `static_forward_digraph`. It is not a range: `run()` drains the search and returns the algorithm like every other `run()` in the library, `dist()` then reads the distance (idempotently — a second `run()` is a no-op), and `path()` returns the arcs of the path in order from source to target.
 
@@ -161,6 +179,14 @@ for(auto && [v, entry] : network_voronoi(graph, length_map, kernels)) {
 ```
 
 A multi-source Dijkstra that remembers *which* source won each vertex: the graph-theoretic Voronoi diagram induced by a set of kernels. Yields `(vertex, (distance, kernel))` in nondecreasing distance order. A vertex equidistant from several kernels belongs to the one with the smallest vertex id — the tie-break is deterministic, not an artifact of heap order.
+
+With kernel set $K$,
+
+$$
+d(v) = \min_{k \in K} d(k, v), \qquad \mathrm{cell}(v) = \operatorname*{arg\,min}_{k \in K} d(k, v),
+$$
+
+ties going to the smallest $k$: one Dijkstra seeded with every kernel at distance $0$, $O((n + m) \log n)$.
 
 `set_kernels(range)` replaces the kernel set on an existing object, so a study over many kernel sets allocates once.
 
@@ -201,6 +227,14 @@ for(auto && [b, r] : alg.pareto_front(4u))
 
 A label-setting algorithm for the bi-objective shortest path problem: instead of one distance per vertex it maintains the set of Pareto-optimal `(blue, red)` labels, discarding dominated ones as they are generated. `pareto_front(v)` is the resulting range of nondominated cost pairs, and `is_dominated(v, label)` answers the query directly.
 
+A path costs the pair $(b, r)$ of its blue and red sums, and $(b, r)$ dominates $(b', r')$ when $b \le b'$ and $r \le r'$ with one strict. The front at $v$ is the set of minimal path costs,
+
+$$
+\mathcal{P}(v) = \min_{\preceq} \big\{\, (b(P), r(P)) : P : s \leadsto v \,\big\}.
+$$
+
+Labels are settled in increasing blue cost, so a label reaching $v$ can only be dominated by one already in $\mathcal{P}(v)$ — that one comparison is what discards it.
+
 The two length maps may have different value types — the blue and red objectives are tracked independently. The output can be exponentially large in principle; on realistic instances it is not, but there is no cap and no ε-dominance option.
 
 ## `competing_dijkstras`
@@ -215,6 +249,14 @@ alg.run();
 ```
 
 Runs two searches with *different length maps* over the same graph, in one heap, where each vertex is claimed by whichever search reaches it first. `add_blue_source` and `add_red_source` seed the two sides, and `set_blue_length_map` / `set_red_length_map` swap the maps between runs.
+
+Labels of both colours are settled in nondecreasing distance; a vertex takes the colour of its first settled label — blue on ties — and from then on relaxes its out-arcs with that colour's lengths only. With $d_B(v)$ the blue distance along blue vertices and $d_R(v)$ the red one along red vertices,
+
+$$
+\mathrm{blue}(v) \iff d_B(v) \le d_R(v),
+$$
+
+and iteration yields the blue vertices in increasing $d_B$; red vertices are traversed so that they block blue, but never produced.
 
 This is the machinery behind "which vertices are strictly closer under one length function than another" — comparing a nominal and a perturbed cost, for instance — computed in a single pass instead of two searches and a subtraction. Both maps must share a value type — enforced by a `requires` clause.
 
@@ -231,7 +273,15 @@ bool r = alg.reached(v);   // does a shortest path exist
 auto d = alg.dist(v);      // its length, or the semiring's infty
 ```
 
-Label-correcting relaxation passes over all arcs: negative lengths are allowed, which is exactly the case `dijkstra`'s precondition rules out. The price is O(n·m) against Dijkstra's O((m+n) log n) — with early termination as soon as a pass changes nothing — so prefer `dijkstra` whenever lengths are nonnegative.
+Label-correcting relaxation passes over all arcs: negative lengths are allowed, which is exactly the case `dijkstra`'s precondition rules out. The price is $O(nm)$ against Dijkstra's $O((n + m) \log n)$ — with early termination as soon as a pass changes nothing — so prefer `dijkstra` whenever lengths are nonnegative.
+
+With $d^{(0)}$ zero at the sources and $\infty$ elsewhere, pass $k$ relaxes every arc:
+
+$$
+d^{(k)}(v) = \min\Big( d^{(k-1)}(v),\; \min_{a :\, u \to v} d^{(k-1)}(u) + \ell(a) \Big).
+$$
+
+$d^{(k)}$ is the shortest length over paths of at most $k$ arcs, so $d^{(n-1)}$ is exact when no reachable negative cycle exists — and one more pass changes something exactly when one does.
 
 What remains is a precondition on the *graph*, mirroring dijkstra's on the lengths: **no negative cycle reachable from the sources**. With the default traits it is uncheckable, and a violation silently yields meaningless distances — with `store_paths`, even a `path_to()` that never terminates. If you cannot rule negative cycles out, opt into detection:
 
@@ -265,6 +315,8 @@ alg.add_source(s).run();
 ```
 
 The queue variant of `bellman_ford`, and the algorithm LEMON ships under the plain `BellmanFord` name: each round rescans the out-arcs of only the vertices the previous round improved, instead of sweeping every arc. On sparse graphs — road networks — most arcs are quiet in most rounds and this wins by a wide margin; on dense graphs the queue bookkeeping loses to the plain arc sweep. The other price is the constraint: the queue needs `out_arcs`, so `bellman_ford_moore` requires an `outward_incidence_graph` and rejects the arc-list-only structures `bellman_ford` accepts.
+
+Same recurrence, but round $k$ relaxes only the out-arcs of $\{\, u : d^{(k-1)}(u) < d^{(k-2)}(u) \,\}$, the vertices the previous round improved — every other arc would recompute the same minimum. The worst case stays $O(nm)$.
 
 Everything else is identical to `bellman_ford`: the same traits shape, the same negative-cycle precondition with the same `detect_negative_cycles` opt-in — the certifying pass becomes a certifying *round* — and the same `found_negative_cycle()` / `negative_cycle()` / `path_to()` accessors under the same flags.
 

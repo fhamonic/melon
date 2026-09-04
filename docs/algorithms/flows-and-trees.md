@@ -6,6 +6,18 @@ Both maximum-flow algorithms take a digraph and a capacity per arc, and both req
 
 They are not [ranges](index.md): `run()` computes the flow, and the results are read afterwards.
 
+Both solve, for capacities $c \ge 0$,
+
+$$
+\begin{aligned}
+\max_{f} \quad & \sum_{a \in \delta^+(s)} f(a) \\
+\text{s.t.} \quad & \sum_{a \in \delta^+(v)} f(a) = \sum_{a \in \delta^-(v)} f(a) && \forall v \in V \setminus \{s, t\}, \\
+& 0 \le f(a) \le c(a) && \forall a \in A,
+\end{aligned}
+$$
+
+by augmenting along $s$–$t$ paths of the residual network $G_f$, which carries each arc $a$ with capacity $c(a) - f(a)$ and its reverse with capacity $f(a)$. By max-flow min-cut the optimum equals $\min c(S, V \setminus S)$ over the cuts with $s \in S$, $t \notin S$ — the one `minimum_cut()` returns.
+
 ### `edmonds_karp`
 
 ```cpp
@@ -20,7 +32,7 @@ std::println("max flow = {}", alg.flow_value());
 for(auto && a : alg.minimum_cut()) std::print(" {}", a);
 ```
 
-Augments along shortest unsaturated paths, found by breadth-first search — O(V·E²) in the worst case, independent of the capacity values.
+Augments along shortest unsaturated paths, found by breadth-first search. The $s$–$t$ distance in $G_f$ never decreases and each arc can be the bottleneck $O(n)$ times, so there are $O(nm)$ augmentations of $O(m)$ each: $O(nm^2)$ in the worst case, independent of the capacity values.
 
 ### `dinitz`
 
@@ -32,7 +44,7 @@ alg.run();
 std::println("max flow = {}", alg.flow_value());
 ```
 
-Dinitz's algorithm: rank the vertices by BFS, then push blocking flows through the level graph — O(V²·E), and much better than that in practice. It keeps a per-vertex *consumable view* of the remaining out- and in-arcs so a saturated arc is never rescanned within a phase.
+Dinitz's algorithm: rank the vertices by BFS distance from $s$ in $G_f$, keep only the arcs $u \to v$ with $\mathrm{lev}(v) = \mathrm{lev}(u) + 1$ — the level graph — and push a *blocking flow* through it, one that saturates an arc on every $s$–$t$ path. Each phase raises the $s$–$t$ distance, so there are at most $n - 1$ phases of $O(nm)$: $O(n^2 m)$, and much better than that in practice. It keeps a per-vertex *consumable view* of the remaining out- and in-arcs so a saturated arc is never rescanned within a phase.
 
 **Prefer `dinitz`** unless you have a specific reason not to: same interface, same results, better asymptotics.
 
@@ -108,61 +120,19 @@ if(alg.status() == mcf_status::optimal)
     std::println("min cost = {}", alg.total_cost());
 ```
 
-The primal network simplex, in the implementation lineage of LEMON's: it
-minimizes `sum cost(a) * flow(a)` subject to `0 <= flow(a) <= capacity(a)`
-and, at every vertex, outflow minus inflow equal to `supply(v)`. Supplies
-must sum to zero (asserted); a capacity equal to
-`std::numeric_limits<...>::max()` means *unbounded above*. Worst-case
-exponential pivots like every simplex — and in practice the fastest exact
-method known for the problem.
+The minimum-cost flow problem, over a capacity $u$ and a cost $c$ per arc and a supply $b$ per vertex summing to zero:
 
-Nothing is renumbered, no problem copy is made, and the artificial root is
-not even materialized: the algorithm runs in the graph's own id spaces,
-keeps every piece of state in maps the graph itself hands out
-(`create_vertex_map` / `create_arc_map`), and reads capacities, costs and
-supplies through the given mappings — the root is as implicit as its
-virtual arcs, marked by a vertex being its own parent in the basis tree.
-Arc endpoints come from `arc_source` / `arc_target` where the graph
-answers them; each endpoint the graph cannot answer gets a map built once
-from `arcs_entries`, so — like
-[`bellman_ford`](shortest-paths.md#bellman_ford) — an arc-list graph
-qualifies as long as it has the map factories. **Neither id space carries
-an integrality requirement**: vertex and arc ids may be any copyable,
-equality-comparable type the graph's factories and the mappings accept —
-the entering-arc search walks the graph's own `arcs()` range through a
-resumable cursor — so a `mutable_digraph` with holes from removals
-qualifies, and so does a graph whose handles are structs.
+$$
+\begin{aligned}
+\min_{f} \quad & \sum_{a \in A} c(a)\, f(a) \\
+\text{s.t.} \quad & \sum_{a \in \delta^+(v)} f(a) - \sum_{a \in \delta^-(v)} f(a) = b(v) && \forall v \in V, \\
+& 0 \le f(a) \le u(a) && \forall a \in A.
+\end{aligned}
+$$
 
-Speed still favors a static rebuild for a graph whose `arcs()` range
-pointer-chases: the search lands in the innermost pivot loop, and solving
-directly on a `mutable_digraph` measures 2–3× slower than one
-[`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph)
-call (maps translated in the same call) followed by the solve, builder
-included. That rebuild is `O(n + m)`, which any solve worth timing
-dominates: the simplex is worst-case exponential in pivots, and every
-pivot already scans a block of arcs.
+The primal network simplex, in LEMON's lineage. A basis is a spanning tree $T$ — rooted at an implicit vertex that is never materialized — together with potentials $\pi$ whose reduced costs $c^\pi(a) = c(a) + \pi(\mathrm{src}\, a) - \pi(\mathrm{tgt}\, a)$ vanish on $T$. A pivot picks an entering arc violating optimality — $c^\pi(a) < 0$ at flow $0$, or $c^\pi(a) > 0$ at flow $u(a)$ — pushes the largest feasible amount around the cycle it closes in $T$, and drops the arc that hit its bound. No such arc means optimal. Exponentially many pivots in the worst case, like every simplex — and in practice the fastest exact method known.
 
-```cpp
-auto [sg, new_supply, new_capacity, new_cost] = make_static_digraph(
-    g, std::less{}, std::tie(supply), std::tie(capacity, cost));
-network_simplex alg(sg, new_capacity, new_cost, new_supply);
-```
-
-Capacities and supplies share one value domain — their `std::common_type`,
-so mixed widths widen instead of truncating — and it must be a **signed**
-number type, like the cost type. Both are enforced at the constraint:
-in unsigned arithmetic no reduced cost ever tests negative, so the algorithm
-would silently report every feasible instance infeasible.
-
-The cost type needs room for one more thing: the artificial arcs that carry
-the initial basis have to be more expensive than any real route, and a route
-here is a path in the *residual* network — up to `num_vertices - 1` arcs, an
-arc traversed backwards contributing `-cost`. So **`num_vertices *
-max|cost|` must stay inside the cost type's range**, and it is asserted, as
-every precondition in melon is. Costs in the thousands over a graph of a
-million vertices are comfortable for a 32-bit cost type; if an instance
-trips the assert, widen the cost type — no value the type can hold would
-make its verdicts trustworthy.
+A capacity equal to `std::numeric_limits<...>::max()` means *unbounded above*. Capacities and supplies share one value domain — their `std::common_type` — which, like the cost type, must be **signed**; both are enforced at the constraint, since in unsigned arithmetic no reduced cost ever tests negative. The cost type must also hold $n \cdot \max_a |c(a)|$, the price of the artificial arcs carrying the initial basis; it is asserted, and the fix is a wider cost type.
 
 `run()` leaves one of three verdicts in `status()`:
 
@@ -172,37 +142,19 @@ make its verdicts trustworthy.
 | `infeasible` | the supplies cannot be routed within the capacities |
 | `unbounded` | a negative-cost cycle of unbounded capacity exists — no finite optimum |
 
-`status()` is meaningful once `finished()` is true; while pivots remain it
-still reads `optimal`, because infeasibility is only detectable at
-termination.
+`status()` is meaningful once `finished()` is true; while pivots remain it reads `optimal`. One `advance()` is one pivot, so pivots can be capped, counted or watched.
 
-The algorithm is steppable: one `advance()` is one simplex pivot, so pivots
-can be capped, counted or watched, with `finished()` a `const` read as in
-every melon algorithm. `run()` is `while(!finished()) advance();`.
+With `status() == optimal`, `total_cost()` sums $\sum_a c(a)\, f(a)$ in a widened accumulator (the traits' `total_cost_type`, `int64_t` for integral inputs), `flow(a)` reads one arc and `potential(v)` one vertex — every arc satisfies complementary slackness against the potentials. `flows_map()` / `potentials_map()` refer into the algorithm, and `std::move(alg).flows_map()` extracts an owning map as a terminal operation — see [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
 
-With `status() == optimal`, `total_cost()` sums `cost * flow` in a widened
-accumulator (`int64_t` for integral inputs — the default traits'
-`total_cost_type`), `flow(a)` reads one arc and `potential(v)` one vertex:
-every arc satisfies complementary slackness against the potentials, with
-reduced cost `cost(a) + potential(source) - potential(target)`. Bulk access
-mirrors the flow pair: `flows_map()` / `potentials_map()` refer into the
-algorithm, and `std::move(alg).flows_map()` extracts an owning map as a
-terminal operation — see
-[Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
+Nothing is renumbered and no problem copy is made: the state lives in maps the graph hands out, and arc endpoints come from `arc_source` / `arc_target` or, where the graph cannot answer, a map built once from `arcs_entries` — so, like [`bellman_ford`](shortest-paths.md#bellman_ford), an arc-list graph qualifies. Neither id space needs to be integral: a `mutable_digraph` with holes from removals qualifies, and so does a graph whose handles are structs. Speed still favors a static rebuild for a graph whose `arcs()` range pointer-chases — solving directly on a `mutable_digraph` measures 2–3× slower than one [`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph) call followed by the solve:
 
-`reset()` re-reads the maps, so mutating costs or supplies and calling
-`reset().run()` re-solves the new problem while reusing every allocation.
-The mappings are read **live** during the pivots: they must keep answering,
-with unchanged values, from `reset()` until the last query — mutating one
-mid-`run()` corrupts the basis silently, and a lambda mapping is
-re-evaluated on every read, so cache anything expensive yourself.
+```cpp
+auto [sg, new_supply, new_capacity, new_cost] = make_static_digraph(
+    g, std::less{}, std::tie(supply), std::tie(capacity, cost));
+network_simplex alg(sg, new_capacity, new_cost, new_supply);
+```
 
-Any [mapping](../graphs/mappings.md) fits each slot, and their read
-patterns differ: capacities and costs are read from the pivot loops, but
-the supply mapping is read exactly once per vertex, inside `reset()` only.
-That makes a lambda the natural supply for the common case of a handful of
-terminals — a single-source, single-sink problem needs no vertex-sized
-vector at all:
+The mappings are read **live**: `reset()` re-reads them, so mutating costs or supplies and calling `reset().run()` re-solves while reusing every allocation — but mutating one mid-`run()` corrupts the basis silently, and a lambda mapping is re-evaluated on every read. The supply is the exception, read exactly once per vertex inside `reset()`, which makes a lambda the natural supply for a handful of terminals:
 
 ```cpp
 // route q units from s to t, every other vertex balanced
@@ -211,28 +163,7 @@ network_simplex alg(graph, capacity, cost, [s, t, q](const auto & v) {
 });
 ```
 
-The entering-arc pivot rule is selectable through a traits type
-(`network_simplex_traits`) passed dijkstra-style as a leading constructor
-argument — `network_simplex(my_traits{}, graph, capacity, cost, supply)` —
-which also carries `total_cost_type`. The traits name a `pivot_rule` type
-from LEMON's catalog, each rule carrying its own tuning constants:
-`pivot_rules::block_search<Factor, MinSize>` (the default — most negative
-reduced cost of a √m-sized block), `pivot_rules::first_eligible`, and
-`pivot_rules::best_eligible` (Dantzig's rule, a full scan per pivot). A
-custom rule is a value type constructed from the arc count whose
-`find_entering_arc(context)` reads reduced costs and a resumable
-wraparound scan through the context and returns the entering arc as an
-`std::optional` — it must hold no references into the algorithm, which is
-what keeps the algorithm movable with any rule plugged in.
-
-The traits also carry `arc_mixing`, the scan-order analogue of LEMON's
-storage mixing: with it on (and a random-access `arcs()` range) the search
-samples arcs with stride `max(m/n, 3)`, so a block sees sources from the
-whole graph even when the layout packs same-source arcs together. It
-defaults to **off**, unlike LEMON's: mixing melon's *scan order* strides
-through the per-arc reads that LEMON's mixed *storage* keeps sequential —
-measured 7–15% slower on instance families whose packing never inflated
-the pivot count. Reach for it when a packed layout measurably does.
+The pivot rule is selectable through a traits type passed as a leading constructor argument — `network_simplex(my_traits{}, graph, capacity, cost, supply)` — which also carries `total_cost_type`: `pivot_rules::block_search<Factor, MinSize>` (the default — the most negative reduced cost of a $\sqrt{m}$-sized block), `pivot_rules::first_eligible`, and `pivot_rules::best_eligible` (Dantzig's full scan). A custom rule is a value type constructed from the arc count whose `find_entering_arc(context)` returns the entering arc as an `std::optional`, holding no references into the algorithm. The traits' `arc_mixing` flag — LEMON's storage mixing as a strided scan order — defaults to **off**: it measured 7–15% slower on families whose packing never inflated the pivot count.
 
 ## Minimum spanning tree
 
@@ -258,6 +189,8 @@ for(auto && e : kruskal(ugraph, cost_map)) {
     chosen.push_back(e);
 }
 ```
+
+The tree minimizing $\sum_{e \in T} w(e)$ over all spanning trees $T$: edges are scanned in nondecreasing $w$, and $e = \{u, v\}$ is accepted exactly when $u$ and $v$ lie in different sets, which then merge — $O(m \log m)$ for the sort, near-linear for the unions.
 
 On a disconnected graph it yields a minimum spanning **forest** — one tree per component, with no marker between them. Pair it with [`connected_components`](traversals.md#connected-components) if you need to know which is which.
 
