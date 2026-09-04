@@ -73,9 +73,7 @@ class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-    // Keyed on the *arc*, as LengthMap is constrained as
-    // mapping_view<arc_t<Graph>>: keying on the vertex still compiles wherever
-    // a graph spells both handles unsigned int, and breaks on every other one.
+    
     using length_type = mapped_value_t<LengthMap, arc>;
 
     using heap = Traits::heap;

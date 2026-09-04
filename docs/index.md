@@ -8,7 +8,7 @@ title: ""
 
 ![MELON logo](assets/melon.png)
 
-# &nbsp;&nbsp;&nbsp;&hairsp;MELON
+# &nbsp;&nbsp;&nbsp;MELON
 
 **Modern and Efficient Library for Optimization in Networks.**
 
