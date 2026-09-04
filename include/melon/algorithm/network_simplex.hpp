@@ -109,9 +109,12 @@ using best_eligible = block_search<0.0, std::numeric_limits<int>::max()>;
 
 }  // namespace pivot_rules
 
+// movable is not implied by the constructor: reset() rebuilds the rule by
+// assignment, and a rule with a const member would pass the class
+// constraint only to hard-error inside the constructor.
 template <typename Rule, typename Context>
 concept network_simplex_pivot_rule =
-    std::constructible_from<Rule, std::size_t> &&
+    std::constructible_from<Rule, std::size_t> && std::movable<Rule> &&
     requires(Rule rule, Context & context) {
         {
             rule.find_entering_arc(context)
@@ -138,6 +141,7 @@ template <typename Traits>
 concept network_simplex_traits = requires {
     typename Traits::pivot_rule;
     requires std::constructible_from<typename Traits::pivot_rule, std::size_t>;
+    requires std::movable<typename Traits::pivot_rule>;
     { Traits::arc_mixing } -> std::convertible_to<bool>;
     typename Traits::total_cost_type;
 };
@@ -225,6 +229,15 @@ private:
                            mapped_value_t<SupplyMap, vertex_t<Graph>>>;
     using cost_t = mapped_value_t<CostMap, arc_t<Graph>>;
     using total_cost_t = typename Traits::total_cost_type;
+    // The supply balance check sums in enumeration order, so a partial sum
+    // can leave the value type while the total is zero: widen to the total
+    // cost type when it is a wider integer, never narrow to it.
+    using supply_sum_t =
+        std::conditional_t<std::is_integral_v<value_t> &&
+                               std::is_integral_v<total_cost_t> &&
+                               (std::numeric_limits<total_cost_t>::digits >=
+                                std::numeric_limits<value_t>::digits),
+                           total_cost_t, value_t>;
     using arc_cursor = detail::consumable_input_view_t<arcs_range_t<Graph>>;
     using pivot_rule_t = typename Traits::pivot_rule;
     static constexpr bool _random_access_arcs =
@@ -600,17 +613,17 @@ public:
                          : (art_ceiling - 1) / static_cast<cost_t>(n - 1);
             assert(max_cost < ceiling_bound && min_cost > -ceiling_bound &&
                    "network_simplex: arc costs too large for the cost type -- "
-                   "num_vertices * max|cost| must stay within its range");
+                   "num_vertices * max|cost| must stay below half its range");
         }
 
         // Hang each vertex off the implicit root, chaining the thread ring
         // in enumeration order. std::optional, not a sentinel, for "no
         // vertex seen yet": every vertex value can name a real vertex.
-        value_t sum_supply(0);
+        supply_sum_t sum_supply(0);
         std::optional<vertex> first, prev;
         for(auto && v : melon::vertices(_graph)) {
             const value_t supply = _supply_map[v];
-            sum_supply += supply;
+            sum_supply += static_cast<supply_sum_t>(supply);
             _parent[v] = v;
             if(prev) {
                 _thread[*prev] = v;
@@ -635,7 +648,7 @@ public:
             _thread[*prev] = *first;
             _rev_thread[*first] = *prev;
         }
-        assert(sum_supply == value_t(0));
+        assert(sum_supply == supply_sum_t(0));
 
         _pivot_rule = pivot_rule_t(_arc_count);
         if constexpr(_random_access_arcs) {

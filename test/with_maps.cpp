@@ -79,12 +79,12 @@ static_assert(!has_vertex_map<bare_digraph>);
 static_assert(!has_arc_map<bare_digraph>);
 
 // The two generic providers: a fresh vector per request.
-inline constexpr auto vectors = []<typename T>(auto, const auto & g) {
-    return std::vector<T>(melon::num_vertices(g));
-};
-inline constexpr auto arc_vectors = []<typename T>(auto, const auto & g) {
-    return std::vector<T>(melon::num_arcs(g));
-};
+inline constexpr auto vectors = []<typename T>(auto, const auto & g)
+    requires std::default_initializable<T>
+{ return std::vector<T>(melon::num_vertices(g)); };
+inline constexpr auto arc_vectors = []<typename T>(auto, const auto & g)
+    requires std::default_initializable<T>
+{ return std::vector<T>(melon::num_arcs(g)); };
 
 // A projection into one field of a shared record array. Co-owning, so a map
 // extracted from an expiring algorithm keeps the storage alive by itself.
@@ -568,6 +568,68 @@ static_assert(
     !has_vertex_map<wrapped<bare_digraph &, decltype(heap_index_only)>>);
 static_assert(has_vertex_map<wrapped<bare_digraph &, decltype(heap_index_only)>,
                              std::size_t, dijkstra_roles::heap_index>);
+
+////////////////////////////////////////////////////////////////////////////////
+// default_role is a role like any other: a lambda naming it serves the
+// role-less requests only -- every named role falls through to the wrapped
+// graph, or to nothing -- and a non-default-constructible T is unserved by
+// the generic providers, which are constrained like the container factories
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+inline constexpr auto default_role_only = []<typename T>(default_role,
+                                                         const auto & g) {
+    return std::vector<T>(melon::num_vertices(g));
+};
+struct no_default_ctor {
+    explicit no_default_ctor(int) {}
+};
+}  // namespace
+
+static_assert(
+    has_vertex_map<wrapped<bare_digraph &, decltype(default_role_only)>, int>);
+static_assert(
+    !has_vertex_map<wrapped<bare_digraph &, decltype(default_role_only)>, int,
+                    some_role>);
+static_assert(std::same_as<
+              vertex_map_t<
+                  wrapped<static_digraph &, decltype(default_role_only)>, int>,
+              std::vector<int>>);
+static_assert(
+    std::same_as<
+        vertex_map_t<wrapped<static_digraph &, decltype(default_role_only)>,
+                     int, some_role>,
+        vertex_map_t<static_digraph, int, some_role>>);
+static_assert(!has_vertex_map<wrapped<bare_digraph &, decltype(vectors)>,
+                              no_default_ctor>);
+// a filled-only lambda cannot serve it either: its bare form has nothing to
+// derive from, so has_vertex_map is false rather than a hard error
+static_assert(!has_vertex_map<wrapped<bare_digraph &, decltype(default_only)>,
+                              no_default_ctor>);
+
+////////////////////////////////////////////////////////////////////////////////
+// a graph of the wrong kind in first position is rejected, not stored as a
+// lambda by the binding overload
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+using undirected_lvalue =
+    decltype(views::undirect(std::declval<bare_digraph &>()));
+using arc_vectors_t = std::remove_const_t<decltype(arc_vectors)>;
+}  // namespace
+
+static_assert(std::invocable<decltype(views::with_arc_maps), bare_digraph &,
+                             const arc_vectors_t &>);
+static_assert(!std::invocable<decltype(views::with_arc_maps),
+                              undirected_lvalue &, const arc_vectors_t &>);
+static_assert(!std::invocable<decltype(views::with_arc_maps),
+                              const undirected_lvalue &, arc_vectors_t>);
+static_assert(std::invocable<decltype(views::with_edge_maps),
+                             undirected_lvalue &, const arc_vectors_t &>);
+static_assert(!std::invocable<decltype(views::with_edge_maps), bare_digraph &,
+                              const arc_vectors_t &>);
+static_assert(!std::invocable<decltype(views::with_edge_maps), bare_digraph,
+                              arc_vectors_t>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // undirected graphs: vertex maps over a factory-less undirected graph, edge

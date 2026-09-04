@@ -161,12 +161,13 @@ auto [graph, length_map, name_map] = builder.build();
 ```
 
 - `add_arc` takes the endpoints as one pair, `{source, target}`, followed by one value per property, so the call shows where the topology stops and the data begins. A builder without properties also accepts the plain `add_arc(source, target)`, since nothing can follow the endpoints there. It returns the builder, so calls chain.
-- `add_arcs` appends a whole range at once: a range of endpoint pairs on a property-less builder, otherwise a range of tuple-likes holding the pair and then the property values — the shape `std::views::zip` produces. Copying the arcs of an existing graph is one call:
+- `add_arcs` appends a whole range at once: a range of endpoint pairs on a property-less builder, otherwise a range of tuple-likes holding the pair and then the property values — the shape `std::views::zip` produces. The properties are copied out of the entries; pipe the range through `std::views::as_rvalue` to move them out instead. Copying the arcs of an existing graph is one call:
 
     ```cpp
     static_digraph_builder<static_digraph, double> copy(num_vertices(g));
-    copy.add_arcs(std::views::zip(arcs_entries(g) | std::views::values,
-                                  arcs(g) | std::views::transform(length)));
+    copy.add_arcs(std::views::zip(
+        arcs_entries(g) | std::views::values,
+        arcs(g) | std::views::transform([&](auto a) { return length[a]; })));
     ```
 - `build()` returns a `std::tuple` — with no properties it is a one-element tuple, so the idiom stays `auto [graph] = builder.build();`.
 - Both are ref-qualified: `build()` on an lvalue builder copies the property vectors, `std::move(builder).build()` — or a whole chain started from a temporary, `static_digraph_builder<G, P>(n).add_arc(…).build()` — moves them out and leaves the builder moved-from. `build()` is not idempotent either way: it sorts in place.

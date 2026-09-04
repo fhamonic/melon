@@ -120,6 +120,8 @@ if(alg.status() == mcf_status::optimal)
     std::println("min cost = {}", alg.total_cost());
 ```
 
+Requires a `graph_view` with default-initializable vertex and arc ids, `has_num_vertices`, `has_num_arcs`, and **both** `has_vertex_map` and `has_arc_map` — the state lives in factory-created maps; capacity, cost and supply maps modelling `mapping_view` over their ids, with a **signed** value domain (the capacity/supply `std::common_type`) and a **signed** cost type, each with a `std::numeric_limits` specialization.
+
 The minimum-cost flow problem, over a capacity $u$ and a cost $c$ per arc and a supply $b$ per vertex summing to zero:
 
 $$
@@ -132,7 +134,7 @@ $$
 
 The primal network simplex, in LEMON's lineage. A basis is a spanning tree $T$ — rooted at an implicit vertex that is never materialized — together with potentials $\pi$ whose reduced costs $c^\pi(a) = c(a) + \pi(\mathrm{src}\, a) - \pi(\mathrm{tgt}\, a)$ vanish on $T$. A pivot picks an entering arc violating optimality — $c^\pi(a) < 0$ at flow $0$, or $c^\pi(a) > 0$ at flow $u(a)$ — pushes the largest feasible amount around the cycle it closes in $T$, and drops the arc that hit its bound. No such arc means optimal. Exponentially many pivots in the worst case, like every simplex — and in practice the fastest exact method known.
 
-A capacity equal to `std::numeric_limits<...>::max()` means *unbounded above*. Capacities and supplies share one value domain — their `std::common_type` — which, like the cost type, must be **signed**; both are enforced at the constraint, since in unsigned arithmetic no reduced cost ever tests negative. The cost type must also hold $n \cdot \max_a |c(a)|$, the price of the artificial arcs carrying the initial basis; it is asserted, and the fix is a wider cost type.
+A capacity equal to `std::numeric_limits<...>::max()` means *unbounded above*. Capacities and supplies share one value domain — their `std::common_type` — which, like the cost type, must be **signed**; both are enforced at the constraint, since in unsigned arithmetic no reduced cost ever tests negative. The cost type must also keep $n \cdot \max_a |c(a)|$ — the price of the artificial arcs carrying the initial basis — below **half** its range; it is asserted, and the fix is a wider cost type.
 
 `run()` leaves one of three verdicts in `status()`:
 
@@ -146,7 +148,7 @@ A capacity equal to `std::numeric_limits<...>::max()` means *unbounded above*. C
 
 With `status() == optimal`, `total_cost()` sums $\sum_a c(a)\, f(a)$ in a widened accumulator (the traits' `total_cost_type`, `int64_t` for integral inputs), `flow(a)` reads one arc and `potential(v)` one vertex — every arc satisfies complementary slackness against the potentials. `flows_map()` / `potentials_map()` refer into the algorithm, and `std::move(alg).flows_map()` extracts an owning map as a terminal operation — see [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
 
-Nothing is renumbered and no problem copy is made: the state lives in maps the graph hands out, and arc endpoints come from `arc_source` / `arc_target` or, where the graph cannot answer, a map built once from `arcs_entries` — so, like [`bellman_ford`](shortest-paths.md#bellman_ford), an arc-list graph qualifies. Neither id space needs to be integral: a `mutable_digraph` with holes from removals qualifies, and so does a graph whose handles are structs. Speed still favors a static rebuild for a graph whose `arcs()` range pointer-chases — solving directly on a `mutable_digraph` measures 2–3× slower than one [`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph) call followed by the solve:
+Nothing is renumbered and no problem copy is made: the state lives in maps the graph hands out, and arc endpoints come from `arc_source` / `arc_target` or, where the graph cannot answer, a map rebuilt from `arcs_entries` on every `reset()` — so an arc-list graph qualifies, though unlike with [`bellman_ford`](shortest-paths.md#bellman_ford) only once it also answers `num_vertices` / `num_arcs` and hands out both map kinds. Neither id space needs to be integral: a `mutable_digraph` with holes from removals qualifies, and so does a graph whose handles are structs. Speed still favors a static rebuild for a graph whose `arcs()` range pointer-chases — solving directly on a `mutable_digraph` measures 2–3× slower than one [`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph) call followed by the solve:
 
 ```cpp
 auto [sg, new_supply, new_capacity, new_cost] = make_static_digraph(
@@ -154,7 +156,7 @@ auto [sg, new_supply, new_capacity, new_cost] = make_static_digraph(
 network_simplex alg(sg, new_capacity, new_cost, new_supply);
 ```
 
-The mappings are read **live**: `reset()` re-reads them, so mutating costs or supplies and calling `reset().run()` re-solves while reusing every allocation — but mutating one mid-`run()` corrupts the basis silently, and a lambda mapping is re-evaluated on every read. The supply is the exception, read exactly once per vertex inside `reset()`, which makes a lambda the natural supply for a handful of terminals:
+The mappings are read **live**: `reset()` re-reads them, so mutating costs or supplies and calling `reset().run()` re-solves while reusing every allocation — the graph's vertex and arc sets, however, are fixed at construction: every state map is created once and never resized, so a graph that grew needs a new algorithm. Mutating a mapping mid-`run()` corrupts the basis silently, and a lambda mapping is re-evaluated on every read. The supply is the exception, read exactly once per vertex inside `reset()`, which makes a lambda the natural supply for a handful of terminals:
 
 ```cpp
 // route q units from s to t, every other vertex balanced
@@ -163,7 +165,7 @@ network_simplex alg(graph, capacity, cost, [s, t, q](const auto & v) {
 });
 ```
 
-The pivot rule is selectable through a traits type passed as a leading constructor argument — `network_simplex(my_traits{}, graph, capacity, cost, supply)` — which also carries `total_cost_type`: `pivot_rules::block_search<Factor, MinSize>` (the default — the most negative reduced cost of a $\sqrt{m}$-sized block), `pivot_rules::first_eligible`, and `pivot_rules::best_eligible` (Dantzig's full scan). A custom rule is a value type constructed from the arc count whose `find_entering_arc(context)` returns the entering arc as an `std::optional`, holding no references into the algorithm. The traits' `arc_mixing` flag — LEMON's storage mixing as a strided scan order — defaults to **off**: it measured 7–15% slower on families whose packing never inflated the pivot count.
+The pivot rule is selectable through a traits type passed as a leading constructor argument — `network_simplex(my_traits{}, graph, capacity, cost, supply)` — which also carries `total_cost_type`: `pivot_rules::block_search<Factor, MinSize>` (the default — the most negative reduced cost of a $\sqrt{m}$-sized block), `pivot_rules::first_eligible`, and `pivot_rules::best_eligible` (Dantzig's full scan). A custom rule is a movable value type constructed from the arc count — `reset()` rebuilds it by assignment — whose `find_entering_arc(context)` returns the entering arc as an `std::optional`, holding no references into the algorithm. The traits' `arc_mixing` flag — LEMON's storage mixing as a strided scan order — defaults to **off**: it measured 7–15% slower on families whose packing never inflated the pivot count.
 
 ## Minimum spanning tree
 

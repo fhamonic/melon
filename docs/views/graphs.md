@@ -174,13 +174,13 @@ The three adaptors answer the [map factories](../graphs/concepts.md#attaching-da
 ```cpp
 #include "melon/views/with_maps.hpp"
 
-auto vectors = []<typename T>(auto /*role*/, const auto & g) {
-    return std::vector<T>(num_vertices(g));
-};
+auto vectors = []<typename T>(auto /*role*/, const auto & g)
+    requires std::default_initializable<T>
+{ return std::vector<T>(num_vertices(g)); };
 for(auto && [v, dist] : dijkstra(views::with_vertex_maps(g, vectors), length_map, s)) { ... }
 ```
 
-A lambda serves a request when it can be called as `f.template operator()<T>(Role{}, g)` — the **bare form** — or as `f.template operator()<T>(Role{}, g, d)` with the default value — the **filled form**: the value type as an **explicit template argument** (the lambda must declare `<typename T>`), then the role as a value tag and the wrapped graph. A lambda may declare either form or both, and the view derives the one it lacks: the filled form as the bare call followed by an assignment at every key, the bare form as the filled call with a value-initialized `T` (so a filled-only lambda serves a `T` that is not default-constructible in the filled form alone). Declare the bare form when the map needs no initialization (`std::make_unique_for_overwrite`), the filled form when the value can be fused into the allocation, both — through a pack, `const auto &... d` — when each path has its own best allocation. The returned map must model `output_mapping_of<vertex_t<G>, T>` (`arc_t`, `edge_t` for the other two adaptors).
+A lambda serves a request when it can be called as `f.template operator()<T>(Role{}, g)` — the **bare form** — or as `f.template operator()<T>(Role{}, g, d)` with the default value — the **filled form**: the value type as an **explicit template argument** (the lambda must declare `<typename T>`), then the role as a value tag and the wrapped graph. A lambda may declare either form or both, and the view derives the one it lacks: the filled form as the bare call followed by an assignment at every key, the bare form as the filled call with a value-initialized `T` (so a filled-only lambda serves no request for a `T` that is not default-constructible, in either form: with no bare form to derive, the request falls through to the wrapped graph). The `requires` clause above is what every container factory declares; without it the lambda answers `has_vertex_map` for such a `T` and then fails inside `std::vector`'s constructor. Declare the bare form when the map needs no initialization (`std::make_unique_for_overwrite`), the filled form when the value can be fused into the allocation, both — through a pack, `const auto &... d` — when each path has its own best allocation. The returned map must model `output_mapping_of<vertex_t<G>, T>` (`arc_t`, `edge_t` for the other two adaptors).
 
 With several lambdas, the **first** one, in the order given, that serves a request in either form owns both of its forms: list the lambdas naming a role before the generic `auto` one, since a generic lambda listed first serves every request and silently shadows whatever follows it. A request no lambda serves goes to the wrapped graph's own factory:
 
@@ -198,7 +198,7 @@ dijkstra alg(interior, length_map, s);      // the heap indexes through the reco
                                             // array; every other map is g's own
 ```
 
-Roles are how an algorithm names each map it creates — `dijkstra_roles::heap_index`, `bidirectional_dijkstra_roles::forward_heap_index`, … — see [Map roles](../algorithms/index.md#map-roles). Two maps of the same value type are two roles, so a provider never hands one slot to both.
+Roles are how an algorithm names each map it creates — `dijkstra_roles::heap_index`, `bidirectional_dijkstra_roles::forward_heap_index`, … — see [Map roles](../algorithms/index.md#map-roles). Two maps of the same value type are two roles, so a provider never hands one slot to both. `default_role`, what a request carries when the caller names none, is a role like any other: a lambda naming it serves the role-less requests only.
 
 What serves nothing, so that the wrapped graph answers or `has_vertex_map` is `false`: a generic lambda without an explicit `<typename T>`; a `mutable` lambda, since the view is used through `const`.
 

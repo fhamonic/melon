@@ -140,4 +140,4 @@ Pass a graph without out-arcs and the error names `outward_incidence_graph`, not
 
 ## What melon does not have
 
-Boost.Graph's catalogue is far larger. melon has no planarity testing, no graph isomorphism, no matching, no min-cost flow, no graph I/O formats beyond a [Graphviz printer](../containers/graphs.md#printing-a-graph). LEMON's LP/MIP interfaces have no counterpart either — that is a [separate library](https://github.com/fhamonic/mippp) by the same author. If you need one of those today, melon is a complement rather than a replacement.
+Boost.Graph's catalogue is far larger. melon has no planarity testing, no graph isomorphism, no matching, no graph I/O formats beyond a [Graphviz printer](../containers/graphs.md#printing-a-graph). LEMON's LP/MIP interfaces have no counterpart either — that is a [separate library](https://github.com/fhamonic/mippp) by the same author. If you need one of those today, melon is a complement rather than a replacement.

@@ -16,12 +16,16 @@
 namespace melon {
 
 namespace detail {
+// Probed on E exactly as the range hands it over, reference category
+// included: tuple_element_t would strip it and admit a move-only property
+// reached through an lvalue entry, which push_arc then fails to copy.
 template <typename E, typename Vertex, typename... Props>
 constexpr bool builder_entry_fields_convertible =
     []<std::size_t... Is>(std::index_sequence<Is...>) {
-        return std::convertible_to<std::tuple_element_t<0, E>,
+        return std::convertible_to<decltype(std::get<0>(std::declval<E>())),
                                    std::pair<Vertex, Vertex>> &&
-               (std::convertible_to<std::tuple_element_t<Is + 1, E>, Props> &&
+               (std::convertible_to<
+                    decltype(std::get<Is + 1>(std::declval<E>())), Props> &&
                 ...);
     }(std::index_sequence_for<Props...>{});
 
@@ -36,8 +40,7 @@ concept builder_arc_entry =
     (sizeof...(Props) > 0 &&
      requires { std::tuple_size<std::remove_cvref_t<E>>::value; } &&
      std::tuple_size_v<std::remove_cvref_t<E>> == 1 + sizeof...(Props) &&
-     builder_entry_fields_convertible<std::remove_cvref_t<E>, Vertex,
-                                      Props...>);
+     builder_entry_fields_convertible<E, Vertex, Props...>);
 }  // namespace detail
 
 template <graph G, typename... ArcProperty>
@@ -159,7 +162,10 @@ public:
 
     // Bulk form: a range of endpoint pairs, or of (pair, properties...)
     // tuple-likes -- std::views::zip(endpoints, lengths) -- appended in
-    // range order. Sized ranges reserve up front.
+    // range order. Sized ranges reserve up front. Properties are copied out
+    // of each entry unless the range yields rvalues (std::views::as_rvalue);
+    // an rvalue range is not moved from on its own, since a non-borrowed
+    // view over the caller's container would drain it.
     template <std::ranges::input_range R>
         requires detail::builder_arc_entry<std::ranges::range_reference_t<R>,
                                            vertex, ArcProperty...>

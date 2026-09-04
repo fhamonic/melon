@@ -2,7 +2,9 @@
 #include <gtest/gtest.h>
 
 #include <concepts>
+#include <memory>
 #include <ranges>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -230,6 +232,7 @@ namespace add_arcs_shapes {
 using plain = static_digraph_builder<static_digraph>;
 using weighted = static_digraph_builder<static_digraph, int>;
 using two_props = static_digraph_builder<static_digraph, int, double>;
+using owning = static_digraph_builder<static_digraph, std::unique_ptr<int>>;
 using vertex = vertex_t<static_digraph>;
 using endpoints = std::pair<vertex, vertex>;
 
@@ -270,6 +273,63 @@ static_assert(
 static_assert(!add_arcs_shapes::add_arcs_callable<
               add_arcs_shapes::two_props,
               std::vector<std::tuple<add_arcs_shapes::endpoints, int>>>);
+
+// properties are copied out of the entries, so a move-only property is
+// rejected while the range yields lvalues -- an rvalue vector included, its
+// elements are still lvalues -- and accepted once as_rvalue makes them rvalues
+namespace add_arcs_shapes {
+using owning_entries = std::vector<std::tuple<endpoints, std::unique_ptr<int>>>;
+}  // namespace add_arcs_shapes
+static_assert(!add_arcs_shapes::add_arcs_callable<
+              add_arcs_shapes::owning, add_arcs_shapes::owning_entries &>);
+static_assert(!add_arcs_shapes::add_arcs_callable<
+              add_arcs_shapes::owning, add_arcs_shapes::owning_entries>);
+static_assert(add_arcs_shapes::add_arcs_callable<
+              add_arcs_shapes::owning,
+              decltype(std::declval<add_arcs_shapes::owning_entries &>() |
+                       std::views::as_rvalue)>);
+
+// copy vs move is observed on the source entries: a moved-from `drained`
+// reads -1, a copied one keeps its value. Copyable on purpose -- build()
+// sorts through libstdc++'s std::sort, which copies the zip proxy, so a
+// move-only property cannot reach the built map to be checked there
+namespace add_arcs_shapes {
+struct drained {
+    int value;
+    drained(int v) : value(v) {}
+    drained(const drained & o) : value(o.value) {}
+    drained(drained && o) noexcept : value(std::exchange(o.value, -1)) {}
+    drained & operator=(const drained &) = default;
+    drained & operator=(drained && o) noexcept {
+        value = std::exchange(o.value, -1);
+        return *this;
+    }
+};
+using draining = static_digraph_builder<static_digraph, drained>;
+using drained_entries = std::vector<std::tuple<endpoints, drained>>;
+}  // namespace add_arcs_shapes
+GTEST_TEST(static_digraph_builder, add_arcs_copies_unless_as_rvalue) {
+    using namespace add_arcs_shapes;
+    drained_entries entries{{{2, 0}, 20}, {{0, 1}, 1}, {{1, 2}, 12}};
+
+    draining copying(3);
+    copying.add_arcs(entries);
+    for(const auto & entry : entries) ASSERT_NE(std::get<1>(entry).value, -1);
+    auto [copied_graph, copied] = std::move(copying).build();
+    ASSERT_EQ(num_arcs(copied_graph), 3u);
+    // sorted by source: (0,1) (1,2) (2,0)
+    ASSERT_TRUE(EQ_RANGES(copied | std::views::transform(&drained::value),
+                          {1, 12, 20}));
+
+    draining moving(3);
+    moving.add_arcs(entries | std::views::as_rvalue);
+    for(const auto & entry : entries) ASSERT_EQ(std::get<1>(entry).value, -1);
+    auto [moved_graph, moved] = std::move(moving).build();
+    ASSERT_EQ(num_arcs(moved_graph), 3u);
+    ASSERT_TRUE(
+        EQ_RANGES(moved | std::views::transform(&drained::value), {1, 12, 20}));
+}
+
 GTEST_TEST(static_digraph_builder, add_arcs_from_a_range_of_pairs) {
     using namespace add_arcs_shapes;
     std::vector<endpoints> pairs{{3, 4}, {1, 7}, {5, 2}};

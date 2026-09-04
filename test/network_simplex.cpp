@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <cstddef>
 #include <limits>
 #include <optional>
 #include <ranges>
@@ -430,6 +431,41 @@ static_assert(network_simplex_traits<single_arc_block_traits>);
 static_assert(network_simplex_traits<best_eligible_traits>);
 static_assert(std::same_as<pivot_rules::first_eligible,
                            pivot_rules::block_search<0.0, 1>>);
+
+// A rule the constructor accepts but reset() cannot reassign: the concepts
+// must refuse it, or the class constraint says yes and the constructor body
+// hard-errors.
+namespace {
+struct const_member_rule {
+    const std::size_t block_size;
+    explicit const_member_rule(std::size_t n) : block_size(n) {}
+    template <typename Context>
+    std::optional<typename Context::arc_type> find_entering_arc(Context &) {
+        return std::nullopt;
+    }
+};
+struct const_member_rule_traits {
+    using pivot_rule = const_member_rule;
+    [[maybe_unused]] static constexpr bool arc_mixing = false;
+    using total_cost_type = long long;
+};
+struct probe_search_context {
+    using arc_type = arc_t<static_digraph>;
+};
+template <typename Traits>
+concept network_simplex_admits_traits =
+    requires(Traits traits, static_digraph & g, std::vector<int> & arc_values,
+             std::vector<int> & vertex_values) {
+        network_simplex(traits, g, arc_values, arc_values, vertex_values);
+    };
+}  // namespace
+static_assert(std::constructible_from<const_member_rule, std::size_t> &&
+              !std::movable<const_member_rule>);
+static_assert(
+    !network_simplex_pivot_rule<const_member_rule, probe_search_context>);
+static_assert(!network_simplex_traits<const_member_rule_traits>);
+static_assert(network_simplex_admits_traits<single_arc_block_traits>);
+static_assert(!network_simplex_admits_traits<const_member_rule_traits>);
 
 GTEST_TEST(network_simplex, traits_plug_in_through_the_leading_constructor) {
     static_digraph_builder<static_digraph, int, int> builder(4);

@@ -142,8 +142,7 @@ inline auto const_lambda = [](std::size_t i) {
     return 1.0 / static_cast<double>(i);
 };
 inline auto mutable_lambda = [calls = 0](std::size_t i) mutable {
-    ++calls;
-    return 1.0 / static_cast<double>(i);
+    return static_cast<double>(++calls) / static_cast<double>(i);
 };
 }  // namespace prob_map_shapes
 static_assert(

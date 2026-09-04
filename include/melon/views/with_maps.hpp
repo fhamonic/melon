@@ -188,7 +188,11 @@ private:
 public:
     using base_type::base_type;
 
-    template <typename T, typename Role = default_role>
+    // Role is deliberately not defaulted, here and in the two views below: a
+    // default makes the CPO's one-parameter probe match, and a lambda naming
+    // default_role then answers every role instead of only the role-less
+    // requests.
+    template <typename T, typename Role>
         requires _served<T, Role> || has_vertex_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_vertex_map() const {
         if constexpr(_served<T, Role>)
@@ -196,7 +200,7 @@ public:
         else
             return melon::create_vertex_map<T, Role>(this->_wrapped());
     }
-    template <typename T, typename Role = default_role>
+    template <typename T, typename Role>
         requires _served<T, Role> || has_vertex_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_vertex_map(
         const T & default_value) const {
@@ -234,7 +238,7 @@ private:
 public:
     using base_type::base_type;
 
-    template <typename T, typename Role = default_role>
+    template <typename T, typename Role>
         requires _served<T, Role> || has_arc_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_arc_map() const {
         if constexpr(_served<T, Role>)
@@ -242,7 +246,7 @@ public:
         else
             return melon::create_arc_map<T, Role>(this->_wrapped());
     }
-    template <typename T, typename Role = default_role>
+    template <typename T, typename Role>
         requires _served<T, Role> || has_arc_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_arc_map(const T & default_value) const {
         if constexpr(_served<T, Role>)
@@ -277,7 +281,7 @@ private:
 public:
     using base_type::base_type;
 
-    template <typename T, typename Role = default_role>
+    template <typename T, typename Role>
         requires _served<T, Role> || has_edge_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_edge_map() const {
         if constexpr(_served<T, Role>)
@@ -285,7 +289,7 @@ public:
         else
             return melon::create_edge_map<T, Role>(this->_wrapped());
     }
-    template <typename T, typename Role = default_role>
+    template <typename T, typename Role>
         requires _served<T, Role> || has_edge_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_edge_map(
         const T & default_value) const {
@@ -344,7 +348,7 @@ struct with_arc_maps_fn {
     }
 
     template <typename F, typename... Fs>
-        requires(!graph<std::remove_cvref_t<F>>)
+        requires(!melon::detail::any_graph<F>)
     [[nodiscard]] constexpr auto operator()(F && f, Fs &&... fs) const {
         return detail::adaptor_partial<with_arc_maps_fn, std::decay_t<F>,
                                        std::decay_t<Fs>...>(
@@ -366,7 +370,7 @@ struct with_edge_maps_fn {
     }
 
     template <typename F, typename... Fs>
-        requires(!undirected_graph<std::remove_cvref_t<F>>)
+        requires(!melon::detail::any_graph<F>)
     [[nodiscard]] constexpr auto operator()(F && f, Fs &&... fs) const {
         return detail::adaptor_partial<with_edge_maps_fn, std::decay_t<F>,
                                        std::decay_t<Fs>...>(
