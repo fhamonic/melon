@@ -12,7 +12,7 @@ concept mapping = detail::subscriptable_with<Map, Key> &&
 
 Two requirements: the map is subscriptable by the key — `detail::subscriptable_with` is the named helper for that clause, checking `m[k]` on an lvalue map — and there is actually a value to read. The second clause carries more than it looks like it does — `mapped_value_t` is defined through a **const access**, so a `mapping` is a map you can *read* from a const object. That consequence is easy to miss and is covered [below](#stdmap-is-not-a-mapping).
 
-The associated aliases extract the value type; they are constrained on the subscript alone, so they stay usable on maps that fail the readability clause:
+The associated aliases extract the value type. They are constrained on the subscript alone, not on `mapping`: `mapped_reference_t` stays usable on a map that fails the readability clause — a write-only map — while `mapped_value_t` goes through the const access, and its substitution failing on such a map is exactly what turns `mapping` false.
 
 ```cpp
 template <typename Map, typename Key>
@@ -68,7 +68,7 @@ concept mapping_of =
     mapping<Map, Key> && std::same_as<mapped_value_t<Map, Key>, Value>;
 ```
 
-Use them when the value type is fixed by the problem rather than deduced from the map — `output_mapping_of<F, arc_t<G>, bool>` for an arc filter, for instance. Algorithms that infer their arithmetic from the map, such as Dijkstra, take the unrefined `mapping_view<arc_t<Graph>>` and let the length type follow.
+Use them when the value type is fixed by the problem rather than deduced from the map — `output_mapping_of<F, arc_t<G>, bool>` for an arc filter, for instance. Algorithms that infer their arithmetic from the map, such as Dijkstra, constrain their stored member on `mapping_view<arc_t<Graph>>` with no `_of` and let the length type follow — `mapping_view` is the [view concept](#mapping-views) below.
 
 ## What qualifies
 
@@ -84,8 +84,10 @@ Verified against the concepts as written:
 | `std::map` / `std::unordered_map` | | | |
 | `maps::constant<V>` (`true_map`, `false_map`) | ✓ | | |
 | `maps::identity`, `maps::element<I...>` | ✓ | | |
-| `maps::function(callable)` | ✓ | | |
-| `maps::transform(m, f)` | ✓ | | |
+| `maps::function(callable)` | ✓ | † | |
+| `maps::transform(m, f)` | ✓ | † | |
+
+† An `output_mapping` exactly when the callable, or the projection, hands back an lvalue reference into storage — the [const-lambda spelling](#mapsfunction) below. `maps::element` likewise writes through when the key is itself an lvalue: `std::get` on an lvalue tuple returns a reference into it.
 
 ### `std::map` is not a `mapping`
 
@@ -125,7 +127,10 @@ The resulting types are `vertex_map_t<G, double>` and `arc_map_t<G, bool>`, chos
 Just as graphs are wrapped by [`views::graph_all`](../views/ownership.md), mappings passed to an algorithm go through `maps::mapping_all`, which yields:
 
 - `mapping_ref_view` — a non-owning reference, when the argument is an lvalue;
-- `mapping_owning_view` — takes ownership, when it is an rvalue.
+- `mapping_owning_view` — takes ownership, when it is an rvalue;
+- the argument itself, unwrapped, when it is already a view — `maps::identity`, `maps::constant`, a `transform_map_view`, or a type of your own derived from `mapping_view_base`.
+
+Two concepts name the two ends of that wrapping. `mapping_view<M, K>` is a `mapping` that is `std::movable` and opts in through `mapping_view_base` — what an algorithm requires of the member it stores, so that a stored map is always a view and never a raw container. `mapping_for<M, Target>` is the constructor-side counterpart: `M` is accepted wherever `Target` is constructible from `maps::mapping_all_t<M>`, which is how the same constructor takes a container by lvalue, by rvalue, or a lambda bare.
 
 That is what makes both of these safe:
 
@@ -169,7 +174,7 @@ auto euclidean = maps::function([&](arc_t<G> a) { return distance(pos[arc_source
 
 ### The ready-made maps
 
-`maps::identity` ships with `melon/mapping.hpp` itself; the rest live in [`melon/maps/`](../reference/headers.md#maps--melonmaps), one header each:
+`maps::identity` ships with `melon/mapping.hpp` itself; the rest live in [`melon/maps/`](../reference/headers.md#maps-melonmaps), one header each:
 
 | Mapping | Header | `m[k]` yields |
 | --- | --- | --- |
