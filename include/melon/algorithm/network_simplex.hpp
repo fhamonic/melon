@@ -184,8 +184,6 @@ struct network_simplex_default_traits {
         typename detail::network_simplex_total_cost<ValueType, CostType>::type;
 };
 
-enum class mcf_status : char { optimal = 0, infeasible = 1, unbounded = 2 };
-
 // Precondition no concept can check: the value type's arithmetic must be
 // exact enough that pushing delta around a cycle restores conservation --
 // integral values are the intended use. A capacity of
@@ -249,6 +247,9 @@ private:
     static constexpr signed char STATE_LOWER = 1;
     static constexpr signed char DIR_DOWN = -1;  // pred arc parent -> vertex
     static constexpr signed char DIR_UP = 1;     // pred arc vertex -> parent
+    // OPTIMAL is also the in-progress value: infeasibility is only
+    // detectable at termination, so optimal() gates on finished() too.
+    enum verdict : char { OPTIMAL = 0, INFEASIBLE = 1, UNBOUNDED = 2 };
 
 private:
     Graph _graph;
@@ -303,7 +304,7 @@ private:
     vertex _join, _u_in, _v_in, _u_out;
     value_t _delta;
     bool _has_entering;
-    mcf_status _status;
+    verdict _status;
 
     [[nodiscard]] constexpr vertex _arc_source(const arc & a) const {
         if constexpr(has_arc_source<Graph>)
@@ -661,7 +662,7 @@ public:
         } else {
             _scan = melon::arcs(_graph);
         }
-        _status = mcf_status::optimal;
+        _status = OPTIMAL;
         _has_entering = find_entering_arc();
         if(!_has_entering) finalize();
         return *this;
@@ -976,11 +977,11 @@ private:
     void finalize() {
         for(auto && v : melon::vertices(_graph)) {
             if(_virtual_flow[v] != value_t(0)) {
-                _status = mcf_status::infeasible;
+                _status = INFEASIBLE;
                 return;
             }
         }
-        _status = mcf_status::optimal;
+        _status = OPTIMAL;
     }
 
 public:
@@ -990,7 +991,7 @@ public:
     // eagerly at the end of reset() and advance(), which is what keeps
     // finished() a pure const read.
     [[nodiscard]] constexpr bool finished() const noexcept {
-        return _status == mcf_status::unbounded || !_has_entering;
+        return _status == UNBOUNDED || !_has_entering;
     }
 
     constexpr void advance() {
@@ -998,7 +999,7 @@ public:
         find_join_vertex();
         const bool change = find_leaving_arc();
         if(_delta >= MAX) {
-            _status = mcf_status::unbounded;
+            _status = UNBOUNDED;
             return;
         }
         change_flow(change);
@@ -1017,14 +1018,20 @@ public:
 
     // ---- Queries ------------------------------------------------------------
 
-    // Meaningful once finished(): while pivots remain it still reads
-    // `optimal`, because infeasibility is only detectable at termination.
-    [[nodiscard]] constexpr mcf_status status() const noexcept {
-        return _status;
+    // The verdict, exactly one true once finished(), all three false
+    // before: infeasibility is only detectable at termination.
+    [[nodiscard]] constexpr bool optimal() const noexcept {
+        return !_has_entering && _status == OPTIMAL;
+    }
+    [[nodiscard]] constexpr bool infeasible() const noexcept {
+        return _status == INFEASIBLE;
+    }
+    [[nodiscard]] constexpr bool unbounded() const noexcept {
+        return _status == UNBOUNDED;
     }
 
     // The flow carried by `a`: part of an optimal flow once run() has
-    // converged with status() == optimal; a basic (not necessarily feasible)
+    // converged with optimal() true; a basic (not necessarily feasible)
     // intermediate otherwise.
     [[nodiscard]] constexpr value_t flow(const arc & a) const
         noexcept(noexcept(_flow[a])) {
@@ -1043,7 +1050,7 @@ public:
         return maps::mapping_all(
             [flow = std::move(_flow)](const arc & a) { return flow[a]; });
     }
-    // The dual certificate: with status() == optimal, every arc satisfies
+    // The dual certificate: with optimal() true, every arc satisfies
     // complementary slackness against these potentials, with reduced cost
     // c(a) + potential(source) - potential(target).
     [[nodiscard]] constexpr cost_t potential(const vertex & v) const
@@ -1060,7 +1067,7 @@ public:
             [pi = std::move(_pi)](const vertex & v) { return pi[v]; });
     }
     // The cost of the flow flow() reports, in the traits' widened type: the
-    // optimum once converged with status() == optimal, otherwise a basic
+    // optimum once converged with optimal() true, otherwise a basic
     // intermediate's -- an infeasible instance leaves a plausible number
     // here, not a diagnosis.
     [[nodiscard]] constexpr total_cost_t total_cost() const {

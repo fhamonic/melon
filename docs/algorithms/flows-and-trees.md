@@ -116,7 +116,7 @@ std::vector<int> supply = ...;     // one per vertex, summing to zero
 network_simplex alg(graph, capacity, cost, supply);
 alg.run();
 
-if(alg.status() == mcf_status::optimal)
+if(alg.optimal())
     std::println("min cost = {}", alg.total_cost());
 ```
 
@@ -136,17 +136,17 @@ The primal network simplex, in LEMON's lineage. A basis is a spanning tree $T$ �
 
 A capacity equal to `std::numeric_limits<...>::max()` means *unbounded above*. Capacities and supplies share one value domain — their `std::common_type` — which, like the cost type, must be **signed**; both are enforced at the constraint, since in unsigned arithmetic no reduced cost ever tests negative. The cost type must also keep $n \cdot \max_a |c(a)|$ — the price of the artificial arcs carrying the initial basis — below **half** its range; it is asserted, and the fix is a wider cost type.
 
-`run()` leaves one of three verdicts in `status()`:
+`run()` leaves exactly one of three verdicts true:
 
-| `mcf_status` | Meaning |
+| Predicate | Meaning |
 | --- | --- |
-| `optimal` | `flow(a)` is a minimum-cost flow, `potential(v)` its dual certificate |
-| `infeasible` | the supplies cannot be routed within the capacities |
-| `unbounded` | a negative-cost cycle of unbounded capacity exists — no finite optimum |
+| `optimal()` | `flow(a)` is a minimum-cost flow, `potential(v)` its dual certificate |
+| `infeasible()` | the supplies cannot be routed within the capacities |
+| `unbounded()` | a negative-cost cycle of unbounded capacity exists — no finite optimum |
 
-`status()` is meaningful once `finished()` is true; while pivots remain it reads `optimal`. One `advance()` is one pivot, so pivots can be capped, counted or watched.
+All three are false while `finished()` is not: infeasibility is only detectable at termination. One `advance()` is one pivot, so pivots can be capped, counted or watched.
 
-With `status() == optimal`, `total_cost()` sums $\sum_a c(a)\, f(a)$ in a widened accumulator (the traits' `total_cost_type`, `int64_t` for integral inputs), `flow(a)` reads one arc and `potential(v)` one vertex — every arc satisfies complementary slackness against the potentials. `flows_map()` / `potentials_map()` refer into the algorithm, and `std::move(alg).flows_map()` extracts an owning map as a terminal operation — see [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
+With `optimal()`, `total_cost()` sums $\sum_a c(a)\, f(a)$ in a widened accumulator (the traits' `total_cost_type`, `int64_t` for integral inputs), `flow(a)` reads one arc and `potential(v)` one vertex — every arc satisfies complementary slackness against the potentials. `flows_map()` / `potentials_map()` refer into the algorithm, and `std::move(alg).flows_map()` extracts an owning map as a terminal operation — see [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
 
 Nothing is renumbered and no problem copy is made: the state lives in maps the graph hands out, and arc endpoints come from `arc_source` / `arc_target` or, where the graph cannot answer, a map rebuilt from `arcs_entries` on every `reset()` — so an arc-list graph qualifies, though unlike with [`bellman_ford`](shortest-paths.md#bellman_ford) only once it also answers `num_vertices` / `num_arcs` and hands out both map kinds. Neither id space needs to be integral: a `mutable_digraph` with holes from removals qualifies, and so does a graph whose handles are structs. Speed still favors a static rebuild for a graph whose `arcs()` range pointer-chases — solving directly on a `mutable_digraph` measures 2–3× slower than one [`make_static_digraph`](../containers/graphs.md#rebuilding-as-a-static_digraph) call followed by the solve:
 

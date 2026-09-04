@@ -26,7 +26,7 @@ using namespace melon;
 
 namespace {
 
-// The optimality certificate the header promises: with status() == optimal,
+// The optimality certificate the header promises: with optimal() true,
 // every arc satisfies complementary slackness against the returned
 // potentials. Checking it instead of exact potential values keeps the tests
 // valid across any optimal basis the pivot order lands on.
@@ -89,7 +89,7 @@ GTEST_TEST(network_simplex, fixed_transportation_instance) {
 
     network_simplex alg(graph, upper, cost, supply);
     alg.run();
-    ASSERT_EQ(alg.status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.optimal());
     ASSERT_EQ(alg.total_cost(), 12);
     for(auto && a : arcs(graph)) ASSERT_EQ(alg.flow(a), expected_flow[a]);
     check_flow_is_feasible(alg, graph, upper, supply);
@@ -118,7 +118,7 @@ GTEST_TEST(network_simplex, const_graph_and_const_mappings) {
     const std::vector<int> & const_upper = upper;
     const std::vector<int> & const_cost = cost;
     network_simplex alg(const_graph, const_upper, const_cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 12);
 }
 
@@ -201,11 +201,18 @@ GTEST_TEST(network_simplex, steppable_advance_matches_run) {
     });
     int num_pivots = 0;
     while(!alg.finished()) {
+        // no verdict before termination: optimal() must not read as the
+        // in-progress value
+        ASSERT_FALSE(alg.optimal());
+        ASSERT_FALSE(alg.infeasible());
+        ASSERT_FALSE(alg.unbounded());
         alg.advance();
         ++num_pivots;
     }
     ASSERT_GT(num_pivots, 0);
-    ASSERT_EQ(alg.status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.optimal());
+    ASSERT_FALSE(alg.infeasible());
+    ASSERT_FALSE(alg.unbounded());
     ASSERT_EQ(alg.total_cost(), 12);
 }
 
@@ -241,7 +248,7 @@ GTEST_TEST(network_simplex, infeasible_when_capacity_is_insufficient) {
     std::vector<int> supply = {4, -4};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::infeasible);
+    ASSERT_TRUE(alg.run().infeasible());
 }
 
 GTEST_TEST(network_simplex, unbounded_on_a_negative_uncapacitated_cycle) {
@@ -253,7 +260,7 @@ GTEST_TEST(network_simplex, unbounded_on_a_negative_uncapacitated_cycle) {
     std::vector<int> supply = {0, 0};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::unbounded);
+    ASSERT_TRUE(alg.run().unbounded());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +277,7 @@ GTEST_TEST(network_simplex, negative_cycle_circulation_saturates) {
     std::vector<int> supply = {0, 0, 0};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), -5);
     for(auto && a : arcs(graph)) ASSERT_EQ(alg.flow(a), 5);
 }
@@ -282,7 +289,7 @@ GTEST_TEST(network_simplex, negative_self_loop_saturates) {
     std::vector<int> supply = {0};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), -21);
 
     // the same loop with an infinite capacity is an unbounded ray
@@ -290,7 +297,7 @@ GTEST_TEST(network_simplex, negative_self_loop_saturates) {
     builder2.add_arc({0u, 0u}, std::numeric_limits<int>::max(), -3);
     auto [graph2, upper2, cost2] = builder2.build();
     network_simplex alg2(graph2, upper2, cost2, supply);
-    ASSERT_EQ(alg2.run().status(), mcf_status::unbounded);
+    ASSERT_TRUE(alg2.run().unbounded());
 }
 
 GTEST_TEST(network_simplex, zero_supplies_and_positive_costs_stay_at_zero) {
@@ -302,7 +309,7 @@ GTEST_TEST(network_simplex, zero_supplies_and_positive_costs_stay_at_zero) {
     std::vector<int> supply = {0, 0, 0};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 0);
     for(auto && a : arcs(graph)) ASSERT_EQ(alg.flow(a), 0);
 }
@@ -319,7 +326,7 @@ GTEST_TEST(network_simplex, max_capacity_is_infinity) {
     std::vector<int> supply = {3, -3};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 6);
 }
 
@@ -331,7 +338,7 @@ GTEST_TEST(network_simplex, parallel_arcs_fill_cheapest_first) {
     std::vector<int> supply = {4, -4};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 8);
     for(auto && a : arcs(graph)) ASSERT_EQ(alg.flow(a), expected_flow[a]);
 }
@@ -358,7 +365,7 @@ GTEST_TEST(network_simplex, three_by_three_assignment) {
     std::vector<int> supply = {1, 1, 1, -1, -1, -1};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 12);
     check_flow_is_feasible(alg, graph, upper, supply);
     check_dual_certificate(alg, graph, upper, cost);
@@ -375,7 +382,7 @@ GTEST_TEST(network_simplex, empty_graph) {
     std::vector<int> supply = {};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 0);
 }
 
@@ -385,12 +392,12 @@ GTEST_TEST(network_simplex, no_arcs) {
 
     std::vector<int> zero_supply = {0, 0};
     network_simplex balanced(graph, upper, cost, zero_supply);
-    ASSERT_EQ(balanced.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(balanced.run().optimal());
     ASSERT_EQ(balanced.total_cost(), 0);
 
     std::vector<int> moving_supply = {1, -1};
     network_simplex stuck(graph, upper, cost, moving_supply);
-    ASSERT_EQ(stuck.run().status(), mcf_status::infeasible);
+    ASSERT_TRUE(stuck.run().infeasible());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,7 +410,7 @@ GTEST_TEST(network_simplex, complete_digraph_view_with_lambda_maps) {
     network_simplex alg(
         graph, [](const auto &) { return 1; }, [](const auto &) { return 1; },
         [](const auto & v) { return v == 0ul ? 3 : -1; });
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 3);
 }
 
@@ -479,7 +486,7 @@ GTEST_TEST(network_simplex, traits_plug_in_through_the_leading_constructor) {
 
     network_simplex alg(single_arc_block_traits{}, graph, upper, cost, supply);
     static_assert(std::same_as<decltype(alg.total_cost()), long long>);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 12);
 }
 
@@ -504,7 +511,7 @@ GTEST_TEST(network_simplex, value_domain_is_the_capacity_supply_common_type) {
     static_assert(
         std::same_as<decltype(alg.flow(arc_t<static_digraph>{})), long long>);
     static_assert(std::same_as<decltype(alg.total_cost()), double>);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 10.5);
 }
 
@@ -576,7 +583,7 @@ GTEST_TEST(network_simplex, runs_on_an_arc_list_with_map_factories) {
     std::vector<int> supply = {4, 0, 0, -4};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 12);
 }
 
@@ -588,7 +595,7 @@ GTEST_TEST(network_simplex, runs_with_only_one_delegated_endpoint) {
     std::vector<int> supply = {4, 0, 0, -4};
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 12);
 }
 
@@ -671,7 +678,7 @@ GTEST_TEST(network_simplex, ids_need_not_be_integral) {
         graph, [&](const opaque_arc & a) { return upper[a.index]; },
         [&](const opaque_arc & a) { return cost[a.index]; },
         [&](const opaque_vertex & v) { return supply[v.index]; });
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 12);
     for(auto && a : arcs(graph)) {
         ASSERT_GE(alg.flow(a), 0);
@@ -732,7 +739,7 @@ GTEST_TEST(network_simplex, all_negative_costs_need_the_cost_magnitude) {
     // v1 must push its 2 units down 1>2, which forces 2>0 to 2 and 0>2 to 0;
     // both negative self-loops saturate: 2*(-1) + 3*(-3) + 2*(-1) = -13
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), -13);
     check_flow_is_feasible(alg, graph, upper, supply);
     check_dual_certificate(alg, graph, upper, cost);
@@ -760,7 +767,7 @@ GTEST_TEST(network_simplex, costs_are_bounded_by_the_path_not_the_arc) {
     supply.back() = -1;
 
     network_simplex alg(graph, upper, cost, supply);
-    ASSERT_EQ(alg.run().status(), mcf_status::optimal);
+    ASSERT_TRUE(alg.run().optimal());
     ASSERT_EQ(alg.total_cost(), 1'000'000'000);
 }
 
@@ -781,7 +788,7 @@ GTEST_TEST(network_simplex, oversized_costs_are_a_precondition) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// differential: on random tiny instances the status and optimum match an
+// differential: on random tiny instances the verdict and optimum match an
 // exhaustive enumeration of every integral flow vector. Tiny and dense on
 // purpose -- parallel arcs, self-loops, zero capacities and infeasibility all
 // occur constantly at this size, and the reference is exponential.
@@ -897,13 +904,15 @@ GTEST_TEST(network_simplex, mutable_digraph_with_id_holes_matches_exhaustive) {
         network_simplex alg(H.graph, upper, cost, supply);
         alg.run();
         const std::optional<long long> reference = exhaustive_min_cost_flow(I);
-        ASSERT_EQ(alg.status() == mcf_status::optimal, reference.has_value());
+        ASSERT_EQ(alg.optimal(), reference.has_value());
 
         // a block size of one stresses the wrap of the resumable cursor over
         // the intrusive-list arcs() range
         network_simplex blocked(single_arc_block_traits{}, H.graph, upper, cost,
                                 supply);
-        ASSERT_EQ(blocked.run().status(), alg.status());
+        ASSERT_EQ(blocked.run().optimal(), alg.optimal());
+        ASSERT_EQ(blocked.infeasible(), alg.infeasible());
+        ASSERT_EQ(blocked.unbounded(), alg.unbounded());
 
         if(!reference) continue;
         ASSERT_EQ(alg.total_cost(), *reference);
@@ -952,7 +961,7 @@ GTEST_TEST(network_simplex, move_mid_solve_rebuilds_the_arc_cursor) {
         ref_alg.advance();
         auto ref_moved = std::move(ref_alg);
         ref_moved.run();
-        ASSERT_EQ(ref_moved.status(), mcf_status::optimal);
+        ASSERT_TRUE(ref_moved.optimal());
         ASSERT_EQ(ref_moved.total_cost(), 12);
     }
 
@@ -962,7 +971,7 @@ GTEST_TEST(network_simplex, move_mid_solve_rebuilds_the_arc_cursor) {
 
     auto moved = std::move(alg);
     moved.run();
-    ASSERT_EQ(moved.status(), mcf_status::optimal);
+    ASSERT_TRUE(moved.optimal());
     ASSERT_EQ(moved.total_cost(), 12);
 
     // move assignment takes the same rebuild path
@@ -985,7 +994,7 @@ GTEST_TEST(network_simplex, differential_matches_exhaustive_enumeration) {
         alg.run();
         const std::optional<long long> reference = exhaustive_min_cost_flow(I);
 
-        ASSERT_EQ(alg.status() == mcf_status::optimal, reference.has_value());
+        ASSERT_EQ(alg.optimal(), reference.has_value());
 
         // every pivot rule takes a different pivot sequence through the same
         // instance -- first-eligible (a block of one) stresses the
@@ -993,10 +1002,14 @@ GTEST_TEST(network_simplex, differential_matches_exhaustive_enumeration) {
         // scan order on
         network_simplex blocked(single_arc_block_traits{}, graph, upper, cost,
                                 I.supply);
-        ASSERT_EQ(blocked.run().status(), alg.status());
+        ASSERT_EQ(blocked.run().optimal(), alg.optimal());
+        ASSERT_EQ(blocked.infeasible(), alg.infeasible());
+        ASSERT_EQ(blocked.unbounded(), alg.unbounded());
         network_simplex best(best_eligible_traits{}, graph, upper, cost,
                              I.supply);
-        ASSERT_EQ(best.run().status(), alg.status());
+        ASSERT_EQ(best.run().optimal(), alg.optimal());
+        ASSERT_EQ(best.infeasible(), alg.infeasible());
+        ASSERT_EQ(best.unbounded(), alg.unbounded());
 
         if(!reference) continue;
         ASSERT_EQ(alg.total_cost(), *reference);

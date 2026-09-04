@@ -114,7 +114,8 @@ following renames. Code written against the earlier snapshot needs:
   maps (the root is as implicit as its virtual arcs, marked by a vertex
   being its own parent in the basis tree), and reads capacities, costs and
   supplies live through the given mappings. Steppable one pivot at a time,
-  reports `optimal` / `infeasible` / `unbounded`, and exposes the dual
+  reports its verdict through the `optimal()` / `infeasible()` /
+  `unbounded()` predicates, and exposes the dual
   potentials alongside the flow (`flows_map()` / `potentials_map()`, with
   terminal move-out). Requires `num_vertices` / `num_arcs` and the map
   factories; neither vertex nor arc ids need be integral — any copyable,
