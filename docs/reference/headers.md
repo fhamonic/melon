@@ -35,9 +35,9 @@ customization points stay in `melon`, as do the view classes
 
 | Header | Declares |
 | --- | --- |
-| `static_digraph.hpp` | [`static_digraph`](../containers/graphs.md#static_digraph) |
-| `static_forward_digraph.hpp` | [`static_forward_digraph`](../containers/graphs.md#static_forward_digraph) |
-| `mutable_digraph.hpp` | [`mutable_digraph`](../containers/graphs.md#mutable_digraph) |
+| `static_digraph.hpp` | [`basic_static_digraph<V, A>`, `static_digraph`](../containers/graphs.md#static_digraph) |
+| `static_forward_digraph.hpp` | [`basic_static_forward_digraph<V, A>`, `static_forward_digraph`](../containers/graphs.md#static_forward_digraph) |
+| `mutable_digraph.hpp` | [`basic_mutable_digraph<V, A>`, `mutable_digraph`](../containers/graphs.md#mutable_digraph) |
 | `static_map.hpp` | [`static_map<K, V>`](../containers/data-structures.md#static_map) |
 | `static_filter_map.hpp` | [`static_filter_map<K>`](../containers/data-structures.md#static_filter_map) |
 | `d_ary_heap.hpp` | [`d_ary_heap`, `updatable_d_ary_heap`](../containers/data-structures.md#heaps) |

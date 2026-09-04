@@ -137,24 +137,24 @@ GTEST_TEST(reverse_views, endpoint_maps_are_swapped_and_not_synthesised) {
 GTEST_TEST(reverse_views, dijkstra) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7);
-    builder.add_arc(0, 2, 9);
-    builder.add_arc(0, 5, 14);
-    builder.add_arc(1, 0, 7);
-    builder.add_arc(1, 2, 10);
-    builder.add_arc(1, 3, 15);
-    builder.add_arc(2, 0, 9);
-    builder.add_arc(2, 1, 10);
-    builder.add_arc(2, 3, 12);
-    builder.add_arc(2, 5, 2);
-    builder.add_arc(3, 1, 15);
-    builder.add_arc(3, 2, 12);
-    builder.add_arc(3, 4, 6);
-    builder.add_arc(4, 3, 6);
-    builder.add_arc(4, 5, 9);
-    builder.add_arc(5, 0, 14);
-    builder.add_arc(5, 2, 2);
-    builder.add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7);
+    builder.add_arc({0, 2}, 9);
+    builder.add_arc({0, 5}, 14);
+    builder.add_arc({1, 0}, 7);
+    builder.add_arc({1, 2}, 10);
+    builder.add_arc({1, 3}, 15);
+    builder.add_arc({2, 0}, 9);
+    builder.add_arc({2, 1}, 10);
+    builder.add_arc({2, 3}, 12);
+    builder.add_arc({2, 5}, 2);
+    builder.add_arc({3, 1}, 15);
+    builder.add_arc({3, 2}, 12);
+    builder.add_arc({3, 4}, 6);
+    builder.add_arc({4, 3}, 6);
+    builder.add_arc({4, 5}, 9);
+    builder.add_arc({5, 0}, 14);
+    builder.add_arc({5, 2}, 2);
+    builder.add_arc({5, 4}, 9);
 
     auto [fgraph, length_map] = builder.build();
     auto graph = views::reverse(fgraph);
@@ -195,7 +195,7 @@ GTEST_TEST(reverse_views, dijkstra) {
 // reaches the template.
 GTEST_TEST(reverse_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2);
+    builder.add_arc({0, 1}).add_arc({1, 2});
     auto [graph] = builder.build();
 
     reverse_view view(graph);
@@ -229,7 +229,7 @@ static_assert(!std::default_initializable<
 
 GTEST_TEST(reverse_views, double_reverse_unwraps) {
     static_digraph_builder<static_digraph> builder(2);
-    builder.add_arc(0u, 1u);
+    builder.add_arc({0u, 1u});
     auto [graph] = builder.build();
 
     auto once = views::reverse(graph);

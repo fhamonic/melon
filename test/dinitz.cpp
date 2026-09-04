@@ -21,16 +21,16 @@ GTEST_TEST(dinitz, test) {
     static_digraph_builder<static_digraph, int, char> builder(6);
 
     // example from https://www.geeksforgeeks.org/max-flow-problem-introduction/
-    builder.add_arc(0, 1, 16, false);
-    builder.add_arc(0, 2, 13, false);
-    builder.add_arc(1, 2, 10, false);
-    builder.add_arc(1, 3, 12, true);  //
-    builder.add_arc(2, 1, 4, false);
-    builder.add_arc(2, 4, 14, false);
-    builder.add_arc(3, 2, 9, false);
-    builder.add_arc(3, 5, 20, false);
-    builder.add_arc(4, 3, 7, true);  //
-    builder.add_arc(4, 5, 4, true);  //
+    builder.add_arc({0, 1}, 16, false);
+    builder.add_arc({0, 2}, 13, false);
+    builder.add_arc({1, 2}, 10, false);
+    builder.add_arc({1, 3}, 12, true);  //
+    builder.add_arc({2, 1}, 4, false);
+    builder.add_arc({2, 4}, 14, false);
+    builder.add_arc({3, 2}, 9, false);
+    builder.add_arc({3, 5}, 20, false);
+    builder.add_arc({4, 3}, 7, true);  //
+    builder.add_arc({4, 5}, 4, true);  //
 
     auto [graph, capacity, part_of_minimum_cut] = builder.build();
 
@@ -70,7 +70,7 @@ GTEST_TEST(dinitz, test) {
 GTEST_TEST(dinitz, arc_with_fixed_capacity) {
     static_digraph_builder<static_digraph, int> builder(2);
 
-    builder.add_arc(0, 1, 107);
+    builder.add_arc({0, 1}, 107);
 
     auto [graph, capacity] = builder.build();
 
@@ -83,7 +83,7 @@ GTEST_TEST(dinitz, arc_with_fixed_capacity) {
 GTEST_TEST(dinitz, arc_with_0_capacity) {
     static_digraph_builder<static_digraph, int> builder(2);
 
-    builder.add_arc(0, 1, 0);
+    builder.add_arc({0, 1}, 0);
 
     auto [graph, capacity] = builder.build();
 
@@ -137,16 +137,16 @@ GTEST_TEST(dinitz, graph_without_num_vertices) {
 
 GTEST_TEST(dinitz, filtered_subgraph) {
     static_digraph_builder<static_digraph, int> builder(6);
-    builder.add_arc(0, 1, 16);
-    builder.add_arc(0, 2, 13);
-    builder.add_arc(1, 2, 10);
-    builder.add_arc(1, 3, 12);
-    builder.add_arc(2, 1, 4);
-    builder.add_arc(2, 4, 14);
-    builder.add_arc(3, 2, 9);
-    builder.add_arc(3, 5, 20);
-    builder.add_arc(4, 3, 7);
-    builder.add_arc(4, 5, 4);
+    builder.add_arc({0, 1}, 16);
+    builder.add_arc({0, 2}, 13);
+    builder.add_arc({1, 2}, 10);
+    builder.add_arc({1, 3}, 12);
+    builder.add_arc({2, 1}, 4);
+    builder.add_arc({2, 4}, 14);
+    builder.add_arc({3, 2}, 9);
+    builder.add_arc({3, 5}, 20);
+    builder.add_arc({4, 3}, 7);
+    builder.add_arc({4, 5}, 4);
     auto [graph, capacity] = std::move(builder).build();
 
     auto vertex_keep = create_vertex_map<bool>(graph, true);
@@ -168,10 +168,10 @@ GTEST_TEST(dinitz, filtered_subgraph) {
 // non-borrowed filter_view cursor onto the new object's graph.
 GTEST_TEST(dinitz, filtered_subgraph_move) {
     static_digraph_builder<static_digraph, int> builder(4);
-    builder.add_arc(0, 1, 5);
-    builder.add_arc(0, 2, 3);
-    builder.add_arc(1, 3, 4);
-    builder.add_arc(2, 3, 6);
+    builder.add_arc({0, 1}, 5);
+    builder.add_arc({0, 2}, 3);
+    builder.add_arc({1, 3}, 4);
+    builder.add_arc({2, 3}, 6);
     auto [graph, capacity] = std::move(builder).build();
 
     // static_digraph(graph) copies, like auto(graph) would -- MSVC rejects
@@ -224,7 +224,7 @@ static_assert(!dinitz_admits<zero_infinity_probes::opaque_capacity>);
 namespace {
 auto two_arc_instance() {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0, 1, 5).add_arc(1, 2, 3);
+    builder.add_arc({0, 1}, 5).add_arc({1, 2}, 3);
     return builder.build();
 }
 }  // namespace

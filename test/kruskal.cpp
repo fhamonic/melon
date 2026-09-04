@@ -28,15 +28,15 @@ GTEST_TEST(kruskal, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
     builder
-        .add_arc(0, 1, 7)    // 0
-        .add_arc(0, 2, 9)    // 1
-        .add_arc(0, 5, 14)   // 2
-        .add_arc(1, 2, 10)   // 3
-        .add_arc(1, 3, 15)   // 4
-        .add_arc(2, 3, 12)   // 5
-        .add_arc(2, 5, 2)    // 6
-        .add_arc(3, 4, 6)    // 7
-        .add_arc(4, 5, 11);  // 8
+        .add_arc({0, 1}, 7)    // 0
+        .add_arc({0, 2}, 9)    // 1
+        .add_arc({0, 5}, 14)   // 2
+        .add_arc({1, 2}, 10)   // 3
+        .add_arc({1, 3}, 15)   // 4
+        .add_arc({2, 3}, 12)   // 5
+        .add_arc({2, 5}, 2)    // 6
+        .add_arc({3, 4}, 6)    // 7
+        .add_arc({4, 5}, 11);  // 8
 
     auto [graph, cost_map] = builder.build();
     auto ugraph = views::undirect(graph);
@@ -96,9 +96,9 @@ GTEST_TEST(kruskal, edgeless_graph) {
 GTEST_TEST(kruskal, cheapest_edge_is_a_self_loop) {
     static_digraph_builder<static_digraph, int> builder(3);
     builder
-        .add_arc(0, 0, 1)   // 0: self-loop, and the cheapest edge
-        .add_arc(0, 1, 2)   // 1
-        .add_arc(1, 2, 3);  // 2
+        .add_arc({0, 0}, 1)   // 0: self-loop, and the cheapest edge
+        .add_arc({0, 1}, 2)   // 1
+        .add_arc({1, 2}, 3);  // 2
     auto [graph, cost_map] = builder.build();
     auto ugraph = views::undirect(graph);
 

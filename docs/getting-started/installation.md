@@ -162,6 +162,14 @@ Starting with 1.0.0, melon follows [semantic versioning](https://semver.org): ev
 
 The guarantee covers every documented name in `namespace melon`, `melon::views`, `melon::maps` and `melon::numeric` — the customization point objects (`vertices`, `out_arcs`, …) are reachable as `melon::` names and covered as such, while `melon::cpo`, which holds only their implementation types, stays out per the `detail` rule above — plus the behavioural contracts stated throughout this documentation — the [algorithm lifecycle](../algorithms/index.md#the-lifecycle-contract), the [ownership rules](../views/ownership.md), the [mapping concepts](../graphs/mappings.md). Those contracts are deliberate design decisions, each pinned by tests (`test/api_consistency.cpp`, `test/api_review.cpp`), and will not be relitigated within 1.x. If a 1.x release ever breaks code that follows them, that is a bug in melon.
 
+!!! note "Do not forward-declare melon types"
+
+    Whether a documented name is a class, a class template or an alias of
+    one — `static_digraph` is `basic_static_digraph<>` — is not part of the
+    guarantee, and a defaulted template parameter may be appended in a
+    minor release. A user-side `class static_digraph;` can therefore stop
+    compiling; include the header instead.
+
 !!! note "Types documented only by concept are not frozen"
 
     The exact type of a member documented only by concept — the concrete range

@@ -17,24 +17,24 @@ using namespace melon;
 GTEST_TEST(network_voronoi, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 
@@ -70,24 +70,24 @@ GTEST_TEST(network_voronoi, test) {
 GTEST_TEST(network_voronoi, test_for) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 
@@ -129,24 +129,24 @@ static_assert(network_voronoi_traits<network_voronoi_adjacency_traits>);
 GTEST_TEST(network_voronoi, store_cluster_adjacency_is_inert) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 
@@ -200,7 +200,7 @@ static_assert(
 
 GTEST_TEST(network_voronoi, default_traits_spelling_runs) {
     static_digraph_builder<static_digraph, int> builder(4);
-    builder.add_arc(0, 1, 2).add_arc(1, 2, 3).add_arc(3, 2, 1);
+    builder.add_arc({0, 1}, 2).add_arc({1, 2}, 3).add_arc({3, 2}, 1);
     auto [graph, length_map] = builder.build();
     std::vector<vertex_t<static_digraph>> kernels = {0u, 3u};
 
@@ -256,24 +256,24 @@ static_assert(!has_cluster_accessor<default_traits_alg>);
 GTEST_TEST(network_voronoi, stored_distances_and_clusters) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 

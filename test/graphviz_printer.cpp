@@ -20,7 +20,7 @@ using printer = graphviz_printer<static_digraph>;
 // 0 -> 1 -> 2, plus the shortcut 0 -> 2.
 static auto triangle_digraph() {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u).add_arc(0u, 2u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u}).add_arc({0u, 2u});
     auto [graph] = builder.build();
     return graph;
 }

@@ -11,12 +11,15 @@ melon ships three digraph implementations. They differ in what they store, and t
 | `arc_source` | ✓ | | ✓ |
 | `out_degree` in O(1) | ✓ | ✓ | |
 | Modifiable | | | ✓ |
-| Storage per arc | 3 integers | 1 integer | 6 integers + 1 bit |
-| Storage per vertex | 2 integers | 1 integer | 4 integers + 1 bit |
+| Storage per arc | 3 handles | 1 handle | 6 handles + 1 bit |
+| Storage per vertex | 2 handles | 1 handle | 4 handles + 1 bit |
+| Template | `basic_static_digraph<V, A>` | `basic_static_forward_digraph<V, A>` | `basic_mutable_digraph<V, A>` |
+
+Each name is an alias of the class template on its row instantiated at `unsigned int` for both handle types; see [handle types](#handle-types) for choosing others.
 
 ## `static_digraph`
 
-An immutable compressed-adjacency structure whose vertices and arcs are consecutive `unsigned int`s starting at 0. It supports every common lookup with good constants:
+An immutable compressed-adjacency structure whose vertices and arcs are consecutive integers starting at 0 — `unsigned int`s unless you [pick another handle type](#handle-types). It supports every common lookup with good constants:
 
 - iterate over vertices and over arcs — both are `iota` ranges, so random-access and sized;
 - source and target of a given arc;
@@ -44,7 +47,7 @@ static_digraph graph(3, sources, targets);
 
 ## `static_forward_digraph`
 
-The same compressed layout with the reverse index and the source array dropped: one integer per arc instead of three. It answers `vertices`, `arcs`, `out_arcs`, `arc_target`, `out_neighbors` and `out_degree`, and nothing about the reverse direction.
+The same compressed layout with the reverse index and the source array dropped: one handle per arc instead of three. It answers `vertices`, `arcs`, `out_arcs`, `arc_target`, `out_neighbors` and `out_degree`, and nothing about the reverse direction.
 
 ```cpp
 static_assert(outward_incidence_graph<static_forward_digraph>);
@@ -104,6 +107,43 @@ Vertex and arc maps are still handed out by the graph, and are sized to the curr
 auto mark = create_vertex_map<bool>(g, false);
 ```
 
+## Handle types
+
+The three containers are aliases of class templates over their vertex and arc handle types, the way `std::string` is `std::basic_string<char>`:
+
+```cpp
+template <std::unsigned_integral V = unsigned int,
+          std::unsigned_integral A = unsigned int>
+class basic_static_digraph;
+using static_digraph = basic_static_digraph<>;
+// likewise basic_static_forward_digraph / static_forward_digraph
+//      and basic_mutable_digraph / mutable_digraph
+```
+
+`V` is the vertex type and `A` the arc type, both **unsigned**: every bound in the containers is a `<` comparison, and the intrusive lists of `mutable_digraph` use the handle's maximum as their null marker, so a signed handle is rejected at instantiation. Everything downstream is generic over `vertex_t<G>` and `arc_t<G>`, so the algorithms, the [builder](#the-builder), [`make_static_digraph`](#rebuilding-as-a-static_digraph) and the views take a non-default instantiation without further ado.
+
+Pick the width from the graph size and the memory budget:
+
+```cpp
+// more than 2^32 arcs: 64-bit arc handles, vertices still fit in 32 bits
+basic_static_digraph<unsigned int, std::uint64_t> huge(n, sources, targets);
+
+// many small graphs held at once: 16-bit handles halve every array and map
+basic_static_forward_digraph<std::uint16_t, std::uint16_t> tiny(n, sources, targets);
+
+// arc maps are keyed on the chosen type
+auto length = create_arc_map<double>(huge);   // static_map<std::uint64_t, double>
+```
+
+The handle type bounds the graph. The static containers accept up to `std::numeric_limits<V>::max()` vertices and `std::numeric_limits<A>::max()` arcs; `mutable_digraph` one fewer of each, since the maximum is its null marker. Past that the constructor, or `create_vertex` / `create_arc`, `assert`s rather than wrapping to a corrupt structure.
+
+!!! note "Spell the alias, do not forward-declare it"
+
+    `static_digraph`, `static_forward_digraph` and `mutable_digraph` are
+    aliases of class template instantiations, not classes:
+    `class static_digraph;`
+    in your code does not compile. Include the header instead.
+
 ## The builder
 
 `static_digraph_builder<G, Properties...>` collects arcs and their per-arc data, then produces the graph and one map per property in a single pass.
@@ -113,14 +153,21 @@ auto mark = create_vertex_map<bool>(g, false);
 
 static_digraph_builder<static_digraph, double, std::string> builder(6);
 
-builder.add_arc(0, 1, 7.0, "a")
-       .add_arc(2, 5, 2.0, "b")
-       .add_arc(0, 2, 9.0, "c");
+builder.add_arc({0, 1}, 7.0, "a")
+       .add_arc({2, 5}, 2.0, "b")
+       .add_arc({0, 2}, 9.0, "c");
 
 auto [graph, length_map, name_map] = builder.build();
 ```
 
-- `add_arc` returns the builder, so calls chain.
+- `add_arc` takes the endpoints as one pair, `{source, target}`, followed by one value per property, so the call shows where the topology stops and the data begins. A builder without properties also accepts the plain `add_arc(source, target)`, since nothing can follow the endpoints there. It returns the builder, so calls chain.
+- `add_arcs` appends a whole range at once: a range of endpoint pairs on a property-less builder, otherwise a range of tuple-likes holding the pair and then the property values — the shape `std::views::zip` produces. Copying the arcs of an existing graph is one call:
+
+    ```cpp
+    static_digraph_builder<static_digraph, double> copy(num_vertices(g));
+    copy.add_arcs(std::views::zip(arcs_entries(g) | std::views::values,
+                                  arcs(g) | std::views::transform(length)));
+    ```
 - `build()` returns a `std::tuple` — with no properties it is a one-element tuple, so the idiom stays `auto [graph] = builder.build();`.
 - Both are ref-qualified: `build()` on an lvalue builder copies the property vectors, `std::move(builder).build()` — or a whole chain started from a temporary, `static_digraph_builder<G, P>(n).add_arc(…).build()` — moves them out and leaves the builder moved-from. `build()` is not idempotent either way: it sorts in place.
 - The property maps are `std::vector<Property>`, which is an `output_mapping` and a `contiguous_mapping`; nothing else is required of them.

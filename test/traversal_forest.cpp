@@ -23,7 +23,7 @@ using namespace melon;
 GTEST_TEST(traversal_forest, test) {
     static_digraph_builder<static_digraph> builder(4);
 
-    builder.add_arc(0, 1).add_arc(2, 1);
+    builder.add_arc({0, 1}).add_arc({2, 1});
 
     auto [graph] = builder.build();
 
@@ -51,7 +51,7 @@ GTEST_TEST(traversal_forest, test) {
 // temporary container. Passing one then does not compile.
 GTEST_TEST(traversal_forest, sources_from_a_temporary_range) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     traversal_forest alg(graph, std::vector<unsigned int>{2u});
@@ -75,7 +75,7 @@ GTEST_TEST(traversal_forest, sources_from_a_temporary_range) {
 // advance() has to be redone too, or current() names a stale tree.
 GTEST_TEST(traversal_forest, reset_keeps_the_given_sources) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     std::vector<unsigned int> sources{2u};
@@ -102,7 +102,7 @@ GTEST_TEST(traversal_forest, reset_keeps_the_given_sources) {
 
 GTEST_TEST(traversal_forest, reset_restarts_the_default_sources) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 1);
+    builder.add_arc({0, 1}).add_arc({2, 1});
     auto [graph] = builder.build();
 
     traversal_forest alg(graph);
@@ -137,7 +137,7 @@ GTEST_TEST(traversal_forest, empty_graph) {
 
 GTEST_TEST(traversal_forest, empty_source_range) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1);
+    builder.add_arc({0, 1});
     auto [graph] = builder.build();
 
     traversal_forest alg(graph, std::vector<unsigned int>{});
@@ -159,7 +159,7 @@ GTEST_TEST(traversal_forest, empty_source_range) {
 // an algorithm is not constructible from an algorithm lvalue at all.
 GTEST_TEST(traversal_forest, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     traversal_forest alg(graph);

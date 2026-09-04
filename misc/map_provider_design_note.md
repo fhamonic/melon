@@ -439,10 +439,17 @@ container (`probe/slots_probe.cpp`) with the real `dijkstra` and
 **A typed slot as a template parameter, not a byte arena.**
 
 ```cpp
-template <typename VertexSlot = void, typename ArcSlot = void>
+template <std::unsigned_integral V = unsigned int,
+          std::unsigned_integral A = unsigned int,   // landed 2026-09-04
+          typename VertexSlot = void, typename ArcSlot = void>
 class basic_mutable_digraph { ... };
 using mutable_digraph = basic_mutable_digraph<>;   // the note's Rider 1
 ```
+
+The `basic_` + alias rename landed on 2026-09-04 for all three containers,
+with the handle types as the first two parameters (the knob users reach for:
+64-bit arcs past 2^32, 16-bit handles for many small graphs). Slots append
+as defaulted third and fourth parameters, so stage three stays additive.
 
 A typed slot needs no `std::start_lifetime_as`, no alignment or capacity
 `static_assert`s, admits every value type the view-owned record admits,
@@ -522,8 +529,8 @@ padding above come back.
   stages one and two no container changes. The v1.0.0 retag needs nothing
   from this note.
 - Stage three is additive only through the `basic_mutable_digraph` +
-  alias route: `mutable_digraph` is a plain class today and templatizing
-  it in place breaks every bare mention of the name.
+  alias route, which is now in place (2026-09-04): the slots go after the
+  two handle-type parameters as defaulted third and fourth.
 - The API-stability line reserving appended defaulted template parameters
   and forbidding user forward declarations of melon types is no longer a
   prerequisite; still worth adding as general hygiene.

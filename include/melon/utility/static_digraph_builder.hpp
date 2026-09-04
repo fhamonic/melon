@@ -6,6 +6,7 @@
 #include <numeric>
 #include <ranges>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -13,6 +14,31 @@
 #include "melon/graph.hpp"
 
 namespace melon {
+
+namespace detail {
+template <typename E, typename Vertex, typename... Props>
+constexpr bool builder_entry_fields_convertible =
+    []<std::size_t... Is>(std::index_sequence<Is...>) {
+        return std::convertible_to<std::tuple_element_t<0, E>,
+                                   std::pair<Vertex, Vertex>> &&
+               (std::convertible_to<std::tuple_element_t<Is + 1, E>, Props> &&
+                ...);
+    }(std::index_sequence_for<Props...>{});
+
+// What one element of an add_arcs range must be: the endpoint pair itself
+// for a property-less builder, otherwise a tuple-like holding the pair and
+// then one value per property -- the shape std::views::zip produces from an
+// endpoints range and the property ranges.
+template <typename E, typename Vertex, typename... Props>
+concept builder_arc_entry =
+    (sizeof...(Props) == 0 &&
+     std::convertible_to<E, std::pair<Vertex, Vertex>>) ||
+    (sizeof...(Props) > 0 &&
+     requires { std::tuple_size<std::remove_cvref_t<E>>::value; } &&
+     std::tuple_size_v<std::remove_cvref_t<E>> == 1 + sizeof...(Props) &&
+     builder_entry_fields_convertible<std::remove_cvref_t<E>, Vertex,
+                                      Props...>);
+}  // namespace detail
 
 template <graph G, typename... ArcProperty>
 class static_digraph_builder {
@@ -40,13 +66,40 @@ private:
          ...);
     }
 
-    void push_arc(vertex u, vertex v, ArcProperty... properties) {
-        assert(_num_vertices > std::max(u, v));
-        _arc_sources.push_back(u);
-        _arc_targets.push_back(v);
+    void push_arc(std::pair<vertex, vertex> uv, ArcProperty... properties) {
+        assert(_num_vertices > std::max(uv.first, uv.second));
+        _arc_sources.push_back(uv.first);
+        _arc_targets.push_back(uv.second);
         add_properties(
             _arc_property_maps, std::forward_as_tuple(std::move(properties)...),
             std::make_index_sequence<std::tuple_size<property_maps>{}>{});
+    }
+
+    template <std::ranges::input_range R>
+    void push_arcs(R && entries) {
+        if constexpr(std::ranges::sized_range<R>) {
+            const std::size_t n =
+                _arc_sources.size() +
+                static_cast<std::size_t>(std::ranges::size(entries));
+            _arc_sources.reserve(n);
+            _arc_targets.reserve(n);
+            std::apply(
+                [n](auto &... property_map) { (property_map.reserve(n), ...); },
+                _arc_property_maps);
+        }
+        for(auto && entry : entries) {
+            if constexpr(sizeof...(ArcProperty) == 0) {
+                push_arc(std::forward<decltype(entry)>(entry));
+            } else {
+                std::apply(
+                    [this](auto && uv, auto &&... properties) {
+                        push_arc(
+                            std::forward<decltype(uv)>(uv),
+                            std::forward<decltype(properties)>(properties)...);
+                    },
+                    std::forward<decltype(entry)>(entry));
+            }
+        }
     }
 
     void sort_arcs() {
@@ -65,21 +118,60 @@ private:
 
 public:
     // Ref-qualified so that value category survives a chain: a single
-    // `static_digraph_builder &` return would make `std::move(b).add_arc(u, v)`
-    // an *lvalue* and send the following .build() to the copying overload.
+    // `static_digraph_builder &` return would make
+    // `std::move(b).add_arc({u, v})` an *lvalue* and send the following
+    // .build() to the copying overload.
     //
     // The usual rvalue-builder caveat applies: the reference is to the object
     // the chain started from, so binding it past the end of the full
-    // expression (`auto && b = static_digraph_builder<G>(6).add_arc(0, 1);`)
+    // expression (`auto && b = static_digraph_builder<G>(6).add_arc({0, 1});`)
     // dangles, exactly as it would for any other member returning *this.
-    static_digraph_builder & add_arc(vertex u, vertex v,
+    // The endpoints travel as one pair -- add_arc({u, v}, length) -- so the
+    // call shows where the topology stops and the properties begin, which
+    // three positional integers do not.
+    static_digraph_builder & add_arc(std::pair<vertex, vertex> uv,
                                      ArcProperty... properties) & {
-        push_arc(u, v, std::move(properties)...);
+        push_arc(uv, std::move(properties)...);
         return *this;
     }
-    static_digraph_builder && add_arc(vertex u, vertex v,
+    static_digraph_builder && add_arc(std::pair<vertex, vertex> uv,
                                       ArcProperty... properties) && {
-        push_arc(u, v, std::move(properties)...);
+        push_arc(uv, std::move(properties)...);
+        return std::move(*this);
+    }
+
+    // Without properties nothing can follow the endpoints, so the two-vertex
+    // spelling every graph library uses is unambiguous and offered too. The
+    // requires-clause removes it, rather than the pair form, the moment a
+    // property is added.
+    static_digraph_builder & add_arc(vertex u, vertex v) &
+        requires(sizeof...(ArcProperty) == 0)
+    {
+        push_arc({u, v});
+        return *this;
+    }
+    static_digraph_builder && add_arc(vertex u, vertex v) &&
+        requires(sizeof...(ArcProperty) == 0)
+    {
+        push_arc({u, v});
+        return std::move(*this);
+    }
+
+    // Bulk form: a range of endpoint pairs, or of (pair, properties...)
+    // tuple-likes -- std::views::zip(endpoints, lengths) -- appended in
+    // range order. Sized ranges reserve up front.
+    template <std::ranges::input_range R>
+        requires detail::builder_arc_entry<std::ranges::range_reference_t<R>,
+                                           vertex, ArcProperty...>
+    static_digraph_builder & add_arcs(R && entries) & {
+        push_arcs(std::forward<R>(entries));
+        return *this;
+    }
+    template <std::ranges::input_range R>
+        requires detail::builder_arc_entry<std::ranges::range_reference_t<R>,
+                                           vertex, ArcProperty...>
+    static_digraph_builder && add_arcs(R && entries) && {
+        push_arcs(std::forward<R>(entries));
         return std::move(*this);
     }
 

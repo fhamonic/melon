@@ -39,7 +39,7 @@ Note the vocabulary choice: melon says **arc** for a directed edge and reserves 
 
     ```cpp
     static_digraph_builder<static_digraph, double> builder(n);
-    builder.add_arc(0, 1, 7.0).add_arc(1, 2, 9.0);
+    builder.add_arc({0, 1}, 7.0).add_arc({1, 2}, 9.0);
     auto [g, length] = builder.build();
 
     for(auto && [v, dist] : dijkstra(g, length, 0u))

@@ -178,7 +178,7 @@ GTEST_TEST(undirected_graph_all, selects_the_right_adaptor) {
 // a no-op rather than another layer of indirection.
 GTEST_TEST(undirected_graph_all, passes_undirect_through) {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0u, 1u, 1).add_arc(1u, 2u, 2).add_arc(2u, 0u, 3);
+    builder.add_arc({0u, 1u}, 1).add_arc({1u, 2u}, 2).add_arc({2u, 0u}, 3);
     auto [digraph, weights] = builder.build();
 
     auto undirected = views::undirect(digraph);

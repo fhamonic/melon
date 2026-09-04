@@ -15,19 +15,19 @@ using namespace melon;
 // six vertices, 0 to 5; one double of data per arc
 static_digraph_builder<static_digraph, double> builder(6);
 
-builder.add_arc(0, 1, 7.0)
-    .add_arc(0, 2, 9.0)
-    .add_arc(0, 5, 14.0)
-    .add_arc(1, 3, 15.0)
-    .add_arc(2, 3, 12.0)
-    .add_arc(2, 5, 2.0)
-    .add_arc(3, 4, 6.0)
-    .add_arc(5, 4, 9.0);
+builder.add_arc({0, 1}, 7.0)
+    .add_arc({0, 2}, 9.0)
+    .add_arc({0, 5}, 14.0)
+    .add_arc({1, 3}, 15.0)
+    .add_arc({2, 3}, 12.0)
+    .add_arc({2, 5}, 2.0)
+    .add_arc({3, 4}, 6.0)
+    .add_arc({5, 4}, 9.0);
 
 auto [graph, length_map] = builder.build();
 ```
 
-The builder is variadic in its arc properties: `static_digraph_builder<static_digraph, double, std::string>` would take an extra argument per `add_arc` and return an extra map from `build()`. With no property at all, `build()` still returns a tuple, so the idiom is `auto [graph] = builder.build();`.
+Each `add_arc` takes the endpoints as one `{source, target}` pair, then the arc's data. The builder is variadic in its arc properties: `static_digraph_builder<static_digraph, double, std::string>` would take an extra argument per `add_arc` and return an extra map from `build()`. A range of arcs goes in at once with `add_arcs`. With no property at all, `build()` still returns a tuple, so the idiom is `auto [graph] = builder.build();`.
 
 !!! warning "`build()` renumbers the arcs"
 

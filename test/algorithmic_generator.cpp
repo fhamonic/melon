@@ -171,7 +171,7 @@ GTEST_TEST(algorithm_view_interface, composes_with_std_ranges) {
 
 GTEST_TEST(algorithm_view_interface, drives_a_real_traversal) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u).add_arc(2u, 3u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u}).add_arc({2u, 3u});
     auto [graph] = builder.build();
 
     breadth_first_search alg(graph, 0u);

@@ -26,7 +26,7 @@ template <typename G, std::uniform_random_bit_generator Generator>
         for(std::size_t j = 0; j < num_vertices_; ++j) {
             if(i == j) continue;
             if(distr(gen) < expected_density)
-                builder.add_arc(vertex(i), vertex(j));
+                builder.add_arc({vertex(i), vertex(j)});
         }
     }
 

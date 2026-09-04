@@ -17,10 +17,14 @@
 
 namespace melon {
 
-class mutable_digraph {
+// Unsigned handles only: the intrusive lists use the handle's max as their
+// null, and a signed id would make -1 a live cursor.
+template <std::unsigned_integral V = unsigned int,
+          std::unsigned_integral A = unsigned int>
+class basic_mutable_digraph {
 private:
-    using vertex = unsigned int;
-    using arc = unsigned int;
+    using vertex = V;
+    using arc = A;
 
     static constexpr vertex INVALID_VERTEX = std::numeric_limits<vertex>::max();
     static constexpr arc INVALID_ARC = std::numeric_limits<arc>::max();
@@ -49,14 +53,15 @@ private:
     std::size_t _num_arcs;
 
     class vertices_iterator
-        : public detail::intrusive_iterator_base<mutable_digraph, vertex> {
+        : public detail::intrusive_iterator_base<basic_mutable_digraph,
+                                                 vertex> {
         // MSVC (through at least VS 18.6) denies hidden friends of a nested
         // class the enclosing class's private access: a friend comparing
         // against INVALID_VERTEX directly fails to compile there.
         static constexpr vertex _invalid_cursor = INVALID_VERTEX;
 
     public:
-        using detail::intrusive_iterator_base<mutable_digraph,
+        using detail::intrusive_iterator_base<basic_mutable_digraph,
                                               vertex>::intrusive_iterator_base;
 
         // At-end, not zero: std::ranges::subrange value-initializes its
@@ -67,7 +72,8 @@ private:
             : vertices_iterator(nullptr, _invalid_cursor) {}
 
         constexpr vertices_iterator & operator++() noexcept {
-            _cursor = _structure->_vertices[_cursor].next_vertex;
+            this->_cursor =
+                this->_structure->_vertices[this->_cursor].next_vertex;
             return *this;
         }
         constexpr vertices_iterator operator++(int) noexcept {
@@ -88,14 +94,14 @@ private:
     };
 
     class out_arcs_iterator
-        : public detail::intrusive_iterator_base<mutable_digraph, arc> {
+        : public detail::intrusive_iterator_base<basic_mutable_digraph, arc> {
         // MSVC (through at least VS 18.6) denies hidden friends of a nested
         // class the enclosing class's private access: a friend comparing
         // against INVALID_ARC directly fails to compile there.
         static constexpr arc _invalid_cursor = INVALID_ARC;
 
     public:
-        using detail::intrusive_iterator_base<mutable_digraph,
+        using detail::intrusive_iterator_base<basic_mutable_digraph,
                                               arc>::intrusive_iterator_base;
 
         // At-end, not zero -- see vertices_iterator.
@@ -103,7 +109,7 @@ private:
             : out_arcs_iterator(nullptr, _invalid_cursor) {}
 
         constexpr out_arcs_iterator & operator++() noexcept {
-            _cursor = _structure->_arcs[_cursor].next_out_arc;
+            this->_cursor = this->_structure->_arcs[this->_cursor].next_out_arc;
             return *this;
         }
         constexpr out_arcs_iterator operator++(int) noexcept {
@@ -124,14 +130,14 @@ private:
     };
 
     class in_arcs_iterator
-        : public detail::intrusive_iterator_base<mutable_digraph, arc> {
+        : public detail::intrusive_iterator_base<basic_mutable_digraph, arc> {
         // MSVC (through at least VS 18.6) denies hidden friends of a nested
         // class the enclosing class's private access: a friend comparing
         // against INVALID_ARC directly fails to compile there.
         static constexpr arc _invalid_cursor = INVALID_ARC;
 
     public:
-        using detail::intrusive_iterator_base<mutable_digraph,
+        using detail::intrusive_iterator_base<basic_mutable_digraph,
                                               arc>::intrusive_iterator_base;
 
         // At-end, not zero -- see vertices_iterator.
@@ -139,7 +145,7 @@ private:
             : in_arcs_iterator(nullptr, _invalid_cursor) {}
 
         constexpr in_arcs_iterator & operator++() noexcept {
-            _cursor = _structure->_arcs[_cursor].next_in_arc;
+            this->_cursor = this->_structure->_arcs[this->_cursor].next_in_arc;
             return *this;
         }
         constexpr in_arcs_iterator operator++(int) noexcept {
@@ -160,18 +166,19 @@ private:
     };
 
 public:
-    constexpr mutable_digraph() noexcept
+    constexpr basic_mutable_digraph() noexcept
         : _first_vertex(INVALID_VERTEX)
         , _first_free_vertex(INVALID_VERTEX)
         , _first_free_arc(INVALID_ARC)
         , _num_vertices(0)
         , _num_arcs(0) {};
-    constexpr mutable_digraph(const mutable_digraph & graph) = default;
+    constexpr basic_mutable_digraph(const basic_mutable_digraph & graph) =
+        default;
     // Hand-written moves: the vectors empty on move, but a defaulted
     // member-wise move keeps the counts and list heads, so a moved-from graph
     // claims vertices its vectors no longer hold. The scalars go back to the
     // default-constructed (empty) state instead.
-    constexpr mutable_digraph(mutable_digraph && graph) noexcept
+    constexpr basic_mutable_digraph(basic_mutable_digraph && graph) noexcept
         : _vertices(std::move(graph._vertices))
         , _arcs(std::move(graph._arcs))
         , _vertices_filter(std::move(graph._vertices_filter))
@@ -183,8 +190,10 @@ public:
         , _num_vertices(std::exchange(graph._num_vertices, 0))
         , _num_arcs(std::exchange(graph._num_arcs, 0)) {}
 
-    constexpr mutable_digraph & operator=(const mutable_digraph &) = default;
-    constexpr mutable_digraph & operator=(mutable_digraph && graph) noexcept {
+    constexpr basic_mutable_digraph & operator=(const basic_mutable_digraph &) =
+        default;
+    constexpr basic_mutable_digraph & operator=(
+        basic_mutable_digraph && graph) noexcept {
         _vertices = std::move(graph._vertices);
         _arcs = std::move(graph._arcs);
         _vertices_filter = std::move(graph._vertices_filter);
@@ -276,6 +285,8 @@ public:
     [[nodiscard]] constexpr vertex create_vertex() {
         vertex new_vertex;
         if(_first_free_vertex == INVALID_VERTEX) {
+            // The next id would be the null marker itself.
+            assert(_vertices.size() < INVALID_VERTEX);
             new_vertex = static_cast<vertex>(_vertices.size());
             _vertices.emplace_back(INVALID_ARC, INVALID_ARC, INVALID_VERTEX,
                                    _first_vertex);
@@ -302,6 +313,8 @@ public:
         vertex_struct & tos = _vertices[to];
         vertex_struct & froms = _vertices[from];
         if(_first_free_arc == INVALID_ARC) {
+            // The next id would be the null marker itself.
+            assert(_arcs.size() < INVALID_ARC);
             new_arc = static_cast<arc>(_arcs.size());
             _arcs.emplace_back(from, to, INVALID_ARC, tos.first_in_arc,
                                INVALID_ARC, froms.first_out_arc);
@@ -495,5 +508,7 @@ public:
         return static_map<arc, T>(_arcs.size(), default_value);
     }
 };
+
+using mutable_digraph = basic_mutable_digraph<>;
 
 }  // namespace melon

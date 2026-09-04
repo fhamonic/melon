@@ -78,11 +78,11 @@ GTEST_TEST(network_simplex, fixed_transportation_instance) {
     // (0>1>2>3 and 0>2>3) each saturate at 2 units, so the optimum of 12
     // and its flow vector are unique.
     static_digraph_builder<static_digraph, int, int, int> builder(4);
-    builder.add_arc(0u, 1u, 4, 1, 2);
-    builder.add_arc(0u, 2u, 2, 2, 2);
-    builder.add_arc(1u, 2u, 2, 1, 2);
-    builder.add_arc(1u, 3u, 3, 3, 0);
-    builder.add_arc(2u, 3u, 5, 1, 4);
+    builder.add_arc({0u, 1u}, 4, 1, 2);
+    builder.add_arc({0u, 2u}, 2, 2, 2);
+    builder.add_arc({1u, 2u}, 2, 1, 2);
+    builder.add_arc({1u, 3u}, 3, 3, 0);
+    builder.add_arc({2u, 3u}, 5, 1, 4);
     auto [graph, upper, cost, expected_flow] = builder.build();
     std::vector<int> supply = {4, 0, 0, -4};
 
@@ -105,11 +105,11 @@ GTEST_TEST(network_simplex, fixed_transportation_instance) {
 // constructible_from assert, which would leave the pivot loop uninstantiated.
 GTEST_TEST(network_simplex, const_graph_and_const_mappings) {
     static_digraph_builder<static_digraph, int, int> builder(4);
-    builder.add_arc(0u, 1u, 4, 1);
-    builder.add_arc(0u, 2u, 2, 2);
-    builder.add_arc(1u, 2u, 2, 1);
-    builder.add_arc(1u, 3u, 3, 3);
-    builder.add_arc(2u, 3u, 5, 1);
+    builder.add_arc({0u, 1u}, 4, 1);
+    builder.add_arc({0u, 2u}, 2, 2);
+    builder.add_arc({1u, 2u}, 2, 1);
+    builder.add_arc({1u, 3u}, 3, 3);
+    builder.add_arc({2u, 3u}, 5, 1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {4, 0, 0, -4};
 
@@ -144,11 +144,11 @@ static_assert(
 
 GTEST_TEST(network_simplex, terminal_maps_survive_the_algorithm) {
     static_digraph_builder<static_digraph, int, int, int> builder(4);
-    builder.add_arc(0u, 1u, 4, 1, 2);
-    builder.add_arc(0u, 2u, 2, 2, 2);
-    builder.add_arc(1u, 2u, 2, 1, 2);
-    builder.add_arc(1u, 3u, 3, 3, 0);
-    builder.add_arc(2u, 3u, 5, 1, 4);
+    builder.add_arc({0u, 1u}, 4, 1, 2);
+    builder.add_arc({0u, 2u}, 2, 2, 2);
+    builder.add_arc({1u, 2u}, 2, 1, 2);
+    builder.add_arc({1u, 3u}, 3, 3, 0);
+    builder.add_arc({2u, 3u}, 5, 1, 4);
     auto [graph, upper, cost, expected_flow] = builder.build();
     std::vector<int> supply = {4, 0, 0, -4};
 
@@ -186,11 +186,11 @@ GTEST_TEST(network_simplex, terminal_maps_survive_the_algorithm) {
 
 GTEST_TEST(network_simplex, steppable_advance_matches_run) {
     static_digraph_builder<static_digraph, int, int> builder(4);
-    builder.add_arc(0u, 1u, 4, 1);
-    builder.add_arc(0u, 2u, 2, 2);
-    builder.add_arc(1u, 2u, 2, 1);
-    builder.add_arc(1u, 3u, 3, 3);
-    builder.add_arc(2u, 3u, 5, 1);
+    builder.add_arc({0u, 1u}, 4, 1);
+    builder.add_arc({0u, 2u}, 2, 2);
+    builder.add_arc({1u, 2u}, 2, 1);
+    builder.add_arc({1u, 3u}, 3, 3);
+    builder.add_arc({2u, 3u}, 5, 1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {4, 0, 0, -4};
 
@@ -210,8 +210,8 @@ GTEST_TEST(network_simplex, steppable_advance_matches_run) {
 
 GTEST_TEST(network_simplex, reset_rereads_the_maps) {
     static_digraph_builder<static_digraph, int, int> builder(3);
-    builder.add_arc(0u, 1u, 5, 2);
-    builder.add_arc(1u, 2u, 5, 3);
+    builder.add_arc({0u, 1u}, 5, 2);
+    builder.add_arc({1u, 2u}, 5, 3);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {3, 0, -3};
 
@@ -235,7 +235,7 @@ GTEST_TEST(network_simplex, reset_rereads_the_maps) {
 
 GTEST_TEST(network_simplex, infeasible_when_capacity_is_insufficient) {
     static_digraph_builder<static_digraph, int, int> builder(2);
-    builder.add_arc(0u, 1u, 2, 1);
+    builder.add_arc({0u, 1u}, 2, 1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {4, -4};
 
@@ -246,8 +246,8 @@ GTEST_TEST(network_simplex, infeasible_when_capacity_is_insufficient) {
 GTEST_TEST(network_simplex, unbounded_on_a_negative_uncapacitated_cycle) {
     constexpr int INF = std::numeric_limits<int>::max();
     static_digraph_builder<static_digraph, int, int> builder(2);
-    builder.add_arc(0u, 1u, INF, -1);
-    builder.add_arc(1u, 0u, INF, -1);
+    builder.add_arc({0u, 1u}, INF, -1);
+    builder.add_arc({1u, 0u}, INF, -1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {0, 0};
 
@@ -262,9 +262,9 @@ GTEST_TEST(network_simplex, unbounded_on_a_negative_uncapacitated_cycle) {
 
 GTEST_TEST(network_simplex, negative_cycle_circulation_saturates) {
     static_digraph_builder<static_digraph, int, int> builder(3);
-    builder.add_arc(0u, 1u, 5, -2);
-    builder.add_arc(1u, 2u, 5, 1);
-    builder.add_arc(2u, 0u, 5, 0);
+    builder.add_arc({0u, 1u}, 5, -2);
+    builder.add_arc({1u, 2u}, 5, 1);
+    builder.add_arc({2u, 0u}, 5, 0);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {0, 0, 0};
 
@@ -276,7 +276,7 @@ GTEST_TEST(network_simplex, negative_cycle_circulation_saturates) {
 
 GTEST_TEST(network_simplex, negative_self_loop_saturates) {
     static_digraph_builder<static_digraph, int, int> builder(1);
-    builder.add_arc(0u, 0u, 7, -3);
+    builder.add_arc({0u, 0u}, 7, -3);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {0};
 
@@ -286,7 +286,7 @@ GTEST_TEST(network_simplex, negative_self_loop_saturates) {
 
     // the same loop with an infinite capacity is an unbounded ray
     static_digraph_builder<static_digraph, int, int> builder2(1);
-    builder2.add_arc(0u, 0u, std::numeric_limits<int>::max(), -3);
+    builder2.add_arc({0u, 0u}, std::numeric_limits<int>::max(), -3);
     auto [graph2, upper2, cost2] = builder2.build();
     network_simplex alg2(graph2, upper2, cost2, supply);
     ASSERT_EQ(alg2.run().status(), mcf_status::unbounded);
@@ -294,9 +294,9 @@ GTEST_TEST(network_simplex, negative_self_loop_saturates) {
 
 GTEST_TEST(network_simplex, zero_supplies_and_positive_costs_stay_at_zero) {
     static_digraph_builder<static_digraph, int, int> builder(3);
-    builder.add_arc(0u, 1u, 5, 1);
-    builder.add_arc(1u, 2u, 5, 1);
-    builder.add_arc(2u, 0u, 5, 1);
+    builder.add_arc({0u, 1u}, 5, 1);
+    builder.add_arc({1u, 2u}, 5, 1);
+    builder.add_arc({2u, 0u}, 5, 1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {0, 0, 0};
 
@@ -313,7 +313,7 @@ GTEST_TEST(network_simplex, zero_supplies_and_positive_costs_stay_at_zero) {
 
 GTEST_TEST(network_simplex, max_capacity_is_infinity) {
     static_digraph_builder<static_digraph, int, int> builder(2);
-    builder.add_arc(0u, 1u, std::numeric_limits<int>::max(), 2);
+    builder.add_arc({0u, 1u}, std::numeric_limits<int>::max(), 2);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {3, -3};
 
@@ -324,8 +324,8 @@ GTEST_TEST(network_simplex, max_capacity_is_infinity) {
 
 GTEST_TEST(network_simplex, parallel_arcs_fill_cheapest_first) {
     static_digraph_builder<static_digraph, int, int, int> builder(2);
-    builder.add_arc(0u, 1u, 3, 5, 1);
-    builder.add_arc(0u, 1u, 3, 1, 3);
+    builder.add_arc({0u, 1u}, 3, 5, 1);
+    builder.add_arc({0u, 1u}, 3, 1, 3);
     auto [graph, upper, cost, expected_flow] = builder.build();
     std::vector<int> supply = {4, -4};
 
@@ -344,15 +344,15 @@ GTEST_TEST(network_simplex, three_by_three_assignment) {
     // cost matrix rows for left vertices 0..2 to right vertices 3..5;
     // the best permutations cost 12
     static_digraph_builder<static_digraph, int, int> builder(6);
-    builder.add_arc(0u, 3u, 1, 4);
-    builder.add_arc(0u, 4u, 1, 2);
-    builder.add_arc(0u, 5u, 1, 8);
-    builder.add_arc(1u, 3u, 1, 4);
-    builder.add_arc(1u, 4u, 1, 3);
-    builder.add_arc(1u, 5u, 1, 7);
-    builder.add_arc(2u, 3u, 1, 3);
-    builder.add_arc(2u, 4u, 1, 1);
-    builder.add_arc(2u, 5u, 1, 6);
+    builder.add_arc({0u, 3u}, 1, 4);
+    builder.add_arc({0u, 4u}, 1, 2);
+    builder.add_arc({0u, 5u}, 1, 8);
+    builder.add_arc({1u, 3u}, 1, 4);
+    builder.add_arc({1u, 4u}, 1, 3);
+    builder.add_arc({1u, 5u}, 1, 7);
+    builder.add_arc({2u, 3u}, 1, 3);
+    builder.add_arc({2u, 4u}, 1, 1);
+    builder.add_arc({2u, 5u}, 1, 6);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {1, 1, 1, -1, -1, -1};
 
@@ -433,11 +433,11 @@ static_assert(std::same_as<pivot_rules::first_eligible,
 
 GTEST_TEST(network_simplex, traits_plug_in_through_the_leading_constructor) {
     static_digraph_builder<static_digraph, int, int> builder(4);
-    builder.add_arc(0u, 1u, 4, 1);
-    builder.add_arc(0u, 2u, 2, 2);
-    builder.add_arc(1u, 2u, 2, 1);
-    builder.add_arc(1u, 3u, 3, 3);
-    builder.add_arc(2u, 3u, 5, 1);
+    builder.add_arc({0u, 1u}, 4, 1);
+    builder.add_arc({0u, 2u}, 2, 2);
+    builder.add_arc({1u, 2u}, 2, 1);
+    builder.add_arc({1u, 3u}, 3, 3);
+    builder.add_arc({2u, 3u}, 5, 1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {4, 0, 0, -4};
 
@@ -459,8 +459,8 @@ GTEST_TEST(network_simplex, traits_plug_in_through_the_leading_constructor) {
 
 GTEST_TEST(network_simplex, value_domain_is_the_capacity_supply_common_type) {
     static_digraph_builder<static_digraph, int, double> builder(3);
-    builder.add_arc(0u, 1u, 5, 1.5);
-    builder.add_arc(1u, 2u, 5, 2.0);
+    builder.add_arc({0u, 1u}, 5, 1.5);
+    builder.add_arc({1u, 2u}, 5, 2.0);
     auto [graph, upper, cost] = builder.build();
     std::vector<long long> supply = {3, 0, -3};
 
@@ -650,7 +650,7 @@ GTEST_TEST(network_simplex, ids_need_not_be_integral) {
 
 GTEST_TEST(network_simplex, negative_capacity_is_a_precondition) {
     static_digraph_builder<static_digraph, int, int> builder(2);
-    builder.add_arc(0u, 1u, -1, 0);
+    builder.add_arc({0u, 1u}, -1, 0);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {0, 0};
     auto construct = [&]() {
@@ -662,7 +662,7 @@ GTEST_TEST(network_simplex, negative_capacity_is_a_precondition) {
 
 GTEST_TEST(network_simplex, unbalanced_supplies_are_a_precondition) {
     static_digraph_builder<static_digraph, int, int> builder(2);
-    builder.add_arc(0u, 1u, 4, 1);
+    builder.add_arc({0u, 1u}, 4, 1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {1, 0};
     auto construct = [&]() {
@@ -685,11 +685,11 @@ GTEST_TEST(network_simplex, all_negative_costs_need_the_cost_magnitude) {
     // backwards at +4 -- reaches 8. The artificial basis then looks cheaper
     // than the real route and this feasible instance comes back `infeasible`.
     static_digraph_builder<static_digraph, int, int> builder(3);
-    builder.add_arc(0u, 2u, 2, -4);
-    builder.add_arc(2u, 2u, 1, 0);
-    builder.add_arc(1u, 2u, 2, -1);
-    builder.add_arc(0u, 0u, 3, -3);
-    builder.add_arc(2u, 0u, 2, -1);
+    builder.add_arc({0u, 2u}, 2, -4);
+    builder.add_arc({2u, 2u}, 1, 0);
+    builder.add_arc({1u, 2u}, 2, -1);
+    builder.add_arc({0u, 0u}, 3, -3);
+    builder.add_arc({2u, 0u}, 2, -1);
     auto [graph, upper, cost] = builder.build();
     std::vector<int> supply = {-2, 2, 0};
 
@@ -708,8 +708,9 @@ auto unit_along_a_costly_path(int len) {
     static_digraph_builder<static_digraph, int, int> builder(
         static_cast<std::size_t>(len + 1));
     for(int i = 0; i < len; ++i)
-        builder.add_arc(static_cast<unsigned int>(i),
-                        static_cast<unsigned int>(i + 1), 1, 200'000'000);
+        builder.add_arc(
+            {static_cast<unsigned int>(i), static_cast<unsigned int>(i + 1)}, 1,
+            200'000'000);
     return builder.build();
 }
 }  // namespace
@@ -940,7 +941,7 @@ GTEST_TEST(network_simplex, differential_matches_exhaustive_enumeration) {
         static_digraph_builder<static_digraph, int, int> builder(
             I.num_vertices);
         for(std::size_t e = 0; e < I.arc_ends.size(); ++e)
-            builder.add_arc(I.arc_ends[e].first, I.arc_ends[e].second,
+            builder.add_arc({I.arc_ends[e].first, I.arc_ends[e].second},
                             I.upper[e], I.cost[e]);
         auto [graph, upper, cost] = builder.build();
 

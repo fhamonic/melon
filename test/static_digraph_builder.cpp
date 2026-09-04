@@ -2,7 +2,9 @@
 #include <gtest/gtest.h>
 
 #include <concepts>
+#include <ranges>
 #include <utility>
+#include <vector>
 
 #include "melon/container/static_digraph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
@@ -19,15 +21,15 @@ using namespace melon;
 GTEST_TEST(static_digraph_builder, build_without_map) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(3, 4);
-    builder.add_arc(1, 7);
-    builder.add_arc(5, 2);
-    builder.add_arc(2, 4);
-    builder.add_arc(5, 3);
-    builder.add_arc(6, 5);
-    builder.add_arc(1, 2);
-    builder.add_arc(1, 6);
-    builder.add_arc(2, 3);
+    builder.add_arc({3, 4});
+    builder.add_arc({1, 7});
+    builder.add_arc({5, 2});
+    builder.add_arc({2, 4});
+    builder.add_arc({5, 3});
+    builder.add_arc({6, 5});
+    builder.add_arc({1, 2});
+    builder.add_arc({1, 6});
+    builder.add_arc({2, 3});
 
     auto [graph] = builder.build();
 
@@ -59,7 +61,7 @@ GTEST_TEST(static_digraph_builder, build_with_map) {
         return static_cast<int>(u * n + v);
     };
 
-    for(auto & [u, v] : pairs) builder.add_arc(u, v, weight(u, v));
+    for(auto & [u, v] : pairs) builder.add_arc({u, v}, weight(u, v));
 
     auto [graph, map] = builder.build();
 
@@ -99,7 +101,7 @@ namespace build_overloads {
 using builder = static_digraph_builder<static_digraph, int>;
 
 template <typename B>
-using add_arc_result = decltype(std::declval<B>().add_arc(0u, 1u, 0));
+using add_arc_result = decltype(std::declval<B>().add_arc({0u, 1u}, 0));
 
 // counts its own copy constructions, which is what tells the two build()
 // overloads apart: they return the same *type*, so only the copying is visible
@@ -143,7 +145,7 @@ static_assert(!build_overloads::const_buildable<build_overloads::builder>);
 namespace build_overloads {
 inline auto make_counted_builder() {
     static_digraph_builder<static_digraph, counted> b(3);
-    b.add_arc(0, 1, counted{7}).add_arc(1, 2, counted{8});
+    b.add_arc({0, 1}, counted{7}).add_arc({1, 2}, counted{8});
     return b;
 }
 }  // namespace build_overloads
@@ -199,8 +201,8 @@ GTEST_TEST(static_digraph_builder, chaining_on_a_temporary_moves) {
     counted::copies = 0;
     auto [graph, properties] =
         static_digraph_builder<static_digraph, counted>(3)
-            .add_arc(0, 1, counted{7})
-            .add_arc(1, 2, counted{8})
+            .add_arc({0, 1}, counted{7})
+            .add_arc({1, 2}, counted{8})
             .build();
 
     ASSERT_EQ(num_vertices(graph), 3u);
@@ -211,8 +213,125 @@ GTEST_TEST(static_digraph_builder, chaining_on_a_temporary_moves) {
 // and the plain, unchained form is untouched
 GTEST_TEST(static_digraph_builder, lvalue_chain_still_builds_normally) {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0, 1, 7).add_arc(1, 2, 8);
+    builder.add_arc({0, 1}, 7).add_arc({1, 2}, 8);
     auto [graph, lengths] = builder.build();
     ASSERT_EQ(num_arcs(graph), 2u);
     ASSERT_TRUE(EQ_RANGES(lengths, {7, 8}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// add_arc takes the endpoints as one pair; the positional (u, v, ...)
+// spelling survives only on a property-less builder, where nothing can
+// follow the endpoints. add_arcs appends a range of pairs or of
+// (pair, properties...) tuple-likes, in either value category
+////////////////////////////////////////////////////////////////////////////////
+
+namespace add_arcs_shapes {
+using plain = static_digraph_builder<static_digraph>;
+using weighted = static_digraph_builder<static_digraph, int>;
+using two_props = static_digraph_builder<static_digraph, int, double>;
+using vertex = vertex_t<static_digraph>;
+using endpoints = std::pair<vertex, vertex>;
+
+template <typename B, typename... Args>
+concept add_arc_callable =
+    requires(B & b, Args... args) { b.add_arc(args...); };
+template <typename B, typename R>
+concept add_arcs_callable =
+    requires(B & b, R && r) { b.add_arcs(std::forward<R>(r)); };
+}  // namespace add_arcs_shapes
+
+static_assert(add_arcs_shapes::add_arc_callable<
+              add_arcs_shapes::weighted, add_arcs_shapes::endpoints, int>);
+static_assert(!add_arcs_shapes::add_arc_callable<add_arcs_shapes::weighted,
+                                                 unsigned, unsigned, int>);
+static_assert(add_arcs_shapes::add_arc_callable<add_arcs_shapes::plain,
+                                                unsigned, unsigned>);
+static_assert(add_arcs_shapes::add_arc_callable<add_arcs_shapes::plain,
+                                                add_arcs_shapes::endpoints>);
+static_assert(!add_arcs_shapes::add_arc_callable<add_arcs_shapes::weighted,
+                                                 unsigned, unsigned>);
+
+// a property-less builder takes a range of pairs; a builder with properties
+// takes tuple-likes of the matching arity, and rejects bare pairs or the
+// wrong number of fields
+static_assert(add_arcs_shapes::add_arcs_callable<
+              add_arcs_shapes::plain, std::vector<add_arcs_shapes::endpoints>>);
+static_assert(
+    !add_arcs_shapes::add_arcs_callable<
+        add_arcs_shapes::weighted, std::vector<add_arcs_shapes::endpoints>>);
+static_assert(add_arcs_shapes::add_arcs_callable<
+              add_arcs_shapes::weighted,
+              std::vector<std::tuple<add_arcs_shapes::endpoints, int>>>);
+static_assert(
+    add_arcs_shapes::add_arcs_callable<
+        add_arcs_shapes::two_props,
+        std::vector<std::tuple<add_arcs_shapes::endpoints, int, double>>>);
+static_assert(!add_arcs_shapes::add_arcs_callable<
+              add_arcs_shapes::two_props,
+              std::vector<std::tuple<add_arcs_shapes::endpoints, int>>>);
+GTEST_TEST(static_digraph_builder, add_arcs_from_a_range_of_pairs) {
+    using namespace add_arcs_shapes;
+    std::vector<endpoints> pairs{{3, 4}, {1, 7}, {5, 2}};
+    plain builder(8);
+    builder.add_arcs(pairs).add_arc({1, 2}).add_arc(1, 3);
+    auto [graph] = builder.build();
+    ASSERT_EQ(num_arcs(graph), 5u);
+    ASSERT_TRUE(EQ_RANGES(out_arcs(graph, 1u), {0u, 1u, 2u}));
+    ASSERT_EQ(arc_target(graph, 0u), 2u);
+    ASSERT_EQ(arc_target(graph, 1u), 3u);
+    ASSERT_EQ(arc_target(graph, 2u), 7u);
+}
+
+// the zip of an endpoints range with the property ranges is the shape the
+// bulk form is built for; an input range without a size takes the same path
+// without the reserve
+GTEST_TEST(static_digraph_builder, add_arcs_from_zipped_properties) {
+    using namespace add_arcs_shapes;
+    std::vector<endpoints> pairs{{2, 0}, {0, 1}, {1, 2}};
+    std::vector<int> weights{20, 1, 12};
+    std::vector<double> lengths{2.0, 0.1, 1.2};
+
+    two_props builder(3);
+    builder.add_arcs(std::views::zip(pairs, weights, lengths));
+    auto [graph, weight, length] = builder.build();
+
+    ASSERT_EQ(num_arcs(graph), 3u);
+    // sorted by source: (0,1) (1,2) (2,0)
+    ASSERT_TRUE(EQ_RANGES(weight, {1, 12, 20}));
+    ASSERT_TRUE(EQ_RANGES(length, {0.1, 1.2, 2.0}));
+}
+
+// arcs_entries of one graph feed the builder of another: values() strips the
+// arc id, and the arc map is read through the id range zipped alongside
+GTEST_TEST(static_digraph_builder, add_arcs_copies_another_graph) {
+    using namespace add_arcs_shapes;
+    auto [source, source_length] = weighted(4)
+                                       .add_arc({0, 1}, 7)
+                                       .add_arc({1, 2}, 8)
+                                       .add_arc({0, 3}, 9)
+                                       .build();
+    weighted copy(num_vertices(source));
+    copy.add_arcs(std::views::zip(
+        arcs_entries(source) | std::views::values,
+        arcs(source) |
+            std::views::transform([&](auto a) { return source_length[a]; })));
+    auto [graph, length] = copy.build();
+
+    ASSERT_TRUE(EQ_RANGES(arcs_entries(graph), arcs_entries(source)));
+    ASSERT_TRUE(EQ_RANGES(length, source_length));
+}
+
+GTEST_TEST(static_digraph_builder, add_arcs_keeps_the_chain_value_category) {
+    using namespace add_arcs_shapes;
+    std::vector<std::tuple<endpoints, int>> entries{{{0, 1}, 7}, {{1, 2}, 8}};
+    static_assert(
+        std::same_as<decltype(std::declval<weighted &>().add_arcs(entries)),
+                     weighted &>);
+    static_assert(
+        std::same_as<decltype(std::declval<weighted &&>().add_arcs(entries)),
+                     weighted &&>);
+    auto [graph, length] = weighted(3).add_arcs(entries).build();
+    ASSERT_EQ(num_arcs(graph), 2u);
+    ASSERT_TRUE(EQ_RANGES(length, {7, 8}));
 }

@@ -215,7 +215,7 @@ static_assert(heap_index_map_agrees<aliasless_heap, std::vector<std::size_t>>);
 
 GTEST_TEST(map_roles, role_reaches_the_factory_through_views) {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0u, 1u, 1).add_arc(1u, 2u, 1);
+    builder.add_arc({0u, 1u}, 1).add_arc({1u, 2u}, 1);
     auto [graph, unused] = builder.build();
     role_aware_graph rg{{}, &graph};
     auto stacked = views::reverse(views::subgraph(rg));

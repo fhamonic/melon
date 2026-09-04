@@ -18,24 +18,24 @@ using namespace melon;
 GTEST_TEST(dijkstra, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 
@@ -73,24 +73,24 @@ GTEST_TEST(dijkstra, test) {
 GTEST_TEST(dijkstra, algorithm_iterator) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 
@@ -131,24 +131,24 @@ struct dijkstra_path_traits {
 GTEST_TEST(dijkstra, path_to) {
     static_digraph_builder<static_digraph, int, int> builder(6);
 
-    builder.add_arc(0, 1, 7, 1)
-        .add_arc(0, 2, 9, 2)
-        .add_arc(0, 5, 14, 3)
-        .add_arc(1, 0, 7, 3)
-        .add_arc(1, 2, 10, 4)
-        .add_arc(1, 3, 15, 5)
-        .add_arc(2, 0, 9, 6)
-        .add_arc(2, 1, 10, 7)
-        .add_arc(2, 3, 12, 8)
-        .add_arc(2, 5, 2, 9)
-        .add_arc(3, 1, 15, 10)
-        .add_arc(3, 2, 12, 11)
-        .add_arc(3, 4, 6, 12)
-        .add_arc(4, 3, 6, 13)
-        .add_arc(4, 5, 9, 14)
-        .add_arc(5, 0, 14, 15)
-        .add_arc(5, 2, 2, 16)
-        .add_arc(5, 4, 9, 17);
+    builder.add_arc({0, 1}, 7, 1)
+        .add_arc({0, 2}, 9, 2)
+        .add_arc({0, 5}, 14, 3)
+        .add_arc({1, 0}, 7, 3)
+        .add_arc({1, 2}, 10, 4)
+        .add_arc({1, 3}, 15, 5)
+        .add_arc({2, 0}, 9, 6)
+        .add_arc({2, 1}, 10, 7)
+        .add_arc({2, 3}, 12, 8)
+        .add_arc({2, 5}, 2, 9)
+        .add_arc({3, 1}, 15, 10)
+        .add_arc({3, 2}, 12, 11)
+        .add_arc({3, 4}, 6, 12)
+        .add_arc({4, 3}, 6, 13)
+        .add_arc({4, 5}, 9, 14)
+        .add_arc({5, 0}, 14, 15)
+        .add_arc({5, 2}, 2, 16)
+        .add_arc({5, 4}, 9, 17);
 
     auto [graph, length_map, id] = builder.build();
 
@@ -210,8 +210,8 @@ static_assert(dijkstra_traits<traits_without_distances>);
 
 GTEST_TEST(dijkstra, current_dist_without_store_distances) {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0u, 1u, 4);
-    builder.add_arc(1u, 2u, 6);
+    builder.add_arc({0u, 1u}, 4);
+    builder.add_arc({1u, 2u}, 6);
     auto [graph, length_map] = builder.build();
 
     dijkstra algo(traits_without_distances{}, graph, length_map, 0u);
@@ -258,24 +258,24 @@ static_assert(dijkstra_traits<dijkstra_traits_distances_and_paths>);
 namespace {
 auto build_dijkstra_test_graph() {
     static_digraph_builder<static_digraph, int, int> builder(6);
-    builder.add_arc(0, 1, 7, 1)
-        .add_arc(0, 2, 9, 2)
-        .add_arc(0, 5, 14, 3)
-        .add_arc(1, 0, 7, 3)
-        .add_arc(1, 2, 10, 4)
-        .add_arc(1, 3, 15, 5)
-        .add_arc(2, 0, 9, 6)
-        .add_arc(2, 1, 10, 7)
-        .add_arc(2, 3, 12, 8)
-        .add_arc(2, 5, 2, 9)
-        .add_arc(3, 1, 15, 10)
-        .add_arc(3, 2, 12, 11)
-        .add_arc(3, 4, 6, 12)
-        .add_arc(4, 3, 6, 13)
-        .add_arc(4, 5, 9, 14)
-        .add_arc(5, 0, 14, 15)
-        .add_arc(5, 2, 2, 16)
-        .add_arc(5, 4, 9, 17);
+    builder.add_arc({0, 1}, 7, 1)
+        .add_arc({0, 2}, 9, 2)
+        .add_arc({0, 5}, 14, 3)
+        .add_arc({1, 0}, 7, 3)
+        .add_arc({1, 2}, 10, 4)
+        .add_arc({1, 3}, 15, 5)
+        .add_arc({2, 0}, 9, 6)
+        .add_arc({2, 1}, 10, 7)
+        .add_arc({2, 3}, 12, 8)
+        .add_arc({2, 5}, 2, 9)
+        .add_arc({3, 1}, 15, 10)
+        .add_arc({3, 2}, 12, 11)
+        .add_arc({3, 4}, 6, 12)
+        .add_arc({4, 3}, 6, 13)
+        .add_arc({4, 5}, 9, 14)
+        .add_arc({5, 0}, 14, 15)
+        .add_arc({5, 2}, 2, 16)
+        .add_arc({5, 4}, 9, 17);
     return builder.build();
 }
 }  // namespace
@@ -346,7 +346,7 @@ GTEST_TEST(dijkstra, store_distances_and_paths_together) {
 // violation, asserted like the one pred_vertex() makes.
 GTEST_TEST(dijkstra, pred_arc_on_a_source_is_a_precondition) {
     static_digraph_builder<static_digraph> plain(3);
-    plain.add_arc(0, 1).add_arc(1, 2);
+    plain.add_arc({0, 1}).add_arc({1, 2});
     auto [graph] = plain.build();
     auto length_map = create_arc_map<int>(graph, 1);
 
@@ -416,7 +416,7 @@ static_assert(!std::same_as<dijkstra<traits_default::G, traits_default::LM,
 
 GTEST_TEST(dijkstra, default_traits_spelling_runs) {
     static_digraph_builder<static_digraph, int> builder(4);
-    builder.add_arc(0, 1, 2).add_arc(1, 2, 3).add_arc(0, 2, 9);
+    builder.add_arc({0, 1}, 2).add_arc({1, 2}, 3).add_arc({0, 2}, 9);
     auto [graph, length_map] = builder.build();
 
     // spelled out rather than CTAD on purpose: a deduced variable would pass

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstddef>
+#include <limits>
 #include <numeric>
 #include <ranges>
 #include <span>
@@ -14,10 +15,14 @@
 
 namespace melon {
 
-class static_forward_digraph {
+// Unsigned handles only: the constructor's endpoint checks and every
+// incidence bound are `<` comparisons that a signed id would pass at -1.
+template <std::unsigned_integral V = unsigned int,
+          std::unsigned_integral A = unsigned int>
+class basic_static_forward_digraph {
 private:
-    using vertex = unsigned int;
-    using arc = unsigned int;
+    using vertex = V;
+    using arc = A;
 
     static_map<vertex, arc> _out_arc_begin;
     static_map<arc, vertex> _arc_target;
@@ -31,10 +36,15 @@ public:
     // std::move would steal from an lvalue the caller still owns. The checks
     // below therefore read _arc_target rather than `targets`, which after
     // forwarding may legitimately be empty and assert vacuously.
-    static_forward_digraph(const std::size_t & num_vertices_, S && sources,
-                           T && targets)
+    basic_static_forward_digraph(const std::size_t & num_vertices_,
+                                 S && sources, T && targets)
         : _out_arc_begin(num_vertices_, 0)
         , _arc_target(std::forward<T>(targets)) {
+        // At most max, not max + 1: vertices() and arcs() are iotas whose
+        // end is the count cast to the handle type, and a count of exactly
+        // max + 1 casts to 0 -- an empty range over a full graph.
+        assert(num_vertices_ <= std::numeric_limits<vertex>::max());
+        assert(_arc_target.size() <= std::numeric_limits<arc>::max());
         assert(static_cast<std::size_t>(std::ranges::distance(sources)) ==
                _arc_target.size());
         assert(std::ranges::all_of(
@@ -50,13 +60,16 @@ public:
                             _out_arc_begin.data(), arc{0});
     }
 
-    static_forward_digraph() = default;
-    static_forward_digraph(const static_forward_digraph & graph) = default;
-    static_forward_digraph(static_forward_digraph && graph) = default;
-
-    static_forward_digraph & operator=(const static_forward_digraph &) =
+    basic_static_forward_digraph() = default;
+    basic_static_forward_digraph(const basic_static_forward_digraph & graph) =
         default;
-    static_forward_digraph & operator=(static_forward_digraph &&) = default;
+    basic_static_forward_digraph(basic_static_forward_digraph && graph) =
+        default;
+
+    basic_static_forward_digraph & operator=(
+        const basic_static_forward_digraph &) = default;
+    basic_static_forward_digraph & operator=(basic_static_forward_digraph &&) =
+        default;
 
     [[nodiscard]] constexpr auto num_vertices() const noexcept {
         return _out_arc_begin.size();
@@ -81,15 +94,24 @@ public:
         return std::views::iota(static_cast<arc>(0),
                                 static_cast<arc>(num_arcs()));
     }
+    // `u + 1` computed back in `vertex`: on a handle narrower than int the
+    // sum promotes to int, and indexing with it is a narrowing conversion.
+    // It cannot wrap, since the constructor caps num_vertices at the handle's
+    // max.
+    [[nodiscard]] constexpr vertex next_vertex(const vertex u) const noexcept {
+        return static_cast<vertex>(u + 1);
+    }
+
     // Cast both ends to `arc`, or the ternary's common type is num_arcs()'s
     // std::size_t and the range is a non-common 16-byte iota instead of a
     // common 8-byte one.
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
+        const vertex next = next_vertex(u);
         return std::views::iota(
             _out_arc_begin[u],
-            static_cast<arc>(u + 1 < num_vertices() ? _out_arc_begin[u + 1]
-                                                    : num_arcs()));
+            static_cast<arc>(next < num_vertices() ? _out_arc_begin[next]
+                                                   : num_arcs()));
     }
     [[nodiscard]] constexpr vertex arc_target(const arc a) const noexcept {
         assert(is_valid_arc(a));
@@ -100,10 +122,11 @@ public:
     }
     [[nodiscard]] constexpr auto out_neighbors(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
+        const vertex next = next_vertex(u);
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
-            (u + 1 < num_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
-                                    : _arc_target.data() + num_arcs()));
+            (next < num_vertices() ? _arc_target.data() + _out_arc_begin[next]
+                                   : _arc_target.data() + num_arcs()));
     }
 
     // None of the four below are noexcept: they allocate. Each is constrained
@@ -137,5 +160,7 @@ public:
         return static_map<arc, T>(num_arcs(), default_value);
     }
 };
+
+using static_forward_digraph = basic_static_forward_digraph<>;
 
 }  // namespace melon

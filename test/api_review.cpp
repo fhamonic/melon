@@ -51,10 +51,10 @@ using namespace melon;
 // instead of a silently wrong traversal.
 GTEST_TEST(api_review, kruskal_move_owns_its_cursor) {
     static_digraph_builder<static_digraph, double> b(4);
-    b.add_arc(0u, 1u, 1.0)
-        .add_arc(1u, 2u, 2.0)
-        .add_arc(2u, 3u, 3.0)
-        .add_arc(0u, 3u, 9.0);
+    b.add_arc({0u, 1u}, 1.0)
+        .add_arc({1u, 2u}, 2.0)
+        .add_arc({2u, 3u}, 3.0)
+        .add_arc({0u, 3u}, 9.0);
     auto [g, costs] = b.build();
     auto ug = views::undirect(g);
 
@@ -69,7 +69,7 @@ GTEST_TEST(api_review, kruskal_move_owns_its_cursor) {
 
 GTEST_TEST(api_review, kruskal_move_assignment_owns_its_cursor) {
     static_digraph_builder<static_digraph, double> b(3);
-    b.add_arc(0u, 1u, 1.0).add_arc(1u, 2u, 2.0);
+    b.add_arc({0u, 1u}, 1.0).add_arc({1u, 2u}, 2.0);
     auto [g, costs] = b.build();
     auto ug = views::undirect(g);
 
@@ -133,7 +133,7 @@ struct distance_bfs_traits {
 
 GTEST_TEST(api_review, generic_bfs_move_keeps_its_cursor) {
     static_digraph_builder<static_digraph> b(4);
-    b.add_arc(0u, 1u).add_arc(0u, 2u).add_arc(1u, 3u).add_arc(2u, 3u);
+    b.add_arc({0u, 1u}).add_arc({0u, 2u}).add_arc({1u, 3u}).add_arc({2u, 3u});
     auto [g] = b.build();
 
     using BFS = breadth_first_search<graph_ref_view<static_digraph>,
@@ -166,9 +166,9 @@ GTEST_TEST(api_review, generic_bfs_move_keeps_its_cursor) {
 GTEST_TEST(api_review, dfs_cursors_survive_stack_reallocation) {
     constexpr unsigned n = 12;
     static_digraph_builder<static_digraph> b(n);
-    b.add_arc(0u, 1u);     // long branch, forces regrowth
-    b.add_arc(0u, n - 1);  // taken only after backtracking
-    for(unsigned i = 1; i + 2 < n; ++i) b.add_arc(i, i + 1);
+    b.add_arc({0u, 1u});     // long branch, forces regrowth
+    b.add_arc({0u, n - 1});  // taken only after backtracking
+    for(unsigned i = 1; i + 2 < n; ++i) b.add_arc({i, i + 1});
     auto [g] = b.build();
 
     auto vertex_filter = g.create_vertex_map<bool>(true);
@@ -219,14 +219,14 @@ GTEST_TEST(api_review, algorithms_caching_ranges_rebase_on_relocation) {
     // and a move assignment into a traversal and it yields exactly what an
     // undisturbed one does.
     auto builder = static_digraph_builder<static_digraph>(8);
-    builder.add_arc(0u, 1u)
-        .add_arc(0u, 2u)
-        .add_arc(1u, 3u)
-        .add_arc(2u, 3u)
-        .add_arc(3u, 4u)
-        .add_arc(4u, 5u)
-        .add_arc(5u, 6u)
-        .add_arc(6u, 7u);
+    builder.add_arc({0u, 1u})
+        .add_arc({0u, 2u})
+        .add_arc({1u, 3u})
+        .add_arc({2u, 3u})
+        .add_arc({3u, 4u})
+        .add_arc({4u, 5u})
+        .add_arc({5u, 6u})
+        .add_arc({6u, 7u});
     auto [g] = std::move(builder).build();
     auto filter = static_map<unsigned, bool>(8u, true);
 
@@ -263,7 +263,7 @@ GTEST_TEST(api_review, undirect_ranges_do_not_capture_the_view) {
     static_assert(melon::undirected_graph<undirect_view<OWN>>);
 
     static_digraph_builder<static_digraph> b(3);
-    b.add_arc(0u, 1u).add_arc(1u, 2u);
+    b.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [g] = b.build();
 
     using U = undirect_view<RV>;
@@ -292,7 +292,7 @@ GTEST_TEST(api_review, undirect_ranges_do_not_capture_the_view) {
 // graph.
 GTEST_TEST(api_review, induced_subgraph_accepts_an_owned_vertex_range) {
     static_digraph_builder<static_digraph> b(4);
-    b.add_arc(0u, 1u).add_arc(1u, 2u).add_arc(2u, 3u);
+    b.add_arc({0u, 1u}).add_arc({1u, 2u}).add_arc({2u, 3u});
     auto [g] = b.build();
 
     auto sub = views::induced_subgraph(g, std::vector<unsigned>{0u, 1u, 2u});
@@ -309,7 +309,7 @@ GTEST_TEST(api_review, induced_subgraph_accepts_an_owned_vertex_range) {
 // lvalue, which needs a copy graph_owning_view does not have.
 GTEST_TEST(api_review, traversal_forest_accepts_an_owned_graph) {
     static_digraph_builder<static_digraph> b(4);
-    b.add_arc(0u, 1u).add_arc(2u, 3u);
+    b.add_arc({0u, 1u}).add_arc({2u, 3u});
     auto [g] = b.build();
 
     traversal_forest tf(std::move(g));
@@ -323,7 +323,7 @@ GTEST_TEST(api_review, traversal_forest_accepts_an_owned_graph) {
 // `operator=(R &)` can never bind.
 GTEST_TEST(api_review, consumable_cursor_is_assignable_from_a_prvalue_range) {
     static_digraph_builder<static_digraph> b(3);
-    b.add_arc(0u, 1u).add_arc(0u, 2u);
+    b.add_arc({0u, 1u}).add_arc({0u, 2u});
     auto [g] = b.build();
     auto arc_filter = g.create_arc_map<bool>(true);
     auto sub = views::subgraph(g, maps::true_map{}, arc_filter);
@@ -842,7 +842,7 @@ struct counted {
 
 GTEST_TEST(api_review, create_map_defaults_are_not_copied_twice) {
     static_digraph_builder<static_digraph> b(2);
-    b.add_arc(0u, 1u);
+    b.add_arc({0u, 1u});
     auto [g] = b.build();
 
     const counted seed;
@@ -980,7 +980,7 @@ GTEST_TEST(api_review, reached_map_accompanies_reached) {
 
     // And it agrees with reached() at runtime.
     static_digraph_builder<static_digraph> b(4);
-    b.add_arc(0u, 1u).add_arc(1u, 2u);
+    b.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [g] = b.build();
     // run() returns *this by reference; algorithms are move-only, so the
     // result is bound, not copied out.
@@ -1074,8 +1074,10 @@ GTEST_TEST(api_review, stored_maps_are_exposed_as_map_views) {
 
     // And the view agrees with the accessor at runtime.
     static_digraph_builder<static_digraph, int> b(4);
-    b.add_arc(0u, 1u, 3).add_arc(0u, 2u, 2).add_arc(1u, 3u, 2).add_arc(2u, 3u,
-                                                                       3);
+    b.add_arc({0u, 1u}, 3)
+        .add_arc({0u, 2u}, 2)
+        .add_arc({1u, 3u}, 2)
+        .add_arc({2u, 3u}, 3);
     auto [g, capacity] = b.build();
     auto alg = dinitz(g, capacity, 0u, 3u);
     alg.run();
@@ -1125,8 +1127,10 @@ GTEST_TEST(api_review, expiring_map_accessors_extract_the_stored_map) {
 
     // And the owning view survives the algorithm it was extracted from.
     static_digraph_builder<static_digraph, int> b(4);
-    b.add_arc(0u, 1u, 3).add_arc(0u, 2u, 2).add_arc(1u, 3u, 2).add_arc(2u, 3u,
-                                                                       3);
+    b.add_arc({0u, 1u}, 3)
+        .add_arc({0u, 2u}, 2)
+        .add_arc({1u, 3u}, 2)
+        .add_arc({2u, 3u}, 3);
     auto [g, capacity] = b.build();
     using alg_t = decltype(dinitz(g, capacity, 0u, 3u));
     auto alg = std::make_unique<alg_t>(g, capacity, 0u, 3u);

@@ -19,24 +19,24 @@ using namespace melon;
 GTEST_TEST(bellman_ford_moore, test) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7)
-        .add_arc(0, 2, 9)
-        .add_arc(0, 5, 14)
-        .add_arc(1, 0, 7)
-        .add_arc(1, 2, 10)
-        .add_arc(1, 3, 15)
-        .add_arc(2, 0, 9)
-        .add_arc(2, 1, 10)
-        .add_arc(2, 3, 12)
-        .add_arc(2, 5, 2)
-        .add_arc(3, 1, 15)
-        .add_arc(3, 2, 12)
-        .add_arc(3, 4, 6)
-        .add_arc(4, 3, 6)
-        .add_arc(4, 5, 9)
-        .add_arc(5, 0, 14)
-        .add_arc(5, 2, 2)
-        .add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7)
+        .add_arc({0, 2}, 9)
+        .add_arc({0, 5}, 14)
+        .add_arc({1, 0}, 7)
+        .add_arc({1, 2}, 10)
+        .add_arc({1, 3}, 15)
+        .add_arc({2, 0}, 9)
+        .add_arc({2, 1}, 10)
+        .add_arc({2, 3}, 12)
+        .add_arc({2, 5}, 2)
+        .add_arc({3, 1}, 15)
+        .add_arc({3, 2}, 12)
+        .add_arc({3, 4}, 6)
+        .add_arc({4, 3}, 6)
+        .add_arc({4, 5}, 9)
+        .add_arc({5, 0}, 14)
+        .add_arc({5, 2}, 2)
+        .add_arc({5, 4}, 9);
 
     auto [graph, length_map] = builder.build();
 
@@ -81,24 +81,24 @@ struct bellman_ford_moore_full_traits {
 GTEST_TEST(bellman_ford_moore, path_to) {
     static_digraph_builder<static_digraph, int, int> builder(6);
 
-    builder.add_arc(0, 1, 7, 1)
-        .add_arc(0, 2, 9, 2)
-        .add_arc(0, 5, 14, 3)
-        .add_arc(1, 0, 7, 3)
-        .add_arc(1, 2, 10, 4)
-        .add_arc(1, 3, 15, 5)
-        .add_arc(2, 0, 9, 6)
-        .add_arc(2, 1, 10, 7)
-        .add_arc(2, 3, 12, 8)
-        .add_arc(2, 5, 2, 9)
-        .add_arc(3, 1, 15, 10)
-        .add_arc(3, 2, 12, 11)
-        .add_arc(3, 4, 6, 12)
-        .add_arc(4, 3, 6, 13)
-        .add_arc(4, 5, 9, 14)
-        .add_arc(5, 0, 14, 15)
-        .add_arc(5, 2, 2, 16)
-        .add_arc(5, 4, 9, 17);
+    builder.add_arc({0, 1}, 7, 1)
+        .add_arc({0, 2}, 9, 2)
+        .add_arc({0, 5}, 14, 3)
+        .add_arc({1, 0}, 7, 3)
+        .add_arc({1, 2}, 10, 4)
+        .add_arc({1, 3}, 15, 5)
+        .add_arc({2, 0}, 9, 6)
+        .add_arc({2, 1}, 10, 7)
+        .add_arc({2, 3}, 12, 8)
+        .add_arc({2, 5}, 2, 9)
+        .add_arc({3, 1}, 15, 10)
+        .add_arc({3, 2}, 12, 11)
+        .add_arc({3, 4}, 6, 12)
+        .add_arc({4, 3}, 6, 13)
+        .add_arc({4, 5}, 9, 14)
+        .add_arc({5, 0}, 14, 15)
+        .add_arc({5, 2}, 2, 16)
+        .add_arc({5, 4}, 9, 17);
 
     auto [graph, length_map, id] = builder.build();
 
@@ -125,10 +125,10 @@ GTEST_TEST(bellman_ford_moore, negative_lengths) {
     static_digraph_builder<static_digraph, int, int> builder(4);
     // 0 -> 1 direct costs 5, but 0 -> 2 -> 1 costs 2 + (-4) = -2: a greedy
     // label-setting order settles 1 at 5 before the negative arc is seen
-    builder.add_arc(0, 1, 5, 0)
-        .add_arc(0, 2, 2, 1)
-        .add_arc(1, 3, 1, 3)
-        .add_arc(2, 1, -4, 2);
+    builder.add_arc({0, 1}, 5, 0)
+        .add_arc({0, 2}, 2, 1)
+        .add_arc({1, 3}, 1, 3)
+        .add_arc({2, 1}, -4, 2);
     auto [graph, length_map, id] = builder.build();
 
     auto alg =
@@ -155,8 +155,10 @@ GTEST_TEST(bellman_ford_moore, negative_lengths) {
 GTEST_TEST(bellman_ford_moore, negative_cycle) {
     static_digraph_builder<static_digraph, int> builder(5);
     // 1 -> 2 -> 1 sums to -2 and hangs off 0; the component {3, 4} is clean
-    builder.add_arc(0, 1, 1).add_arc(1, 2, -3).add_arc(2, 1, 1).add_arc(3, 4,
-                                                                        1);
+    builder.add_arc({0, 1}, 1)
+        .add_arc({1, 2}, -3)
+        .add_arc({2, 1}, 1)
+        .add_arc({3, 4}, 1);
     auto [graph, length_map] = builder.build();
 
     auto alg = bellman_ford_moore(bellman_ford_moore_detect_traits{}, graph,
@@ -190,10 +192,10 @@ GTEST_TEST(bellman_ford_moore, negative_cycle_retrieval) {
     // the cycle 1 -> 2 -> 1 sums to -2; vertex 3 hangs downstream of it, so
     // the witness the certifying round records may sit off the cycle and the
     // pred walk has to march back onto it
-    builder.add_arc(0, 1, 1, 0)
-        .add_arc(1, 2, -3, 1)
-        .add_arc(2, 1, 1, 2)
-        .add_arc(2, 3, 1, 3);
+    builder.add_arc({0, 1}, 1, 0)
+        .add_arc({1, 2}, -3, 1)
+        .add_arc({2, 1}, 1, 2)
+        .add_arc({2, 3}, 1, 3);
     auto [graph, length_map, id] = builder.build();
 
     auto alg =
@@ -213,7 +215,7 @@ GTEST_TEST(bellman_ford_moore, negative_cycle_retrieval) {
 
 GTEST_TEST(bellman_ford_moore, negative_self_loop_is_a_one_arc_cycle) {
     static_digraph_builder<static_digraph, int> builder(2);
-    builder.add_arc(0, 1, 1).add_arc(1, 1, -1);
+    builder.add_arc({0, 1}, 1).add_arc({1, 1}, -1);
     auto [graph, length_map] = builder.build();
 
     auto alg =
@@ -238,7 +240,7 @@ GTEST_TEST(bellman_ford_moore, needing_every_round_is_not_a_cycle) {
     // so the queue is still busy after round n-1 -- only the certifying
     // round, improving nothing, tells that apart from a cycle
     static_digraph_builder<static_digraph, int> builder(4);
-    builder.add_arc(1, 0, 1).add_arc(2, 1, 1).add_arc(3, 2, 1);
+    builder.add_arc({1, 0}, 1).add_arc({2, 1}, 1).add_arc({3, 2}, 1);
     auto [graph, length_map] = builder.build();
 
     auto alg = bellman_ford_moore(bellman_ford_moore_detect_traits{}, graph,
@@ -257,7 +259,7 @@ GTEST_TEST(bellman_ford_moore, needing_every_round_is_not_a_cycle) {
 GTEST_TEST(bellman_ford_moore, unreached_vertices_stay_at_infty) {
     static_digraph_builder<static_digraph, int> builder(3);
     // vertex 1 is unreachable from the source; its out-arc must stay inert
-    builder.add_arc(1, 2, 1);
+    builder.add_arc({1, 2}, 1);
     auto [graph, length_map] = builder.build();
 
     bellman_ford_moore alg(graph, length_map);
@@ -347,7 +349,7 @@ static_assert(!noexcept(std::declval<probe_bellman_ford_moore &>().add_source(
 // distance zero".
 GTEST_TEST(bellman_ford_moore, pred_arc_on_a_source_is_a_precondition) {
     static_digraph_builder<static_digraph> plain(3);
-    plain.add_arc(0, 1).add_arc(1, 2);
+    plain.add_arc({0, 1}).add_arc({1, 2});
     auto [graph] = plain.build();
     auto length_map = create_arc_map<int>(graph, 1);
 
@@ -364,7 +366,7 @@ GTEST_TEST(bellman_ford_moore, pred_arc_on_a_source_is_a_precondition) {
 
 GTEST_TEST(bellman_ford_moore, path_to_an_unreached_vertex_is_a_precondition) {
     static_digraph_builder<static_digraph> plain(3);
-    plain.add_arc(0, 1);
+    plain.add_arc({0, 1});
     auto [graph] = plain.build();
     auto length_map = create_arc_map<int>(graph, 1);
 
@@ -418,7 +420,7 @@ static_assert(
 
 GTEST_TEST(bellman_ford_moore, default_traits_spelling_runs) {
     static_digraph_builder<static_digraph, int> builder(4);
-    builder.add_arc(0, 1, 2).add_arc(1, 2, 3).add_arc(0, 2, 9);
+    builder.add_arc({0, 1}, 2).add_arc({1, 2}, 3).add_arc({0, 2}, 9);
     auto [graph, length_map] = builder.build();
 
     // the point of the item: a variable of the written-out type, seeded and run

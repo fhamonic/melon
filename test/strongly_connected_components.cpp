@@ -27,25 +27,25 @@ GTEST_TEST(strongly_connected_components, graph1_test) {
 
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 5);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 5});
 
     auto [graph] = builder.build();
 
@@ -66,19 +66,19 @@ GTEST_TEST(strongly_connected_components, graph1_test) {
 GTEST_TEST(strongly_connected_components, graph2_test) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(1, 2)
-        .add_arc(2, 0)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 5)
-        .add_arc(4, 2)
-        .add_arc(4, 6)
-        .add_arc(5, 3)
-        .add_arc(5, 4)
-        .add_arc(6, 4)
-        .add_arc(7, 5)
-        .add_arc(7, 6);
+    builder.add_arc({0, 1})
+        .add_arc({1, 2})
+        .add_arc({2, 0})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 5})
+        .add_arc({4, 2})
+        .add_arc({4, 6})
+        .add_arc({5, 3})
+        .add_arc({5, 4})
+        .add_arc({6, 4})
+        .add_arc({7, 5})
+        .add_arc({7, 6});
 
     auto [graph] = builder.build();
 
@@ -107,25 +107,25 @@ GTEST_TEST(strongly_connected_components, graph1_algorithm_iterator) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 5);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 5});
 
     auto [graph] = builder.build();
 
@@ -151,25 +151,25 @@ GTEST_TEST(strongly_connected_components, graph1_algorithm_iterator) {
 GTEST_TEST(strongly_connected_components, graph1_components_count) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 5);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 5});
 
     auto [graph] = builder.build();
 
@@ -186,19 +186,19 @@ GTEST_TEST(strongly_connected_components, graph2_algorithm_iterator) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(1, 2)
-        .add_arc(2, 0)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 5)
-        .add_arc(4, 2)
-        .add_arc(4, 6)
-        .add_arc(5, 3)
-        .add_arc(5, 4)
-        .add_arc(6, 4)
-        .add_arc(7, 5)
-        .add_arc(7, 6);
+    builder.add_arc({0, 1})
+        .add_arc({1, 2})
+        .add_arc({2, 0})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 5})
+        .add_arc({4, 2})
+        .add_arc({4, 6})
+        .add_arc({5, 3})
+        .add_arc({5, 4})
+        .add_arc({6, 4})
+        .add_arc({7, 5})
+        .add_arc({7, 6});
 
     auto [graph] = builder.build();
 
@@ -223,19 +223,19 @@ GTEST_TEST(strongly_connected_components, graph2_algorithm_iterator) {
 GTEST_TEST(strongly_connected_components, graph2_components_count) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(1, 2)
-        .add_arc(2, 0)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 5)
-        .add_arc(4, 2)
-        .add_arc(4, 6)
-        .add_arc(5, 3)
-        .add_arc(5, 4)
-        .add_arc(6, 4)
-        .add_arc(7, 5)
-        .add_arc(7, 6);
+    builder.add_arc({0, 1})
+        .add_arc({1, 2})
+        .add_arc({2, 0})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 5})
+        .add_arc({4, 2})
+        .add_arc({4, 6})
+        .add_arc({5, 3})
+        .add_arc({5, 4})
+        .add_arc({6, 4})
+        .add_arc({7, 5})
+        .add_arc({7, 6});
 
     auto [graph] = builder.build();
 
@@ -287,19 +287,19 @@ GTEST_TEST(strongly_connected_components, subgraph_true_map_test) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(1, 2)
-        .add_arc(2, 0)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 5)
-        .add_arc(4, 2)
-        .add_arc(4, 6)
-        .add_arc(5, 3)
-        .add_arc(5, 4)
-        .add_arc(6, 4)
-        .add_arc(7, 5)
-        .add_arc(7, 6);
+    builder.add_arc({0, 1})
+        .add_arc({1, 2})
+        .add_arc({2, 0})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 5})
+        .add_arc({4, 2})
+        .add_arc({4, 6})
+        .add_arc({5, 3})
+        .add_arc({5, 4})
+        .add_arc({6, 4})
+        .add_arc({7, 5})
+        .add_arc({7, 6});
 
     auto [graph] = builder.build();
 
@@ -326,19 +326,19 @@ GTEST_TEST(strongly_connected_components, subgraph_true_map2_test) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph, char> builder(8);
 
-    builder.add_arc(0, 1, true)
-        .add_arc(1, 2, true)
-        .add_arc(2, 0, true)
-        .add_arc(3, 1, true)
-        .add_arc(3, 2, true)
-        .add_arc(3, 5, true)
-        .add_arc(4, 2, true)
-        .add_arc(4, 6, true)
-        .add_arc(5, 3, true)
-        .add_arc(5, 4, true)
-        .add_arc(6, 4, true)
-        .add_arc(7, 5, true)
-        .add_arc(7, 6, true);
+    builder.add_arc({0, 1}, true)
+        .add_arc({1, 2}, true)
+        .add_arc({2, 0}, true)
+        .add_arc({3, 1}, true)
+        .add_arc({3, 2}, true)
+        .add_arc({3, 5}, true)
+        .add_arc({4, 2}, true)
+        .add_arc({4, 6}, true)
+        .add_arc({5, 3}, true)
+        .add_arc({5, 4}, true)
+        .add_arc({6, 4}, true)
+        .add_arc({7, 5}, true)
+        .add_arc({7, 6}, true);
 
     auto [graph, filter_map] = builder.build();
 
@@ -364,19 +364,19 @@ GTEST_TEST(strongly_connected_components, subgraph_test) {
     using vertex = vertex_t<static_digraph>;
     static_digraph_builder<static_digraph, char> builder(8);
 
-    builder.add_arc(0, 1, true)
-        .add_arc(1, 2, true)
-        .add_arc(2, 0, true)
-        .add_arc(3, 1, true)
-        .add_arc(3, 2, true)
-        .add_arc(3, 5, true)
-        .add_arc(4, 2, true)
-        .add_arc(4, 6, true)
-        .add_arc(5, 3, true)
-        .add_arc(5, 4, true)
-        .add_arc(6, 4, false)
-        .add_arc(7, 5, true)
-        .add_arc(7, 6, true);
+    builder.add_arc({0, 1}, true)
+        .add_arc({1, 2}, true)
+        .add_arc({2, 0}, true)
+        .add_arc({3, 1}, true)
+        .add_arc({3, 2}, true)
+        .add_arc({3, 5}, true)
+        .add_arc({4, 2}, true)
+        .add_arc({4, 6}, true)
+        .add_arc({5, 3}, true)
+        .add_arc({5, 4}, true)
+        .add_arc({6, 4}, false)
+        .add_arc({7, 5}, true)
+        .add_arc({7, 6}, true);
 
     auto [graph, filter_map] = builder.build();
 
@@ -403,15 +403,15 @@ GTEST_TEST(strongly_connected_components, subgraph_lambda_test) {
     using arc = arc_t<static_digraph>;
     static_digraph_builder<static_digraph, double> builder(6);
 
-    builder.add_arc(0, 1, 0.0)
-        .add_arc(2, 3, 1.0)
-        .add_arc(4, 5, 1.0)
-        .add_arc(1, 2, 0.0)
-        .add_arc(3, 0, 0.0)
-        .add_arc(3, 4, 1.0)
-        .add_arc(5, 2, 1.0)
-        .add_arc(5, 0, 1.0)
-        .add_arc(1, 4, 0.0);
+    builder.add_arc({0, 1}, 0.0)
+        .add_arc({2, 3}, 1.0)
+        .add_arc({4, 5}, 1.0)
+        .add_arc({1, 2}, 0.0)
+        .add_arc({3, 0}, 0.0)
+        .add_arc({3, 4}, 1.0)
+        .add_arc({5, 2}, 1.0)
+        .add_arc({5, 0}, 1.0)
+        .add_arc({1, 4}, 0.0);
 
     auto [graph, filter_map] = builder.build();
 
@@ -443,7 +443,7 @@ GTEST_TEST(strongly_connected_components, subgraph_lambda_test) {
 GTEST_TEST(strongly_connected_components, reset_restarts_the_whole_run) {
     // one 3-cycle plus an isolated vertex: two components
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 0});
     auto [graph] = builder.build();
 
     strongly_connected_components alg(graph);
@@ -517,7 +517,7 @@ struct scc_store_ids_traits {
 // stored ids are uniform.
 GTEST_TEST(strongly_connected_components, component_ids_single_scc) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(0, 2).add_arc(1, 0).add_arc(2, 1);
+    builder.add_arc({0, 1}).add_arc({0, 2}).add_arc({1, 0}).add_arc({2, 1});
     auto [graph] = builder.build();
 
     strongly_connected_components alg(scc_store_ids_traits{}, graph);
@@ -533,19 +533,19 @@ GTEST_TEST(strongly_connected_components, component_ids_single_scc) {
 GTEST_TEST(strongly_connected_components, component_ids_emission_order) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(1, 2)
-        .add_arc(2, 0)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 5)
-        .add_arc(4, 2)
-        .add_arc(4, 6)
-        .add_arc(5, 3)
-        .add_arc(5, 4)
-        .add_arc(6, 4)
-        .add_arc(7, 5)
-        .add_arc(7, 6);
+    builder.add_arc({0, 1})
+        .add_arc({1, 2})
+        .add_arc({2, 0})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 5})
+        .add_arc({4, 2})
+        .add_arc({4, 6})
+        .add_arc({5, 3})
+        .add_arc({5, 4})
+        .add_arc({6, 4})
+        .add_arc({7, 5})
+        .add_arc({7, 6});
 
     auto [graph] = builder.build();
 
@@ -637,7 +637,7 @@ GTEST_TEST(strongly_connected_components, no_ids_without_the_flag) {
 GTEST_TEST(strongly_connected_components,
            is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 0).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 0}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     strongly_connected_components alg(graph);

@@ -104,7 +104,7 @@ static_assert(sizeof(two_shared_tags) == 2);
 
 GTEST_TEST(map_if, forwards_into_the_underlying_map) {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0u, 1u, 0).add_arc(1u, 2u, 0);
+    builder.add_arc({0u, 1u}, 0).add_arc({1u, 2u}, 0);
     auto [graph, unused] = builder.build();
     const static_digraph & const_graph = graph;
 

@@ -54,7 +54,7 @@ GTEST_TEST(undirect_views, static_graph) {
 // hard-errors in graph_ref_view.
 GTEST_TEST(undirect_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 0});
     auto [graph] = builder.build();
 
     undirect_view view(graph);
@@ -92,7 +92,7 @@ struct counting_filter {
 
 GTEST_TEST(undirect_views, incidence_copies_the_view_only_when_borrowed) {
     static_digraph_builder<static_digraph> builder(2);
-    builder.add_arc(0, 1);
+    builder.add_arc({0, 1});
     auto [graph] = builder.build();
 
     auto sub = views::subgraph(graph, counting_filter{});
@@ -144,7 +144,7 @@ static_assert(
 
 GTEST_TEST(undirect, degree_counts_both_incidence_lists) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0).add_arc(1, 1);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 0}).add_arc({1, 1});
     auto [graph] = builder.build();
 
     auto ugraph = views::undirect(graph);

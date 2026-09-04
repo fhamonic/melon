@@ -30,7 +30,7 @@ static_assert(!can_make_static_digraph<not_a_graph>);
 
 GTEST_TEST(make_static_digraph, reorders_vertices_arcs_and_maps) {
     static_digraph_builder<static_digraph, int> b(3);
-    b.add_arc(0u, 1u, 100).add_arc(0u, 2u, 101).add_arc(1u, 2u, 102);
+    b.add_arc({0u, 1u}, 100).add_arc({0u, 2u}, 101).add_arc({1u, 2u}, 102);
     auto [g, arc_prop] = std::move(b).build();
     auto vertex_prop = g.create_vertex_map<int>();
     vertex_prop[0u] = 10;
@@ -67,7 +67,7 @@ GTEST_TEST(make_static_digraph, reorders_vertices_arcs_and_maps) {
 
 GTEST_TEST(make_static_digraph, defaults_to_ascending_order_and_no_maps) {
     static_digraph_builder<static_digraph> b(3);
-    b.add_arc(0u, 1u).add_arc(1u, 2u);
+    b.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [g] = std::move(b).build();
 
     auto [sg] = make_static_digraph(g);

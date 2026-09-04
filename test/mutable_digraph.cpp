@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <optional>
 #include <ranges>
 #include <set>
@@ -431,4 +432,64 @@ GTEST_TEST(mutable_digraph, default_constructed_ranges_are_empty) {
     ASSERT_TRUE(std::ranges::empty(
         decltype(in_arcs(std::declval<const mutable_digraph &>(),
                          std::declval<vertex_t<mutable_digraph>>()))()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// mutable_digraph is basic_mutable_digraph<>: the handle types are template
+// parameters, unsigned only, and creating the id that would be the null
+// marker is caught
+////////////////////////////////////////////////////////////////////////////////
+
+static_assert(std::same_as<mutable_digraph,
+                           basic_mutable_digraph<unsigned int, unsigned int>>);
+
+template <typename V, typename A>
+concept mutable_digraph_instantiable =
+    requires { typename basic_mutable_digraph<V, A>; };
+static_assert(mutable_digraph_instantiable<std::uint16_t, std::uint64_t>);
+static_assert(!mutable_digraph_instantiable<int, unsigned int>);
+static_assert(!mutable_digraph_instantiable<unsigned int, int>);
+
+using narrow_mutable_digraph =
+    basic_mutable_digraph<std::uint16_t, std::uint16_t>;
+using wide_mutable_digraph =
+    basic_mutable_digraph<std::uint64_t, std::uint64_t>;
+static_assert(melon::inward_incidence_graph<narrow_mutable_digraph>);
+static_assert(melon::has_vertex_creation<narrow_mutable_digraph>);
+static_assert(melon::has_arc_removal<narrow_mutable_digraph>);
+static_assert(melon::inward_incidence_graph<wide_mutable_digraph>);
+static_assert(melon::has_arc_creation<wide_mutable_digraph>);
+static_assert(std::same_as<vertex_t<narrow_mutable_digraph>, std::uint16_t>);
+static_assert(std::same_as<arc_t<wide_mutable_digraph>, std::uint64_t>);
+
+// 65535 is the 16-bit null marker, so 65535 vertices (ids 0..65534) fit and
+// the 65536th cannot be handed out
+GTEST_TEST(mutable_digraph, uint16_handles_stop_before_the_null_marker) {
+    narrow_mutable_digraph graph;
+    for(std::size_t i = 0; i < 65535; ++i) (void)create_vertex(graph);
+    ASSERT_EQ(num_vertices(graph), 65535u);
+    ASSERT_EQ(std::ranges::distance(vertices(graph)), 65535);
+    const std::uint16_t last = 65534;
+    ASSERT_TRUE(is_valid_vertex(graph, last));
+    const auto a = create_arc(graph, last, std::uint16_t(0));
+    ASSERT_TRUE(EQ_RANGES(out_arcs(graph, last), {a}));
+    ASSERT_TRUE(EQ_RANGES(in_arcs(graph, std::uint16_t(0)), {a}));
+    EXPECT_DEATH((void)create_vertex(graph), "");
+    // a removal frees an id, and creation recycles it instead of dying
+    remove_vertex(graph, std::uint16_t(7));
+    ASSERT_EQ(create_vertex(graph), 7u);
+}
+
+GTEST_TEST(mutable_digraph, uint64_handles_answer_the_same_queries) {
+    wide_mutable_digraph graph;
+    const auto u = create_vertex(graph);
+    const auto v = create_vertex(graph);
+    const auto a = create_arc(graph, u, v);
+    const auto b = create_arc(graph, v, u);
+    ASSERT_TRUE(EQ_RANGES(out_arcs(graph, u), {a}));
+    ASSERT_TRUE(EQ_RANGES(in_arcs(graph, u), {b}));
+    ASSERT_EQ(arc_source(graph, b), v);
+    remove_arc(graph, a);
+    ASSERT_TRUE(EMPTY(out_arcs(graph, u)));
+    ASSERT_EQ(num_arcs(graph), 1u);
 }

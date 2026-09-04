@@ -79,21 +79,21 @@ GTEST_TEST(biobjective_dijkstra, test) {
     static_digraph_builder<static_digraph, int, int> builder(10);
 
     // https://hal.science/hal-03162962/document
-    builder.add_arc(0u, 2u, 1, 4);
-    builder.add_arc(0u, 4u, 2, 2);
-    builder.add_arc(0u, 5u, 4, 1);
-    builder.add_arc(0u, 7u, 1, 11);
-    builder.add_arc(1u, 9u, 1, 0);
-    builder.add_arc(2u, 3u, 5, 0);
-    builder.add_arc(2u, 6u, 3, 0);
-    builder.add_arc(2u, 9u, 1, 4);
-    builder.add_arc(3u, 9u, 1, 2);
-    builder.add_arc(4u, 9u, 2, 3);
-    builder.add_arc(5u, 7u, 5, 9);
-    builder.add_arc(5u, 9u, 4, 1);
-    builder.add_arc(6u, 1u, 2, 0);
-    builder.add_arc(7u, 8u, 1, 1);
-    builder.add_arc(8u, 9u, 0, 0);
+    builder.add_arc({0u, 2u}, 1, 4);
+    builder.add_arc({0u, 4u}, 2, 2);
+    builder.add_arc({0u, 5u}, 4, 1);
+    builder.add_arc({0u, 7u}, 1, 11);
+    builder.add_arc({1u, 9u}, 1, 0);
+    builder.add_arc({2u, 3u}, 5, 0);
+    builder.add_arc({2u, 6u}, 3, 0);
+    builder.add_arc({2u, 9u}, 1, 4);
+    builder.add_arc({3u, 9u}, 1, 2);
+    builder.add_arc({4u, 9u}, 2, 3);
+    builder.add_arc({5u, 7u}, 5, 9);
+    builder.add_arc({5u, 9u}, 4, 1);
+    builder.add_arc({6u, 1u}, 2, 0);
+    builder.add_arc({7u, 8u}, 1, 1);
+    builder.add_arc({8u, 9u}, 0, 0);
 
     auto [graph, blue_length_map, red_length_map] = builder.build();
 

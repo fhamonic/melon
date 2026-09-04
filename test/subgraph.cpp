@@ -68,7 +68,7 @@ static_assert(
 
 GTEST_TEST(subgraph_views, copying_a_mutable_lvalue_uses_the_copy_constructor) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2);
+    builder.add_arc({0, 1}).add_arc({1, 2});
     auto [graph] = builder.build();
 
     subgraph_view view(graph, create_vertex_map<bool>(graph, true));
@@ -131,7 +131,7 @@ static_assert(std::same_as<direct_rvalue_t, piped_lvalue_t>);
 
 GTEST_TEST(subgraph_views, lvalue_filter_direct_call_references_pipe_copies) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [graph] = std::move(builder).build();
 
     {  // direct call: the view writes the caller's map...
@@ -220,16 +220,16 @@ GTEST_TEST(subgraph_views, static_graph) {
 GTEST_TEST(subgraph_views, static_graph_filter) {
     static_digraph_builder<static_digraph, char> builder(6);
 
-    builder.add_arc(0, 1, 1);
-    builder.add_arc(0, 2, 0);
-    builder.add_arc(1, 0, 0);
-    builder.add_arc(1, 2, 1);
-    builder.add_arc(1, 3, 0);
-    builder.add_arc(2, 0, 0);
-    builder.add_arc(2, 1, 1);
-    builder.add_arc(2, 3, 1);
-    builder.add_arc(3, 1, 0);
-    builder.add_arc(3, 2, 1);
+    builder.add_arc({0, 1}, 1);
+    builder.add_arc({0, 2}, 0);
+    builder.add_arc({1, 0}, 0);
+    builder.add_arc({1, 2}, 1);
+    builder.add_arc({1, 3}, 0);
+    builder.add_arc({2, 0}, 0);
+    builder.add_arc({2, 1}, 1);
+    builder.add_arc({2, 3}, 1);
+    builder.add_arc({3, 1}, 0);
+    builder.add_arc({3, 2}, 1);
 
     auto [fgraph, filter_map] = builder.build();
     auto graph =
@@ -351,24 +351,24 @@ GTEST_TEST(subgraph_views, endpoint_maps_come_from_the_wrapped_graph) {
 GTEST_TEST(subgraph_views, dijkstra) {
     static_digraph_builder<static_digraph, int> builder(6);
 
-    builder.add_arc(0, 1, 7);
-    builder.add_arc(0, 2, 9);
-    builder.add_arc(0, 5, 14);
-    builder.add_arc(1, 0, 7);
-    builder.add_arc(1, 2, 10);
-    builder.add_arc(1, 3, 15);
-    builder.add_arc(2, 0, 9);
-    builder.add_arc(2, 1, 10);
-    builder.add_arc(2, 3, 12);
-    builder.add_arc(2, 5, 2);
-    builder.add_arc(3, 1, 15);
-    builder.add_arc(3, 2, 12);
-    builder.add_arc(3, 4, 6);
-    builder.add_arc(4, 3, 6);
-    builder.add_arc(4, 5, 9);
-    builder.add_arc(5, 0, 14);
-    builder.add_arc(5, 2, 2);
-    builder.add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7);
+    builder.add_arc({0, 2}, 9);
+    builder.add_arc({0, 5}, 14);
+    builder.add_arc({1, 0}, 7);
+    builder.add_arc({1, 2}, 10);
+    builder.add_arc({1, 3}, 15);
+    builder.add_arc({2, 0}, 9);
+    builder.add_arc({2, 1}, 10);
+    builder.add_arc({2, 3}, 12);
+    builder.add_arc({2, 5}, 2);
+    builder.add_arc({3, 1}, 15);
+    builder.add_arc({3, 2}, 12);
+    builder.add_arc({3, 4}, 6);
+    builder.add_arc({4, 3}, 6);
+    builder.add_arc({4, 5}, 9);
+    builder.add_arc({5, 0}, 14);
+    builder.add_arc({5, 2}, 2);
+    builder.add_arc({5, 4}, 9);
 
     auto [fgraph, length_map] = builder.build();
     auto graph = views::subgraph(fgraph);
@@ -406,24 +406,24 @@ GTEST_TEST(induces_subgraph_views, test) {
 
     // the `//`-marked arcs touch vertex 2 or 3 and fall outside the induced
     // set {0, 1, 4, 5}
-    builder.add_arc(0, 1, 7);
-    builder.add_arc(0, 2, 9);  //
-    builder.add_arc(0, 5, 14);
-    builder.add_arc(1, 0, 7);
-    builder.add_arc(1, 2, 10);  //
-    builder.add_arc(1, 3, 15);  //
-    builder.add_arc(2, 0, 9);   //
-    builder.add_arc(2, 1, 10);  //
-    builder.add_arc(2, 3, 12);  //
-    builder.add_arc(2, 5, 2);   //
-    builder.add_arc(3, 1, 15);  //
-    builder.add_arc(3, 2, 12);  //
-    builder.add_arc(3, 4, 6);   //
-    builder.add_arc(4, 3, 6);   //
-    builder.add_arc(4, 5, 9);
-    builder.add_arc(5, 0, 14);
-    builder.add_arc(5, 2, 2);  //
-    builder.add_arc(5, 4, 9);
+    builder.add_arc({0, 1}, 7);
+    builder.add_arc({0, 2}, 9);  //
+    builder.add_arc({0, 5}, 14);
+    builder.add_arc({1, 0}, 7);
+    builder.add_arc({1, 2}, 10);  //
+    builder.add_arc({1, 3}, 15);  //
+    builder.add_arc({2, 0}, 9);   //
+    builder.add_arc({2, 1}, 10);  //
+    builder.add_arc({2, 3}, 12);  //
+    builder.add_arc({2, 5}, 2);   //
+    builder.add_arc({3, 1}, 15);  //
+    builder.add_arc({3, 2}, 12);  //
+    builder.add_arc({3, 4}, 6);   //
+    builder.add_arc({4, 3}, 6);   //
+    builder.add_arc({4, 5}, 9);
+    builder.add_arc({5, 0}, 14);
+    builder.add_arc({5, 2}, 2);  //
+    builder.add_arc({5, 4}, 9);
 
     auto [fgraph, length_map] = builder.build();
     auto graph = views::induced_subgraph(
@@ -489,7 +489,7 @@ static_assert(
 
 GTEST_TEST(subgraph_views, induced_subgraph_is_assignable) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     std::vector<unsigned int> first = {0u, 1u, 2u};
@@ -513,7 +513,7 @@ GTEST_TEST(subgraph_views, induced_subgraph_is_assignable) {
 // that would expose it if that ever stopped being true.
 GTEST_TEST(subgraph_views, induced_subgraph_over_an_rvalue_graph) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     std::vector<unsigned int> keep = {0u, 1u, 2u};
@@ -557,7 +557,7 @@ static_assert(std::same_as<piped_lvalue_t,
 
 GTEST_TEST(subgraph, filterless_entries_survive_the_view_object) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 0);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 0});
     auto [graph] = builder.build();
     using sub = decltype(views::subgraph(graph));
     static_assert(borrowed_graph<sub>);

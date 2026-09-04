@@ -4,6 +4,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstddef>
+#include <limits>
 #include <numeric>
 #include <ranges>
 #include <span>
@@ -15,10 +16,14 @@
 
 namespace melon {
 
-class static_digraph {
+// Unsigned handles only: the constructor's endpoint checks and every
+// incidence bound are `<` comparisons that a signed id would pass at -1.
+template <std::unsigned_integral V = unsigned int,
+          std::unsigned_integral A = unsigned int>
+class basic_static_digraph {
 private:
-    using vertex = unsigned int;
-    using arc = unsigned int;
+    using vertex = V;
+    using arc = A;
 
     static_map<vertex, arc> _out_arc_begin;
     static_map<arc, vertex> _arc_target;
@@ -28,12 +33,12 @@ private:
     static_map<arc, arc> _in_arcs;
 
 public:
-    static_digraph() = default;
-    static_digraph(const static_digraph & graph) = default;
-    static_digraph(static_digraph && graph) = default;
+    basic_static_digraph() = default;
+    basic_static_digraph(const basic_static_digraph & graph) = default;
+    basic_static_digraph(basic_static_digraph && graph) = default;
 
-    static_digraph & operator=(const static_digraph &) = default;
-    static_digraph & operator=(static_digraph &&) = default;
+    basic_static_digraph & operator=(const basic_static_digraph &) = default;
+    basic_static_digraph & operator=(basic_static_digraph &&) = default;
 
     [[nodiscard]] constexpr auto num_vertices() const noexcept {
         return _out_arc_begin.size();
@@ -59,6 +64,14 @@ public:
                                 static_cast<arc>(num_arcs()));
     }
 
+    // `u + 1` computed back in `vertex`: on a handle narrower than int the
+    // sum promotes to int, and indexing with it is a narrowing conversion.
+    // It cannot wrap, since the constructor caps num_vertices at the handle's
+    // max.
+    [[nodiscard]] constexpr vertex next_vertex(const vertex u) const noexcept {
+        return static_cast<vertex>(u + 1);
+    }
+
     // Both ends cast to `arc`. Without the cast the ternary's common type is
     // num_arcs()'s std::size_t, so this yields an iota_view<arc, size_t>: a
     // *non-common* range, 16 bytes instead of 8, comparing an arc against a
@@ -67,17 +80,19 @@ public:
     // per vertex in each of two maps.
     [[nodiscard]] constexpr auto out_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
+        const vertex next = next_vertex(u);
         return std::views::iota(
             _out_arc_begin[u],
-            static_cast<arc>(u + 1 < num_vertices() ? _out_arc_begin[u + 1]
-                                                    : num_arcs()));
+            static_cast<arc>(next < num_vertices() ? _out_arc_begin[next]
+                                                   : num_arcs()));
     }
     [[nodiscard]] constexpr auto in_arcs(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
+        const vertex next = next_vertex(u);
         return std::span(
             _in_arcs.data() + _in_arc_begin[u],
-            (u + 1 < num_vertices() ? _in_arcs.data() + _in_arc_begin[u + 1]
-                                    : _in_arcs.data() + num_arcs()));
+            (next < num_vertices() ? _in_arcs.data() + _in_arc_begin[next]
+                                   : _in_arcs.data() + num_arcs()));
     }
 
     [[nodiscard]] constexpr vertex arc_source(const arc a) const noexcept {
@@ -98,10 +113,11 @@ public:
 
     [[nodiscard]] constexpr auto out_neighbors(const vertex u) const noexcept {
         assert(is_valid_vertex(u));
+        const vertex next = next_vertex(u);
         return std::span(
             _arc_target.data() + _out_arc_begin[u],
-            (u + 1 < num_vertices() ? _arc_target.data() + _out_arc_begin[u + 1]
-                                    : _arc_target.data() + num_arcs()));
+            (next < num_vertices() ? _arc_target.data() + _out_arc_begin[next]
+                                   : _arc_target.data() + num_arcs()));
     }
 
     // None of the four below are noexcept: they allocate. Each is constrained
@@ -138,14 +154,18 @@ public:
     template <std::ranges::forward_range S, std::ranges::forward_range T>
         requires std::convertible_to<std::ranges::range_value_t<S>, vertex> &&
                      std::convertible_to<std::ranges::range_value_t<T>, vertex>
-    // Not noexcept: builds five static_maps, i.e. five allocations.
-    static_digraph(const std::size_t & num_vertices_, S && sources,
-                   T && targets)
+    basic_static_digraph(const std::size_t & num_vertices_, S && sources,
+                         T && targets)
         : _out_arc_begin(num_vertices_, 0)
         , _arc_target(std::forward<T>(targets))
         , _arc_source(std::forward<S>(sources))
         , _in_arc_begin(num_vertices_, 0)
         , _in_arcs(_arc_target.size()) {
+        // At most max, not max + 1: vertices() and arcs() are iotas whose
+        // end is the count cast to the handle type, and a count of exactly
+        // max + 1 casts to 0 -- an empty range over a full graph.
+        assert(num_vertices_ <= std::numeric_limits<vertex>::max());
+        assert(_arc_target.size() <= std::numeric_limits<arc>::max());
         // Read the members, not the parameters: both were forwarded into
         // _arc_source / _arc_target above, so after a move the parameters may
         // legitimately be empty and every assertion below would pass
@@ -175,9 +195,11 @@ public:
         for(arc a = static_cast<arc>(num_arcs()); a-- > 0;) {
             vertex t = _arc_target[a];
             --in_arc_count[t];
-            _in_arcs[_in_arc_begin[t] + in_arc_count[t]] = a;
+            _in_arcs[static_cast<arc>(_in_arc_begin[t] + in_arc_count[t])] = a;
         }
     }
 };
+
+using static_digraph = basic_static_digraph<>;
 
 }  // namespace melon

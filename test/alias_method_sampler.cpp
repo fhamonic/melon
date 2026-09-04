@@ -103,7 +103,7 @@ GTEST_TEST(alias_method_sampler, vector_as_prob_map) {
 // A graph's vertex map keyed by the vertices being sampled.
 GTEST_TEST(alias_method_sampler, vertex_map_as_prob_map) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
     auto weight = create_vertex_map<float>(graph);
     weight[0] = 4.0f;

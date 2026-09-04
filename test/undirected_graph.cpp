@@ -162,7 +162,7 @@ GTEST_TEST(undirected_graph_cpos, create_edge_map) {
 // views::undirect is the one shipped undirected adaptor.
 GTEST_TEST(undirected_graph_cpos, over_a_view) {
     static_digraph_builder<static_digraph, int> builder(3);
-    builder.add_arc(0u, 1u, 1).add_arc(1u, 2u, 2).add_arc(2u, 0u, 3);
+    builder.add_arc({0u, 1u}, 1).add_arc({1u, 2u}, 2).add_arc({2u, 0u}, 3);
     auto [digraph, weights] = builder.build();
 
     auto g = views::undirect(digraph);

@@ -73,7 +73,7 @@ class bidirectional_dijkstra {
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-    
+
     using length_type = mapped_value_t<LengthMap, arc>;
 
     using heap = Traits::heap;

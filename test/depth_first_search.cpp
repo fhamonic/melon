@@ -35,16 +35,16 @@ GTEST_TEST(depth_first_search, no_arcs_graph) {
 GTEST_TEST(depth_first_search, test) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 3)
-        .add_arc(1, 3)
-        .add_arc(2, 4)
-        .add_arc(3, 5)
-        .add_arc(3, 6)
-        .add_arc(4, 7)
-        .add_arc(4, 5)
-        .add_arc(5, 2);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 3})
+        .add_arc({1, 3})
+        .add_arc({2, 4})
+        .add_arc({3, 5})
+        .add_arc({3, 6})
+        .add_arc({4, 7})
+        .add_arc({4, 5})
+        .add_arc({5, 2});
 
     auto [graph] = builder.build();
 
@@ -86,16 +86,16 @@ GTEST_TEST(depth_first_search, test) {
 GTEST_TEST(depth_first_search, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 3)
-        .add_arc(1, 3)
-        .add_arc(2, 4)
-        .add_arc(3, 5)
-        .add_arc(3, 6)
-        .add_arc(4, 7)
-        .add_arc(4, 5)
-        .add_arc(5, 2);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 3})
+        .add_arc({1, 3})
+        .add_arc({2, 4})
+        .add_arc({3, 5})
+        .add_arc({3, 6})
+        .add_arc({4, 7})
+        .add_arc({4, 5})
+        .add_arc({5, 2});
 
     auto [graph] = builder.build();
 
@@ -152,7 +152,7 @@ GTEST_TEST(depth_first_search, store_pred_traits) {
     // An out-tree: every vertex but the root has exactly one incoming arc, so
     // the predecessors are the same whatever order DFS happens to explore in.
     static_digraph_builder<static_digraph> builder(5);
-    builder.add_arc(0, 1).add_arc(0, 2).add_arc(1, 3).add_arc(2, 4);
+    builder.add_arc({0, 1}).add_arc({0, 2}).add_arc({1, 3}).add_arc({2, 4});
     auto [graph] = builder.build();
 
     depth_first_search<graph_ref_view<static_digraph>, dfs_traits_with_preds>
@@ -185,7 +185,7 @@ GTEST_TEST(depth_first_search, store_pred_traits) {
 
 GTEST_TEST(depth_first_search, store_pred_vertices_alone) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2);
+    builder.add_arc({0, 1}).add_arc({1, 2});
     auto [graph] = builder.build();
 
     depth_first_search<graph_ref_view<static_digraph>,
@@ -218,7 +218,7 @@ struct dfs_traits_depth_only : depth_first_search_default_traits {
 GTEST_TEST(depth_first_search, store_depth_alone) {
     // A path: the DFS tree is forced, so the depths are unambiguous.
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     depth_first_search<graph_ref_view<static_digraph>, dfs_traits_depth_only>
@@ -244,14 +244,14 @@ GTEST_TEST(depth_first_search, depth_equals_pred_chain_length) {
     // graph with several routes to the same vertex, where the DFS tree is not
     // forced by the structure.
     static_digraph_builder<static_digraph> builder(7);
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 3)
-        .add_arc(3, 4)
-        .add_arc(4, 5)
-        .add_arc(2, 5)
-        .add_arc(5, 6);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 3})
+        .add_arc({3, 4})
+        .add_arc({4, 5})
+        .add_arc({2, 5})
+        .add_arc({5, 6});
     auto [graph] = builder.build();
 
     depth_first_search<graph_ref_view<static_digraph>, dfs_traits_with_preds>
@@ -327,7 +327,7 @@ GTEST_TEST(depth_first_search, depth_is_not_the_shortest_hop_distance) {
 // deleted copy constructor should be chosen.
 GTEST_TEST(depth_first_search, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     depth_first_search alg(graph, 0u);

@@ -8,6 +8,16 @@ Notable changes to melon. The format follows
 
 ### Added
 
+- `basic_static_digraph<V, A>`, `basic_static_forward_digraph<V, A>` and
+  `basic_mutable_digraph<V, A>`: the three containers are now class
+  templates over their vertex and arc handle types (`std::unsigned_integral`,
+  both defaulting to `unsigned int`), and `static_digraph`,
+  `static_forward_digraph` and `mutable_digraph` are the aliases of the
+  default instantiation, `std::basic_string` / `std::string` style. A
+  64-bit arc type lifts the 2^32 ceiling; a 16-bit type halves every array
+  and map of a small graph. The containers now `assert` on a vertex or arc
+  count the handle type cannot represent instead of wrapping.
+
 - `views::with_vertex_maps`, `views::with_arc_maps` and
   `views::with_edge_maps` (`melon/views/with_maps.hpp`): factory-enhancing
   views that answer the map factories from caller-supplied lambdas and
@@ -39,6 +49,19 @@ Notable changes to melon. The format follows
 
 ### Changed
 
+- `static_digraph_builder::add_arc` takes the endpoints as one
+  `std::pair<vertex, vertex>` -- `add_arc({u, v}, length)` instead of
+  `add_arc(u, v, length)` -- so a call shows where the topology stops and
+  the properties begin; three positional integers did not. A builder
+  without properties keeps the plain `add_arc(u, v)`. New `add_arcs`
+  appends a range of endpoint pairs, or of `(pair, properties...)`
+  tuple-likes such as `std::views::zip(endpoints, lengths)`, reserving up
+  front for sized ranges.
+- `static_digraph`, `static_forward_digraph` and `mutable_digraph` are
+  aliases rather than classes (see Added). Every existing spelling of the
+  names keeps compiling; a user-side forward declaration
+  (`class static_digraph;`) does not, and never was covered -- the API
+  stability page now says so.
 - Every forwarding view (`graph_ref_view`, `graph_owning_view`, `reverse`,
   `subgraph`, `undirect`, the undirected ref/owning views) forwards the map
   role it receives; `detail::vertex_map_if` / `arc_map_if`'s fourth

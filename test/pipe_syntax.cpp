@@ -44,7 +44,7 @@ static_assert(std::same_as<decltype(views::undirect(std::declval<G &>())),
 
 GTEST_TEST(pipe_syntax, pipe_and_call_agree_at_runtime) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [graph] = builder.build();
 
     auto piped = graph | views::reverse;
@@ -58,7 +58,7 @@ GTEST_TEST(pipe_syntax, pipe_and_call_agree_at_runtime) {
 
 GTEST_TEST(pipe_syntax, undirected_graph_all_pipes) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [graph] = builder.build();
 
     // undirect yields an undirected graph; the all-CPO must accept it from
@@ -93,7 +93,7 @@ static_assert(std::same_as<piped_t<bound_subgraph>,
 
 GTEST_TEST(pipe_syntax, bound_subgraph_filters_through_the_pipe) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [graph] = builder.build();
 
     auto filter = create_vertex_map<bool>(graph, true);
@@ -116,7 +116,7 @@ GTEST_TEST(pipe_syntax, bound_subgraph_filters_through_the_pipe) {
 
 GTEST_TEST(pipe_syntax, induced_subgraph_binds_its_vertex_range) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u).add_arc(2u, 3u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u}).add_arc({2u, 3u});
     auto [graph] = builder.build();
 
     auto induced =
@@ -139,7 +139,7 @@ static_assert(std::same_as<piped_t<composed>,
 
 GTEST_TEST(pipe_syntax, composition_applies_left_to_right) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u).add_arc(1u, 2u);
+    builder.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [graph] = builder.build();
 
     auto adaptor = views::reverse | views::subgraph();

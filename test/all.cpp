@@ -12,7 +12,7 @@ static_assert(MELON_VERSION == MELON_VERSION_MAJOR * 10000 +
 
 GTEST_TEST(all, includes_the_full_public_api) {
     melon::static_digraph_builder<melon::static_digraph, int> builder(2);
-    builder.add_arc(0u, 1u, 1);
+    builder.add_arc({0u, 1u}, 1);
     auto [graph, length_map] = builder.build();
 
     melon::dijkstra alg(graph, length_map);

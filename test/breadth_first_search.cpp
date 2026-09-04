@@ -35,25 +35,25 @@ GTEST_TEST(breadth_first_search, no_arcs_graph) {
 GTEST_TEST(breadth_first_search, test) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 5);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 5});
 
     auto [graph] = builder.build();
 
@@ -87,25 +87,25 @@ GTEST_TEST(breadth_first_search, test) {
 GTEST_TEST(breadth_first_search, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 5);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 5});
 
     auto [graph] = builder.build();
 
@@ -138,25 +138,25 @@ struct bfs_traversal_traits {
 GTEST_TEST(breadth_first_search, traversal_traits) {
     static_digraph_builder<static_digraph> builder(9);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 3);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 3});
 
     auto [graph] = builder.build();
 
@@ -203,25 +203,25 @@ struct bfs_all_traits {
 GTEST_TEST(breadth_first_search, all_traits) {
     static_digraph_builder<static_digraph> builder(9);
 
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(0, 5)
-        .add_arc(1, 0)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(2, 1)
-        .add_arc(2, 3)
-        .add_arc(2, 5)
-        .add_arc(3, 1)
-        .add_arc(3, 2)
-        .add_arc(3, 4)
-        .add_arc(4, 3)
-        .add_arc(4, 5)
-        .add_arc(5, 0)
-        .add_arc(5, 2)
-        .add_arc(5, 4)
-        .add_arc(7, 3);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({0, 5})
+        .add_arc({1, 0})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({2, 1})
+        .add_arc({2, 3})
+        .add_arc({2, 5})
+        .add_arc({3, 1})
+        .add_arc({3, 2})
+        .add_arc({3, 4})
+        .add_arc({4, 3})
+        .add_arc({4, 5})
+        .add_arc({5, 0})
+        .add_arc({5, 2})
+        .add_arc({5, 4})
+        .add_arc({7, 3});
 
     auto [graph] = builder.build();
 
@@ -304,12 +304,12 @@ concept has_traversal = requires(const A & a) { a.traversal_range(); };
 
 GTEST_TEST(breadth_first_search, store_distances_alone) {
     static_digraph_builder<static_digraph> builder(6);
-    builder.add_arc(0, 1)
-        .add_arc(0, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 3)
-        .add_arc(3, 4)
-        .add_arc(4, 5);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 3})
+        .add_arc({3, 4})
+        .add_arc({4, 5});
     auto [graph] = builder.build();
 
     auto alg = breadth_first_search(bfs_distances_only_traits{}, graph, 0u);
@@ -349,7 +349,7 @@ struct bfs_pred_arcs_traits {
 
 GTEST_TEST(breadth_first_search, is_move_assignable) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     static_assert(
@@ -377,7 +377,7 @@ GTEST_TEST(breadth_first_search, is_move_assignable) {
 
 GTEST_TEST(breadth_first_search, is_move_assignable_with_pred_arcs) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     auto reference = breadth_first_search(bfs_pred_arcs_traits{}, graph, 0u);
@@ -409,7 +409,7 @@ GTEST_TEST(breadth_first_search, is_move_assignable_with_pred_arcs) {
 // bfs_pred_arcs_traits the general one.
 GTEST_TEST(breadth_first_search, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     breadth_first_search branchless(graph, 0u);

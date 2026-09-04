@@ -43,12 +43,12 @@ GTEST_TEST(topological_sort, no_arcs_graph) {
 GTEST_TEST(topological_sort, test) {
     static_digraph_builder<static_digraph> builder(6);
 
-    builder.add_arc(5, 2)
-        .add_arc(5, 0)
-        .add_arc(4, 0)
-        .add_arc(4, 1)
-        .add_arc(2, 3)
-        .add_arc(3, 1);
+    builder.add_arc({5, 2})
+        .add_arc({5, 0})
+        .add_arc({4, 0})
+        .add_arc({4, 1})
+        .add_arc({2, 3})
+        .add_arc({3, 1});
 
     auto [graph] = builder.build();
 
@@ -82,12 +82,12 @@ GTEST_TEST(topological_sort, test) {
 GTEST_TEST(topological_sort, algorithm_iterator) {
     static_digraph_builder<static_digraph> builder(6);
 
-    builder.add_arc(5, 2)
-        .add_arc(5, 0)
-        .add_arc(4, 0)
-        .add_arc(4, 1)
-        .add_arc(2, 3)
-        .add_arc(3, 1);
+    builder.add_arc({5, 2})
+        .add_arc({5, 0})
+        .add_arc({4, 0})
+        .add_arc({4, 1})
+        .add_arc({2, 3})
+        .add_arc({3, 1});
 
     auto [graph] = builder.build();
 
@@ -130,7 +130,7 @@ concept has_rank =
 
 GTEST_TEST(topological_sort, store_rank_accessor_is_gated) {
     static_digraph_builder<static_digraph> builder(2);
-    builder.add_arc(0, 1);
+    builder.add_arc({0, 1});
     auto [graph] = builder.build();
 
     topological_sort<graph_ref_view<static_digraph>,
@@ -153,7 +153,7 @@ GTEST_TEST(topological_sort, rank_takes_the_longest_path) {
     //   last predecessor removed -> whichever of the two Kahn happens to
     //                               process last, i.e. unspecified.
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(0, 2);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({0, 2});
     auto [graph] = builder.build();
 
     topological_sort<graph_ref_view<static_digraph>,
@@ -170,18 +170,18 @@ GTEST_TEST(topological_sort, rank_strictly_increases_along_every_arc) {
     // The defining property, checked exhaustively on a DAG with several
     // merges, a shortcut arc that skips a level, and two independent sources.
     static_digraph_builder<static_digraph> builder(9);
-    builder.add_arc(0, 2)
-        .add_arc(1, 2)
-        .add_arc(0, 3)
-        .add_arc(2, 4)
-        .add_arc(3, 4)
-        .add_arc(0, 4)  // shortcut: source straight to a deep vertex
-        .add_arc(4, 5)
-        .add_arc(2, 5)
-        .add_arc(5, 6)
-        .add_arc(1, 7)
-        .add_arc(7, 6)
-        .add_arc(6, 8);
+    builder.add_arc({0, 2})
+        .add_arc({1, 2})
+        .add_arc({0, 3})
+        .add_arc({2, 4})
+        .add_arc({3, 4})
+        .add_arc({0, 4})  // shortcut: source straight to a deep vertex
+        .add_arc({4, 5})
+        .add_arc({2, 5})
+        .add_arc({5, 6})
+        .add_arc({1, 7})
+        .add_arc({7, 6})
+        .add_arc({6, 8});
     auto [graph] = builder.build();
 
     topological_sort<graph_ref_view<static_digraph>,
@@ -214,7 +214,7 @@ GTEST_TEST(topological_sort, rank_strictly_increases_along_every_arc) {
 // test that switches one of the three flags on can notice.
 GTEST_TEST(topological_sort, reached_marks_the_sorted_vertices) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(0, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({0, 3});
     auto [graph] = builder.build();
 
     topological_sort alg(graph);
@@ -228,7 +228,7 @@ GTEST_TEST(topological_sort, reached_is_false_on_a_cycle) {
     // zero: those vertices are never yielded, and reached() is how a caller
     // tells that apart from a complete sort.
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 3).add_arc(3, 2);
+    builder.add_arc({0, 1}).add_arc({2, 3}).add_arc({3, 2});
     auto [graph] = builder.build();
 
     topological_sort alg(graph);
@@ -258,18 +258,18 @@ struct topological_sort_pred_traits : topological_sort_default_traits {
 
 GTEST_TEST(topological_sort, pred_chain_walks_a_longest_path) {
     static_digraph_builder<static_digraph> builder(9);
-    builder.add_arc(0, 2)
-        .add_arc(0, 3)
-        .add_arc(0, 4)
-        .add_arc(1, 2)
-        .add_arc(1, 7)
-        .add_arc(2, 4)
-        .add_arc(2, 5)
-        .add_arc(3, 4)
-        .add_arc(4, 5)
-        .add_arc(5, 6)
-        .add_arc(6, 8)
-        .add_arc(7, 6);
+    builder.add_arc({0, 2})
+        .add_arc({0, 3})
+        .add_arc({0, 4})
+        .add_arc({1, 2})
+        .add_arc({1, 7})
+        .add_arc({2, 4})
+        .add_arc({2, 5})
+        .add_arc({3, 4})
+        .add_arc({4, 5})
+        .add_arc({5, 6})
+        .add_arc({6, 8})
+        .add_arc({7, 6});
     auto [graph] = builder.build();
 
     topological_sort<graph_ref_view<static_digraph>,
@@ -323,7 +323,7 @@ concept has_critical_path_to = requires(
 
 GTEST_TEST(topological_sort, critical_path_accessors_are_gated) {
     static_digraph_builder<static_digraph> builder(2);
-    builder.add_arc(0, 1);
+    builder.add_arc({0, 1});
     auto [graph] = builder.build();
 
     using with_paths = topological_sort<graph_ref_view<static_digraph>,
@@ -347,7 +347,7 @@ GTEST_TEST(topological_sort, critical_path_to_a_source_is_empty) {
     // path iterator; asking one for its critical path yields nothing rather
     // than walking off the start of the order.
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 2).add_arc(1, 2);
+    builder.add_arc({0, 2}).add_arc({1, 2});
     auto [graph] = builder.build();
 
     topological_sort<graph_ref_view<static_digraph>,
@@ -405,8 +405,11 @@ GTEST_TEST(topological_sort, critical_paths_without_arc_source) {
 // push_start_vertices().
 GTEST_TEST(topological_sort, reset_re_seeds_the_queue) {
     static_digraph_builder<static_digraph> builder(5);
-    builder.add_arc(0, 1).add_arc(0, 2).add_arc(1, 3).add_arc(2, 3).add_arc(3,
-                                                                            4);
+    builder.add_arc({0, 1})
+        .add_arc({0, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 3})
+        .add_arc({3, 4});
     auto [graph] = builder.build();
 
     topological_sort<graph_ref_view<static_digraph>,
@@ -452,7 +455,7 @@ GTEST_TEST(topological_sort, reset_re_seeds_the_queue) {
 // algorithm is not constructible from an algorithm lvalue at all.
 GTEST_TEST(topological_sort, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({2, 3});
     auto [graph] = builder.build();
 
     topological_sort alg(graph);
@@ -475,7 +478,7 @@ GTEST_TEST(topological_sort, is_not_constructible_from_an_algorithm) {
 
 GTEST_TEST(topological_sort, is_acyclic_on_a_dag) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(1, 2).add_arc(0, 3).add_arc(3, 2);
+    builder.add_arc({0, 1}).add_arc({1, 2}).add_arc({0, 3}).add_arc({3, 2});
     auto [graph] = builder.build();
 
     auto alg = topological_sort(graph);
@@ -489,7 +492,7 @@ GTEST_TEST(topological_sort, is_acyclic_on_a_dag) {
 GTEST_TEST(topological_sort, is_acyclic_on_a_graph_with_a_cycle) {
     static_digraph_builder<static_digraph> builder(4);
     // 0 -> 1, and the cycle 2 -> 3 -> 2 that no start vertex can reach into
-    builder.add_arc(0, 1).add_arc(2, 3).add_arc(3, 2);
+    builder.add_arc({0, 1}).add_arc({2, 3}).add_arc({3, 2});
     auto [graph] = builder.build();
 
     auto alg = topological_sort(graph);
@@ -511,7 +514,7 @@ GTEST_TEST(topological_sort, is_acyclic_on_a_graph_with_a_cycle) {
 // is only meaningful once no vertex can still be ordered
 GTEST_TEST(topological_sort, is_acyclic_requires_a_drained_sweep) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0, 1).add_arc(1, 2);
+    builder.add_arc({0, 1}).add_arc({1, 2});
     auto [graph] = builder.build();
 
     auto alg = topological_sort(graph);

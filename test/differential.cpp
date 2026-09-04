@@ -62,7 +62,7 @@ instance random_instance() {
     for(std::size_t k = 0; k < m; ++k) {
         const auto u = static_cast<vertex>(test_rng()() % n);
         const auto v = static_cast<vertex>(test_rng()() % n);
-        builder.add_arc(u, v, static_cast<int>(1 + test_rng()() % 9));
+        builder.add_arc({u, v}, static_cast<int>(1 + test_rng()() % 9));
     }
     auto [graph, length_map] = builder.build();
 
@@ -101,7 +101,7 @@ signed_instance random_signed_instance() {
     for(std::size_t k = 0; k < m; ++k) {
         const auto u = static_cast<vertex>(test_rng()() % n);
         const auto v = static_cast<vertex>(test_rng()() % n);
-        builder.add_arc(u, v, -3 + static_cast<int>(test_rng()() % 13));
+        builder.add_arc({u, v}, -3 + static_cast<int>(test_rng()() % 13));
     }
     auto [graph, length_map] = builder.build();
 

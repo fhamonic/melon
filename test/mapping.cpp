@@ -428,7 +428,7 @@ static_assert(std::same_as<decltype(std::declval<const detail::arc_map_if<
 
 GTEST_TEST(map_if, const_subscript_returns_a_reference) {
     static_digraph_builder<static_digraph> builder(3);
-    builder.add_arc(0u, 1u);
+    builder.add_arc({0u, 1u});
     auto [graph] = builder.build();
 
     detail::vertex_map_if<true, static_digraph, std::string> map(graph);

@@ -20,14 +20,14 @@ using namespace melon;
 GTEST_TEST(connected_components, test) {
     static_digraph_builder<static_digraph> builder(8);
 
-    builder.add_arc(0, 1)
-        .add_arc(1, 2)
-        .add_arc(1, 3)
-        .add_arc(2, 0)
-        .add_arc(4, 3)
-        .add_arc(5, 6)
-        .add_arc(6, 5)
-        .add_arc(5, 6);
+    builder.add_arc({0, 1})
+        .add_arc({1, 2})
+        .add_arc({1, 3})
+        .add_arc({2, 0})
+        .add_arc({4, 3})
+        .add_arc({5, 6})
+        .add_arc({6, 5})
+        .add_arc({5, 6});
 
     auto [graph] = builder.build();
 
@@ -75,7 +75,7 @@ GTEST_TEST(connected_components, empty_graph) {
 // finished() says false, so current() names nothing.
 GTEST_TEST(connected_components, reset_restarts_the_whole_run) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({2, 3});
     auto [graph] = builder.build();
     auto ugraph = views::undirect(graph);
 
@@ -110,7 +110,7 @@ GTEST_TEST(connected_components, reset_restarts_the_whole_run) {
 // algorithm is not constructible from an algorithm lvalue at all.
 GTEST_TEST(connected_components, is_not_constructible_from_an_algorithm) {
     static_digraph_builder<static_digraph> builder(4);
-    builder.add_arc(0, 1).add_arc(2, 3);
+    builder.add_arc({0, 1}).add_arc({2, 3});
     auto [graph] = builder.build();
     auto ugraph = views::undirect(graph);
 

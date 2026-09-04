@@ -57,7 +57,8 @@ using UG = decltype(views::undirect(std::declval<G &>()));
 
 auto build_graph() {
     static_digraph_builder<G, int> builder(4);
-    builder.add_arc(0, 1, 2).add_arc(1, 2, 3).add_arc(0, 2, 9).add_arc(3, 2, 1);
+    builder.add_arc({0, 1}, 2).add_arc({1, 2}, 3).add_arc({0, 2}, 9).add_arc(
+        {3, 2}, 1);
     return builder.build();
 }
 

@@ -28,14 +28,14 @@ using namespace melon;
 
 int main() {
     static_digraph_builder<static_digraph, double> builder(6);
-    builder.add_arc(0, 1, 7.0)
-        .add_arc(0, 2, 9.0)
-        .add_arc(0, 5, 14.0)
-        .add_arc(1, 3, 15.0)
-        .add_arc(2, 3, 12.0)
-        .add_arc(2, 5, 2.0)
-        .add_arc(3, 4, 6.0)
-        .add_arc(5, 4, 9.0);
+    builder.add_arc({0, 1}, 7.0)
+        .add_arc({0, 2}, 9.0)
+        .add_arc({0, 5}, 14.0)
+        .add_arc({1, 3}, 15.0)
+        .add_arc({2, 3}, 12.0)
+        .add_arc({2, 5}, 2.0)
+        .add_arc({3, 4}, 6.0)
+        .add_arc({5, 4}, 9.0);
     auto [graph, length_map] = builder.build();
 
     // an algorithm is a range: the loop drives it, one settled vertex per step

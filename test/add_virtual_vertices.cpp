@@ -24,7 +24,7 @@ namespace {
 // vertices 0..3, arcs 0: 0>2, 1: 1>2, 2: 2>3
 auto base_test_instance() {
     static_digraph_builder<static_digraph, int> builder(4);
-    builder.add_arc(0u, 2u, 3).add_arc(1u, 2u, 5).add_arc(2u, 3u, 4);
+    builder.add_arc({0u, 2u}, 3).add_arc({1u, 2u}, 5).add_arc({2u, 3u}, 4);
     return builder.build();
 }
 }  // namespace
