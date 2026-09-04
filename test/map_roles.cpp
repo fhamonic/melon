@@ -25,7 +25,36 @@
 #include "melon/views/undirect.hpp"
 #include "melon/views/undirected_graph_view.hpp"
 
-using namespace melon;
+// No `using namespace melon`: MSVC re-runs ordinary lookup for the CPO's
+// internal `create_X_map<V, Role>(g)` call at instantiation, and the
+// directive would hand it the melon:: CPO variable -- self-recursion
+// (C3779) for every graph answering its factories through free functions,
+// adl_lib included. Named using-declarations for everything but the
+// create-map names keep the file readable without arming that trap.
+using melon::arc_map_t;
+using melon::default_role;
+using melon::edge_map_t;
+using melon::graph_owning_view;
+using melon::graph_ref_view;
+using melon::has_arc_map;
+using melon::has_edge_map;
+using melon::has_vertex_map;
+using melon::heap_index_map_agrees;
+using melon::mutable_digraph;
+using melon::reverse_view;
+using melon::static_digraph;
+using melon::static_digraph_builder;
+using melon::static_map;
+using melon::subgraph_view;
+using melon::undirect_view;
+using melon::undirected_graph_owning_view;
+using melon::undirected_graph_ref_view;
+using melon::updatable_d_ary_heap;
+using melon::vertex_map_t;
+using melon::vertices;
+namespace maps = melon::maps;
+namespace views = melon::views;
+namespace detail = melon::detail;
 
 namespace {
 
@@ -220,15 +249,15 @@ GTEST_TEST(map_roles, role_reaches_the_factory_through_views) {
     role_aware_graph rg{{}, &graph};
     auto stacked = views::reverse(views::subgraph(rg));
 
-    auto m = create_vertex_map<int, role_a>(stacked, 7);
+    auto m = melon::create_vertex_map<int, role_a>(stacked, 7);
     static_assert(std::same_as<role_of<decltype(m)>, role_a>);
     for(auto && v : vertices(graph)) ASSERT_EQ(m[v], 7);
 
-    auto am = create_arc_map<char, role_b>(stacked);
+    auto am = melon::create_arc_map<char, role_b>(stacked);
     static_assert(std::same_as<role_of<decltype(am)>, role_b>);
-    ASSERT_EQ(am.size(), num_arcs(graph));
+    ASSERT_EQ(am.size(), melon::num_arcs(graph));
 
-    auto legacy = create_vertex_map<int, role_a>(graph, 3);
+    auto legacy = melon::create_vertex_map<int, role_a>(graph, 3);
     static_assert(
         std::same_as<decltype(legacy), vertex_map_t<static_digraph, int>>);
     for(auto && v : vertices(graph)) ASSERT_EQ(legacy[v], 3);

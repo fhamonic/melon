@@ -197,15 +197,15 @@ jobs:
               using namespace melon;
 
               static_digraph_builder<static_digraph, int> builder(6);
-              builder.add_arc(0, 1, 7)
-                  .add_arc(0, 2, 9)
-                  .add_arc(0, 5, 14)
-                  .add_arc(1, 2, 10)
-                  .add_arc(1, 3, 15)
-                  .add_arc(2, 3, 12)
-                  .add_arc(2, 5, 2)
-                  .add_arc(3, 4, 6)
-                  .add_arc(4, 5, 9);
+              builder.add_arc({0, 1}, 7)
+                  .add_arc({0, 2}, 9)
+                  .add_arc({0, 5}, 14)
+                  .add_arc({1, 2}, 10)
+                  .add_arc({1, 3}, 15)
+                  .add_arc({2, 3}, 12)
+                  .add_arc({2, 5}, 2)
+                  .add_arc({3, 4}, 6)
+                  .add_arc({4, 5}, 9);
               auto [graph, length_map] = builder.build();
 
               dijkstra alg(graph, length_map);
@@ -289,15 +289,15 @@ jobs:
               using namespace melon;
 
               static_digraph_builder<static_digraph, int> builder(6);
-              builder.add_arc(0, 1, 7)
-                  .add_arc(0, 2, 9)
-                  .add_arc(0, 5, 14)
-                  .add_arc(1, 2, 10)
-                  .add_arc(1, 3, 15)
-                  .add_arc(2, 3, 12)
-                  .add_arc(2, 5, 2)
-                  .add_arc(3, 4, 6)
-                  .add_arc(4, 5, 9);
+              builder.add_arc({0, 1}, 7)
+                  .add_arc({0, 2}, 9)
+                  .add_arc({0, 5}, 14)
+                  .add_arc({1, 2}, 10)
+                  .add_arc({1, 3}, 15)
+                  .add_arc({2, 3}, 12)
+                  .add_arc({2, 5}, 2)
+                  .add_arc({3, 4}, 6)
+                  .add_arc({4, 5}, 9);
               auto [graph, length_map] = builder.build();
 
               for(const auto & [v, dist] : dijkstra(graph, length_map, 0u)) {
@@ -404,15 +404,15 @@ jobs:
               using namespace melon;
 
               static_digraph_builder<static_digraph, int> builder(6);
-              builder.add_arc(0, 1, 7)
-                  .add_arc(0, 2, 9)
-                  .add_arc(0, 5, 14)
-                  .add_arc(1, 2, 10)
-                  .add_arc(1, 3, 15)
-                  .add_arc(2, 3, 12)
-                  .add_arc(2, 5, 2)
-                  .add_arc(3, 4, 6)
-                  .add_arc(4, 5, 9);
+              builder.add_arc({0, 1}, 7)
+                  .add_arc({0, 2}, 9)
+                  .add_arc({0, 5}, 14)
+                  .add_arc({1, 2}, 10)
+                  .add_arc({1, 3}, 15)
+                  .add_arc({2, 3}, 12)
+                  .add_arc({2, 5}, 2)
+                  .add_arc({3, 4}, 6)
+                  .add_arc({4, 5}, 9);
               auto [graph, length_map] = builder.build();
 
               for(const auto & [v, dist] : dijkstra(graph, length_map, 0u)) {

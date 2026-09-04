@@ -54,10 +54,13 @@ public:
         assert(std::ranges::is_sorted(sources));
         for(auto && s : sources) ++_out_arc_begin[s];
         // arc{0}, not 0: exclusive_scan accumulates in the init value's type,
-        // and an int accumulator is signed-overflow UB past INT_MAX arcs.
-        std::exclusive_scan(_out_arc_begin.data(),
-                            _out_arc_begin.data() + num_vertices_,
-                            _out_arc_begin.data(), arc{0});
+        // and an int accumulator is signed-overflow UB past INT_MAX arcs. The
+        // explicit op keeps a 16-bit arc from being promoted to int and
+        // narrowed back inside the scan (MSVC C4242).
+        std::exclusive_scan(
+            _out_arc_begin.data(), _out_arc_begin.data() + num_vertices_,
+            _out_arc_begin.data(), arc{0},
+            [](arc a, arc b) { return static_cast<arc>(a + b); });
     }
 
     basic_static_forward_digraph() = default;
