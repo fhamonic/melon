@@ -25,6 +25,13 @@
 
 namespace melon {
 
+struct network_voronoi_roles {
+    struct vertex_status {};
+    struct heap_index {};
+    struct distance {};
+    struct cluster {};
+};
+
 template <typename Traits>
 concept network_voronoi_traits =
     semiring<typename Traits::semiring> &&
@@ -52,10 +59,10 @@ struct network_voronoi_default_traits {
             return semiring::less(e1.first, e2.first);
         }
     };
-    using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
-                             vertex_map_t<Graph, std::size_t>, maps::element<1>,
-                             maps::element<0>>;
+    using heap = updatable_d_ary_heap<
+        2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
+        vertex_map_t<Graph, std::size_t, network_voronoi_roles::heap_index>,
+        maps::element<1>, maps::element<0>>;
 
     static constexpr bool store_cluster_adjacency = false;
     static constexpr bool store_distances = false;
@@ -94,20 +101,27 @@ private:
         std::is_same_v<typename Traits::heap::value_type,
                        std::pair<vertex, std::pair<length_type, cluster_id_t>>>,
         "network_voronoi requires matching value_type with heap.");
+    static_assert(
+        heap_index_map_agrees<typename Traits::heap,
+                              vertex_map_t<Graph, std::size_t,
+                                           network_voronoi_roles::heap_index>>,
+        "network_voronoi requires the heap index map to be the graph's answer "
+        "for network_voronoi_roles::heap_index.");
 
 private:
     Graph _graph;
     LengthMap _length_map;
     heap _heap;
-    vertex_map_t<Graph, vertex_status> _vertex_status_map;
+    vertex_map_t<Graph, vertex_status, network_voronoi_roles::vertex_status>
+        _vertex_status_map;
     [[no_unique_address]] entry_cmp _entry_cmp;
 
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_distances, Graph, length_type>
-        _distances_map;
+    detail::vertex_map_if<Traits::store_distances, Graph, length_type,
+                          network_voronoi_roles::distance> _distances_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_clusters, Graph, cluster_id_t>
-        _clusters_map;
+    detail::vertex_map_if<Traits::store_clusters, Graph, cluster_id_t,
+                          network_voronoi_roles::cluster> _clusters_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -116,8 +130,14 @@ public:
     constexpr network_voronoi(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
-        , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
-        , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
+        , _heap(
+              _entry_cmp,
+              create_vertex_map<std::size_t, network_voronoi_roles::heap_index>(
+                  _graph))
+        , _vertex_status_map(
+              create_vertex_map<vertex_status,
+                                network_voronoi_roles::vertex_status>(_graph,
+                                                                      PRE_HEAP))
         , _distances_map(_graph)
         , _clusters_map(_graph) {}
 

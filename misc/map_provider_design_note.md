@@ -1,10 +1,20 @@
 # Design note: caller-supplied algorithm maps through factory-enhancing views
 
-Status: shape settled 2026-09-03, entirely additive, not scheduled. First
+Status: stages one and the role plumbing LANDED 2026-09-03 (first steps
+1-3 below; `melon/views/with_maps.hpp`, `test/map_roles.cpp`,
+`test/with_maps.cpp`). Owner rulings of 2026-09-04 supersede two points
+below: the protocol has TWO forms again (bare and filled, each derivable
+from the other) with FIRST-MATCH ownership -- the first lambda given that
+serves the role in either form owns it, the recorded fallback under "Why
+one form" -- instead of an overload set, so a role-specific lambda in the
+"other" form is never bypassed but a generic lambda listed first shadows
+the rest; and there is no ambiguity refusal, the wrapped graph simply
+answers. Stages two and three remain unscheduled. First
 written 2026-09-02 around an algorithm-level provider parameter; rewritten
 2026-09-03 after that shape was compiled against the headers and replaced,
 then again the same day to state the projection **co-ownership** rule that
-an ASan probe forced (see "Lifetime"). Everything marked *verified* below
+an ASan probe forced (see "Lifetime") and to add the optional container
+stage (see "Stage three"). Everything marked *verified* below
 was compiled and run with gcc-15 against `caa27db`; the interior
 pieces are prototypes, not shipped code.
 
@@ -415,14 +425,105 @@ restriction and compile-time-honest capacity then apply to that view, not
 to the containers. Rejected sibling, unchanged: bundled property *types* on
 the graph.
 
+## Stage three (optional): typed slots inside `mutable_digraph`'s records
+
+The graph-embedded variant, for the one container where it can buy
+anything: `mutable_digraph` reads its per-vertex record (`first_out_arc`)
+once per pop, so a slot beside it saves one miss per settled vertex on
+top of the per-arc win stage two already captures. That is the whole
+payoff; measure it against `interleave_maps` before doing this. What
+follows is the shape it would take, prototyped on a scratch copy of the
+container (`probe/slots_probe.cpp`) with the real `dijkstra` and
+`breadth_first_search` running on state stored inside the vertex records.
+
+**A typed slot as a template parameter, not a byte arena.**
+
+```cpp
+template <typename VertexSlot = void, typename ArcSlot = void>
+class basic_mutable_digraph { ... };
+using mutable_digraph = basic_mutable_digraph<>;   // the note's Rider 1
+```
+
+A typed slot needs no `std::start_lifetime_as`, no alignment or capacity
+`static_assert`s, admits every value type the view-owned record admits,
+and gets recycling for free: the aggregate assignment `create_vertex`
+already performs on a reused id value-initialises whatever the
+initializer list leaves out, so a recycled vertex gets a fresh slot and
+never the removed vertex's stale state (*verified*).
+
+**The record type is selected whole**, so the default case is today's
+record byte for byte without relying on `[[no_unique_address]]`, which
+MSVC ignores:
+
+```cpp
+struct vertex_struct_plain   { arc first_in_arc; arc first_out_arc; vertex prev_vertex; vertex next_vertex; };
+struct vertex_struct_slotted { arc first_in_arc; arc first_out_arc; vertex prev_vertex; vertex next_vertex; VertexSlot slot; };
+using vertex_struct = std::conditional_t<std::is_void_v<VertexSlot>,
+                                         vertex_struct_plain, vertex_struct_slotted>;
+```
+
+**The graph exposes the slots and nothing about roles.** Four members:
+`vertex_slot(v)` / `arc_slot(a)` for element access, and
+`vertex_slots_map()` / `arc_slots_map()` returning a projection that holds
+`_vertices.data()` and indexes with the record stride. The writable
+overloads exist on a non-const graph only, which is where an interior
+provider binds its mutable access up front. Everything role-related stays
+in the views: stage one's `with_vertex_maps` lambda projects fields of
+the slots map (`field_of<&my_slot::heap_index>{slots}`) and forwards the
+rest to the container's own `static_map` factory; stage two's record
+generation is pointed at the graph instead of at a view-owned array —
+`basic_mutable_digraph<interior_record<Roles...>>` plus a
+`views::interior_maps(g)` reading the role list off the slot type.
+
+**Lifetime rules specific to this container** — two of them hazards:
+
+- *Graph move is safe.* The projection holds the buffer address and moving
+  the vector keeps its buffer; no rebase machinery (*verified*).
+- *Reallocation invalidates every projection.* A `create_vertex` or
+  `create_arc` that grows the vector frees the buffer the projections
+  point at — the `std::vector` iterator rule. Algorithms already require
+  the graph not to grow mid-run, but where a too-small factory map used
+  to assert, this is a use-after-free (*verified under ASan*). Document it
+  as the vector-iterator rule.
+- *Extraction cannot co-own.* The storage is the graph, so Rule 2 above
+  is impossible here. Resolution: any view serving slot projections
+  requires a **borrowed base**, so `with_vertex_maps(std::move(g), ...)` is
+  rejected by constraint (*verified*) and validity reduces to "the
+  referenced graph lives and is not reallocated" — the rule
+  `arc_targets_map()` already has, being a reference view into the
+  container's arrays.
+
+*Verified* on the prototype:
+
+| Check | Result |
+| --- | --- |
+| Default record sizes, vertex and arc | 16 and 24 bytes, unchanged |
+| Record with a `{std::size_t, bool}` slot | 32 bytes, 7 of them padding |
+| `dijkstra` heap index inside the records | a 12345 sentinel overwritten by the heap on every vertex |
+| `breadth_first_search` reached flag inside the records | set by the run |
+| Value types with no slot field (dijkstra's status enum) | fall back to the container's `static_map` |
+
+**What the real diff costs.** `this->` on the intrusive iterators'
+inherited `_cursor` / `_structure` (the base becomes dependent); deduced
+`auto &` on the slot accessors, since a `VertexSlot &` declaration forms
+`void &` at instantiation before any requires-clause is consulted; an
+explicit slot reset in the recycling paths to keep
+`-Wmissing-field-initializers` quiet; the `basic_` name plus alias; and
+field ordering by alignment when generating the record, or the 7 bytes of
+padding above come back.
+
 ## Semantic versioning: everything is additive
 
 - Defaulted template parameters appended to the CPO variable templates,
   the aliases and the concepts; a defaulted `Role` on the forwarding
   views' factory members; new view classes and adaptor objects; a new
   `index_map_type` alias and `static_assert`s that only fire on code that
-  is already wrong. No algorithm signature, no traits protocol, no
-  container changes. The v1.0.0 retag needs nothing from this note.
+  is already wrong. No algorithm signature, no traits protocol, and for
+  stages one and two no container changes. The v1.0.0 retag needs nothing
+  from this note.
+- Stage three is additive only through the `basic_mutable_digraph` +
+  alias route: `mutable_digraph` is a plain class today and templatizing
+  it in place breaks every bare mention of the name.
 - The API-stability line reserving appended defaulted template parameters
   and forbidding user forward declarations of melon types is no longer a
   prerequisite; still worth adding as general hygiene.
@@ -446,6 +547,9 @@ the graph.
    which is what caught the borrowing version.
 4. `views::interleave_maps` over the same algorithms, then measure against
    the status + heap-index baseline before naming any container-level work.
+5. Only if that measurement leaves a once-per-pop residue worth having:
+   stage three on `mutable_digraph`, pinning the reallocation rule under
+   ASan and the borrowed-base rejection.
 
 ## Traps met while probing this design
 

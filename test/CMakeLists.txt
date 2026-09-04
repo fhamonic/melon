@@ -90,6 +90,8 @@ add_executable(
   unify_sources.cpp
   add_virtual_vertices.cpp
   map_if.cpp
+  map_roles.cpp
+  with_maps.cpp
 )
 target_include_directories(melon_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(melon_test GTest::gtest)

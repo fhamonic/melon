@@ -163,34 +163,35 @@ public:
         return melon::in_neighbors(_wrapped(), u);
     }
 
-    template <typename T>
-        requires has_vertex_map<G, T>
-    [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept(
-        noexcept(melon::create_vertex_map<T>(std::declval<const G &>()))) {
-        return melon::create_vertex_map<T>(_wrapped());
+    template <typename T, typename Role = default_role>
+        requires has_vertex_map<G, T, Role>
+    [[nodiscard]] constexpr decltype(auto) create_vertex_map() const
+        noexcept(noexcept(
+            melon::create_vertex_map<T, Role>(std::declval<const G &>()))) {
+        return melon::create_vertex_map<T, Role>(_wrapped());
     }
-    template <typename T>
-        requires has_vertex_map<G, T>
+    template <typename T, typename Role = default_role>
+        requires has_vertex_map<G, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         const T & default_value) const
-        noexcept(noexcept(melon::create_vertex_map<T>(std::declval<const G &>(),
-                                                      default_value))) {
-        return melon::create_vertex_map<T>(_wrapped(), default_value);
+        noexcept(noexcept(melon::create_vertex_map<T, Role>(
+            std::declval<const G &>(), default_value))) {
+        return melon::create_vertex_map<T, Role>(_wrapped(), default_value);
     }
 
-    template <typename T>
-        requires has_arc_map<G, T>
+    template <typename T, typename Role = default_role>
+        requires has_arc_map<G, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_arc_map() const noexcept(
-        noexcept(melon::create_arc_map<T>(std::declval<const G &>()))) {
-        return melon::create_arc_map<T>(_wrapped());
+        noexcept(melon::create_arc_map<T, Role>(std::declval<const G &>()))) {
+        return melon::create_arc_map<T, Role>(_wrapped());
     }
-    template <typename T>
-        requires has_arc_map<G, T>
+    template <typename T, typename Role = default_role>
+        requires has_arc_map<G, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_arc_map(
         const T & default_value) const
-        noexcept(noexcept(melon::create_arc_map<T>(std::declval<const G &>(),
-                                                   default_value))) {
-        return melon::create_arc_map<T>(_wrapped(), default_value);
+        noexcept(noexcept(melon::create_arc_map<T, Role>(
+            std::declval<const G &>(), default_value))) {
+        return melon::create_arc_map<T, Role>(_wrapped(), default_value);
     }
 };
 
@@ -395,10 +396,11 @@ public:
     constexpr explicit adaptor_partial(Ts &&... args)
         : _fn(), _args(std::forward<Ts>(args)...) {}
 
-    // Constrained on melon::graph as well as invocability: without the
-    // graph conjunct, piping a non-graph into a bound subgraph closure
-    // re-enters subgraph_fn's *binding* overload and "succeeds" with a
-    // closure over garbage instead of failing at the pipe.
+    // The result must not itself be a closure: piping a non-graph into a
+    // bound closure re-enters the adaptor's *binding* overload and would
+    // "succeed" with a closure over garbage instead of failing at the pipe.
+    // Asked of the result rather than of the argument (melon::graph) so the
+    // same closure serves the undirected adaptors.
     //
     // Both overloads hand the adaptor *prvalue* copies of the bound
     // arguments (moves, for an rvalue closure), never lvalue references to
@@ -407,8 +409,9 @@ public:
     // died. A closure is therefore self-contained, like std's -- so the
     // type it builds does not depend on the closure's value category.
     template <typename G>
-        requires graph<std::remove_cvref_t<G>> &&
-                 std::invocable<const Fn &, G, Args...>
+        requires std::invocable<const Fn &, G, Args...> &&
+                 (!adaptor_closure<
+                     std::invoke_result_t<const Fn &, G, Args...>>)
     [[nodiscard]] constexpr auto operator()(G && g) const & {
         return std::apply(
             [&g, this](const Args &... args) {
@@ -417,8 +420,9 @@ public:
             _args);
     }
     template <typename G>
-        requires graph<std::remove_cvref_t<G>> &&
-                 std::invocable<const Fn &, G, Args...>
+        requires std::invocable<const Fn &, G, Args...> &&
+                 (!adaptor_closure<
+                     std::invoke_result_t<const Fn &, G, Args...>>)
     [[nodiscard]] constexpr auto operator()(G && g) && {
         return std::apply(
             [&g, this](Args &... args) {

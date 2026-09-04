@@ -327,28 +327,28 @@ public:
         }
     }
 
-    template <typename T>
-        requires has_vertex_map<Graph, T>
+    template <typename T, typename Role = default_role>
+        requires has_vertex_map<Graph, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map() const {
-        return melon::create_vertex_map<T>(_graph);
+        return melon::create_vertex_map<T, Role>(_graph);
     }
-    template <typename T>
-        requires has_vertex_map<Graph, T>
+    template <typename T, typename Role = default_role>
+        requires has_vertex_map<Graph, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         const T & default_value) const {
-        return melon::create_vertex_map<T>(_graph, default_value);
+        return melon::create_vertex_map<T, Role>(_graph, default_value);
     }
 
-    template <typename T>
-        requires has_arc_map<Graph, T>
+    template <typename T, typename Role = default_role>
+        requires has_arc_map<Graph, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_arc_map() const {
-        return melon::create_arc_map<T>(_graph);
+        return melon::create_arc_map<T, Role>(_graph);
     }
-    template <typename T>
-        requires has_arc_map<Graph, T>
+    template <typename T, typename Role = default_role>
+        requires has_arc_map<Graph, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_arc_map(
         const T & default_value) const {
-        return melon::create_arc_map<T>(_graph, default_value);
+        return melon::create_arc_map<T, Role>(_graph, default_value);
     }
 };
 

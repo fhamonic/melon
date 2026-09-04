@@ -122,6 +122,8 @@ vertex_map_t<G, int> vertex_map = create_vertex_map<int>(g, 0);
     `std::size_t`, so an algorithm needing scratch indices can write
     `requires has_vertex_map<Graph>` and mean it.
 
+Every request also carries a **role**, a further defaulted template parameter: `create_vertex_map<T, Role>(g)`, `vertex_map_t<G, T, Role>`, `has_vertex_map<G, T, Role>`. A role names *which* map an algorithm is asking for — `dijkstra_roles::heap_index` rather than "some `std::size_t` per vertex" — so that a graph, or a [view](../views/graphs.md#with_vertex_maps-with_arc_maps-with_edge_maps) handing out storage that already exists, can tell two same-typed maps apart. A request naming no role carries `default_role`. A factory with a single template parameter answers every role with its standard map, which is what every container does, and a role never narrows satisfiability: `has_vertex_map<G, T, Role>` holds whenever `has_vertex_map<G, T>` does. See [Map roles](../algorithms/index.md#map-roles).
+
 This design choice has several advantages:
 
 - the graph interface stays entirely agnostic of the types of its vertices and arcs;

@@ -53,6 +53,7 @@ customization points stay in `melon`, as do the view classes
 | `subgraph.hpp` | `subgraph_view`, `induced_subgraph_view`, the [`views::subgraph`, `views::induced_subgraph`](../views/graphs.md#subgraph) adaptors |
 | `undirect.hpp` | `undirect_view`, the [`views::undirect`](../views/graphs.md#undirect) adaptor |
 | `complete_digraph.hpp` | [`views::complete_digraph`](../views/graphs.md#complete_digraph) |
+| `with_maps.hpp` | `with_vertex_maps_view`, `with_arc_maps_view`, `with_edge_maps_view`, the [`views::with_vertex_maps`, `views::with_arc_maps`, `views::with_edge_maps`](../views/graphs.md#with_vertex_maps-with_arc_maps-with_edge_maps) adaptors |
 
 ## Maps — `melon/maps/`
 

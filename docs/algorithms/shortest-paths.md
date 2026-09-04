@@ -67,21 +67,24 @@ The relaxation step is `semiring::plus(dist_u, length_a)` and the comparison `se
 | `minimum_spanning_tree_semiring<T>` | takes the arc length | `<` | `0` | Prim's tree order |
 
 ```cpp
-struct reliability_traits {
+template <typename Graph>
+struct reliability_traits : dijkstra_default_traits<Graph, double> {
     using semiring = most_reliable_path_semiring<double>;
     using heap = updatable_d_ary_heap<
-        2, std::pair<vertex_t<static_digraph>, double>,
-        typename semiring::less_t, vertex_map_t<static_digraph, std::size_t>,
+        2, std::pair<vertex_t<Graph>, double>, typename semiring::less_t,
+        vertex_map_t<Graph, std::size_t, dijkstra_roles::heap_index>,
         maps::element<1>, maps::element<0>>;
     static constexpr bool store_distances = true;
-    static constexpr bool store_paths = false;
 };
 
 std::vector<double> proba = ...;   // one survival probability per arc
-dijkstra alg(reliability_traits{}, graph, proba, 0u);
+dijkstra alg(reliability_traits<views::graph_all_t<static_digraph &>>{},
+             graph, proba, 0u);
 alg.run();
 alg.dist(4u);   // probability of the most reliable path 0 -> 4
 ```
+
+Traits are written against the graph type the algorithm *stores* — the view `views::graph_all` wraps the argument in, `graph_ref_view<static_digraph>` for an lvalue container — which is why the example is a template over it rather than a struct naming a container: a graph wrapped in a type-changing view (a [map-providing view](../views/graphs.md#with_vertex_maps-with_arc_maps-with_edge_maps), say) answers the heap-index role with a different map type, and a hard-coded one would no longer match.
 
 Note that the heap's comparator must be `semiring::less_t` — the two are not independently chosen. A `static_assert` checks the heap's entry type; the comparator direction is your responsibility.
 
@@ -96,11 +99,11 @@ An unreached vertex's distance is the semiring's `infty`. For `shortest_path_sem
 | Member | Default | Meaning |
 | --- | --- | --- |
 | `semiring` | `shortest_path_semiring<ValueType>` | see above |
-| `heap` | binary `updatable_d_ary_heap` keyed by a `vertex_map_t<G, std::size_t>` | any `updatable_priority_queue` with entries `std::pair<vertex, length>` |
+| `heap` | binary `updatable_d_ary_heap` keyed by `vertex_map_t<G, std::size_t, dijkstra_roles::heap_index>` | any `updatable_priority_queue` with entries `std::pair<vertex, length>`; one publishing `index_map_type` must name that very map |
 | `store_distances` | `false` | keep a distance per settled vertex |
 | `store_paths` | `false` | keep a predecessor arc per reached vertex |
 
-The default heap is worth reading once: its index map is a `vertex_map_t<Graph, std::size_t>`, so for melon's containers the "where is this vertex in the heap" lookup is an array access rather than a hash. A 4-ary heap is often faster on large sparse graphs — change the first template argument and nothing else.
+The default heap is worth reading once: its index map is the graph's answer for the `dijkstra_roles::heap_index` [role](index.md#map-roles), `vertex_map_t<Graph, std::size_t, dijkstra_roles::heap_index>`, so for melon's containers the "where is this vertex in the heap" lookup is an array access rather than a hash. A 4-ary heap is often faster on large sparse graphs — change the first template argument and nothing else. A custom `updatable_d_ary_heap` must spell that same index map: the algorithm `static_assert`s it (`heap_index_map_agrees`), because a different but range-constructible map compiles and leaves the heap indexing a private copy. Heaps that do not publish `index_map_type` are not checked.
 
 `store_paths` also costs a *vertex* map when the graph has no `arc_source` (there is no other way back from an arc to its tail), and only an arc-per-vertex map when it does. Both are selected automatically.
 

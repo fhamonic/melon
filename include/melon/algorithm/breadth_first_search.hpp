@@ -19,6 +19,13 @@
 
 namespace melon {
 
+struct breadth_first_search_roles {
+    struct reached {};
+    struct pred_vertex {};
+    struct pred_arc {};
+    struct distance {};
+};
+
 template <typename Traits>
 concept breadth_first_search_traits = requires {
     { Traits::store_pred_vertices } -> std::convertible_to<bool>;
@@ -72,15 +79,18 @@ private:
     std::conditional_t<Traits::store_traversal_range, cursor, std::monostate>
         _queue_traversal_begin;
     cursor _queue_current;
-    vertex_map_t<Graph, bool> _reached_map;
+    vertex_map_t<Graph, bool, breadth_first_search_roles::reached> _reached_map;
 
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_pred_vertices, Graph, vertex>
+    detail::vertex_map_if<Traits::store_pred_vertices, Graph, vertex,
+                          breadth_first_search_roles::pred_vertex>
         _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc> _pred_arcs_map;
+    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc,
+                          breadth_first_search_roles::pred_arc> _pred_arcs_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_distances, Graph, int> _dist_map;
+    detail::vertex_map_if<Traits::store_distances, Graph, int,
+                          breadth_first_search_roles::distance> _dist_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -91,7 +101,9 @@ public:
     constexpr explicit breadth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()
-        , _reached_map(create_vertex_map<bool>(_graph, false))
+        , _reached_map(
+              create_vertex_map<bool, breadth_first_search_roles::reached>(
+                  _graph, false))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _dist_map(_graph) {
@@ -321,7 +333,7 @@ private:
     vertex * _queue_traversal_begin;
     vertex * _queue_traversal_end;
     vertex * _queue_current;
-    vertex_map_t<Graph, bool> _reached_map;
+    vertex_map_t<Graph, bool, breadth_first_search_roles::reached> _reached_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -336,7 +348,9 @@ public:
         , _queue_traversal_begin(_queue.get())
         , _queue_traversal_end(_queue.get())
         , _queue_current(_queue.get())
-        , _reached_map(create_vertex_map<bool>(_graph, false)) {}
+        , _reached_map(
+              create_vertex_map<bool, breadth_first_search_roles::reached>(
+                  _graph, false)) {}
 
     template <typename G>
         requires detail::not_self<G, breadth_first_search> &&

@@ -8,6 +8,52 @@ Notable changes to melon. The format follows
 
 ### Added
 
+- `views::with_vertex_maps`, `views::with_arc_maps` and
+  `views::with_edge_maps` (`melon/views/with_maps.hpp`): factory-enhancing
+  views that answer the map factories from caller-supplied lambdas and
+  forward everything else. A graph without factories runs every algorithm
+  from a single lambda (`[]<typename T>(auto role, const auto & g) { ... }`);
+  a graph with them can have particular maps redirected into storage the
+  caller already owns, Boost.Graph interior-property style. A lambda may
+  declare the bare form, the filled form (taking the default value) or
+  both, the missing one being derived; the first lambda serving a request
+  owns it, so role-specific lambdas go before the generic one; a request no
+  lambda serves -- a generic lambda without an explicit `<typename T>`, a
+  `mutable` lambda -- falls through to the wrapped graph's factory.
+  Pipe-composable; directed and undirected.
+- Map roles: every map an algorithm creates is requested under a role
+  (`dijkstra_roles::heap_index`, `dinitz_roles::flow`, ... -- one
+  `<algorithm>_roles` struct per algorithm), carried as a defaulted second
+  template parameter of `create_vertex_map` / `create_arc_map` /
+  `create_edge_map`, of `vertex_map_t` / `arc_map_t` / `edge_map_t` and of
+  `has_vertex_map` / `has_arc_map` / `has_edge_map`; `melon::default_role`
+  is what a request naming no role carries. A factory with one template
+  parameter answers every role with its standard map, so no container or
+  user graph changes; a two-parameter `create_vertex_map<T, Role>` answers
+  per role and is probed first. Roles are extension points with a weaker
+  stability guarantee than the main API.
+- `updatable_d_ary_heap::index_map_type` and the `heap_index_map_agrees`
+  concept: each updatable-heap algorithm `static_assert`s that a traits heap
+  publishing the alias is built on the very map the graph answers for the
+  algorithm's heap-index role.
+
+### Changed
+
+- Every forwarding view (`graph_ref_view`, `graph_owning_view`, `reverse`,
+  `subgraph`, `undirect`, the undirected ref/owning views) forwards the map
+  role it receives; `detail::vertex_map_if` / `arc_map_if`'s fourth
+  parameter is now the role, forwarded to the factory.
+- The default traits of `dijkstra`, `a_star`, `bidirectional_dijkstra`,
+  `competing_dijkstras` and `network_voronoi` spell their heap's index map
+  through the role-aware alias. A custom traits struct hard-coding
+  `vertex_map_t<static_digraph, std::size_t>` still compiles over a
+  container, and now fails the new `static_assert` -- rather than silently
+  indexing a private copy -- over a view answering the role with another map
+  type; the documented `reliability_traits` example is rewritten as a
+  template over the stored graph type.
+- Bound adaptor closures (`g | views::subgraph(f)` and the new
+  `with_*_maps` ones) are constrained on the adaptor producing a view
+  rather than on `melon::graph`, so undirected graphs pipe into them too.
 - `network_simplex`: exact minimum-cost flow by the primal network simplex,
   in the implementation lineage of LEMON's — but with no renumbering, no
   problem copy, and no materialized artificial root: it runs in the

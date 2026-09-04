@@ -57,8 +57,10 @@ private:
     static constexpr bool _forwards_inward_feature =
         has_in_arcs<Graph> || has_in_degree<Graph> ||
         inward_adjacency_graph<Graph>;
+    struct virtual_in_arc_role {};
     using virtual_in_arc_map =
-        detail::vertex_map_if<_forwards_inward_feature, Graph, arc>;
+        detail::vertex_map_if<_forwards_inward_feature, Graph, arc,
+                              virtual_in_arc_role>;
 
     Graph _graph;
     Sources _sources;

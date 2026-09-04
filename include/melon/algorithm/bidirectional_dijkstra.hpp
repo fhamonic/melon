@@ -26,6 +26,14 @@
 
 namespace melon {
 
+struct bidirectional_dijkstra_roles {
+    struct vertex_status {};
+    struct forward_heap_index {};
+    struct reverse_heap_index {};
+    struct forward_pred_arc {};
+    struct reverse_pred_arc {};
+};
+
 template <typename Traits>
 concept bidirectional_dijkstra_traits =
     semiring<typename Traits::semiring> &&
@@ -38,7 +46,9 @@ struct bidirectional_dijkstra_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     using heap = updatable_d_ary_heap<
         2, std::pair<vertex_t<Graph>, ValueType>, typename semiring::less_t,
-        vertex_map_t<Graph, std::size_t>, maps::element<1>, maps::element<0>>;
+        vertex_map_t<Graph, std::size_t,
+                     bidirectional_dijkstra_roles::forward_heap_index>,
+        maps::element<1>, maps::element<0>>;
 
     static constexpr bool store_paths = true;
 };
@@ -74,16 +84,28 @@ private:
     static_assert(std::is_same_v<typename heap::value_type,
                                  std::pair<vertex, length_type>>,
                   "bidirectional_dijkstra requires heap entries type.");
+    // One heap type serves both directions, so the graph must answer the two
+    // heap-index roles with the same map type; answering only one of them
+    // with a projection is a mismatch here rather than a silent copy.
+    static_assert(
+        heap_index_map_agrees<
+            heap,
+            vertex_map_t<Graph, std::size_t,
+                         bidirectional_dijkstra_roles::forward_heap_index>> &&
+            heap_index_map_agrees<
+                heap,
+                vertex_map_t<Graph, std::size_t,
+                             bidirectional_dijkstra_roles::reverse_heap_index>>,
+        "bidirectional_dijkstra requires the heap index map to be the graph's "
+        "answer for both bidirectional_dijkstra_roles heap_index roles.");
 
     using optional_arc = std::optional<arc>;
-    struct no_forward_pred_arcs_map {};
     using forward_pred_arcs_map =
         detail::vertex_map_if<Traits::store_paths, Graph, optional_arc,
-                              no_forward_pred_arcs_map>;
-    struct no_reverse_pred_arcs_map {};
+                              bidirectional_dijkstra_roles::forward_pred_arc>;
     using reverse_pred_arcs_map =
         detail::vertex_map_if<Traits::store_paths, Graph, optional_arc,
-                              no_reverse_pred_arcs_map>;
+                              bidirectional_dijkstra_roles::reverse_pred_arc>;
     struct no_optional_midpoint {};
     using optional_midpoint =
         std::conditional_t<Traits::store_paths, std::optional<vertex>,
@@ -94,7 +116,8 @@ private:
     LengthMap _length_map;
     heap _forward_heap;
     heap _reverse_heap;
-    vertex_map_t<Graph, std::pair<vertex_status, vertex_status>>
+    vertex_map_t<Graph, std::pair<vertex_status, vertex_status>,
+                 bidirectional_dijkstra_roles::vertex_status>
         _vertex_status_map;
 
     [[no_unique_address]] forward_pred_arcs_map _forward_pred_arcs_map;
@@ -109,12 +132,19 @@ public:
     constexpr bidirectional_dijkstra(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
-        , _forward_heap(typename Traits::semiring::less_t(),
-                        create_vertex_map<std::size_t>(_graph))
-        , _reverse_heap(typename Traits::semiring::less_t(),
-                        create_vertex_map<std::size_t>(_graph))
+        , _forward_heap(
+              typename Traits::semiring::less_t(),
+              create_vertex_map<
+                  std::size_t,
+                  bidirectional_dijkstra_roles::forward_heap_index>(_graph))
+        , _reverse_heap(
+              typename Traits::semiring::less_t(),
+              create_vertex_map<
+                  std::size_t,
+                  bidirectional_dijkstra_roles::reverse_heap_index>(_graph))
         , _vertex_status_map(
-              create_vertex_map<std::pair<vertex_status, vertex_status>>(
+              create_vertex_map<std::pair<vertex_status, vertex_status>,
+                                bidirectional_dijkstra_roles::vertex_status>(
                   _graph, std::make_pair(PRE_HEAP, PRE_HEAP)))
         , _forward_pred_arcs_map(_graph)
         , _reverse_pred_arcs_map(_graph) {}

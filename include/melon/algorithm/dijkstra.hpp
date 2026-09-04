@@ -27,6 +27,14 @@
 
 namespace melon {
 
+struct dijkstra_roles {
+    struct vertex_status {};
+    struct heap_index {};
+    struct pred_vertex {};
+    struct pred_arc {};
+    struct distance {};
+};
+
 template <typename Traits>
 concept dijkstra_traits =
     semiring<typename Traits::semiring> &&
@@ -40,7 +48,8 @@ struct dijkstra_default_traits {
     using semiring = shortest_path_semiring<ValueType>;
     using heap = updatable_d_ary_heap<
         2, std::pair<vertex_t<Graph>, ValueType>, typename semiring::less_t,
-        vertex_map_t<Graph, std::size_t>, maps::element<1>, maps::element<0>>;
+        vertex_map_t<Graph, std::size_t, dijkstra_roles::heap_index>,
+        maps::element<1>, maps::element<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -77,22 +86,28 @@ private:
     static_assert(std::is_same_v<typename heap::value_type,
                                  std::pair<vertex, length_type>>,
                   "dijkstras requires heap entries type.");
+    static_assert(
+        heap_index_map_agrees<
+            heap, vertex_map_t<Graph, std::size_t, dijkstra_roles::heap_index>>,
+        "dijkstra requires the heap index map to be the graph's answer for "
+        "dijkstra_roles::heap_index.");
 
 private:
     Graph _graph;
     LengthMap _length_map;
     heap _heap;
-    vertex_map_t<Graph, vertex_status> _vertex_status_map;
+    vertex_map_t<Graph, vertex_status, dijkstra_roles::vertex_status>
+        _vertex_status_map;
 
     [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
-        _pred_vertices_map;
+        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex,
+        dijkstra_roles::pred_vertex> _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
-        _pred_arcs_map;
+    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>,
+                          dijkstra_roles::pred_arc> _pred_arcs_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_distances, Graph, length_type>
-        _distances_map;
+    detail::vertex_map_if<Traits::store_distances, Graph, length_type,
+                          dijkstra_roles::distance> _distances_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -105,8 +120,11 @@ public:
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _heap(typename Traits::semiring::less_t(),
-                create_vertex_map<std::size_t>(_graph))
-        , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
+                create_vertex_map<std::size_t, dijkstra_roles::heap_index>(
+                    _graph))
+        , _vertex_status_map(
+              create_vertex_map<vertex_status, dijkstra_roles::vertex_status>(
+                  _graph, PRE_HEAP))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _distances_map(_graph) {}

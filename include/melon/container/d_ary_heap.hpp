@@ -352,6 +352,11 @@ public:
     using typename base_class::value_type;
 
     using id_type = mapped_value_t<EntryIdMap, Entry>;
+    // Read by the algorithms' heap_index_map_agrees static_assert: a traits
+    // heap spelling an index map the graph does not answer is otherwise a
+    // silent private copy, since static_map's range constructor accepts any
+    // random-access range the graph hands over.
+    using index_map_type = IndicesMap;
 
 private:
     [[no_unique_address]] EntryIdMap _entry_id_map;

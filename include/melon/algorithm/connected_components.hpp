@@ -18,6 +18,10 @@
 
 namespace melon {
 
+struct connected_components_roles {
+    struct reached {};
+};
+
 template <undirected_graph_view UGraph>
     requires has_incidence<UGraph> && has_vertex_map<UGraph>
 class connected_components
@@ -33,7 +37,8 @@ private:
     detail::consumable_input_view<vertices_range_t<UGraph>> _remaining_vertices;
     std::vector<vertex> _queue;
     cursor _queue_current;
-    vertex_map_t<UGraph, bool> _reached_map;
+    vertex_map_t<UGraph, bool, connected_components_roles::reached>
+        _reached_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -45,7 +50,9 @@ public:
         : _graph(views::undirected_graph_all(std::forward<UG>(g)))
         , _remaining_vertices(vertices(_graph))
         , _queue()
-        , _reached_map(create_vertex_map<bool>(_graph, false)) {
+        , _reached_map(
+              create_vertex_map<bool, connected_components_roles::reached>(
+                  _graph, false)) {
         if constexpr(has_num_vertices<UGraph>) {
             _queue.reserve(num_vertices(_graph));
             _queue_current = _queue.begin();

@@ -30,6 +30,7 @@
 #include "melon/views/subgraph.hpp"
 #include "melon/views/undirect.hpp"
 #include "melon/views/undirected_graph_view.hpp"
+#include "melon/views/with_maps.hpp"
 
 #include "melon/algorithm/a_star.hpp"
 #include "melon/algorithm/bellman_ford.hpp"

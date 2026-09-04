@@ -267,6 +267,30 @@ concept has_degree =
 // customization functions without MSVC's instantiation-time lookup meeting
 // the melon::create_edge_map variable below.
 namespace melon_create_map_cpo {
+// The two factory shapes and their probe order, as on graph.hpp's
+// create_vertex_map_fn.
+template <typename T, typename ValueType, typename Role>
+concept has_role_member_create_edge_map =
+    requires(const T & t, const ValueType & d) {
+        {
+            t.template create_edge_map<ValueType, Role>()
+        } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
+        {
+            t.template create_edge_map<ValueType, Role>(d)
+        } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
+    };
+
+template <typename T, typename ValueType, typename Role>
+concept has_role_adl_create_edge_map =
+    requires(const T & t, const ValueType & d) {
+        {
+            create_edge_map<ValueType, Role>(t)
+        } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
+        {
+            create_edge_map<ValueType, Role>(t, d)
+        } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
+    };
+
 template <typename T, typename ValueType>
 concept has_member_create_edge_map =
     requires(const T & t, const ValueType & d) {
@@ -288,18 +312,31 @@ concept has_adl_create_edge_map = requires(const T & t, const ValueType & d) {
     } -> melon::output_mapping_of<melon::edge_t<T>, ValueType>;
 };
 
-// Parameterised on ValueType so that the public name can be a *variable*
-// template rather than a function template: a function template named
-// create_edge_map living in namespace melon is reachable by ADL from
+template <typename T, typename ValueType, typename Role>
+concept can_create_edge_map =
+    has_role_member_create_edge_map<T, ValueType, Role> ||
+    has_role_adl_create_edge_map<T, ValueType, Role> ||
+    has_member_create_edge_map<T, ValueType> ||
+    has_adl_create_edge_map<T, ValueType>;
+
+// Parameterised on ValueType and Role so that the public name can be a
+// *variable* template rather than a function template: a function template
+// named create_edge_map living in namespace melon is reachable by ADL from
 // has_adl_create_edge_map for every type whose associated namespaces include
 // melon (every melon undirected view), which makes the concept depend on
 // itself. Variable templates are not found by ADL, so the loop cannot close.
-template <typename ValueType>
+template <typename ValueType, typename Role>
 struct create_edge_map_fn {
 private:
     template <typename T>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_create_edge_map<T, ValueType>)
+        if constexpr(has_role_member_create_edge_map<T, ValueType, Role>)
+            return noexcept(std::declval<const T &>()
+                                .template create_edge_map<ValueType, Role>());
+        else if constexpr(has_role_adl_create_edge_map<T, ValueType, Role>)
+            return noexcept(
+                create_edge_map<ValueType, Role>(std::declval<const T &>()));
+        else if constexpr(has_member_create_edge_map<T, ValueType>)
             return noexcept(std::declval<const T &>()
                                 .template create_edge_map<ValueType>());
         else
@@ -309,7 +346,14 @@ private:
 
     template <typename T>
     static constexpr bool is_noexcept_default() {
-        if constexpr(has_member_create_edge_map<T, ValueType>)
+        if constexpr(has_role_member_create_edge_map<T, ValueType, Role>)
+            return noexcept(std::declval<const T &>()
+                                .template create_edge_map<ValueType, Role>(
+                                    std::declval<const ValueType &>()));
+        else if constexpr(has_role_adl_create_edge_map<T, ValueType, Role>)
+            return noexcept(create_edge_map<ValueType, Role>(
+                std::declval<const T &>(), std::declval<const ValueType &>()));
+        else if constexpr(has_member_create_edge_map<T, ValueType>)
             return noexcept(
                 std::declval<const T &>().template create_edge_map<ValueType>(
                     std::declval<const ValueType &>()));
@@ -320,23 +364,29 @@ private:
 
 public:
     template <typename T>
-        requires has_member_create_edge_map<T, ValueType> ||
-                 has_adl_create_edge_map<T, ValueType>
+        requires can_create_edge_map<T, ValueType, Role>
     constexpr auto operator() [[nodiscard]] (const T & t) const
         noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_create_edge_map<T, ValueType>)
+        if constexpr(has_role_member_create_edge_map<T, ValueType, Role>)
+            return t.template create_edge_map<ValueType, Role>();
+        else if constexpr(has_role_adl_create_edge_map<T, ValueType, Role>)
+            return create_edge_map<ValueType, Role>(t);
+        else if constexpr(has_member_create_edge_map<T, ValueType>)
             return t.template create_edge_map<ValueType>();
         else
             return create_edge_map<ValueType>(t);
     }
 
     template <typename T>
-        requires has_member_create_edge_map<T, ValueType> ||
-                 has_adl_create_edge_map<T, ValueType>
+        requires can_create_edge_map<T, ValueType, Role>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const ValueType & d) const
         noexcept(is_noexcept_default<T>()) {
-        if constexpr(has_member_create_edge_map<T, ValueType>)
+        if constexpr(has_role_member_create_edge_map<T, ValueType, Role>)
+            return t.template create_edge_map<ValueType, Role>(d);
+        else if constexpr(has_role_adl_create_edge_map<T, ValueType, Role>)
+            return create_edge_map<ValueType, Role>(t, d);
+        else if constexpr(has_member_create_edge_map<T, ValueType>)
             return t.template create_edge_map<ValueType>(d);
         else
             return create_edge_map<ValueType>(t, d);
@@ -347,20 +397,21 @@ public:
 namespace melon {
 
 inline namespace cust {
-template <typename ValueType>
-inline constexpr melon_create_map_cpo::create_edge_map_fn<ValueType>
+template <typename ValueType, typename Role = default_role>
+inline constexpr melon_create_map_cpo::create_edge_map_fn<ValueType, Role>
     create_edge_map{};
 }  // namespace cust
 
-template <typename T, typename ValueType>
-using edge_map_t =
-    decltype(melon::create_edge_map<ValueType>(std::declval<const T &>()));
+template <typename T, typename ValueType, typename Role = default_role>
+using edge_map_t = decltype(melon::create_edge_map<ValueType, Role>(
+    std::declval<const T &>()));
 
-template <typename T, typename ValueType = std::size_t>
+template <typename T, typename ValueType = std::size_t,
+          typename Role = default_role>
 concept has_edge_map =
     undirected_graph<T> && requires(const T & t, const ValueType & d) {
-        melon::create_edge_map<ValueType>(t);
-        melon::create_edge_map<ValueType>(t, d);
+        melon::create_edge_map<ValueType, Role>(t);
+        melon::create_edge_map<ValueType, Role>(t, d);
     };
 
 }  // namespace melon

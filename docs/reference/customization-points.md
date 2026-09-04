@@ -41,10 +41,10 @@ Every accessor in melon — `melon::vertices`, `melon::out_arcs`, `melon::arc_ta
 
 | CPO | Fallback |
 | --- | --- |
-| `create_vertex_map<T>(g)` / `create_vertex_map<T>(g, d)` | — |
-| `create_arc_map<T>(g)` / `create_arc_map<T>(g, d)` | — |
+| `create_vertex_map<T, Role = default_role>(g)` / `create_vertex_map<T, Role>(g, d)` | a one-parameter `create_vertex_map<T>` answers every role |
+| `create_arc_map<T, Role = default_role>(g)` / `create_arc_map<T, Role>(g, d)` | a one-parameter `create_arc_map<T>` answers every role |
 
-Both overloads must be provided, and the result must model `output_mapping_of<vertex_t<G>, T>` (respectively `arc_t<G>`).
+Both overloads must be provided, and the result must model `output_mapping_of<vertex_t<G>, T>` (respectively `arc_t<G>`). The second template parameter is the request's [role](../graphs/concepts.md#attaching-data-to-vertices-and-arcs). A factory takes either exactly one template parameter, the value type — what every container declares, answering every role with its standard map — or exactly two, `<T, Role = default_role>`, to answer per role; the two-parameter shape is probed first, so a role-aware member must keep `Role` defaulted for the roleless spelling `create_vertex_map<T>(g)` to keep working. Every melon view forwards the role it receives.
 
 ### Mutation
 
@@ -68,7 +68,7 @@ None of these has a fallback; providing one is what makes the corresponding conc
 | `edge_endpoints(g, e)` | — |
 | `incidence(g, v)` | — |
 | `degree(g, v)` | `std::ranges::size(incidence(g, v))` when sized |
-| `create_edge_map<T>(g)` / `create_edge_map<T>(g, d)` | — |
+| `create_edge_map<T, Role = default_role>(g)` / `create_edge_map<T, Role>(g, d)` | a one-parameter `create_edge_map<T>` answers every role |
 
 ## Choosing between fallbacks
 
@@ -104,6 +104,6 @@ template <typename T> auto create_vertex_map(const their_graph & g, const T & d)
 }  // namespace their_lib
 ```
 
-Nothing is added to `namespace melon`; ADL from the argument type finds them. The map factories are called with an explicit template argument — `create_vertex_map<T>(g)` — and that works because on melon's side `create_vertex_map` is a *variable* template wrapping a CPO object, not a function template: the melon name is invisible to ADL, so the ADL probe inside the CPO can only ever find *your* `create_vertex_map`.
+Nothing is added to `namespace melon`; ADL from the argument type finds them. The map factories are called with an explicit template argument — `create_vertex_map<T>(g)`, or `create_vertex_map<T, Role>(g)` for a two-parameter factory — and that works because on melon's side `create_vertex_map` is a *variable* template wrapping a CPO object, not a function template: the melon name is invisible to ADL, so the ADL probe inside the CPO can only ever find *your* `create_vertex_map`.
 
 See [Bringing your own graph](../graphs/custom-graphs.md) for complete, compiling examples and the rules the ranges must respect. `graph_ref_view`, which every algorithm wraps its argument in, forwards every read-only accessor in the tables above — `arcs_entries` when the wrapped graph provides its own; otherwise the CPO fallback synthesizes it — so a type stays a `graph` once wrapped whichever protocol it provides. It does not forward the mutating CPOs — a view is read-only by construction — but it does forward `is_valid_vertex` and `is_valid_arc`: those are questions, not mutations, and the standalone concepts `has_is_valid_vertex<G>` / `has_is_valid_arc<G>` name a graph that answers them.

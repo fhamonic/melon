@@ -6,7 +6,7 @@ A view is a graph that computes its answers from another graph instead of storin
 for(auto && [v, dist] : dijkstra(views::reverse(graph), length_map, t)) { ... }
 ```
 
-Views follow the `std::ranges` shape: the *class* lives in `melon` (`reverse_view`, `subgraph_view`, `induced_subgraph_view`, `undirect_view`) and the *adaptor object* you actually spell lives in `namespace melon::views` (`views::reverse`, `views::subgraph`, …), one header each under `melon/views/`.
+Views follow the `std::ranges` shape: the *class* lives in `melon` (`reverse_view`, `subgraph_view`, `induced_subgraph_view`, `undirect_view`, `with_vertex_maps_view`, …) and the *adaptor object* you actually spell lives in `namespace melon::views` (`views::reverse`, `views::subgraph`, …), one header each under `melon/views/`.
 
 ## Pipe syntax
 
@@ -166,6 +166,45 @@ for(auto && [v, d] : dijkstra(cd, dist, 0u)) { ... }
 ```
 
 The template parameters are the *unsigned* integer types for vertices and arcs, both `unsigned int` by default — worth widening for large `n`, since the arc count is quadratic. Signed handles are rejected at the concept: the view's empty incidence subranges rely on unsigned wraparound.
+
+## `with_vertex_maps`, `with_arc_maps`, `with_edge_maps`
+
+The three adaptors answer the [map factories](../graphs/concepts.md#attaching-data-to-vertices-and-arcs) from lambdas you supply and forward everything else. The result is a graph *with* factories, whatever the graph underneath has: a graph providing none runs every algorithm from a single lambda, and a graph providing them can have particular maps redirected into storage you already own.
+
+```cpp
+#include "melon/views/with_maps.hpp"
+
+auto vectors = []<typename T>(auto /*role*/, const auto & g) {
+    return std::vector<T>(num_vertices(g));
+};
+for(auto && [v, dist] : dijkstra(views::with_vertex_maps(g, vectors), length_map, s)) { ... }
+```
+
+A lambda serves a request when it can be called as `f.template operator()<T>(Role{}, g)` — the **bare form** — or as `f.template operator()<T>(Role{}, g, d)` with the default value — the **filled form**: the value type as an **explicit template argument** (the lambda must declare `<typename T>`), then the role as a value tag and the wrapped graph. A lambda may declare either form or both, and the view derives the one it lacks: the filled form as the bare call followed by an assignment at every key, the bare form as the filled call with a value-initialized `T` (so a filled-only lambda serves a `T` that is not default-constructible in the filled form alone). Declare the bare form when the map needs no initialization (`std::make_unique_for_overwrite`), the filled form when the value can be fused into the allocation, both — through a pack, `const auto &... d` — when each path has its own best allocation. The returned map must model `output_mapping_of<vertex_t<G>, T>` (`arc_t`, `edge_t` for the other two adaptors).
+
+With several lambdas, the **first** one, in the order given, that serves a request in either form owns both of its forms: list the lambdas naming a role before the generic `auto` one, since a generic lambda listed first serves every request and silently shadows whatever follows it. A request no lambda serves goes to the wrapped graph's own factory:
+
+```cpp
+struct record { std::size_t heap_index; char status; };
+auto slots = std::make_shared<std::vector<record>>(num_vertices(g));
+
+auto interior = views::with_vertex_maps(
+    g,
+    [slots]<typename T>(dijkstra_roles::heap_index, const auto &)
+        requires std::same_as<T, std::size_t>
+    { return heap_index_field{slots}; });   // a projection into record::heap_index
+
+dijkstra alg(interior, length_map, s);      // the heap indexes through the record
+                                            // array; every other map is g's own
+```
+
+Roles are how an algorithm names each map it creates — `dijkstra_roles::heap_index`, `bidirectional_dijkstra_roles::forward_heap_index`, … — see [Map roles](../algorithms/index.md#map-roles). Two maps of the same value type are two roles, so a provider never hands one slot to both.
+
+What serves nothing, so that the wrapped graph answers or `has_vertex_map` is `false`: a generic lambda without an explicit `<typename T>`; a `mutable` lambda, since the view is used through `const`.
+
+The lambdas are copied into the view, like the function of `std::views::transform`, in the direct call and through the pipe alike, so `g | views::with_vertex_maps(f)` names the same type as `views::with_vertex_maps(g, f)`. `with_vertex_maps` accepts directed and undirected graphs and keeps the kind of what it wraps; `with_arc_maps` is for directed graphs, `with_edge_maps` for undirected ones. Each view is [borrowed](ownership.md#borrowed-graphs) exactly when the graph it wraps is.
+
+**Lifetime, for lambdas handing out storage they do not own.** Algorithms move the view they hold, so a projection must point at a heap buffer, never at the view or at a local. And a result map extracted from an expiring algorithm (`std::move(alg).dists_map()`) keeps only what the projection keeps alive: hold the buffer through a `std::shared_ptr`, as above, and the [extraction contract](ownership.md#getting-a-result-map-out-the-s_map-accessors) holds unchanged; hold a raw pointer, and reading the extracted map after the view dies is a use-after-free that only a sanitizer reports. A view backs at most one live algorithm per role: two algorithms sharing one interior view share its slots.
 
 ## Composition
 

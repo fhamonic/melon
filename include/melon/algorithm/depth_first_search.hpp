@@ -20,6 +20,13 @@
 
 namespace melon {
 
+struct depth_first_search_roles {
+    struct reached {};
+    struct pred_vertex {};
+    struct pred_arc {};
+    struct depth {};
+};
+
 template <typename Traits>
 concept depth_first_search_traits = requires {
     { Traits::store_pred_vertices } -> std::convertible_to<bool>;
@@ -72,15 +79,18 @@ private:
 private:
     Graph _graph;
     std::vector<std::pair<vertex, stack_cursor>> _stack;
-    vertex_map_t<Graph, bool> _reached_map;
+    vertex_map_t<Graph, bool, depth_first_search_roles::reached> _reached_map;
 
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_pred_vertices, Graph, vertex>
+    detail::vertex_map_if<Traits::store_pred_vertices, Graph, vertex,
+                          depth_first_search_roles::pred_vertex>
         _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc> _pred_arcs_map;
+    detail::vertex_map_if<Traits::store_pred_arcs, Graph, arc,
+                          depth_first_search_roles::pred_arc> _pred_arcs_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_depth, Graph, int> _depth_map;
+    detail::vertex_map_if<Traits::store_depth, Graph, int,
+                          depth_first_search_roles::depth> _depth_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -90,7 +100,9 @@ public:
     constexpr explicit depth_first_search(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _stack()
-        , _reached_map(create_vertex_map<bool>(_graph, false))
+        , _reached_map(
+              create_vertex_map<bool, depth_first_search_roles::reached>(_graph,
+                                                                         false))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _depth_map(_graph) {
@@ -125,7 +137,7 @@ public:
     constexpr depth_first_search(const depth_first_search &) = delete;
     constexpr depth_first_search(depth_first_search && o) noexcept(
         !frames_need_rebase && std::is_nothrow_move_constructible_v<Graph> &&
-        std::is_nothrow_move_constructible_v<vertex_map_t<Graph, bool>>)
+        std::is_nothrow_move_constructible_v<decltype(_reached_map)>)
         : _graph(std::move(o._graph))
         , _stack(std::move(o._stack))
         , _reached_map(std::move(o._reached_map))
@@ -139,7 +151,7 @@ public:
         delete;
     constexpr depth_first_search & operator=(depth_first_search && o) noexcept(
         !frames_need_rebase && std::is_nothrow_move_assignable_v<Graph> &&
-        std::is_nothrow_move_assignable_v<vertex_map_t<Graph, bool>>) {
+        std::is_nothrow_move_assignable_v<decltype(_reached_map)>) {
         if(this == std::addressof(o)) return *this;
         _graph = std::move(o._graph);
         _stack = std::move(o._stack);

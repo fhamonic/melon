@@ -23,6 +23,13 @@ namespace melon {
 // which no concept can check: a negative one lets an augmentation exceed the
 // capacity it is bounded by, so run() converges on a non-flow.
 // O(n^2 m), independent of the capacity values.
+struct dinitz_roles {
+    struct flow {};
+    struct rank {};
+    struct remaining_out_arcs {};
+    struct remaining_in_arcs {};
+};
+
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
              has_vertex_map<Graph> && has_arc_map<Graph> &&
@@ -45,7 +52,7 @@ private:
     bool _source_set;
     bool _target_set;
     bool _converged;
-    arc_map_t<Graph, value_t> _carried_flow_map;
+    arc_map_t<Graph, value_t, dinitz_roles::flow> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
     struct dfs_step {
         arc a;
@@ -53,11 +60,13 @@ private:
         bool forward;
     };
     std::vector<dfs_step> _dfs_path;
-    vertex_map_t<Graph, std::size_t> _vertex_rank_map;
+    vertex_map_t<Graph, std::size_t, dinitz_roles::rank> _vertex_rank_map;
     vertex_map_t<Graph,
-                 detail::consumable_input_view_t<out_arcs_range_t<Graph>>>
+                 detail::consumable_input_view_t<out_arcs_range_t<Graph>>,
+                 dinitz_roles::remaining_out_arcs>
         _remaining_out_arcs;
-    vertex_map_t<Graph, detail::consumable_input_view_t<in_arcs_range_t<Graph>>>
+    vertex_map_t<Graph, detail::consumable_input_view_t<in_arcs_range_t<Graph>>,
+                 dinitz_roles::remaining_in_arcs>
         _remaining_in_arcs;
 
 public:
@@ -72,16 +81,17 @@ public:
         , _source_set(false)
         , _target_set(false)
         , _converged(false)
-        , _carried_flow_map(create_arc_map<value_t>(_graph))
-        , _vertex_rank_map(create_vertex_map<std::size_t>(_graph))
+        , _carried_flow_map(create_arc_map<value_t, dinitz_roles::flow>(_graph))
+        , _vertex_rank_map(
+              create_vertex_map<std::size_t, dinitz_roles::rank>(_graph))
         , _remaining_out_arcs(
               create_vertex_map<
-                  detail::consumable_input_view_t<out_arcs_range_t<Graph>>>(
-                  _graph))
+                  detail::consumable_input_view_t<out_arcs_range_t<Graph>>,
+                  dinitz_roles::remaining_out_arcs>(_graph))
         , _remaining_in_arcs(
               create_vertex_map<
-                  detail::consumable_input_view_t<in_arcs_range_t<Graph>>>(
-                  _graph)) {
+                  detail::consumable_input_view_t<in_arcs_range_t<Graph>>,
+                  dinitz_roles::remaining_in_arcs>(_graph)) {
         if constexpr(has_num_vertices<Graph>) {
             _bfs_queue.reserve(num_vertices(_graph));
         }

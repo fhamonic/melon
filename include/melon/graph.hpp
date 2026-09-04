@@ -1278,6 +1278,11 @@ template <typename G>
 concept has_arc_targets_map =
     requires(const G & g) { melon::arc_targets_map(g); };
 
+// What a map request carries when the caller names no role. An algorithm names
+// a role for every map it creates (dijkstra_roles::heap_index, ...); a role is
+// what lets a factory that hands out storage tell two same-typed maps apart.
+struct default_role {};
+
 }  // namespace melon
 
 // The create-map CPOs live OUTSIDE namespace melon, unlike every other CPO in
@@ -1292,6 +1297,35 @@ concept has_arc_targets_map =
 // in-namespace poison pill cannot substitute: it shadows the global-scope
 // protocol on every compiler.
 namespace melon_create_map_cpo {
+
+// Two factory shapes. A two-parameter template `create_vertex_map<T, Role>`
+// answers per role; a one-parameter `create_vertex_map<T>` answers every role
+// with its standard map, and is what every container declares. The
+// two-parameter shape is probed FIRST: a role-aware member defaults its Role,
+// so the one-parameter probe matches it too and, taken first, would hand every
+// request to the default role.
+template <typename T, typename ValueType, typename Role>
+concept has_role_member_create_vertex_map =
+    requires(const T & t, const ValueType & d) {
+        {
+            t.template create_vertex_map<ValueType, Role>()
+        } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
+        {
+            t.template create_vertex_map<ValueType, Role>(d)
+        } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
+    };
+
+template <typename T, typename ValueType, typename Role>
+concept has_role_adl_create_vertex_map =
+    requires(const T & t, const ValueType & d) {
+        {
+            create_vertex_map<ValueType, Role>(t)
+        } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
+        {
+            create_vertex_map<ValueType, Role>(t, d)
+        } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
+    };
+
 template <typename T, typename ValueType>
 concept has_member_create_vertex_map =
     requires(const T & t, const ValueType & d) {
@@ -1313,19 +1347,32 @@ concept has_adl_create_vertex_map = requires(const T & t, const ValueType & d) {
     } -> melon::output_mapping_of<melon::vertex_t<T>, ValueType>;
 };
 
-// Parameterised on ValueType so that the public name can be a *variable*
-// template rather than a function template. A function template named
-// create_vertex_map that lives in namespace melon is reachable by ADL from
-// has_adl_create_vertex_map for every graph type whose associated namespaces
-// include melon (any melon view, e.g. views::reverse), which makes the
-// concept depend on itself: "satisfaction of atomic constraint depends on
+template <typename T, typename ValueType, typename Role>
+concept can_create_vertex_map =
+    has_role_member_create_vertex_map<T, ValueType, Role> ||
+    has_role_adl_create_vertex_map<T, ValueType, Role> ||
+    has_member_create_vertex_map<T, ValueType> ||
+    has_adl_create_vertex_map<T, ValueType>;
+
+// Parameterised on ValueType and Role so that the public name can be a
+// *variable* template rather than a function template. A function template
+// named create_vertex_map that lives in namespace melon is reachable by ADL
+// from has_adl_create_vertex_map for every graph type whose associated
+// namespaces include melon (any melon view, e.g. views::reverse), which makes
+// the concept depend on itself: "satisfaction of atomic constraint depends on
 // itself". Variable templates are not found by ADL, so the loop cannot close.
-template <typename ValueType>
+template <typename ValueType, typename Role>
 struct create_vertex_map_fn {
 private:
     template <typename T>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_create_vertex_map<T, ValueType>)
+        if constexpr(has_role_member_create_vertex_map<T, ValueType, Role>)
+            return noexcept(std::declval<const T &>()
+                                .template create_vertex_map<ValueType, Role>());
+        else if constexpr(has_role_adl_create_vertex_map<T, ValueType, Role>)
+            return noexcept(
+                create_vertex_map<ValueType, Role>(std::declval<const T &>()));
+        else if constexpr(has_member_create_vertex_map<T, ValueType>)
             return noexcept(std::declval<const T &>()
                                 .template create_vertex_map<ValueType>());
         else
@@ -1338,7 +1385,14 @@ private:
     // create_vertex_map<V>(g, d).
     template <typename T>
     static constexpr bool is_noexcept_default() {
-        if constexpr(has_member_create_vertex_map<T, ValueType>)
+        if constexpr(has_role_member_create_vertex_map<T, ValueType, Role>)
+            return noexcept(std::declval<const T &>()
+                                .template create_vertex_map<ValueType, Role>(
+                                    std::declval<const ValueType &>()));
+        else if constexpr(has_role_adl_create_vertex_map<T, ValueType, Role>)
+            return noexcept(create_vertex_map<ValueType, Role>(
+                std::declval<const T &>(), std::declval<const ValueType &>()));
+        else if constexpr(has_member_create_vertex_map<T, ValueType>)
             return noexcept(
                 std::declval<const T &>().template create_vertex_map<ValueType>(
                     std::declval<const ValueType &>()));
@@ -1349,28 +1403,56 @@ private:
 
 public:
     template <typename T>
-        requires has_member_create_vertex_map<T, ValueType> ||
-                 has_adl_create_vertex_map<T, ValueType>
+        requires can_create_vertex_map<T, ValueType, Role>
     constexpr auto operator() [[nodiscard]] (const T & t) const
         noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_create_vertex_map<T, ValueType>)
+        if constexpr(has_role_member_create_vertex_map<T, ValueType, Role>)
+            return t.template create_vertex_map<ValueType, Role>();
+        else if constexpr(has_role_adl_create_vertex_map<T, ValueType, Role>)
+            return create_vertex_map<ValueType, Role>(t);
+        else if constexpr(has_member_create_vertex_map<T, ValueType>)
             return t.template create_vertex_map<ValueType>();
         else
             return create_vertex_map<ValueType>(t);
     }
 
     template <typename T>
-        requires has_member_create_vertex_map<T, ValueType> ||
-                 has_adl_create_vertex_map<T, ValueType>
+        requires can_create_vertex_map<T, ValueType, Role>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const ValueType & d) const
         noexcept(is_noexcept_default<T>()) {
-        if constexpr(has_member_create_vertex_map<T, ValueType>)
+        if constexpr(has_role_member_create_vertex_map<T, ValueType, Role>)
+            return t.template create_vertex_map<ValueType, Role>(d);
+        else if constexpr(has_role_adl_create_vertex_map<T, ValueType, Role>)
+            return create_vertex_map<ValueType, Role>(t, d);
+        else if constexpr(has_member_create_vertex_map<T, ValueType>)
             return t.template create_vertex_map<ValueType>(d);
         else
             return create_vertex_map<ValueType>(t, d);
     }
 };
+
+template <typename T, typename ValueType, typename Role>
+concept has_role_member_create_arc_map =
+    requires(const T & t, const ValueType & d) {
+        {
+            t.template create_arc_map<ValueType, Role>()
+        } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
+        {
+            t.template create_arc_map<ValueType, Role>(d)
+        } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
+    };
+
+template <typename T, typename ValueType, typename Role>
+concept has_role_adl_create_arc_map =
+    requires(const T & t, const ValueType & d) {
+        {
+            create_arc_map<ValueType, Role>(t)
+        } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
+        {
+            create_arc_map<ValueType, Role>(t, d)
+        } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
+    };
 
 template <typename T, typename ValueType>
 concept has_member_create_arc_map = requires(const T & t, const ValueType & d) {
@@ -1392,14 +1474,28 @@ concept has_adl_create_arc_map = requires(const T & t, const ValueType & d) {
     } -> melon::output_mapping_of<melon::arc_t<T>, ValueType>;
 };
 
-// Parameterised on ValueType so the public name can be a variable template,
-// invisible to ADL, for the reason spelled out on create_vertex_map_fn above.
-template <typename ValueType>
+template <typename T, typename ValueType, typename Role>
+concept can_create_arc_map =
+    has_role_member_create_arc_map<T, ValueType, Role> ||
+    has_role_adl_create_arc_map<T, ValueType, Role> ||
+    has_member_create_arc_map<T, ValueType> ||
+    has_adl_create_arc_map<T, ValueType>;
+
+// Parameterised on ValueType and Role so the public name can be a variable
+// template, invisible to ADL, for the reason spelled out on
+// create_vertex_map_fn above.
+template <typename ValueType, typename Role>
 struct create_arc_map_fn {
 private:
     template <typename T>
     static constexpr bool is_noexcept() {
-        if constexpr(has_member_create_arc_map<T, ValueType>)
+        if constexpr(has_role_member_create_arc_map<T, ValueType, Role>)
+            return noexcept(std::declval<const T &>()
+                                .template create_arc_map<ValueType, Role>());
+        else if constexpr(has_role_adl_create_arc_map<T, ValueType, Role>)
+            return noexcept(
+                create_arc_map<ValueType, Role>(std::declval<const T &>()));
+        else if constexpr(has_member_create_arc_map<T, ValueType>)
             return noexcept(
                 std::declval<const T &>().template create_arc_map<ValueType>());
         else
@@ -1409,7 +1505,14 @@ private:
 
     template <typename T>
     static constexpr bool is_noexcept_default() {
-        if constexpr(has_member_create_arc_map<T, ValueType>)
+        if constexpr(has_role_member_create_arc_map<T, ValueType, Role>)
+            return noexcept(std::declval<const T &>()
+                                .template create_arc_map<ValueType, Role>(
+                                    std::declval<const ValueType &>()));
+        else if constexpr(has_role_adl_create_arc_map<T, ValueType, Role>)
+            return noexcept(create_arc_map<ValueType, Role>(
+                std::declval<const T &>(), std::declval<const ValueType &>()));
+        else if constexpr(has_member_create_arc_map<T, ValueType>)
             return noexcept(
                 std::declval<const T &>().template create_arc_map<ValueType>(
                     std::declval<const ValueType &>()));
@@ -1420,23 +1523,29 @@ private:
 
 public:
     template <typename T>
-        requires has_member_create_arc_map<T, ValueType> ||
-                 has_adl_create_arc_map<T, ValueType>
+        requires can_create_arc_map<T, ValueType, Role>
     constexpr auto operator() [[nodiscard]] (const T & t) const
         noexcept(is_noexcept<T>()) {
-        if constexpr(has_member_create_arc_map<T, ValueType>)
+        if constexpr(has_role_member_create_arc_map<T, ValueType, Role>)
+            return t.template create_arc_map<ValueType, Role>();
+        else if constexpr(has_role_adl_create_arc_map<T, ValueType, Role>)
+            return create_arc_map<ValueType, Role>(t);
+        else if constexpr(has_member_create_arc_map<T, ValueType>)
             return t.template create_arc_map<ValueType>();
         else
             return create_arc_map<ValueType>(t);
     }
 
     template <typename T>
-        requires has_member_create_arc_map<T, ValueType> ||
-                 has_adl_create_arc_map<T, ValueType>
+        requires can_create_arc_map<T, ValueType, Role>
     constexpr auto operator()
         [[nodiscard]] (const T & t, const ValueType & d) const
         noexcept(is_noexcept_default<T>()) {
-        if constexpr(has_member_create_arc_map<T, ValueType>)
+        if constexpr(has_role_member_create_arc_map<T, ValueType, Role>)
+            return t.template create_arc_map<ValueType, Role>(d);
+        else if constexpr(has_role_adl_create_arc_map<T, ValueType, Role>)
+            return create_arc_map<ValueType, Role>(t, d);
+        else if constexpr(has_member_create_arc_map<T, ValueType>)
             return t.template create_arc_map<ValueType>(d);
         else
             return create_arc_map<ValueType>(t, d);
@@ -1447,38 +1556,40 @@ public:
 namespace melon {
 
 inline namespace cust {
-template <typename ValueType>
-inline constexpr melon_create_map_cpo::create_vertex_map_fn<ValueType>
+template <typename ValueType, typename Role = default_role>
+inline constexpr melon_create_map_cpo::create_vertex_map_fn<ValueType, Role>
     create_vertex_map{};
 
-template <typename ValueType>
-inline constexpr melon_create_map_cpo::create_arc_map_fn<ValueType>
+template <typename ValueType, typename Role = default_role>
+inline constexpr melon_create_map_cpo::create_arc_map_fn<ValueType, Role>
     create_arc_map{};
 }  // namespace cust
 
-template <typename T, typename ValueType>
-using vertex_map_t =
-    decltype(melon::create_vertex_map<ValueType>(std::declval<const T &>()));
-template <typename T, typename ValueType>
+template <typename T, typename ValueType, typename Role = default_role>
+using vertex_map_t = decltype(melon::create_vertex_map<ValueType, Role>(
+    std::declval<const T &>()));
+template <typename T, typename ValueType, typename Role = default_role>
 using arc_map_t =
-    decltype(melon::create_arc_map<ValueType>(std::declval<const T &>()));
+    decltype(melon::create_arc_map<ValueType, Role>(std::declval<const T &>()));
 
 // The default ValueType probes std::size_t only, so `has_vertex_map<G>` means
 // "G maps *some* value type"; algorithms constrained on it go on to create maps
 // of their own types. A create_vertex_map that handles only one value type
 // satisfies the concept and then hard-errors inside the algorithm.
-template <typename T, typename ValueType = std::size_t>
+template <typename T, typename ValueType = std::size_t,
+          typename Role = default_role>
 concept has_vertex_map =
     has_vertices<T> && requires(const T & t, const ValueType & d) {
-        melon::create_vertex_map<ValueType>(t);
-        melon::create_vertex_map<ValueType>(t, d);
+        melon::create_vertex_map<ValueType, Role>(t);
+        melon::create_vertex_map<ValueType, Role>(t, d);
     };
 
-template <typename T, typename ValueType = std::size_t>
+template <typename T, typename ValueType = std::size_t,
+          typename Role = default_role>
 concept has_arc_map =
     has_arcs<T> && requires(const T & t, const ValueType & d) {
-        melon::create_arc_map<ValueType>(t);
-        melon::create_arc_map<ValueType>(t, d);
+        melon::create_arc_map<ValueType, Role>(t);
+        melon::create_arc_map<ValueType, Role>(t, d);
     };
 
 }  // namespace melon

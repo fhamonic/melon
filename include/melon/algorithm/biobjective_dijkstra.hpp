@@ -17,6 +17,10 @@
 namespace melon {
 
 // clang-format on
+struct biobjective_dijkstra_roles {
+    struct pareto_front {};
+};
+
 template <typename Traits>
 concept biobjective_dijkstra_traits =
     semiring<typename Traits::blue_semiring> &&
@@ -84,7 +88,8 @@ private:
     BlueLengthMap _blue_length_map;
     RedLengthMap _red_length_map;
 
-    vertex_map_t<Graph, labels_set> _pareto_front_map;
+    vertex_map_t<Graph, labels_set, biobjective_dijkstra_roles::pareto_front>
+        _pareto_front_map;
     heap _heap;
 
 public:
@@ -96,7 +101,10 @@ public:
         : _graph(views::graph_all(std::forward<G>(g)))
         , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))
         , _red_length_map(maps::mapping_all(std::forward<RLM>(rlm)))
-        , _pareto_front_map(create_vertex_map<labels_set>(_graph))
+        , _pareto_front_map(
+              create_vertex_map<labels_set,
+                                biobjective_dijkstra_roles::pareto_front>(
+                  _graph))
         , _heap() {}
 
     template <typename... Args>

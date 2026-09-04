@@ -21,6 +21,12 @@
 
 namespace melon {
 
+struct bellman_ford_roles {
+    struct distance {};
+    struct pred_vertex {};
+    struct pred_arc {};
+};
+
 template <typename Traits>
 concept bellman_ford_traits = semiring<typename Traits::semiring> && requires {
     { Traits::store_paths } -> std::convertible_to<bool>;
@@ -66,14 +72,15 @@ private:
 private:
     Graph _graph;
     LengthMap _length_map;
-    vertex_map_t<Graph, length_type> _distances_map;
+    vertex_map_t<Graph, length_type, bellman_ford_roles::distance>
+        _distances_map;
 
     [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
-        _pred_vertices_map;
+        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex,
+        bellman_ford_roles::pred_vertex> _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
-        _pred_arcs_map;
+    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>,
+                          bellman_ford_roles::pred_arc> _pred_arcs_map;
 
     struct no_found_negative_cycle {};
     [[no_unique_address]] std::conditional_t<Traits::detect_negative_cycles,
@@ -92,7 +99,8 @@ public:
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _distances_map(
-              create_vertex_map<length_type>(_graph, Traits::semiring::infty))
+              create_vertex_map<length_type, bellman_ford_roles::distance>(
+                  _graph, Traits::semiring::infty))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph) {}
 

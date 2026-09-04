@@ -24,6 +24,14 @@
 
 namespace melon {
 
+struct a_star_roles {
+    struct vertex_status {};
+    struct heap_index {};
+    struct pred_vertex {};
+    struct pred_arc {};
+    struct distance {};
+};
+
 template <typename Traits>
 concept a_star_traits =
     semiring<typename Traits::semiring> &&
@@ -49,8 +57,9 @@ struct a_star_default_traits {
     };
     using heap = updatable_d_ary_heap<
         2, std::pair<vertex_t<Graph>, std::pair<ValueType, ValueType>>,
-        priority_less, vertex_map_t<Graph, std::size_t>, maps::element<1>,
-        maps::element<0>>;
+        priority_less,
+        vertex_map_t<Graph, std::size_t, a_star_roles::heap_index>,
+        maps::element<1>, maps::element<0>>;
 
     static constexpr bool store_distances = false;
     static constexpr bool store_paths = false;
@@ -97,23 +106,29 @@ private:
                                  std::pair<vertex, heap_priority>>,
                   "a_star requires heap entries pairing a vertex with a "
                   "(distance, key) priority pair.");
+    static_assert(
+        heap_index_map_agrees<
+            heap, vertex_map_t<Graph, std::size_t, a_star_roles::heap_index>>,
+        "a_star requires the heap index map to be the graph's answer for "
+        "a_star_roles::heap_index.");
 
 private:
     Graph _graph;
     LengthMap _length_map;
     HeuristicMap _heuristic_map;
     heap _heap;
-    vertex_map_t<Graph, vertex_status> _vertex_status_map;
+    vertex_map_t<Graph, vertex_status, a_star_roles::vertex_status>
+        _vertex_status_map;
 
     [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
-        _pred_vertices_map;
+        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex,
+        a_star_roles::pred_vertex> _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
-        _pred_arcs_map;
+    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>,
+                          a_star_roles::pred_arc> _pred_arcs_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_distances, Graph, length_type>
-        _distances_map;
+    detail::vertex_map_if<Traits::store_distances, Graph, length_type,
+                          a_star_roles::distance> _distances_map;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -127,9 +142,12 @@ public:
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
         , _heuristic_map(maps::mapping_all(std::forward<HM>(hm)))
-        , _heap(typename heap::priority_compare(),
-                create_vertex_map<std::size_t>(_graph))
-        , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
+        , _heap(
+              typename heap::priority_compare(),
+              create_vertex_map<std::size_t, a_star_roles::heap_index>(_graph))
+        , _vertex_status_map(
+              create_vertex_map<vertex_status, a_star_roles::vertex_status>(
+                  _graph, PRE_HEAP))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _distances_map(_graph) {}

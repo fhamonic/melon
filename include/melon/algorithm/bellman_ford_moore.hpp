@@ -22,6 +22,13 @@
 
 namespace melon {
 
+struct bellman_ford_moore_roles {
+    struct distance {};
+    struct in_queue {};
+    struct pred_vertex {};
+    struct pred_arc {};
+};
+
 template <typename Traits>
 concept bellman_ford_moore_traits =
     semiring<typename Traits::semiring> && requires {
@@ -65,17 +72,18 @@ private:
 private:
     Graph _graph;
     LengthMap _length_map;
-    vertex_map_t<Graph, length_type> _distances_map;
+    vertex_map_t<Graph, length_type, bellman_ford_moore_roles::distance>
+        _distances_map;
     std::vector<vertex> _queue;
     std::vector<vertex> _next_queue;
-    vertex_map_t<Graph, bool> _in_queue_map;
+    vertex_map_t<Graph, bool, bellman_ford_moore_roles::in_queue> _in_queue_map;
 
     [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex>
-        _pred_vertices_map;
+        Traits::store_paths && !has_arc_source<Graph>, Graph, vertex,
+        bellman_ford_moore_roles::pred_vertex> _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>>
-        _pred_arcs_map;
+    detail::vertex_map_if<Traits::store_paths, Graph, std::optional<arc>,
+                          bellman_ford_moore_roles::pred_arc> _pred_arcs_map;
 
     struct no_cycle_witness {};
     [[no_unique_address]] std::conditional_t<Traits::detect_negative_cycles,
@@ -89,9 +97,12 @@ public:
     constexpr bellman_ford_moore(G && g, LM && lm)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _length_map(maps::mapping_all(std::forward<LM>(lm)))
-        , _distances_map(
-              create_vertex_map<length_type>(_graph, Traits::semiring::infty))
-        , _in_queue_map(create_vertex_map<bool>(_graph, false))
+        , _distances_map(create_vertex_map<length_type,
+                                           bellman_ford_moore_roles::distance>(
+              _graph, Traits::semiring::infty))
+        , _in_queue_map(
+              create_vertex_map<bool, bellman_ford_moore_roles::in_queue>(
+                  _graph, false))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph) {}
 

@@ -82,34 +82,35 @@ public:
         return melon::degree(_wrapped(), u);
     }
 
-    template <typename T>
-        requires has_vertex_map<G, T>
-    [[nodiscard]] constexpr decltype(auto) create_vertex_map() const noexcept(
-        noexcept(melon::create_vertex_map<T>(std::declval<const G &>()))) {
-        return melon::create_vertex_map<T>(_wrapped());
+    template <typename T, typename Role = default_role>
+        requires has_vertex_map<G, T, Role>
+    [[nodiscard]] constexpr decltype(auto) create_vertex_map() const
+        noexcept(noexcept(
+            melon::create_vertex_map<T, Role>(std::declval<const G &>()))) {
+        return melon::create_vertex_map<T, Role>(_wrapped());
     }
-    template <typename T>
-        requires has_vertex_map<G, T>
+    template <typename T, typename Role = default_role>
+        requires has_vertex_map<G, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_vertex_map(
         const T & default_value) const
-        noexcept(noexcept(melon::create_vertex_map<T>(std::declval<const G &>(),
-                                                      default_value))) {
-        return melon::create_vertex_map<T>(_wrapped(), default_value);
+        noexcept(noexcept(melon::create_vertex_map<T, Role>(
+            std::declval<const G &>(), default_value))) {
+        return melon::create_vertex_map<T, Role>(_wrapped(), default_value);
     }
 
-    template <typename T>
-        requires has_edge_map<G, T>
+    template <typename T, typename Role = default_role>
+        requires has_edge_map<G, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_edge_map() const noexcept(
-        noexcept(melon::create_edge_map<T>(std::declval<const G &>()))) {
-        return melon::create_edge_map<T>(_wrapped());
+        noexcept(melon::create_edge_map<T, Role>(std::declval<const G &>()))) {
+        return melon::create_edge_map<T, Role>(_wrapped());
     }
-    template <typename T>
-        requires has_edge_map<G, T>
+    template <typename T, typename Role = default_role>
+        requires has_edge_map<G, T, Role>
     [[nodiscard]] constexpr decltype(auto) create_edge_map(
         const T & default_value) const
-        noexcept(noexcept(melon::create_edge_map<T>(std::declval<const G &>(),
-                                                    default_value))) {
-        return melon::create_edge_map<T>(_wrapped(), default_value);
+        noexcept(noexcept(melon::create_edge_map<T, Role>(
+            std::declval<const G &>(), default_value))) {
+        return melon::create_edge_map<T, Role>(_wrapped(), default_value);
     }
 };
 

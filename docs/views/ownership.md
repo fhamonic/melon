@@ -96,6 +96,8 @@ auto flows = std::move(dinitz(graph, capacity, s, t).run()).flows_map();
 // owning: the algorithm is gone, the flow map lives on
 ```
 
+The contract extends to maps a [`views::with_vertex_maps`](graphs.md#with_vertex_maps-with_arc_maps-with_edge_maps) lambda serves into storage the view owns, on one condition: the projection must *co-own* that storage (a `std::shared_ptr` to the buffer), so the extracted map keeps it alive after the view is gone. A projection holding a raw pointer compiles just the same and dangles.
+
 Extraction is terminal, like `std::move(alg).base()`: the member left behind is valid but empty, so extract last and call nothing else afterwards. Mind also that a map handed out by an *lvalue* algorithm references the algorithm object — moving the algorithm afterwards invalidates it, the same contract `std::ranges` adaptors have over a moved container. When the map must outlive or outlast the algorithm, extract it from an expiring one. The handful of *computed* maps (`dijkstra`'s, `network_voronoi`'s, `strongly_connected_components`' and `biobjective_dijkstra`'s `reached_map()`, derived from richer state rather than stored as a bool map) extract too — their expiring overload moves the backing map (status enums, component indices, Pareto fronts) into the lambda of the returned computed map, so it is self-contained and outlives the algorithm just the same.
 
 ## Pipe closures own their arguments

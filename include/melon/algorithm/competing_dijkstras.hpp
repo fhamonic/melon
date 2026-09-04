@@ -19,6 +19,11 @@
 namespace melon {
 
 // clang-format off
+struct competing_dijkstras_roles {
+    struct vertex_status {};
+    struct heap_index {};
+};
+
 template <typename Traits>
 concept competing_dijkstras_traits = semiring<typename Traits::semiring> &&
     updatable_priority_queue<typename Traits::heap> && requires(typename Traits::entry & e) {
@@ -41,10 +46,10 @@ struct competing_dijkstras_default_traits {
             return semiring::less(e1.first, e2.first);
         }
     };
-    using heap =
-        updatable_d_ary_heap<2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
-                             vertex_map_t<Graph, std::size_t>, maps::element<1>,
-                             maps::element<0>>;
+    using heap = updatable_d_ary_heap<
+        2, std::pair<vertex_t<Graph>, entry>, entry_cmp,
+        vertex_map_t<Graph, std::size_t, competing_dijkstras_roles::heap_index>,
+        maps::element<1>, maps::element<0>>;
 };
 
 // Two Dijkstras racing on the same graph with different length maps: blue
@@ -80,13 +85,21 @@ private:
         std::is_same_v<typename Traits::heap::value_type,
                        std::pair<vertex, std::pair<length_type, bool>>>,
         "competing_dijkstras requires matching value_type with heap.");
+    static_assert(
+        heap_index_map_agrees<
+            typename Traits::heap,
+            vertex_map_t<Graph, std::size_t,
+                         competing_dijkstras_roles::heap_index>>,
+        "competing_dijkstras requires the heap index map to be the graph's "
+        "answer for competing_dijkstras_roles::heap_index.");
 
 private:
     Graph _graph;
     BlueLengthMap _blue_length_map;
     RedLengthMap _red_length_map;
     enum vertex_status : char { PRE_HEAP = 0, IN_HEAP = 1, POST_HEAP = 2 };
-    vertex_map_t<Graph, vertex_status> _vertex_status_map;
+    vertex_map_t<Graph, vertex_status, competing_dijkstras_roles::vertex_status>
+        _vertex_status_map;
     heap _heap;
     std::size_t _num_blue_candidates;
     [[no_unique_address]] entry_cmp _entry_cmp;
@@ -100,8 +113,14 @@ public:
         : _graph(views::graph_all(std::forward<G>(g)))
         , _blue_length_map(maps::mapping_all(std::forward<BLM>(blm)))
         , _red_length_map(maps::mapping_all(std::forward<RLM>(rlm)))
-        , _vertex_status_map(create_vertex_map<vertex_status>(_graph, PRE_HEAP))
-        , _heap(_entry_cmp, create_vertex_map<std::size_t>(_graph))
+        , _vertex_status_map(
+              create_vertex_map<vertex_status,
+                                competing_dijkstras_roles::vertex_status>(
+                  _graph, PRE_HEAP))
+        , _heap(
+              _entry_cmp,
+              create_vertex_map<std::size_t,
+                                competing_dijkstras_roles::heap_index>(_graph))
         , _num_blue_candidates(0) {}
 
     template <typename... Args>

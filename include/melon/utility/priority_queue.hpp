@@ -36,6 +36,16 @@ concept updatable_priority_queue = priority_queue<Q> &&
     q.promote(i, p);
     q.demote(i, p);
 };
+
+// For the heap-carrying algorithms' static_assert: a heap that publishes
+// index_map_type (updatable_d_ary_heap does) must be built on the very map the
+// algorithm creates for its heap_index role. A different but
+// range-constructible map compiles and leaves the heap indexing a private copy
+// the algorithm never sees. A heap without the alias is not checked.
+template <typename Q, typename IndexMap>
+concept heap_index_map_agrees =
+    !requires { typename Q::index_map_type; } ||
+    std::same_as<typename Q::index_map_type, IndexMap>;
 // clang-format on
 
 }  // namespace melon

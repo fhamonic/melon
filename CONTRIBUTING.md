@@ -124,11 +124,19 @@ clang-format -i <files you changed>
   `[[no_unique_address]]`. The disabled variant is an empty type whose
   constructors *mirror* the enabled signatures — never widen them back to a
   variadic, or a malformed construction only fails for the first user whose
-  flags turn the map on. Two disabled maps in one class need distinct
-  `DiscriminatingT` tags to overlap to zero bytes. Gated members that are
+  flags turn the map on. The fourth parameter is the map's role, forwarded
+  to the factory; two disabled maps in one class need distinct roles to
+  overlap to zero bytes. Gated members that are
   not maps use a local named empty struct as the disabled alternative, not
   a shared detail type, for the same address-overlap reason. The machinery's
   contract is pinned in `test/map_if.cpp`.
+- Every map an algorithm creates is requested under a **role**: declare
+  `struct <algorithm>_roles { struct x {}; ... };` before the default
+  traits, spell `vertex_map_t<Graph, T, <algorithm>_roles::x>` on the member
+  and `create_vertex_map<T, <algorithm>_roles::x>(_graph)` at creation. Two
+  maps of the same value type are two roles -- a provider keyed on the type
+  alone would hand one slot to both. An algorithm holding an updatable heap
+  `static_assert`s `heap_index_map_agrees` next to its entry-type assert.
 - User-visible changes (features, fixes, deprecations) get a line in
   `CHANGELOG.md` under the upcoming release.
 

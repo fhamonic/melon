@@ -50,6 +50,11 @@ GTEST_TEST(CPO, test) {
     static_assert(!melon::inward_adjacency_graph<G>);
     static_assert(melon::has_vertex_map<G>);
     static_assert(!melon::has_arc_map<G>);
+    // a one-parameter factory answers every role with its standard map
+    struct some_role {};
+    static_assert(melon::has_vertex_map<G, double, some_role>);
+    static_assert(std::same_as<melon::vertex_map_t<G, double, some_role>,
+                               std::vector<double>>);
 
     static_assert(std::ranges::contiguous_range<G>);
     static_assert(std::ranges::contiguous_range<decltype(std::views::all(

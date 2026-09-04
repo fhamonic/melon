@@ -22,6 +22,14 @@
 
 namespace melon {
 
+struct topological_sort_roles {
+    struct reached {};
+    struct remaining_in_degree {};
+    struct pred_vertex {};
+    struct pred_arc {};
+    struct rank {};
+};
+
 template <typename Traits>
 concept topological_sort_traits = requires {
     { Traits::store_ranks } -> std::convertible_to<bool>;
@@ -46,8 +54,11 @@ class topological_sort
 private:
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-    using reached_map_t = vertex_map_t<Graph, bool>;
-    using remaining_in_degree_map_t = vertex_map_t<Graph, std::size_t>;
+    using reached_map_t =
+        vertex_map_t<Graph, bool, topological_sort_roles::reached>;
+    using remaining_in_degree_map_t =
+        vertex_map_t<Graph, std::size_t,
+                     topological_sort_roles::remaining_in_degree>;
 
 private:
     Graph _graph;
@@ -57,12 +68,15 @@ private:
     remaining_in_degree_map_t _remaining_in_degree_map;
 
     [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_critical_paths && !has_arc_source<Graph>, Graph, vertex>
-        _pred_vertices_map;
-    [[no_unique_address]] detail::vertex_map_if<
-        Traits::store_critical_paths, Graph, std::optional<arc>> _pred_arcs_map;
+        Traits::store_critical_paths && !has_arc_source<Graph>, Graph, vertex,
+        topological_sort_roles::pred_vertex> _pred_vertices_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_ranks, Graph, int> _rank_map;
+    detail::vertex_map_if<Traits::store_critical_paths, Graph,
+                          std::optional<arc>, topological_sort_roles::pred_arc>
+        _pred_arcs_map;
+    [[no_unique_address]]
+    detail::vertex_map_if<Traits::store_ranks, Graph, int,
+                          topological_sort_roles::rank> _rank_map;
 
     constexpr void push_start_vertices() {
         _queue.resize(0);
@@ -117,9 +131,12 @@ public:
     constexpr explicit topological_sort(G && g)
         : _graph(views::graph_all(std::forward<G>(g)))
         , _queue()
-        , _reached_map(create_vertex_map<bool>(_graph, false))
+        , _reached_map(create_vertex_map<bool, topological_sort_roles::reached>(
+              _graph, false))
         , _remaining_in_degree_map(
-              create_vertex_map<std::size_t>(_graph, std::size_t{0}))
+              create_vertex_map<std::size_t,
+                                topological_sort_roles::remaining_in_degree>(
+                  _graph, std::size_t{0}))
         , _pred_vertices_map(_graph)
         , _pred_arcs_map(_graph)
         , _rank_map(_graph) {

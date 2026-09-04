@@ -21,6 +21,12 @@ namespace melon {
 // which no concept can check: a negative one lets an augmentation exceed the
 // capacity it is bounded by, so run() converges on a non-flow.
 // O(n m^2), independent of the capacity values.
+struct edmonds_karp_roles {
+    struct flow {};
+    struct bfs_reached {};
+    struct bfs_pred_arc {};
+};
+
 template <graph_view Graph, mapping_view<arc_t<Graph>> CapacityMap>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph> &&
              has_vertex_map<Graph> && has_arc_map<Graph> &&
@@ -43,10 +49,10 @@ private:
     bool _source_set;
     bool _target_set;
     bool _converged;
-    arc_map_t<Graph, value_t> _carried_flow_map;
+    arc_map_t<Graph, value_t, edmonds_karp_roles::flow> _carried_flow_map;
     std::vector<vertex> _bfs_queue;
-    vertex_map_t<Graph, bool> _bfs_reached_map;
-    vertex_map_t<Graph, arc> _bfs_pred_arc;
+    vertex_map_t<Graph, bool, edmonds_karp_roles::bfs_reached> _bfs_reached_map;
+    vertex_map_t<Graph, arc, edmonds_karp_roles::bfs_pred_arc> _bfs_pred_arc;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -60,9 +66,13 @@ public:
         , _source_set(false)
         , _target_set(false)
         , _converged(false)
-        , _carried_flow_map(create_arc_map<value_t>(_graph))
-        , _bfs_reached_map(create_vertex_map<bool>(_graph))
-        , _bfs_pred_arc(create_vertex_map<arc>(_graph)) {
+        , _carried_flow_map(
+              create_arc_map<value_t, edmonds_karp_roles::flow>(_graph))
+        , _bfs_reached_map(
+              create_vertex_map<bool, edmonds_karp_roles::bfs_reached>(_graph))
+        , _bfs_pred_arc(
+              create_vertex_map<arc, edmonds_karp_roles::bfs_pred_arc>(
+                  _graph)) {
         if constexpr(has_num_vertices<Graph>) {
             _bfs_queue.reserve(num_vertices(_graph));
         }

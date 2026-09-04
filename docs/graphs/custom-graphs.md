@@ -87,6 +87,8 @@ Almost every algorithm needs per-vertex scratch space, so it requires `has_verte
 
 Both overloads of each factory are required by the concept, and the value-initialized one must actually honour its argument: melon relies on `create_vertex_map<bool>(g, false)` producing a map that reads `false` everywhere.
 
+A factory takes **exactly one** template parameter, the value type, and then answers every [role](concepts.md#attaching-data-to-vertices-and-arcs) with the same map — or exactly two, `template <typename T, typename Role = default_role>`, to answer per role. melon probes the two-parameter shape first, so keep `Role` defaulted, and never give a one-parameter factory a second defaulted template parameter of your own: the role would bind to it.
+
 With those in place, the structure runs the algorithms:
 
 ```cpp

@@ -15,6 +15,10 @@
 
 namespace melon {
 
+struct kruskal_roles {
+    struct component {};
+};
+
 template <undirected_graph_view UGraph, mapping_view<edge_t<UGraph>> CostMap>
     requires has_vertex_map<UGraph>
 class kruskal : public algorithm_view_interface<kruskal<UGraph, CostMap>> {
@@ -27,7 +31,9 @@ private:
     CostMap _cost_map;
     std::vector<edge> _sorted_edges;
     std::vector<edge>::iterator _cursor;
-    disjoint_sets<vertex, vertex_map_t<UGraph, unsigned int>> _components_sets;
+    disjoint_sets<vertex,
+                  vertex_map_t<UGraph, unsigned int, kruskal_roles::component>>
+        _components_sets;
 
 public:
     // ---- Construction -------------------------------------------------------
@@ -36,7 +42,9 @@ public:
     constexpr kruskal(UG && ug, CM && cm)
         : _ugraph(views::undirected_graph_all(std::forward<UG>(ug)))
         , _cost_map(maps::mapping_all(std::forward<CM>(cm)))
-        , _components_sets(create_vertex_map<unsigned int>(_ugraph)) {
+        , _components_sets(
+              create_vertex_map<unsigned int, kruskal_roles::component>(
+                  _ugraph)) {
         reset();
     }
 

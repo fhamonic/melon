@@ -68,9 +68,9 @@ struct enabled_holder {
 static_assert(std::default_initializable<enabled_holder>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// the disabled variant is an empty type: distinct DiscriminatingT lets two
+// the disabled variant is an empty type: distinct roles let two
 // [[no_unique_address]] members overlap completely, and sharing the default
-// tag costs the documented byte of padding. MSVC ignores the standard
+// role costs the documented byte of padding. MSVC ignores the standard
 // attribute spelling, so the size pins are for the compilers that honor it
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,13 +78,13 @@ static_assert(std::is_empty_v<disabled_vertex_map>);
 static_assert(std::is_empty_v<disabled_arc_map>);
 
 namespace {
-struct first_tag;
-struct second_tag;
+struct first_role {};
+struct second_role {};
 struct two_distinct_tags {
     [[no_unique_address]] detail::vertex_map_if<false, static_digraph, int,
-                                                first_tag> a;
+                                                first_role> a;
     [[no_unique_address]] detail::vertex_map_if<false, static_digraph, int,
-                                                second_tag> b;
+                                                second_role> b;
 };
 struct two_shared_tags {
     [[no_unique_address]] disabled_vertex_map a;

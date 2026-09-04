@@ -24,6 +24,13 @@
 
 namespace melon {
 
+struct strongly_connected_components_roles {
+    struct in_tarjan_stack {};
+    struct index {};
+    struct lowlink {};
+    struct component_id {};
+};
+
 template <typename Traits>
 concept strongly_connected_components_traits = requires {
     { Traits::store_component_ids } -> std::convertible_to<bool>;
@@ -58,11 +65,18 @@ private:
     std::vector<vertex>::iterator _component_begin;
     component_num _index;
     component_num _num_components;
-    vertex_map_t<Graph, bool> _in_tarjan_stack_map;
-    vertex_map_t<Graph, component_num> _index_map;
-    vertex_map_t<Graph, component_num> _lowlink_map;
+    vertex_map_t<Graph, bool,
+                 strongly_connected_components_roles::in_tarjan_stack>
+        _in_tarjan_stack_map;
+    vertex_map_t<Graph, component_num,
+                 strongly_connected_components_roles::index>
+        _index_map;
+    vertex_map_t<Graph, component_num,
+                 strongly_connected_components_roles::lowlink>
+        _lowlink_map;
     [[no_unique_address]]
-    detail::vertex_map_if<Traits::store_component_ids, Graph, component_num>
+    detail::vertex_map_if<Traits::store_component_ids, Graph, component_num,
+                          strongly_connected_components_roles::component_id>
         _component_id_map;
 
 public:
@@ -79,11 +93,18 @@ public:
         , _component_begin()
         , _index(0)
         , _num_components(0)
-        , _in_tarjan_stack_map(create_vertex_map<bool>(_graph, false))
+        , _in_tarjan_stack_map(
+              create_vertex_map<
+                  bool, strongly_connected_components_roles::in_tarjan_stack>(
+                  _graph, false))
         , _index_map(
-              create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
+              create_vertex_map<component_num,
+                                strongly_connected_components_roles::index>(
+                  _graph, INVALID_COMPONENT))
         , _lowlink_map(
-              create_vertex_map<component_num>(_graph, INVALID_COMPONENT))
+              create_vertex_map<component_num,
+                                strongly_connected_components_roles::lowlink>(
+                  _graph, INVALID_COMPONENT))
         , _component_id_map(_graph, INVALID_COMPONENT) {
         if constexpr(has_num_vertices<Graph>) {
             _dfs_stack.reserve(num_vertices(_graph));

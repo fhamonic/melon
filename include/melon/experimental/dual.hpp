@@ -149,18 +149,18 @@ public:
                                                        default_value);
     }
 
-    template <typename T>
-        requires has_arc_map<P, T>
+    template <typename T, typename Role = default_role>
+        requires has_arc_map<P, T, Role>
     [[nodiscard]] constexpr auto create_arc_map() const noexcept(
-        noexcept(melon::create_arc_map<T>(std::declval<const P &>()))) {
-        return melon::create_arc_map<T>(_planar_map.get());
+        noexcept(melon::create_arc_map<T, Role>(std::declval<const P &>()))) {
+        return melon::create_arc_map<T, Role>(_planar_map.get());
     }
-    template <typename T>
-        requires has_arc_map<P, T>
+    template <typename T, typename Role = default_role>
+        requires has_arc_map<P, T, Role>
     [[nodiscard]] constexpr auto create_arc_map(const T & default_value) const
-        noexcept(noexcept(melon::create_arc_map<T>(std::declval<const P &>(),
-                                                   default_value))) {
-        return melon::create_arc_map<T>(_planar_map.get(), default_value);
+        noexcept(noexcept(melon::create_arc_map<T, Role>(
+            std::declval<const P &>(), default_value))) {
+        return melon::create_arc_map<T, Role>(_planar_map.get(), default_value);
     }
 
     template <typename T>

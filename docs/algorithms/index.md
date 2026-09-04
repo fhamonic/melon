@@ -203,6 +203,14 @@ The flags available per algorithm are listed on each algorithm's page. The data-
     silently defaulting. The path-storing flag is `store_paths`, plural,
     everywhere.
 
+### Map roles
+
+Every map an algorithm creates is requested under a **role**, the defaulted second template parameter of the map factories: `create_vertex_map<T, Role>(g)`, `vertex_map_t<Graph, T, Role>`. The roles of each algorithm are gathered in a struct named after it — `dijkstra_roles::vertex_status`, `dijkstra_roles::heap_index`, `dijkstra_roles::pred_arc`, `dijkstra_roles::distance`, `dinitz_roles::flow`, `network_simplex_roles::potential`, … — and the default traits spell the heap through the role-aware alias, `vertex_map_t<Graph, std::size_t, dijkstra_roles::heap_index>`.
+
+Roles exist for [providers](../views/graphs.md#with_vertex_maps-with_arc_maps-with_edge_maps) that hand out storage which already exists: two maps of the same value type are two roles — `bidirectional_dijkstra_roles::forward_heap_index` and `reverse_heap_index` — so no slot is ever handed to both. A graph whose factories take a single template parameter, every container included, answers every role with its standard map and is unaffected.
+
+Roles are extension points with a **weaker stability guarantee** than the rest of the API: an algorithm may retire a map, and with it a role, or add one, in a minor release. Such changes are recorded in the changelog. One structural limit to know: `bidirectional_dijkstra`'s traits name a single `heap` type for both directions, so a provider must answer its two heap-index roles with the *same* map type (a projection choosing its field at run time, not a type per field); answering only one of them is a `static_assert`, never a silent copy.
+
 ## A note on `noexcept`
 
 melon marks a function `noexcept` only when it can keep the promise. An algorithm's constructor, `reset()`, `add_source()`, `advance()` and `run()` are **not** `noexcept`: they allocate (the heap, the queue, the vertex maps) and they run your code — your length map, your semiring, your comparator, your graph's `out_arcs()`. A `noexcept` there would not prevent the throw, it would turn it into `std::terminate` with no diagnostic.

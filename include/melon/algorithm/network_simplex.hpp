@@ -118,6 +118,22 @@ concept network_simplex_pivot_rule =
         } -> std::same_as<std::optional<typename Context::arc_type>>;
     };
 
+struct network_simplex_roles {
+    struct arc_source {};
+    struct arc_target {};
+    struct flow {};
+    struct state {};
+    struct virtual_flow {};
+    struct potential {};
+    struct parent {};
+    struct pred {};
+    struct pred_dir {};
+    struct thread {};
+    struct rev_thread {};
+    struct last_succ {};
+    struct succ_num {};
+};
+
 template <typename Traits>
 concept network_simplex_traits = requires {
     typename Traits::pivot_rule;
@@ -227,27 +243,30 @@ private:
     CostMap _cost_map;
     SupplyMap _supply_map;
 
-    struct no_arc_src_map;
-    [[no_unique_address]] detail::arc_map_if<!has_arc_source<Graph>, Graph,
-                                             vertex, no_arc_src_map> _arc_src;
-    struct no_arc_tgt_map;
-    [[no_unique_address]] detail::arc_map_if<!has_arc_target<Graph>, Graph,
-                                             vertex, no_arc_tgt_map> _arc_tgt;
-    arc_map_t<Graph, value_t> _flow;
-    arc_map_t<Graph, signed char> _state;
-    vertex_map_t<Graph, value_t> _virtual_flow;
-    vertex_map_t<Graph, cost_t> _pi;
+    [[no_unique_address]]
+    detail::arc_map_if<!has_arc_source<Graph>, Graph, vertex,
+                       network_simplex_roles::arc_source> _arc_src;
+    [[no_unique_address]]
+    detail::arc_map_if<!has_arc_target<Graph>, Graph, vertex,
+                       network_simplex_roles::arc_target> _arc_tgt;
+    arc_map_t<Graph, value_t, network_simplex_roles::flow> _flow;
+    arc_map_t<Graph, signed char, network_simplex_roles::state> _state;
+    vertex_map_t<Graph, value_t, network_simplex_roles::virtual_flow>
+        _virtual_flow;
+    vertex_map_t<Graph, cost_t, network_simplex_roles::potential> _pi;
 
     // spanning tree structure. `_parent[u] == u` ⟺ u's pred is its id-less
     // virtual arc ⟺ `_pred[u]` is indeterminate -- every _pred read is
     // guarded by that test or follows a pivot's write. _thread/_rev_thread
     // form one cyclic preorder ring over the real vertices, with no
     // distinguished start for any operation to rely on.
-    vertex_map_t<Graph, vertex> _parent;
-    vertex_map_t<Graph, arc> _pred;
-    vertex_map_t<Graph, signed char> _pred_dir;
-    vertex_map_t<Graph, vertex> _thread, _rev_thread, _last_succ;
-    vertex_map_t<Graph, int> _succ_num;
+    vertex_map_t<Graph, vertex, network_simplex_roles::parent> _parent;
+    vertex_map_t<Graph, arc, network_simplex_roles::pred> _pred;
+    vertex_map_t<Graph, signed char, network_simplex_roles::pred_dir> _pred_dir;
+    vertex_map_t<Graph, vertex, network_simplex_roles::thread> _thread;
+    vertex_map_t<Graph, vertex, network_simplex_roles::rev_thread> _rev_thread;
+    vertex_map_t<Graph, vertex, network_simplex_roles::last_succ> _last_succ;
+    vertex_map_t<Graph, int, network_simplex_roles::succ_num> _succ_num;
     std::vector<vertex> _dirty_revs;
 
     // pivot state; the entering arc's endpoints are cached once per pivot
@@ -378,17 +397,30 @@ public:
         , _supply_map(maps::mapping_all(std::forward<SM>(sm)))
         , _arc_src(_graph)
         , _arc_tgt(_graph)
-        , _flow(create_arc_map<value_t>(_graph))
-        , _state(create_arc_map<signed char>(_graph))
-        , _virtual_flow(create_vertex_map<value_t>(_graph))
-        , _pi(create_vertex_map<cost_t>(_graph))
-        , _parent(create_vertex_map<vertex>(_graph))
-        , _pred(create_vertex_map<arc>(_graph))
-        , _pred_dir(create_vertex_map<signed char>(_graph))
-        , _thread(create_vertex_map<vertex>(_graph))
-        , _rev_thread(create_vertex_map<vertex>(_graph))
-        , _last_succ(create_vertex_map<vertex>(_graph))
-        , _succ_num(create_vertex_map<int>(_graph))
+        , _flow(create_arc_map<value_t, network_simplex_roles::flow>(_graph))
+        , _state(
+              create_arc_map<signed char, network_simplex_roles::state>(_graph))
+        , _virtual_flow(
+              create_vertex_map<value_t, network_simplex_roles::virtual_flow>(
+                  _graph))
+        , _pi(create_vertex_map<cost_t, network_simplex_roles::potential>(
+              _graph))
+        , _parent(
+              create_vertex_map<vertex, network_simplex_roles::parent>(_graph))
+        , _pred(create_vertex_map<arc, network_simplex_roles::pred>(_graph))
+        , _pred_dir(
+              create_vertex_map<signed char, network_simplex_roles::pred_dir>(
+                  _graph))
+        , _thread(
+              create_vertex_map<vertex, network_simplex_roles::thread>(_graph))
+        , _rev_thread(
+              create_vertex_map<vertex, network_simplex_roles::rev_thread>(
+                  _graph))
+        , _last_succ(
+              create_vertex_map<vertex, network_simplex_roles::last_succ>(
+                  _graph))
+        , _succ_num(
+              create_vertex_map<int, network_simplex_roles::succ_num>(_graph))
         , _scan(_initial_cursor())
         , _pivot_rule(std::size_t{0}) {
         // In the body, not at class scope: the concept needs the class
@@ -994,7 +1026,7 @@ public:
     // Terminal, like std::move(alg).base(): the members left behind are
     // valid but empty, so no other member may be called afterwards.
     [[nodiscard]] constexpr auto flows_map() && noexcept(
-        std::is_nothrow_move_constructible_v<arc_map_t<Graph, value_t>>) {
+        std::is_nothrow_move_constructible_v<decltype(_flow)>) {
         return maps::mapping_all(
             [flow = std::move(_flow)](const arc & a) { return flow[a]; });
     }
@@ -1010,7 +1042,7 @@ public:
         return maps::mapping_all([this](const vertex & v) { return _pi[v]; });
     }
     [[nodiscard]] constexpr auto potentials_map() && noexcept(
-        std::is_nothrow_move_constructible_v<vertex_map_t<Graph, cost_t>>) {
+        std::is_nothrow_move_constructible_v<decltype(_pi)>) {
         return maps::mapping_all(
             [pi = std::move(_pi)](const vertex & v) { return pi[v]; });
     }

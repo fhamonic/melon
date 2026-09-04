@@ -23,8 +23,8 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `inward_adjacency_graph<G>` | `graph` and `melon::in_neighbors(g, v)` |
 | `has_arc_sources_map<G>` | `melon::arc_sources_map(g)` |
 | `has_arc_targets_map<G>` | `melon::arc_targets_map(g)` |
-| `has_vertex_map<G, T = std::size_t>` | `has_vertices` and both `create_vertex_map<T>` overloads |
-| `has_arc_map<G, T = std::size_t>` | `has_arcs` and both `create_arc_map<T>` overloads |
+| `has_vertex_map<G, T = std::size_t, Role = default_role>` | `has_vertices` and both `create_vertex_map<T, Role>` overloads |
+| `has_arc_map<G, T = std::size_t, Role = default_role>` | `has_arcs` and both `create_arc_map<T, Role>` overloads |
 | `has_vertex_creation<G>` | `melon::create_vertex(g)` returning `vertex_t<G>` |
 | `has_vertex_removal<G>` | `melon::remove_vertex(g, v)` and `melon::is_valid_vertex(g, v)` |
 | `has_is_valid_vertex<G>` | `graph` and `melon::is_valid_vertex(g, v)` — the validity question without the removal |
@@ -34,7 +34,7 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `has_change_arc_source<G>` | `melon::change_arc_source(g, a, s)` |
 | `has_change_arc_target<G>` | `melon::change_arc_target(g, a, t)` |
 
-**Aliases.** `vertex_t<G>`, `arc_t<G>`, `vertices_range_t<G>`, `arcs_range_t<G>`, `out_arcs_range_t<G>`, `in_arcs_range_t<G>`, `out_arcs_iterator_t<G>`, `out_arcs_sentinel_t<G>`, `in_arcs_iterator_t<G>`, `in_arcs_sentinel_t<G>`, `out_neighbors_range_t<G>`, `in_neighbors_range_t<G>`, `vertex_map_t<G, T>`, `arc_map_t<G, T>`.
+**Aliases.** `vertex_t<G>`, `arc_t<G>`, `vertices_range_t<G>`, `arcs_range_t<G>`, `out_arcs_range_t<G>`, `in_arcs_range_t<G>`, `out_arcs_iterator_t<G>`, `out_arcs_sentinel_t<G>`, `in_arcs_iterator_t<G>`, `in_arcs_sentinel_t<G>`, `out_neighbors_range_t<G>`, `in_neighbors_range_t<G>`, `vertex_map_t<G, T, Role = default_role>`, `arc_map_t<G, T, Role = default_role>`.
 
 !!! note "The alias templates are the supported spelling"
 
@@ -50,9 +50,9 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `has_num_edges<G>` | `undirected_graph` and `melon::num_edges(g)` |
 | `has_incidence<G>` | `undirected_graph` and `melon::incidence(g, v)` yielding `(edge, vertex)` pairs |
 | `has_degree<G>` | `undirected_graph` and `melon::degree(g, v)` |
-| `has_edge_map<G, T = std::size_t>` | `undirected_graph` and both `create_edge_map<T>` overloads |
+| `has_edge_map<G, T = std::size_t, Role = default_role>` | `undirected_graph` and both `create_edge_map<T, Role>` overloads |
 
-**Aliases.** `edge_t<G>`, `edges_range_t<G>`, `incidence_range_t<G>`, `incidence_iterator_t<G>`, `incidence_sentinel_t<G>`, `edge_map_t<G, T>`.
+**Aliases.** `edge_t<G>`, `edges_range_t<G>`, `incidence_range_t<G>`, `incidence_iterator_t<G>`, `incidence_sentinel_t<G>`, `edge_map_t<G, T, Role = default_role>`.
 
 ## Mapping — `melon/mapping.hpp`
 
