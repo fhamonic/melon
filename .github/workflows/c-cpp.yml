@@ -10,32 +10,23 @@ on:
     branches: ["main"]
 
 jobs:
-  # Source-level invariants, none of which any compiler enforces and all of
-  # which fail silently: a header that only builds because another one included
-  # the std header it needs, a test file that quietly stops exercising melon's
-  # precondition asserts, and formatting drift.
-  #
-  # The checks needing no toolchain run first, and every step after the first
-  # carries `if: !cancelled()` so one failure still reports the others -- steps
-  # stop at the first failure by default, which would take two round-trips to
-  # surface two independent problems.
+  # Every step after the first carries `if: !cancelled()`: steps stop at the
+  # first failure by default, so dropping it hides a second independent
+  # problem until the next round-trip.
   source-hygiene:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # Every build job but the MSVC one uses libstdc++, whose <ranges> drags
-      # in <bits/move.h>, <bits/stl_pair.h> and <type_traits>, so a header
-      # missing <utility> or <type_traits> compiles across the whole matrix and
-      # breaks in a consumer's translation unit instead. Only a source-level
-      # check sees it.
+      # Every build job but the MSVC one uses libstdc++, whose <ranges> pulls
+      # in std::move, std::pair and every type trait, so a header missing
+      # <utility> or <type_traits> compiles across the whole matrix and breaks
+      # only in a consumer's translation unit.
       - name: "Every header includes what provides the std:: symbols it names"
         run: python3 misc/tools/check_std_includes.py include
-      # melon's preconditions are asserts (contract Ruling 8), and a Release
-      # build defines NDEBUG. Each test file re-enables them for itself before
-      # including anything: <cassert> is designed to be re-included and
-      # re-reads the macro each time, and melon being header-only that covers
-      # the library code too. A file missing the line silently stops testing
-      # every precondition it was written to check.
+      # A Release build defines NDEBUG, and melon's preconditions are asserts.
+      # <cassert> re-reads the macro at every inclusion, so a test file's
+      # leading `#undef NDEBUG` re-arms them in every melon header it includes;
+      # a file without the line still passes while testing no precondition.
       - name: Every test file either undefines NDEBUG or opts out explicitly
         if: ${{ !cancelled() }}
         run: |
@@ -50,8 +41,8 @@ jobs:
             echo "$missing"
             exit 1
           fi
-      # Same pinned version as the one the tree is formatted with; a different
-      # major version would flag different lines.
+      # Pinned to the version the tree is formatted with: another major
+      # version flags different lines.
       - name: Install clang-format
         if: ${{ !cancelled() }}
         run: pipx install clang-format==18.1.8
@@ -69,7 +60,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Update APT
         run: apt-get update && apt-get upgrade -y
-      - name: Install GCC-15 an CMake
+      - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
       - name: Install Conan 2.0
         run: |
@@ -121,15 +112,10 @@ jobs:
           conan profile detect --name=default
           make CONAN_PROFILE=.github/conan-profiles/clang18_c++23
 
-  # The regular jobs run plain Release; this one reruns the suite under
-  # AddressSanitizer + UndefinedBehaviorSanitizer. It goes through the pure
-  # CMake workflow, which also exercises the FetchContent GTest fallback.
-  #
-  # Debug, not Release: -O0 keeps ASan's reports precise and stops the
-  # optimiser from eliding the very UB being hunted. The assertions are live
-  # either way -- melon is header-only, so the `#undef NDEBUG` each test file
-  # opens with covers every melon header that file includes, and the
-  # source-hygiene job above enforces that it is there.
+  # Pure CMake rather than `make CONAN_PROFILE`: this is the only job that
+  # exercises the FetchContent GTest fallback. Debug, not Release: at -O2 the
+  # optimiser elides the very UB being hunted and ASan's reports lose their
+  # line precision.
   linux-gcc15-sanitize:
     runs-on: ubuntu-latest
     container:
@@ -143,24 +129,23 @@ jobs:
         run: apt-get update && apt-get upgrade -y
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
-      # C++26 with MELON_PORTABLE_RANGE_SHAPES forces the C++23 concat
-      # fallback although std::views::concat exists -- the option's whole
-      # purpose -- so this job is the only one where both that combination
-      # and the fallback itself run under the sanitizers.
+      # -std=c++26 with MELON_PORTABLE_RANGE_SHAPES=ON is the only sanitized
+      # run of the C++23 concat fallback on a library that has
+      # std::views::concat; dropping either leaves that path unsanitized.
       - name: Configure with ASan and UBSan
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_STANDARD=26 \
             -DMELON_PORTABLE_RANGE_SHAPES=ON \
             -DMELON_SANITIZE=address,undefined
-      # A bare -j is unlimited for make: the 64 sanitized test TUs at ~1 GB
-      # each got the whole step OOM-killed (exit 137) on the 16 GB runner.
+      # A bare -j is unlimited for make: 64 sanitized test TUs at ~1 GB each
+      # OOM-kill the whole step (exit 137) on the 16 GB runner.
       - name: Build
         run: cmake --build build -j"$(nproc)"
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
 
-  cmake-submodule-test:
+  linux-cmake-submodule:
     runs-on: ubuntu-latest
     container:
       image: ubuntu:25.04
@@ -226,11 +211,6 @@ jobs:
           cmake --build consumer/build
           ./consumer/build/melon_consumer
 
-  # The submodule job above covers add_subdirectory; this one covers the other
-  # non-Conan path: `cmake --install` into a prefix, then an out-of-tree
-  # consumer that finds the installed package with find_package(melon CONFIG).
-  # It is what proves melonConfig.cmake, the exported melon::melon target and
-  # the installed header layout actually work together.
   linux-cmake-install:
     runs-on: ubuntu-latest
     container:
@@ -244,9 +224,9 @@ jobs:
         run: apt-get update && apt-get upgrade -y
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
-      # MELON_BUILD_TESTS defaults to PROJECT_IS_TOP_LEVEL, so it must be
-      # turned off explicitly here: installing does not need the test suite,
-      # and leaving it on would FetchContent-download GTest for nothing.
+      # MELON_BUILD_TESTS defaults to ON when melon is the top-level project;
+      # without OFF the configure downloads GTest through FetchContent for
+      # nothing.
       - name: Install melon into a prefix
         run: |
           cmake -S . -B build \
@@ -313,9 +293,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/prefix"
           cmake --build consumer/build -j"$(nproc)"
-      # Dijkstra from vertex 0 settles the vertices in order of distance, so
-      # the whole output is checked rather than a single line: that also
-      # catches a regression in the traversal order.
+      # The whole output is diffed, not one line: the settle order is the
+      # distance order, so a traversal-order regression shows here too.
       - name: Run the consumer and check its output
         run: |
           cat > expected.txt << 'EOF'
@@ -329,11 +308,9 @@ jobs:
           ./consumer/build/app | tee output.txt
           diff -u expected.txt output.txt
 
-  # The other jobs run `conan build`, which never exercises the packaging half
-  # of the recipe. This one runs `conan create` -- exporting, building, running
-  # the suite and assembling the package -- then consumes the created package
-  # from a separate project, which is the only way package() and package_info()
-  # get checked.
+  # `conan create`, not the `make CONAN_PROFILE` the build jobs use: `conan
+  # build` never runs package() or package_info(), so the recipe's packaging
+  # half is checked only here, by consuming the created package.
   linux-conan-create:
     runs-on: ubuntu-latest
     container:
@@ -386,10 +363,9 @@ jobs:
 
           static_assert(MELON_VERSION_MAJOR == 1);
 
-          // The recipe's package() carries its own exclude list, separate from
-          // the install() rules in CMakeLists.txt. Checking it here, against
-          // the real include path of the created package, is what keeps the
-          // two lists from drifting apart.
+          // package() in conanfile.py carries its own exclude list, separate
+          // from the install() rules in CMakeLists.txt; the install job checks
+          // only the latter, so dropping these lets the two lists drift.
           #if __has_include("melon/experimental/scapegoat_tree.hpp")
           #error "scapegoat_tree.hpp is unfinished and must not be packaged"
           #endif
@@ -443,14 +419,11 @@ jobs:
           ./consumer/build/app | tee output.txt
           diff -u expected.txt output.txt
 
-  # The only libc++ and the only arm64 configuration in the matrix: Apple ships
-  # no libstdc++, so this is what every macOS consumer builds against.
-  #
-  # melon needs libc++ 20 (see stdlib_check.hpp). Xcode 26.4 is the oldest
-  # Apple clang 21; the Apple clang 17 line (Xcode 16.3 to 26.3) has not been
-  # tried against that floor, and Apple publishes no libc++ release per Xcode,
-  # so the survey step prints it for every Xcode on the image: the log says
-  # whether the pin can move down. Not the image default (26.6) on purpose.
+  # Xcode 26.4.1 rather than the image default: the oldest Apple clang 21.
+  # Whether the Apple clang 17 line (Xcode 16.3 to 26.3) meets the libc++ 20
+  # floor stdlib_check.hpp asserts is untested, and Apple publishes no libc++
+  # release per Xcode, so the survey step is the only evidence for moving the
+  # pin down.
   macos-appleclang21-build:
     runs-on: macos-26
     steps:
@@ -466,9 +439,8 @@ jobs:
             echo "$(basename "$x"): $v"
           done
           clang++ --version
-      # The image ships pipx but not Conan. pipx's bin dir is not on the PATH
-      # of later steps unless added here; PIPX_BIN_DIR is honoured when the
-      # image sets one.
+      # pipx's bin dir is not on later steps' PATH unless appended here, and
+      # the image may set PIPX_BIN_DIR to somewhere other than ~/.local/bin.
       - name: Install Conan 2.0
         run: |
           pipx install conan
@@ -489,7 +461,7 @@ jobs:
       - name: Build and run unit tests
         run: make CONAN_PROFILE=.github/conan-profiles/mingw15_c++26
 
-  windows-msvc17-11-build:
+  windows-msvc1711-build:
     # Not windows-latest: that image carries only Visual Studio 2026, and
     # both the "Visual Studio 17 2022" generator conan derives from
     # compiler.version=194 and the 14.41 toolset need a VS 2022 instance.
@@ -497,9 +469,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install the MSVC 14.41 (VS 17.11) toolset
-        # The runner image ships only the newest v14.4x toolset; the profile
-        # pins 14.41 because it is melon's MSVC floor, so the side-by-side
-        # toolset must be added. Exit code 3010 is success-needs-reboot.
+        # The image ships only the newest 14.4x toolset and the profile pins
+        # 14.41, melon's MSVC floor. Exit code 3010 is success-needs-reboot,
+        # not a failure.
         shell: pwsh
         run: |
           $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
