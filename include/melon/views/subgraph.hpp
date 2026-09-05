@@ -359,10 +359,10 @@ subgraph_view(G &&, VF && = {}, AF && = {})
                      maps::mapping_all_t<AF>>;
 
 // Only the filterless case: with a filter present, every range member is a
-// filter_view capturing `this`, which is exactly what borrowed_graph.hpp
-// names as the reason subgraph cannot be borrowed. With both filters
-// maps::true_map every range member forwards straight through, so the view is
-// borrowed exactly when the wrapped view is -- graph_ref_view yes,
+// filter_view capturing `this`, which is exactly what enable_borrowed_graph's
+// comment in graph.hpp names as the reason subgraph cannot be borrowed. With
+// both filters maps::true_map every range member forwards straight through, so
+// the view is borrowed exactly when the wrapped view is -- graph_ref_view yes,
 // graph_owning_view no.
 template <typename G, typename VF, typename AF>
 inline constexpr bool enable_borrowed_graph<subgraph_view<G, VF, AF>> =

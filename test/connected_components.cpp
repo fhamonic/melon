@@ -127,8 +127,8 @@ GTEST_TEST(connected_components, is_not_constructible_from_an_algorithm) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: 2.8, weakly_connected_components must be constrained on the
-// incidence concepts it actually uses
+// weakly_connected_components is constrained on the incidence concepts it
+// actually uses
 ////////////////////////////////////////////////////////////////////////////////
 
 // views::undirect, which is all it does, requires the *incidence* concepts.

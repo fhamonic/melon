@@ -13,7 +13,6 @@
 #include <variant>
 #include <vector>
 
-#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/fill.hpp"
 #include "melon/detail/map_if.hpp"
@@ -127,7 +126,7 @@ public:
     // _rebase_cursors() aims them at the *new* _graph and the _consumed
     // counters put them back where they were.
     //
-    // Move-only; see the melon::traversal_algorithm concept for the ruling. The
+    // Move-only; see the melon::traversal_algorithm concept. The
     // move cannot be defaulted: a memberwise move leaves the cached cursors'
     // ranges pointing at the moved-from object's _graph member.
     // _component_begin needs nothing -- it is an iterator into _tarjan_stack,

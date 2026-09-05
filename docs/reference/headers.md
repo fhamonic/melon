@@ -6,7 +6,7 @@ Everything lives in `namespace melon`, with four sub-namespaces:
 
 | Namespace | Holds |
 | --- | --- |
-| `melon::views` | **graph** views — `reverse`, `subgraph`, `induced_subgraph`, `undirect`, `complete_digraph`, `graph_all`, `undirected_graph_all` |
+| `melon::views` | **graph** views — `reverse`, `subgraph`, `induced_subgraph`, `undirect`, `as_directed`, `as_undirected`, `complete_digraph`, `graph_all` |
 | `melon::maps` | **mapping** views — `function`, `mapping_all`, `constant` (aliases `true_map`, `false_map`), `identity`, `element`, `transform` |
 | `melon::numeric` | the arithmetic value types — `rational`, `integer`, `make_rational`, `bounded_value`, `const_value` |
 | `melon::experimental` | work in progress, no stability guarantee |
@@ -24,10 +24,8 @@ customization points stay in `melon`, as do the view classes
 
 | Header | Declares |
 | --- | --- |
-| `melon/borrowed_graph.hpp` | `enable_borrowed_graph`, the trait to specialise for a view of your own whose ranges survive the view being relocated, and the `borrowed_graph` concept — see [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound) |
-| `melon/graph.hpp` | the [graph concepts](../graphs/concepts.md) and every directed [customization point](customization-points.md); `vertex_t`, `arc_t`, `vertex_map_t`, `arc_map_t` |
+| `melon/graph.hpp` | the [graph concepts](../graphs/concepts.md), the [undirected ones](../graphs/undirected-graphs.md) and every [customization point](customization-points.md); `vertex_t`, `arc_t`, `edge_t`, `vertex_map_t`, `arc_map_t`, `edge_map_t`, `enable_borrowed_graph` |
 | `melon/mapping.hpp` | the [mapping concepts](../graphs/mappings.md) — `mapping`, `mapping_of`, `mapping_view` and friends, plus `mapping_for` — `mapping_ref_view` / `mapping_owning_view` / `maps::mapping_all`, `maps::function`, `maps::identity` |
-| `melon/undirected_graph.hpp` | the [undirected concepts](../graphs/undirected-graphs.md) and CPOs; `edge_t`, `edge_map_t` |
 | `melon/version.hpp` | `MELON_VERSION_MAJOR` / `MINOR` / `PATCH`, `MELON_VERSION` |
 | `melon/all.hpp` | everything below |
 
@@ -47,8 +45,7 @@ customization points stay in `melon`, as do the view classes
 
 | Header | Declares |
 | --- | --- |
-| `graph_view.hpp` | `graph_view_base`, the `graph_view` concept and `enable_graph_view`, `graph_ref_view`, `graph_owning_view`, `graph_for`, `views::graph_all`, [`views::graph_adaptor_closure`](../views/graphs.md#pipe-syntax) |
-| `undirected_graph_view.hpp` | the undirected counterparts, `undirected_graph_for` included |
+| `graph_view.hpp` | `graph_view_base`, the `graph_view` and `undirected_graph_view` concepts and `enable_graph_view`, `graph_ref_view`, `graph_owning_view`, `graph_view_interface`, `directed_graph_view_interface`, `undirected_graph_view_interface`, `graph_for`, `views::graph_all`, `as_directed_view`, `as_undirected_view`, the [`views::as_directed`, `views::as_undirected`](../views/graphs.md#as_directed-as_undirected) adaptors, [`views::graph_adaptor_closure`](../views/graphs.md#pipe-syntax) |
 | `reverse.hpp` | `reverse_view`, the [`views::reverse`](../views/graphs.md#reverse) adaptor |
 | `subgraph.hpp` | `subgraph_view`, `induced_subgraph_view`, the [`views::subgraph`, `views::induced_subgraph`](../views/graphs.md#subgraph) adaptors |
 | `undirect.hpp` | `undirect_view`, the [`views::undirect`](../views/graphs.md#undirect) adaptor |
@@ -138,6 +135,6 @@ The last two remain in the repository but are excluded from both the CMake insta
 The dependency edges worth knowing:
 
 - `melon/graph.hpp` includes `melon/mapping.hpp` and, at the end, `melon/views/graph_view.hpp` — so having a graph gives you the mapping concepts and `views::graph_all`.
-- the algorithm headers include `melon/graph.hpp` or `melon/undirected_graph.hpp` as needed, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::function` and the concepts. The pure-mapping ones — both knapsacks and `bentley_ottmann` — include only `melon/mapping.hpp`.
+- the algorithm headers include `melon/graph.hpp`, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::function` and the concepts. The pure-mapping ones — both knapsacks and `bentley_ottmann` — include only `melon/mapping.hpp`.
 - **container headers do not include `melon/graph.hpp`** — they only need `melon/mapping.hpp`. Including `container/mutable_digraph.hpp` on its own gives you the class but not `create_vertex`, `vertices` or `num_vertices`. Add `melon/graph.hpp` when a container is all you include.
 - no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp`, `utility/make_static_digraph.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (The heap-based algorithms — `dijkstra`, `a_star`, the other Dijkstra variants, `network_voronoi` and `bentley_ottmann` — do pull in `container/d_ary_heap.hpp` for their default traits, and `kruskal` pulls in `container/disjoint_sets.hpp`.)

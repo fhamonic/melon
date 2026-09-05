@@ -39,7 +39,6 @@
 #include <utility>
 #include <vector>
 
-#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"

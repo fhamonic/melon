@@ -126,7 +126,7 @@ public:
     constexpr breadth_first_search(Traits, Args &&... args)
         : breadth_first_search(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr breadth_first_search(const breadth_first_search &) = delete;
     constexpr breadth_first_search(breadth_first_search &&) = default;
 
@@ -365,7 +365,7 @@ public:
     constexpr breadth_first_search(Traits, Args &&... args)
         : breadth_first_search(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     // The three cursors are raw pointers into the _queue buffer, which the
     // unique_ptr hands over on a move; a copy would leave them pointing into
     // the source's buffer.

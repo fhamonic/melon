@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "melon/container/static_digraph.hpp"
-#include "melon/undirected_graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/undirect.hpp"
 
@@ -25,6 +25,7 @@
 using melon::edge_map_t;
 using melon::edge_t;
 using melon::edges_range_t;
+using melon::graph_ref_view;
 using melon::has_degree;
 using melon::has_edge_map;
 using melon::has_incidence;
@@ -34,7 +35,6 @@ using melon::output_mapping_of;
 using melon::static_digraph;
 using melon::static_digraph_builder;
 using melon::undirected_graph;
-using melon::undirected_graph_ref_view;
 using melon::vertex_t;
 namespace views = melon::views;
 
@@ -120,6 +120,32 @@ GTEST_TEST(undirected_graph_cpos, member_dispatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// a self-loop is incident at both ends: incidence lists it twice, each time
+// with the vertex itself as the other endpoint, and degree counts it twice
+////////////////////////////////////////////////////////////////////////////////
+
+// The concept-level contract every undirected graph is written to, member
+// degree and incidence range alike; an algorithm summing degrees (a
+// Laplacian) assumes it. Pinned on both fixtures, so the free-function degree
+// and the size fallback answer the same number.
+GTEST_TEST(undirected_graph_cpos, self_loop_is_incident_at_both_ends) {
+    adl_triangle g;
+    g.edge_list.emplace_back(1u, 1u);  // edge 3, a loop on vertex 1
+    const member_ugraph m{g};
+
+    ASSERT_TRUE(EQ_MULTISETS(
+        melon::incidence(g, 1u),
+        std::vector<adl_ugraph::endpoints>{{0, 0}, {1, 2}, {3, 1}, {3, 1}}));
+    ASSERT_EQ(melon::degree(g, 1u), 4u);
+    ASSERT_EQ(melon::degree(g, 0u), 2u);
+
+    ASSERT_TRUE(EQ_MULTISETS(
+        melon::incidence(m, 1u),
+        std::vector<adl_ugraph::endpoints>{{0, 0}, {1, 2}, {3, 1}, {3, 1}}));
+    ASSERT_EQ(melon::degree(m, 1u), 4u);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // num_edges and degree fall back on std::ranges::size when no member or free
 // function answers
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +215,7 @@ GTEST_TEST(undirected_graph_cpos, over_a_view) {
 // depends on itself"): merely asking has_edge_map<> about this type is a hard
 // error. A variable template is invisible to ADL. Same reasoning as
 // create_vertex_map / create_arc_map in graph.hpp.
-struct melon_associated_ugraph : melon::undirected_graph_view_base {
+struct melon_associated_ugraph : melon::graph_view_base {
     adl_triangle _triangle;
 
     auto vertices() const { return adl_ugraph::vertices(_triangle); }
@@ -207,7 +233,7 @@ static_assert(!melon_create_map_cpo::has_adl_create_edge_map<
 // The same trap one level up: create_edge_map must not be reachable by ADL for
 // the shipped views either, which all live in melon.
 static_assert(!melon_create_map_cpo::has_adl_create_edge_map<
-              undirected_graph_ref_view<melon_associated_ugraph>, int>);
+              graph_ref_view<melon_associated_ugraph>, int>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // the CPOs' specifications come from the const overloads they actually call
@@ -309,7 +335,7 @@ GTEST_TEST(undirected_graph, const_overloads_are_the_ones_called) {
 ////////////////////////////////////////////////////////////////////////////////
 // the range-returning undirected CPOs reject rvalue graphs whose result would
 // dangle -- the mirror of the directed ruling pinned in api_review.cpp -- and
-// undirected_graph_all rejects const rvalues instead of deep-copying
+// graph_all rejects const rvalues instead of deep-copying
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace rvalue_undirected_cpos {
@@ -319,9 +345,8 @@ template <typename G>
 concept rvalue_incidence =
     requires(melon::vertex_t<G> v) { melon::incidence(G{}, v); };
 template <typename T>
-concept all_accepted = requires(T && t) {
-    melon::views::undirected_graph_all(std::forward<T>(t));
-};
+concept all_accepted =
+    requires(T && t) { melon::views::graph_all(std::forward<T>(t)); };
 }  // namespace rvalue_undirected_cpos
 
 static_assert(!rvalue_undirected_cpos::rvalue_edges<const_overloaded::ugraph>);

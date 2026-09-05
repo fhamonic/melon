@@ -153,7 +153,7 @@ public:
     constexpr network_voronoi(Traits, Args &&... args)
         : network_voronoi(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr network_voronoi(const network_voronoi &) = delete;
     constexpr network_voronoi(network_voronoi &&) = default;
 

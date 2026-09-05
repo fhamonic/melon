@@ -7,7 +7,7 @@
 #include <vector>
 
 // The triangle 0-1, 1-2, 2-0, exposed only through free functions so that the
-// CPOs of melon/undirected_graph.hpp are resolved through their ADL branch.
+// undirected CPOs of melon/graph.hpp are resolved through their ADL branch.
 // It is deliberately not a melon view: it is the concrete undirected graph the
 // view adaptors are tested against.
 namespace adl_ugraph {
@@ -39,19 +39,18 @@ inline unsigned int degree(const triangle & g, const vertex & v) {
     }
     return d;
 }
-// Deliberately an unsized range: the degree CPO must not be able to fall back
-// on std::ranges::size here, it has to reach the free function above.
+// Deliberately an unsized range (a join never is): the degree CPO must not be
+// able to fall back on std::ranges::size here, it has to reach the free
+// function above. Each edge is repeated once per end at v, so a self-loop
+// appears twice, the way degree() above counts it.
 inline auto incidence(const triangle & g, const vertex & v) {
-    return std::views::transform(
-        std::views::filter(edges(g),
-                           [&g, v](const edge & e) {
-                               return g.edge_list[e].first == v ||
-                                      g.edge_list[e].second == v;
-                           }),
-        [&g, v](const edge & e) {
+    return std::views::join(
+        std::views::transform(edges(g), [&g, v](const edge & e) {
             const auto & [u, w] = g.edge_list[e];
-            return std::pair<edge, vertex>{e, u == v ? w : u};
-        });
+            return std::views::repeat(
+                std::pair<edge, vertex>{e, u == v ? w : u},
+                (u == v ? 1 : 0) + (w == v ? 1 : 0));
+        }));
 }
 template <typename V>
 auto create_vertex_map(const triangle &) {

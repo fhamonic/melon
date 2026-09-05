@@ -185,7 +185,7 @@ private:
 public:
     // ---- Construction -------------------------------------------------------
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     // Moves stay defaulted: _best_sol holds iterators into _value_cost_pairs,
     // whose buffer transfers with the move. A copy would have to rebase them,
     // and could not be declared honestly -- for a move-only ItemRange

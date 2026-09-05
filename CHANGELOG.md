@@ -1,4 +1,4 @@
-# Changelog
+#Changelog
 
 Notable changes to melon. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
@@ -6,7 +6,7 @@ Notable changes to melon. The format follows
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-09-04
+## [1.0.0] - 2026-09-05
 
 First stable release. Every header outside `melon/detail/` and
 `melon/experimental/` is frozen API for the 1.x series — see
@@ -14,7 +14,7 @@ First stable release. Every header outside `melon/detail/` and
 for the exact scope of the guarantee. All changes below are relative to
 `1.0.0-alpha.1`, the last package published on Conan Center.
 
-The `v1.0.0` tag was first cut on 2026-08-28 and re-pointed on 2026-09-04,
+The `v1.0.0` tag was first cut on 2026-08-28 and re-pointed on 2026-09-05,
 before any package was published from it, to a revision that also carries the
 following renames. Code written against the earlier snapshot needs:
 `add_arc({u, v}, …)` for `add_arc(u, v, …)` on a builder with properties;
@@ -22,8 +22,13 @@ following renames. Code written against the earlier snapshot needs:
 `maps::identity_map`, `maps::element_map<I...>` and `maps::map`;
 `melon/maps/constant.hpp` and `melon/maps/element.hpp` for `maps::true_map` /
 `maps::false_map` and `maps::element`; `melon/numeric/` for `semiring.hpp` and
-`geometry.hpp`; and a mapping rather than a callable as
-`alias_method_sampler`'s probability map.
+`geometry.hpp`; a mapping rather than a callable as
+`alias_method_sampler`'s probability map; and `graph_ref_view`,
+`graph_owning_view`, `graph_view_base`, `views::graph_all`,
+`views::graph_all_t` and `graph_for` for their `undirected_graph_*` twins,
+which are gone along with `melon/views/undirected_graph_view.hpp`; and
+`melon/graph.hpp` for `melon/undirected_graph.hpp` and
+`melon/borrowed_graph.hpp`, whose contents now sit in the former.
 
 ### Breaking changes since 1.0.0-alpha.1
 
@@ -50,8 +55,18 @@ following renames. Code written against the earlier snapshot needs:
   CPO — the undirected `edges` and `incidence` included — rejects rvalue
   graphs at compile time; the result would dangle behind the temporary.
   Rvalue support remains available through the borrowed-graph promise
-  (`melon/borrowed_graph.hpp`). Custom graph types written against the
-  alpha concepts may need their protocol members reshaped.
+  (`enable_borrowed_graph` in `melon/graph.hpp`). Custom graph types
+  written against the alpha concepts may need their protocol members
+  reshaped.
+- The undirected protocol follows suit: `nb_edges` is `num_edges`
+  (`has_nb_edges` is `has_num_edges`); `incidence(g, v)` yields
+  `(edge, other endpoint)` tuple-likes instead of bare edges, so a caller
+  never re-derives the far endpoint from `edge_endpoints`; and a self-loop
+  is incident at both ends — `incidence` lists it twice, each time with `v`
+  as the other endpoint, and `degree` counts it twice. The last is part of
+  the concepts, not of any one container: a member `degree` must agree with
+  the incidence range it summarises. A custom undirected graph listing a
+  loop once, or yielding edges alone, needs its `incidence` reshaped.
 - `static_digraph`, `static_forward_digraph` and `mutable_digraph` are
   aliases of the default instantiation of `basic_static_digraph<V, A>`,
   `basic_static_forward_digraph<V, A>` and `basic_mutable_digraph<V, A>`:
@@ -104,9 +119,10 @@ following renames. Code written against the earlier snapshot needs:
   that instance is dijkstra), `bellman_ford` and `bellman_ford_moore`
   (negative lengths, with opt-in negative-cycle detection and retrieval
   through the `detect_negative_cycles` traits flag),
-  `biobjective_dijkstra`, `connected_components`, `network_voronoi`,
-  `traversal_forest`, `network_simplex` (below), and `bentley_ottmann`
-  promoted out of `melon/experimental/`.
+  `biobjective_dijkstra`, `connected_components` (with
+  `weakly_connected_components(g)`, which undirects a digraph and runs it),
+  `network_voronoi`, `traversal_forest`, `network_simplex` (below), and
+  `bentley_ottmann` promoted out of `melon/experimental/`.
 - `network_simplex`: exact minimum-cost flow by the primal network simplex,
   in the implementation lineage of LEMON's — but with no renumbering, no
   problem copy, and no materialized artificial root: it runs in the
@@ -140,10 +156,10 @@ following renames. Code written against the earlier snapshot needs:
   `MELON_VERSION` macros both build systems parse.
 - New maps under `melon/maps/`: `maps::constant<V>` (an empty map
   answering the NTTP `V` for every key), `maps::element<I...>` (a
-  `std::get` chain into the key), `maps::transform(m, f)` (a mapping viewed through a
-  value projection `f(m[k])`, the base routed through `maps::mapping_all`
-  — lvalue referenced, rvalue owned, view passed through; a
-  reference-returning projection keeps the base's writability);
+  `std::get` chain into the key), `maps::transform(m, f)` (a mapping
+  viewed through a value projection `f(m[k])`, the base routed through
+  `maps::mapping_all` — lvalue referenced, rvalue owned, view passed
+  through; a reference-returning projection keeps the base's writability);
   `maps::identity` and `maps::function` stay in `melon/mapping.hpp`.
 - Map roles: every map an algorithm creates is requested under a role
   (`dijkstra_roles::heap_index`, `dinitz_roles::flow`, … — one
@@ -155,14 +171,34 @@ following renames. Code written against the earlier snapshot needs:
   parameter answers every role with its standard map, so no container or
   user graph changes; a two-parameter `create_vertex_map<T, Role>` answers
   per role and is probed first. Every forwarding view (`graph_ref_view`,
-  `graph_owning_view`, `reverse`, `subgraph`, `undirect`, the undirected
-  ref/owning views) forwards the role it receives. Roles are extension
+  `graph_owning_view`, `reverse`, `subgraph`, `undirect`, the `with_*_maps`
+  views) forwards the role it receives. Roles are extension
   points with a weaker stability guarantee than the main API.
+- One wrapper for both protocols: `graph_ref_view`, `graph_owning_view` and
+  `views::graph_all` accept directed and undirected graphs, and graphs
+  modelling both protocols, and forward
+  every protocol half the wrapped type models, as do the `with_*_maps`
+  views and `views::reverse`; `graph_for` is the one constructor
+  constraint. A type modelling both `graph` and `undirected_graph` — an
+  undirected container reading each edge as two arcs — therefore stays
+  both through the wrappers, and `dijkstra` and `kruskal` read the same
+  object. `views::subgraph` keeps the directed half only, having no edge
+  filter. The forwarding itself is public: `graph_view_interface<G, Stored>`
+  (and the one-half `directed_graph_view_interface` /
+  `undirected_graph_view_interface`) is the base a user adaptor derives from
+  to forward everything and redeclare what it changes, `view_interface`
+  style. `has_vertex_creation`, `has_is_valid_vertex` and
+  `has_vertex_removal` are gated on `has_vertices`, no longer on `graph`.
+- `views::as_directed` / `views::as_undirected`
+  (`melon/views/graph_view.hpp`): restrict such a graph to one half — the
+  identity on a graph with nothing to hide — for the caller who must pick,
+  before an overload set split on `graph_view` / `undirected_graph_view`.
 - `views::with_vertex_maps`, `views::with_arc_maps` and
   `views::with_edge_maps` (`melon/views/with_maps.hpp`): factory-enhancing
   views that answer the map factories from caller-supplied lambdas and
   forward everything else. A graph without factories runs every algorithm
-  from a single lambda (`[]<typename T>(auto role, const auto & g) { … }`);
+  from a single lambda (`[]<typename T>(auto role, const auto & g) {
+    … }`);
   a graph with them can have particular maps redirected into storage the
   caller already owns, Boost.Graph interior-property style. A lambda may
   declare the bare form, the filled form (taking the default value) or

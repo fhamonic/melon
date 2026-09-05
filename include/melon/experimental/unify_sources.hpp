@@ -42,11 +42,10 @@ template <graph_view Graph, std::ranges::view Sources>
              std::ranges::sized_range<Sources> &&
              std::convertible_to<std::ranges::range_value_t<Sources>,
                                  vertex_t<Graph>>
-class unify_sources_view : public detail::graph_forwarding_interface<
-                               unify_sources_view<Graph, Sources>, Graph> {
+class unify_sources_view : public directed_graph_view_interface<Graph> {
 private:
-    friend detail::graph_forwarding_interface<
-        unify_sources_view<Graph, Sources>, Graph>;
+    using base_type = directed_graph_view_interface<Graph>;
+    using base_type::_graph;
 
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
@@ -62,16 +61,11 @@ private:
         detail::vertex_map_if<_forwards_inward_feature, Graph, arc,
                               virtual_in_arc_role>;
 
-    Graph _graph;
     Sources _sources;
     // The virtual in-arc of each source, or the one-past-the-end sentinel for
     // a non-source: what lets in_arcs / in_degree / in_neighbors answer in
     // O(1) instead of scanning the sources range on every call.
     [[no_unique_address]] virtual_in_arc_map _virtual_in_arc;
-
-    [[nodiscard]] constexpr const Graph & _forwarding_base() const noexcept {
-        return _graph;
-    }
 
     [[nodiscard]] constexpr arc _first_virtual_arc() const {
         return static_cast<arc>(melon::num_arcs(_graph));
@@ -91,7 +85,7 @@ public:
         requires graph_for<G, Graph> &&
                      std::constructible_from<Sources, std::views::all_t<S>>
     constexpr unify_sources_view(G && g, S && sources)
-        : _graph(melon::views::graph_all(std::forward<G>(g)))
+        : base_type(melon::views::graph_all(std::forward<G>(g)))
         , _sources(std::views::all(std::forward<S>(sources)))
         , _virtual_in_arc(_graph, _virtual_arc_sentinel()) {
         [[maybe_unused]] arc e = _first_virtual_arc();
@@ -129,8 +123,6 @@ public:
     }
     [[nodiscard]] constexpr Graph base() && { return std::move(_graph); }
 
-    // ---- The augmentation's own vocabulary ----------------------------------
-
     [[nodiscard]] constexpr vertex root() const {
         return static_cast<vertex>(melon::num_vertices(_graph));
     }
@@ -142,8 +134,6 @@ public:
     [[nodiscard]] constexpr const Sources & sources() const noexcept {
         return _sources;
     }
-
-    // ---- graph interface ----------------------------------------------------
 
     [[nodiscard]] constexpr auto num_vertices() const {
         return static_cast<std::size_t>(melon::num_vertices(_graph)) + 1;

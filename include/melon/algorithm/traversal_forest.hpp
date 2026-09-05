@@ -90,7 +90,7 @@ public:
     // _consumed counter puts the cursor back where it was. The inner _bfs
     // carries its own policy.
     //
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr traversal_forest(const traversal_forest &) = delete;
     constexpr traversal_forest(traversal_forest && o)
         : _bfs(std::move(o._bfs))

@@ -297,12 +297,12 @@ GTEST_TEST(subgraph_views,
 // the endpoint maps come from the wrapped graph, unfiltered
 ////////////////////////////////////////////////////////////////////////////////
 
-// 2.2: subgraph was the one view in the family that already spelled the
-// endpoint maps the way the CPOs probe for them, so it kept the wrapped
-// container's maps while graph_ref_view / graph_owning_view / reverse silently
-// dropped to the synthesised lambda. Pinned here so the three stay in step.
-// The maps are deliberately *unfiltered*: they answer for every arc of the
-// wrapped graph, and it is arcs() that decides which of those are in the
+// The endpoint maps are spelled the way the CPOs probe for them, so the
+// wrapped container's maps come through; a spelling the probe misses makes
+// the CPO fall back to the synthesised lambda without a diagnostic, which is
+// how graph_ref_view / graph_owning_view / reverse can drift apart from this
+// view. The maps are deliberately *unfiltered*: they answer for every arc of
+// the wrapped graph, and it is arcs() that decides which of those are in the
 // subgraph, exactly as arc_source / arc_target do.
 namespace subgraph_endpoint_maps {
 using G = static_digraph;

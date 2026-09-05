@@ -165,7 +165,7 @@ public:
     constexpr a_star(Traits, Args &&... args)
         : a_star(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr a_star(const a_star &) = delete;
     constexpr a_star(a_star &&) = default;
 

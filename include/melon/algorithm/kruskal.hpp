@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "melon/container/disjoint_sets.hpp"
-#include "melon/undirected_graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 
 namespace melon {
@@ -38,9 +38,9 @@ private:
 public:
     // ---- Construction -------------------------------------------------------
 
-    template <undirected_graph_for<UGraph> UG, mapping_for<CostMap> CM>
+    template <graph_for<UGraph> UG, mapping_for<CostMap> CM>
     constexpr kruskal(UG && ug, CM && cm)
-        : _ugraph(views::undirected_graph_all(std::forward<UG>(ug)))
+        : _ugraph(views::graph_all(std::forward<UG>(ug)))
         , _cost_map(maps::mapping_all(std::forward<CM>(cm)))
         , _components_sets(
               create_vertex_map<unsigned int, kruskal_roles::component>(
@@ -48,7 +48,7 @@ public:
         reset();
     }
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     // Moves stay defaulted: _cursor is an iterator into _sorted_edges, whose
     // buffer transfers with the move. Any copy would have to rebase it --
     // an iterator into the source's buffer never compares equal to the new
@@ -132,7 +132,7 @@ public:
 };
 
 template <typename UGraph, typename CostMap>
-kruskal(UGraph &&, CostMap &&) -> kruskal<views::undirected_graph_all_t<UGraph>,
-                                          maps::mapping_all_t<CostMap>>;
+kruskal(UGraph &&, CostMap &&)
+    -> kruskal<views::graph_all_t<UGraph>, maps::mapping_all_t<CostMap>>;
 
 }  // namespace melon

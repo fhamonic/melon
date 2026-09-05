@@ -128,7 +128,7 @@ public:
     constexpr competing_dijkstras(Traits, Args &&... args)
         : competing_dijkstras(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr competing_dijkstras(const competing_dijkstras &) = delete;
     constexpr competing_dijkstras(competing_dijkstras &&) = default;
 

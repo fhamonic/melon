@@ -66,7 +66,17 @@ If you write a graph adaptor of your own and want it to pass through rather than
 class my_adaptor : public graph_view_base { ... };
 ```
 
-`enable_graph_view<T>` is `std::derived_from<T, graph_view_base>`, and `graph_view<T>` additionally requires `graph<T>` and `std::movable<T>`. The undirected side has the same pair: `undirected_graph_view_base` and `views::undirected_graph_all`.
+`enable_graph_view<T>` is `std::derived_from<T, graph_view_base>`, and `graph_view<T>` additionally requires `graph<T>` and `std::movable<T>`; `undirected_graph_view<T>` requires `undirected_graph<T>` instead, on the same base.
+
+An adaptor that forwards most of the protocol and changes a few members derives from `graph_view_interface<G, Stored = G>` instead — melon's counterpart of `std::ranges::view_interface`, and the base of `graph_ref_view` (with `Stored = G *`), `graph_owning_view`, `views::reverse` and the `with_*_maps` views. It stores the adapted graph, forwards every member of every protocol half `G` models, and leaves the adaptor to redeclare only what it changes, `reverse` style; the protected `wrapped()` reads the stored graph. `directed_graph_view_interface` and `undirected_graph_view_interface` forward one half only, for an adaptor that changes the vertex set and could not forward the other half truthfully.
+
+```cpp
+struct padded : graph_view_interface<views::graph_all_t<static_digraph &>> {
+    using base_type = graph_view_interface<views::graph_all_t<static_digraph &>>;
+    explicit padded(static_digraph & g) : base_type(views::graph_all(g)) {}
+    auto num_vertices() const { return melon::num_vertices(wrapped()) + 1; }
+};
+``` The wrappers forward every protocol half the wrapped type has, so a type that is both a graph and an undirected graph stays both through `views::graph_all`; [`views::as_directed` and `views::as_undirected`](graphs.md#as_directed-as_undirected) restrict it to one.
 
 ### Getting the graph back out: `base()`
 
@@ -192,10 +202,10 @@ stores *by value* points back at that member, and a memberwise move would
 leave the new object's cursors aimed at the moved-from object's graph.
 
 `melon::enable_borrowed_graph<G>` draws that line, mirroring
-`std::ranges::enable_borrowed_range`. It is `true` for `graph_ref_view`,
-`undirected_graph_ref_view` and `views::complete_digraph`, and `false` by
+`std::ranges::enable_borrowed_range`. It is `true` for `graph_ref_view` and
+`views::complete_digraph`, and `false` by
 default — including for `graph_owning_view`. The adaptors compute it from
-what they wrap: `views::reverse` propagates it unchanged; a `subgraph_view`
+what they wrap: `views::reverse`, `views::as_directed` and `views::as_undirected` propagate it unchanged; a `subgraph_view`
 is borrowed exactly when **both filters are `maps::true_map` and the wrapped
 view is borrowed** (with any real filter present, the captured `this` makes
 it non-borrowed); and `undirect_view` propagates it only for a
@@ -216,7 +226,7 @@ If you write a graph view whose ranges do not refer to the view object,
 specialise the trait and that rebasing compiles away entirely:
 
 ```cpp
-#include "melon/borrowed_graph.hpp"
+#include "melon/graph.hpp"
 
 template <>
 inline constexpr bool melon::enable_borrowed_graph<my_view> = true;

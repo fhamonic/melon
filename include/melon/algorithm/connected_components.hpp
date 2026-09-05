@@ -8,11 +8,10 @@
 #include <utility>
 #include <vector>
 
-#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/fill.hpp"
 #include "melon/detail/not_self.hpp"
-#include "melon/undirected_graph.hpp"
+#include "melon/graph.hpp"
 #include "melon/utility/algorithmic_generator.hpp"
 #include "melon/views/undirect.hpp"
 
@@ -45,9 +44,9 @@ public:
 
     template <typename UG>
         requires detail::not_self<UG, connected_components> &&
-                     undirected_graph_for<UG, UGraph>
+                     graph_for<UG, UGraph>
     constexpr explicit connected_components(UG && g)
-        : _graph(views::undirected_graph_all(std::forward<UG>(g)))
+        : _graph(views::graph_all(std::forward<UG>(g)))
         , _remaining_vertices(vertices(_graph))
         , _queue()
         , _reached_map(
@@ -65,7 +64,7 @@ public:
         if(!finished()) advance();
     }
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling. The
+    // Move-only; see the melon::traversal_algorithm concept. The
     // move cannot be defaulted: a memberwise move leaves the cached cursor's
     // range pointing at the moved-from object's _graph member. The queue's
     // buffer transfers, so _queue_current needs nothing.
@@ -225,7 +224,7 @@ public:
 
 template <typename UGraph>
 connected_components(UGraph &&)
-    -> connected_components<views::undirected_graph_all_t<UGraph>>;
+    -> connected_components<views::graph_all_t<UGraph>>;
 
 // Constrained on what views::undirect actually needs -- the *incidence*
 // concepts -- not on adjacency. The two are independent: adjacency without

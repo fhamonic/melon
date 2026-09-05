@@ -46,21 +46,16 @@ namespace experimental {
 
 template <graph_view Graph>
     requires std::integral<vertex_t<Graph>>
-class add_virtual_vertices_view : public detail::graph_forwarding_interface<
-                                      add_virtual_vertices_view<Graph>, Graph> {
+class add_virtual_vertices_view : public directed_graph_view_interface<Graph> {
 private:
-    friend detail::graph_forwarding_interface<add_virtual_vertices_view<Graph>,
-                                              Graph>;
+    using base_type = directed_graph_view_interface<Graph>;
+    using base_type::_graph;
 
     using vertex = vertex_t<Graph>;
 
-    Graph _graph;
     vertex _first_virtual = vertex(0);
     std::size_t _count = 0;
 
-    [[nodiscard]] constexpr const Graph & _forwarding_base() const noexcept {
-        return _graph;
-    }
     [[nodiscard]] constexpr vertex _virtual_sentinel() const {
         return static_cast<vertex>(_first_virtual +
                                    static_cast<vertex>(_count));
@@ -76,7 +71,8 @@ public:
                      graph_for<G, Graph>
     constexpr explicit add_virtual_vertices_view(G && g,
                                                  const std::size_t count = 1)
-        : _graph(melon::views::graph_all(std::forward<G>(g))), _count(count) {
+        : base_type(melon::views::graph_all(std::forward<G>(g)))
+        , _count(count) {
         for(auto && v : melon::vertices(_graph)) {
             if constexpr(std::is_signed_v<vertex>) assert(v >= vertex(0));
             assert(
@@ -115,8 +111,6 @@ public:
         return std::move(_graph);
     }
 
-    // ---- The augmentation's own vocabulary ----------------------------------
-
     [[nodiscard]] constexpr std::size_t num_virtual_vertices() const noexcept {
         return _count;
     }
@@ -127,8 +121,6 @@ public:
         assert(i < _count);
         return static_cast<vertex>(_first_virtual + static_cast<vertex>(i));
     }
-
-    // ---- graph interface ----------------------------------------------------
 
     [[nodiscard]] constexpr auto num_vertices() const
         requires has_num_vertices<Graph>

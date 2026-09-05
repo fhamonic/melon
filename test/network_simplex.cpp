@@ -12,9 +12,9 @@
 #include <vector>
 
 #include "melon/algorithm/network_simplex.hpp"
-#include "melon/borrowed_graph.hpp"
 #include "melon/container/mutable_digraph.hpp"
 #include "melon/container/static_digraph.hpp"
+#include "melon/graph.hpp"
 #include "melon/mapping.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/complete_digraph.hpp"
@@ -774,8 +774,8 @@ GTEST_TEST(network_simplex, costs_are_bounded_by_the_path_not_the_arc) {
 GTEST_TEST(network_simplex, oversized_costs_are_a_precondition) {
     // One arc more, and no artificial cost both outruns the 1.2e9 path and
     // leaves the potentials room inside an int: the instance needs a wider
-    // cost type, and every verdict would be a guess. It used to be answered
-    // `infeasible`.
+    // cost type, and every verdict -- `infeasible` included -- would be a
+    // guess.
     auto [graph, upper, cost] = unit_along_a_costly_path(6);
     std::vector<int> supply(7, 0);
     supply.front() = 1;

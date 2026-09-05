@@ -86,7 +86,7 @@ public:
         set_target(t);
     }
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr edmonds_karp(const edmonds_karp &) = delete;
     constexpr edmonds_karp(edmonds_karp &&) = default;
 

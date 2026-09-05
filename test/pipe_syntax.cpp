@@ -56,7 +56,7 @@ GTEST_TEST(pipe_syntax, pipe_and_call_agree_at_runtime) {
     ASSERT_EQ(piped.arc_target(0u), 0u);
 }
 
-GTEST_TEST(pipe_syntax, undirected_graph_all_pipes) {
+GTEST_TEST(pipe_syntax, graph_all_pipes_an_undirected_graph) {
     static_digraph_builder<static_digraph> builder(3);
     builder.add_arc({0u, 1u}).add_arc({1u, 2u});
     auto [graph] = builder.build();
@@ -64,8 +64,8 @@ GTEST_TEST(pipe_syntax, undirected_graph_all_pipes) {
     // undirect yields an undirected graph; the all-CPO must accept it from
     // a pipe exactly as from a call, and both name the same type.
     auto ug = graph | views::undirect;
-    auto w1 = views::undirected_graph_all(ug);
-    auto w2 = ug | views::undirected_graph_all;
+    auto w1 = views::graph_all(ug);
+    auto w2 = ug | views::graph_all;
     static_assert(std::same_as<decltype(w1), decltype(w2)>);
     ASSERT_EQ(w1.num_edges(), 2u);
 }

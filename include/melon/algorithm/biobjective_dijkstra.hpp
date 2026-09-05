@@ -112,7 +112,7 @@ public:
     constexpr biobjective_dijkstra(Traits, Args &&... args)
         : biobjective_dijkstra(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr biobjective_dijkstra(const biobjective_dijkstra &) = delete;
     constexpr biobjective_dijkstra(biobjective_dijkstra &&) = default;
 

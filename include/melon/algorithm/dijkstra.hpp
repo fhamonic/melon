@@ -140,7 +140,7 @@ public:
     constexpr dijkstra(Traits, Args &&... args)
         : dijkstra(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr dijkstra(const dijkstra &) = delete;
     constexpr dijkstra(dijkstra &&) = default;
 

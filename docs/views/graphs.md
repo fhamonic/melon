@@ -140,6 +140,19 @@ for(auto && e : kruskal(ugraph, cost_map)) { ... }
 
 It requires the underlying graph to be both an `outward_incidence_graph` and an `inward_incidence_graph`. Since edges keep the arc identifiers, arc maps double as edge maps.
 
+## `as_directed`, `as_undirected`
+
+`views::as_directed(g)` and `views::as_undirected(g)` restrict a graph modelling [both protocols](../graphs/undirected-graphs.md#a-graph-that-is-both) to one of them: the first hides the edge half and leaves a `graph`, the second hides the arc half and leaves an `undirected_graph`. Every other wrapper in melon forwards both halves, so these are the one place a caller chooses — what a function template overloaded on `graph_view` and `undirected_graph_view` needs to stop being ambiguous.
+
+```cpp
+#include "melon/views/graph_view.hpp"
+
+auto d = views::as_directed(g);     // graph, not undirected_graph
+auto u = g | views::as_undirected;  // undirected_graph, not graph
+```
+
+On a graph with nothing to hide — a digraph handed to `as_directed`, an undirected graph to `as_undirected` — each is the identity and returns `views::graph_all(g)` rather than stacking a layer. `as_directed` on a graph with no arc half, or `as_undirected` on one with no edge half, is a constraint failure. Neither converts anything: [`undirect`](#undirect) is what makes edges out of arcs, and `views::undirect(views::as_directed(g))` has twice as many edges as `g` itself. Both are [borrowed](ownership.md#borrowed-graphs) exactly when the graph they wrap is.
+
 ## `complete_digraph`
 
 `views::complete_digraph<V, A>` is a view over nothing at all: the complete digraph on `n` vertices, with all `n(n-1)` arcs computed arithmetically from their identifier.
@@ -202,7 +215,7 @@ Roles are how an algorithm names each map it creates — `dijkstra_roles::heap_i
 
 What serves nothing, so that the wrapped graph answers or `has_vertex_map` is `false`: a generic lambda without an explicit `<typename T>`; a `mutable` lambda, since the view is used through `const`.
 
-The lambdas are copied into the view, like the function of `std::views::transform`, in the direct call and through the pipe alike, so `g | views::with_vertex_maps(f)` names the same type as `views::with_vertex_maps(g, f)`. `with_vertex_maps` accepts directed and undirected graphs and keeps the kind of what it wraps; `with_arc_maps` is for directed graphs, `with_edge_maps` for undirected ones. Each view is [borrowed](ownership.md#borrowed-graphs) exactly when the graph it wraps is.
+The lambdas are copied into the view, like the function of `std::views::transform`, in the direct call and through the pipe alike, so `g | views::with_vertex_maps(f)` names the same type as `views::with_vertex_maps(g, f)`. `with_vertex_maps` accepts directed and undirected graphs; `with_arc_maps` needs the arc half and `with_edge_maps` the edge half. All three forward whatever else the wrapped graph has, so a graph modelling both protocols keeps both through them. Each view is [borrowed](ownership.md#borrowed-graphs) exactly when the graph it wraps is.
 
 **Lifetime, for lambdas handing out storage they do not own.** Algorithms move the view they hold, so a projection must point at a heap buffer, never at the view or at a local. And a result map extracted from an expiring algorithm (`std::move(alg).dists_map()`) keeps only what the projection keeps alive: hold the buffer through a `std::shared_ptr`, as above, and the [extraction contract](ownership.md#getting-a-result-map-out-the-s_map-accessors) holds unchanged; hold a raw pointer, and reading the extracted map after the view dies is a use-after-free that only a sanitizer reports. A view backs at most one live algorithm per role: two algorithms sharing one interior view share its slots.
 

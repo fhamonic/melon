@@ -18,25 +18,19 @@ namespace melon {
 // the mem-initializer. std::ranges pins the precedent: transform_view<V, F>
 // requires view<V>.
 template <graph_view Graph>
-class reverse_view
-    : public detail::graph_forwarding_interface<reverse_view<Graph>, Graph> {
+class reverse_view : public graph_view_interface<Graph> {
 private:
-    friend detail::graph_forwarding_interface<reverse_view<Graph>, Graph>;
+    using base_type = graph_view_interface<Graph>;
+    using base_type::_graph;
 
     using vertex = vertex_t<Graph>;
     using arc = arc_t<Graph>;
-
-    Graph _graph;
-
-    [[nodiscard]] constexpr const Graph & _forwarding_base() const noexcept {
-        return _graph;
-    }
 
 public:
     template <typename G>
         requires detail::not_self<G, reverse_view> && graph_for<G, Graph>
     constexpr explicit reverse_view(G && g)
-        : _graph(views::graph_all(std::forward<G>(g))) {}
+        : base_type(views::graph_all(std::forward<G>(g))) {}
 
     reverse_view()
         requires std::default_initializable<Graph>

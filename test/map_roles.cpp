@@ -16,14 +16,12 @@
 #include "melon/detail/map_if.hpp"
 #include "melon/graph.hpp"
 #include "melon/maps/element.hpp"
-#include "melon/undirected_graph.hpp"
 #include "melon/utility/priority_queue.hpp"
 #include "melon/utility/static_digraph_builder.hpp"
 #include "melon/views/graph_view.hpp"
 #include "melon/views/reverse.hpp"
 #include "melon/views/subgraph.hpp"
 #include "melon/views/undirect.hpp"
-#include "melon/views/undirected_graph_view.hpp"
 
 // No `using namespace melon`: MSVC re-runs ordinary lookup for the CPO's
 // internal `create_X_map<V, Role>(g)` call at instantiation, and the
@@ -33,6 +31,7 @@
 // create-map names keep the file readable without arming that trap.
 using melon::arc_map_t;
 using melon::default_role;
+using melon::directed_graph_view_interface;
 using melon::edge_map_t;
 using melon::graph_owning_view;
 using melon::graph_ref_view;
@@ -47,8 +46,6 @@ using melon::static_digraph_builder;
 using melon::static_map;
 using melon::subgraph_view;
 using melon::undirect_view;
-using melon::undirected_graph_owning_view;
-using melon::undirected_graph_ref_view;
 using melon::updatable_d_ary_heap;
 using melon::vertex_map_t;
 using melon::vertices;
@@ -73,46 +70,47 @@ struct role_map : std::vector<T> {
 // A role-aware view over static_digraph: the two-parameter factory shape for
 // vertex and arc maps, everything else forwarded.
 struct role_aware_graph
-    : detail::graph_forwarding_interface<role_aware_graph, static_digraph> {
-    friend detail::graph_forwarding_interface<role_aware_graph, static_digraph>;
-    const static_digraph * _g;
-    const static_digraph & _forwarding_base() const noexcept { return *_g; }
+    : directed_graph_view_interface<static_digraph, const static_digraph *> {
+    using base_type =
+        directed_graph_view_interface<static_digraph, const static_digraph *>;
+    explicit role_aware_graph(const static_digraph & g) : base_type(&g) {}
+    const static_digraph & _g() const noexcept { return this->wrapped(); }
 
     template <typename T, typename Role = default_role>
     auto create_vertex_map() const {
-        return role_map<unsigned int, T, Role>(melon::num_vertices(*_g));
+        return role_map<unsigned int, T, Role>(melon::num_vertices(_g()));
     }
     template <typename T, typename Role = default_role>
     auto create_vertex_map(const T & d) const {
-        return role_map<unsigned int, T, Role>(melon::num_vertices(*_g), d);
+        return role_map<unsigned int, T, Role>(melon::num_vertices(_g()), d);
     }
     template <typename T, typename Role = default_role>
     auto create_arc_map() const {
-        return role_map<unsigned int, T, Role>(melon::num_arcs(*_g));
+        return role_map<unsigned int, T, Role>(melon::num_arcs(_g()));
     }
     template <typename T, typename Role = default_role>
     auto create_arc_map(const T & d) const {
-        return role_map<unsigned int, T, Role>(melon::num_arcs(*_g), d);
+        return role_map<unsigned int, T, Role>(melon::num_arcs(_g()), d);
     }
 };
 
 }  // namespace
 
-// ADL free-function factories, in the graph's own namespace: the legacy
+// ADL free-function factories, in the graph's own namespace: the
 // one-parameter shape on one graph, the role-aware shape on the other.
 namespace adl_lib {
-struct legacy_graph {
+struct plain_graph {
     std::size_t n;
 };
-inline auto vertices(const legacy_graph & g) {
+inline auto vertices(const plain_graph & g) {
     return std::views::iota(0u, static_cast<unsigned int>(g.n));
 }
 template <typename V>
-auto create_vertex_map(const legacy_graph & g) {
+auto create_vertex_map(const plain_graph & g) {
     return std::vector<V>(g.n);
 }
 template <typename V>
-auto create_vertex_map(const legacy_graph & g, const V & d) {
+auto create_vertex_map(const plain_graph & g, const V & d) {
     return std::vector<V>(g.n, d);
 }
 
@@ -136,7 +134,7 @@ template <typename Map>
 using role_of = typename Map::role;
 
 ////////////////////////////////////////////////////////////////////////////////
-// a legacy factory -- one template parameter, member or ADL -- answers every
+// a one-parameter factory -- member or ADL -- answers every
 // role with its standard map, so no container and no user graph changes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,8 +146,8 @@ static_assert(std::same_as<arc_map_t<static_digraph, int, role_a>,
                            arc_map_t<static_digraph, int>>);
 static_assert(std::same_as<vertex_map_t<mutable_digraph, int, role_a>,
                            vertex_map_t<mutable_digraph, int>>);
-static_assert(has_vertex_map<adl_lib::legacy_graph, int, role_a>);
-static_assert(std::same_as<vertex_map_t<adl_lib::legacy_graph, int, role_a>,
+static_assert(has_vertex_map<adl_lib::plain_graph, int, role_a>);
+static_assert(std::same_as<vertex_map_t<adl_lib::plain_graph, int, role_a>,
                            std::vector<int>>);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,13 +189,12 @@ static_assert(std::same_as<role_of<arc_map_t<SG, int, role_a>>, role_a>);
 using UG = undirect_view<RG>;
 static_assert(std::same_as<role_of<vertex_map_t<UG, int, role_a>>, role_a>);
 static_assert(std::same_as<role_of<edge_map_t<UG, int, role_b>>, role_b>);
-using URG = undirected_graph_ref_view<UG>;
+using URG = graph_ref_view<UG>;
 static_assert(std::same_as<role_of<vertex_map_t<URG, int, role_a>>, role_a>);
 static_assert(std::same_as<role_of<edge_map_t<URG, int, role_b>>, role_b>);
 static_assert(
-    std::same_as<
-        role_of<vertex_map_t<undirected_graph_owning_view<UG>, int, role_a>>,
-        role_a>);
+    std::same_as<role_of<vertex_map_t<graph_owning_view<UG>, int, role_a>>,
+                 role_a>);
 
 // a role never narrows satisfiability
 static_assert(has_vertex_map<RG> && has_vertex_map<RG, int, role_a>);
@@ -246,7 +243,7 @@ GTEST_TEST(map_roles, role_reaches_the_factory_through_views) {
     static_digraph_builder<static_digraph, int> builder(3);
     builder.add_arc({0u, 1u}, 1).add_arc({1u, 2u}, 1);
     auto [graph, unused] = builder.build();
-    role_aware_graph rg{{}, &graph};
+    role_aware_graph rg(graph);
     auto stacked = views::reverse(views::subgraph(rg));
 
     auto m = melon::create_vertex_map<int, role_a>(stacked, 7);
@@ -257,8 +254,8 @@ GTEST_TEST(map_roles, role_reaches_the_factory_through_views) {
     static_assert(std::same_as<role_of<decltype(am)>, role_b>);
     ASSERT_EQ(am.size(), melon::num_arcs(graph));
 
-    auto legacy = melon::create_vertex_map<int, role_a>(graph, 3);
+    auto map = melon::create_vertex_map<int, role_a>(graph, 3);
     static_assert(
-        std::same_as<decltype(legacy), vertex_map_t<static_digraph, int>>);
-    for(auto && v : vertices(graph)) ASSERT_EQ(legacy[v], 3);
+        std::same_as<decltype(map), vertex_map_t<static_digraph, int>>);
+    for(auto && v : vertices(graph)) ASSERT_EQ(map[v], 3);
 }

@@ -264,8 +264,9 @@ GTEST_TEST(dinitz, source_equals_target_is_a_precondition) {
     EXPECT_DEATH((void)alg.run(), "");
 }
 
-// One call frame per level-graph level used to live on the call stack; a
-// path this long overflowed it before the explicit path stack.
+// The augmenting-path descent keeps its path on an explicit stack; recursing
+// one call frame per level-graph level overflows the call stack on a path
+// this long.
 GTEST_TEST(dinitz, very_long_augmenting_paths_do_not_overflow_the_stack) {
     const unsigned int n = 500'000;
     std::vector<unsigned int> sources, targets;

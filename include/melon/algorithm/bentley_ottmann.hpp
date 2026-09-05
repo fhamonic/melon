@@ -212,7 +212,7 @@ public:
     constexpr bentley_ottmann(Traits, Args &&... args)
         : bentley_ottmann(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr bentley_ottmann(const bentley_ottmann &) = delete;
     constexpr bentley_ottmann(bentley_ottmann &&) = default;
 

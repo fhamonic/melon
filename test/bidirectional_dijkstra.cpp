@@ -156,7 +156,7 @@ GTEST_TEST(bidirectional_dijkstra, endpoint_pred_arcs_are_preconditions) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// regression: 2.3, the Traits default lives on the class, so the written-out
+// the Traits default lives on the class, so the written-out
 // type can be named and matches CTAD
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -7,7 +7,7 @@ namespace melon {
 
 // clang-format off
 // movable + default_initializable, not semiregular: no algorithm copies a
-// heap (they are move-only by ruling) but biobjective_dijkstra
+// heap (every algorithm is move-only) but biobjective_dijkstra
 // default-constructs one, so demanding copyability only locks out heaps that
 // own their buffer through a move-only handle.
 template <typename Q>

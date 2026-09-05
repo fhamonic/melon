@@ -71,7 +71,8 @@ add_executable(
   rational.cpp
   experimental.cpp
   undirected_graph.cpp
-  undirected_graph_view.cpp
+  graph_view_undirected.cpp
+  both_protocols.cpp
   mapping.cpp
   constant.cpp
   element.cpp

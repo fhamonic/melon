@@ -318,10 +318,10 @@ static_assert(std::is_constructible_v<numeric::bounded_value<int, 0, 10>,
 static_assert(std::is_convertible_v<int, numeric::const_value<int, 1>>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// the const_value specialization is copyable both ways: the defaulted move
-// constructor used to delete the implicit copy assignment, making every
-// const_value-carrying composite fail std::copyable while copy construction
-// still worked
+// the const_value specialization is copyable both ways: a defaulted move
+// constructor alone deletes the implicit copy assignment, and every
+// const_value-carrying composite then fails std::copyable while copy
+// construction still works
 ////////////////////////////////////////////////////////////////////////////////
 
 static_assert(std::copyable<const_value<int, 1>>);

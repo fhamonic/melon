@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/fill.hpp"
 #include "melon/graph.hpp"
@@ -105,7 +104,7 @@ public:
         set_target(t);
     }
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     // Hand-written because a memberwise move leaves the cached cursors' ranges
     // pointing at the moved-from object's _graph member.
     constexpr dinitz(const dinitz &) = delete;

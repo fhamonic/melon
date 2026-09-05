@@ -27,7 +27,7 @@ Every concept in melon's public API, with its header and a one-line statement of
 | `has_arc_map<G, T = std::size_t, Role = default_role>` | `has_arcs` and both `create_arc_map<T, Role>` overloads |
 | `has_vertex_creation<G>` | `melon::create_vertex(g)` returning `vertex_t<G>` |
 | `has_vertex_removal<G>` | `melon::remove_vertex(g, v)` and `melon::is_valid_vertex(g, v)` |
-| `has_is_valid_vertex<G>` | `graph` and `melon::is_valid_vertex(g, v)` — the validity question without the removal |
+| `has_is_valid_vertex<G>` | `has_vertices` and `melon::is_valid_vertex(g, v)` — the validity question without the removal |
 | `has_arc_creation<G>` | `melon::create_arc(g, u, v)` returning `arc_t<G>` |
 | `has_arc_removal<G>` | `melon::remove_arc(g, a)` and `melon::is_valid_arc(g, a)` |
 | `has_is_valid_arc<G>` | `graph` and `melon::is_valid_arc(g, a)` — likewise |
@@ -42,14 +42,14 @@ Every concept in melon's public API, with its header and a one-line statement of
     every graph type; the alias templates work for every graph, view and user
     type, and are the only stable way to name a handle.
 
-## Undirected graph — `melon/undirected_graph.hpp`
+## Undirected graph — `melon/graph.hpp`
 
 | Concept | Requires |
 | --- | --- |
 | `undirected_graph<G>` | `melon::vertices(g)`, `melon::edges(g)`, `melon::edge_endpoints(g, e)` |
 | `has_num_edges<G>` | `undirected_graph` and `melon::num_edges(g)` |
-| `has_incidence<G>` | `undirected_graph` and `melon::incidence(g, v)` yielding `(edge, vertex)` pairs |
-| `has_degree<G>` | `undirected_graph` and `melon::degree(g, v)` |
+| `has_incidence<G>` | `undirected_graph` and `melon::incidence(g, v)` yielding `(edge, vertex)` tuple-likes, a self-loop twice |
+| `has_degree<G>` | `undirected_graph` and `melon::degree(g, v)`, counting a self-loop twice, in agreement with `incidence` |
 | `has_edge_map<G, T = std::size_t, Role = default_role>` | `undirected_graph` and both `create_edge_map<T, Role>` overloads |
 
 **Aliases.** `edge_t<G>`, `edges_range_t<G>`, `incidence_range_t<G>`, `incidence_iterator_t<G>`, `incidence_sentinel_t<G>`, `edge_map_t<G, T, Role = default_role>`.
@@ -69,28 +69,26 @@ Every concept in melon's public API, with its header and a one-line statement of
 
 **Aliases.** `mapped_reference_t<M, K>`, `mapped_const_reference_t<M, K>`, `mapped_value_t<M, K>`, `maps::mapping_all_t<M>`.
 
-## Views — `melon/views/graph_view.hpp`, `melon/views/undirected_graph_view.hpp`, `melon/borrowed_graph.hpp`
+## Views — `melon/views/graph_view.hpp`, `melon/graph.hpp`
 
 | Concept / variable | Meaning |
 | --- | --- |
 | `enable_graph_view<T>` | `std::derived_from<T, graph_view_base>` |
 | `graph_view<T>` | `graph`, `std::movable`, `enable_graph_view` |
-| `enable_undirected_graph_view<T>` | `std::derived_from<T, undirected_graph_view_base>` |
-| `undirected_graph_view<T>` | `undirected_graph`, `std::movable`, and the above |
+| `undirected_graph_view<T>` | `undirected_graph`, `std::movable`, `enable_graph_view` — the same base serves both, so a type modelling both protocols models both view concepts |
 | `enable_borrowed_graph<T>` | Opt-in, `false` by default: ranges obtained from `T` stay valid when the `T` *object* is relocated |
 | `borrowed_graph<T>` | `enable_borrowed_graph<std::remove_cvref_t<T>>` |
-| `graph_for<G, Graph>` | `Graph` is constructible from `views::graph_all_t<G>` — the constructor constraint that wraps an argument through `graph_all` into the member |
-| `undirected_graph_for<UG, UGraph>` | the undirected counterpart, through `undirected_graph_all_t` |
+| `graph_for<G, Graph>` | `Graph` is constructible from `views::graph_all_t<G>` — the constructor constraint that wraps an argument, directed or undirected, through `graph_all` into the member |
 
-**Aliases.** `views::graph_all_t<G>`, `views::undirected_graph_all_t<G>`.
+**Aliases.** `views::graph_all_t<G>`.
 
 `enable_borrowed_graph` and the `borrowed_graph` concept are the two names from
-`melon/borrowed_graph.hpp`; the trait mirrors `std::ranges::enable_borrowed_range` and is what
+`melon/graph.hpp`; the trait mirrors `std::ranges::enable_borrowed_range` and is what
 decides whether an algorithm caching incidence ranges must rebase those cursors
 when it is moved, or can let the compiler default the move. It is
-`true` for `graph_ref_view`, `undirected_graph_ref_view` and
-`views::complete_digraph`, propagates through `views::reverse` and
-`views::undirect`, and is `false` for `views::subgraph` and `graph_owning_view`,
+`true` for `graph_ref_view` and `views::complete_digraph`, propagates
+through `views::reverse`, `views::undirect`, `views::as_directed` and
+`views::as_undirected`, and is `false` for `views::subgraph` and `graph_owning_view`,
 whose ranges point back at the view. Specialise it for a view of your own whose
 ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-move-only-always-sound).
 

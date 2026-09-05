@@ -8,7 +8,6 @@
 #include "melon/detail/concat_view.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
-#include "melon/undirected_graph.hpp"
 #include "melon/views/graph_view.hpp"
 
 namespace melon {
@@ -18,7 +17,7 @@ namespace melon {
 // a legal *type* whose constructor hard-errors in the mem-initializer.
 template <graph_view Graph>
     requires outward_incidence_graph<Graph> && inward_incidence_graph<Graph>
-class undirect_view : public undirected_graph_view_base {
+class undirect_view : public graph_view_base {
 private:
     using vertex = vertex_t<Graph>;
     using edge = arc_t<Graph>;

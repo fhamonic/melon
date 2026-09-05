@@ -1,6 +1,6 @@
 # Undirected graphs
 
-melon treats the directed case as [primitive](concepts.md#why-a-directed-multigraph) and layers the undirected one on top of it. The concepts live in `melon/undirected_graph.hpp` and are deliberately parallel to the directed ones, with **edge** replacing **arc**.
+melon treats the directed case as [primitive](concepts.md#why-a-directed-multigraph) and layers the undirected one on top of it. The concepts live in `melon/graph.hpp`, after the directed ones, and are deliberately parallel to them, with **edge** replacing **arc**.
 
 ## `undirected_graph`
 
@@ -26,8 +26,8 @@ The optional refinements are:
 | Concept | Requires | Notes |
 | --- | --- | --- |
 | `has_num_edges<G>` | `melon::num_edges(g)` | free when `edges(g)` is sized |
-| `has_incidence<G>` | `melon::incidence(g, v)` | a range of `(edge, other endpoint)` pairs |
-| `has_degree<G>` | `melon::degree(g, v)` | via a member or ADL `degree`, or derived when `incidence(g, v)` is sized |
+| `has_incidence<G>` | `melon::incidence(g, v)` | a range of `(edge, other endpoint)` tuple-likes; a self-loop appears twice |
+| `has_degree<G>` | `melon::degree(g, v)` | via a member or ADL `degree`, or derived when `incidence(g, v)` is sized; a self-loop counts twice |
 | `has_edge_map<G, T>` | `create_edge_map<T>(g)` | yields `edge_map_t<G, T>` |
 
 ## Incidence, not adjacency
@@ -40,7 +40,9 @@ for(auto && [e, w] : incidence(ug, v)) {
 }
 ```
 
-This is the shape undirected traversals actually need. Returning only the edge would force every caller to re-derive "which endpoint is not `v`" from `edge_endpoints`, with a comparison per step — and that comparison is wrong for a self-loop. The implementation knows the answer already, so it returns it.
+This is the shape undirected traversals actually need. Returning only the edge would force every caller to re-derive "which endpoint is not `v`" from `edge_endpoints`, with a comparison per step — and that comparison is wrong for a self-loop. The implementation knows the answer already, so it returns it. The entries are tuple-likes rather than literally `std::pair`, so a `std::views::zip` over an edge array and a neighbour array qualifies.
+
+**A self-loop is incident to its vertex at both ends.** `incidence(g, v)` therefore lists it **twice**, each time with `v` itself as the other endpoint, and `degree(g, v)` counts it twice — the graph-theory convention, and what LEMON and Boost.Graph do. This is part of the concepts, not of any one implementation: a member `degree` must agree with the incidence range it summarises, and an algorithm that sums degrees — a Laplacian, a parity check — assumes it. A graph listing a loop once satisfies `has_incidence` today and silently breaks such an algorithm tomorrow.
 
 ## Attaching data
 
@@ -100,4 +102,10 @@ for(auto && component : weakly_connected_components(graph)) {
 
 ## Bringing your own undirected graph
 
-The same rules as for [custom directed graphs](custom-graphs.md) apply: provide members or ADL free functions named `vertices`, `edges`, `edge_endpoints`, and optionally `incidence`, `num_edges`, `degree` and `create_edge_map`. Wrapping happens through `views::undirected_graph_all`, whose `undirected_graph_ref_view` and `undirected_graph_owning_view` mirror the directed pair described in [Ownership and mapping views](../views/ownership.md).
+The same rules as for [custom directed graphs](custom-graphs.md) apply: provide members or ADL free functions named `vertices`, `edges`, `edge_endpoints`, and optionally `incidence`, `num_edges`, `degree` and `create_edge_map` — with a self-loop [listed and counted twice](#incidence-not-adjacency). Wrapping happens through `views::graph_all`, whose `graph_ref_view` and `graph_owning_view` forward the undirected protocol exactly as they forward the directed one — see [Ownership and mapping views](../views/ownership.md).
+
+## A graph that is both
+
+Nothing stops a type from modelling `graph` and `undirected_graph` at once — an undirected container that also reads each edge as two opposite arcs, LEMON-style, is the natural example. The wrappers keep both halves: `views::graph_all(g)` forwards arcs and edges alike, so `dijkstra(g, …)` reads the arcs and `kruskal(g, …)` the edges of the same object, and both still do through `views::with_vertex_maps` and `views::reverse`. `views::subgraph` is the exception: it filters vertices and arcs and has no edge filter, so a subgraph of such a type is a `graph` only.
+
+Where one half has to go — a function template overloaded on `graph_view` and `undirected_graph_view` is ambiguous for such a type — [`views::as_directed` and `views::as_undirected`](../views/graphs.md#as_directed-as_undirected) hide the other. Neither converts anything: `views::undirect` is what makes edges out of arcs.

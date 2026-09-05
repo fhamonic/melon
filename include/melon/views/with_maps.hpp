@@ -11,9 +11,7 @@
 #include "melon/detail/movable_box.hpp"
 #include "melon/detail/not_self.hpp"
 #include "melon/graph.hpp"
-#include "melon/undirected_graph.hpp"
 #include "melon/views/graph_view.hpp"
-#include "melon/views/undirected_graph_view.hpp"
 
 namespace melon {
 namespace detail {
@@ -63,52 +61,18 @@ public:
         owner < n && (native_bare || std::default_initializable<T>);
 };
 
-template <typename G>
-concept any_graph =
-    graph<std::remove_cvref_t<G>> || undirected_graph<std::remove_cvref_t<G>>;
-
-// A type modelling both graph and undirected_graph is wrapped as directed.
-template <any_graph G>
-[[nodiscard]] constexpr auto any_graph_all(G && g) {
-    if constexpr(graph<std::remove_cvref_t<G>>)
-        return melon::views::graph_all(std::forward<G>(g));
-    else
-        return melon::views::undirected_graph_all(std::forward<G>(g));
-}
-
-template <any_graph G>
-using any_graph_all_t = decltype(any_graph_all(std::declval<G>()));
-
-template <typename G, typename Graph>
-concept any_graph_for =
-    any_graph<G> && std::constructible_from<Graph, any_graph_all_t<G>>;
-
-template <typename Derived, typename G>
-using any_graph_forwarding_interface =
-    std::conditional_t<graph<G>, graph_forwarding_interface<Derived, G>,
-                       undirected_graph_forwarding_interface<Derived, G>>;
-
 template <typename Derived, typename Graph, typename Key, typename... Fs>
-class with_maps_base : public any_graph_forwarding_interface<Derived, Graph> {
+class with_maps_base : public graph_view_interface<Graph> {
 private:
-    friend any_graph_forwarding_interface<Derived, Graph>;
-
+    using base_type = graph_view_interface<Graph>;
+    using base_type::_graph;
     using lambdas = std::tuple<Fs...>;
 
-    Graph _graph;
     [[no_unique_address]] movable_box<lambdas> _fs;
-
-    [[nodiscard]] constexpr const Graph & _forwarding_base() const noexcept {
-        return _graph;
-    }
 
 protected:
     template <typename T, typename Role>
     using dispatch = map_dispatch<T, Role, Graph, Key, Fs...>;
-
-    [[nodiscard]] constexpr const Graph & _wrapped() const noexcept {
-        return _graph;
-    }
 
     template <typename T, typename Role>
         requires dispatch<T, Role>::served
@@ -135,17 +99,14 @@ protected:
 
 public:
     // Both not_self conjuncts first; see subgraph_view's constructor. The one
-    // on the base is load-bearing too: declaring Derived's implicit copy
-    // constructor resolves the copy of this subobject, where this template
-    // is a candidate for G = const with_maps_base &, and any_graph<G> then
-    // probes the forwarding members -- a static_cast to the still-incomplete
-    // Derived -- as a hard error.
+    // on the base keeps this template out of the overload set that resolves
+    // the copy of this subobject inside Derived's implicit copy constructor.
     template <typename G, typename... Fns>
         requires not_self<G, Derived> && not_self<G, with_maps_base> &&
-                     any_graph_for<G, Graph> &&
+                     graph_for<G, Graph> &&
                      (std::constructible_from<Fs, Fns> && ...)
     constexpr explicit with_maps_base(G && g, Fns &&... fns)
-        : _graph(any_graph_all(std::forward<G>(g)))
+        : base_type(melon::views::graph_all(std::forward<G>(g)))
         , _fs(lambdas(std::forward<Fns>(fns)...)) {}
 
     with_maps_base()
@@ -198,7 +159,7 @@ public:
         if constexpr(_served<T, Role>)
             return this->template _provided_map<T, Role>();
         else
-            return melon::create_vertex_map<T, Role>(this->_wrapped());
+            return melon::create_vertex_map<T, Role>(this->wrapped());
     }
     template <typename T, typename Role>
         requires _served<T, Role> || has_vertex_map<Graph, T, Role>
@@ -206,16 +167,16 @@ public:
         const T & default_value) const {
         if constexpr(_served<T, Role>)
             return this->template _provided_map<T, Role>(
-                melon::vertices(this->_wrapped()), default_value);
+                melon::vertices(this->wrapped()), default_value);
         else
-            return melon::create_vertex_map<T, Role>(this->_wrapped(),
+            return melon::create_vertex_map<T, Role>(this->wrapped(),
                                                      default_value);
     }
 };
 
 template <typename G, typename... Fs>
 with_vertex_maps_view(G &&, Fs &&...)
-    -> with_vertex_maps_view<detail::any_graph_all_t<G>, std::decay_t<Fs>...>;
+    -> with_vertex_maps_view<views::graph_all_t<G>, std::decay_t<Fs>...>;
 
 // Only forwards: its ranges are the wrapped graph's own, so it is borrowed
 // exactly when that graph is.
@@ -244,23 +205,23 @@ public:
         if constexpr(_served<T, Role>)
             return this->template _provided_map<T, Role>();
         else
-            return melon::create_arc_map<T, Role>(this->_wrapped());
+            return melon::create_arc_map<T, Role>(this->wrapped());
     }
     template <typename T, typename Role>
         requires _served<T, Role> || has_arc_map<Graph, T, Role>
     [[nodiscard]] constexpr auto create_arc_map(const T & default_value) const {
         if constexpr(_served<T, Role>)
             return this->template _provided_map<T, Role>(
-                melon::arcs(this->_wrapped()), default_value);
+                melon::arcs(this->wrapped()), default_value);
         else
-            return melon::create_arc_map<T, Role>(this->_wrapped(),
+            return melon::create_arc_map<T, Role>(this->wrapped(),
                                                   default_value);
     }
 };
 
 template <typename G, typename... Fs>
 with_arc_maps_view(G &&, Fs &&...)
-    -> with_arc_maps_view<detail::any_graph_all_t<G>, std::decay_t<Fs>...>;
+    -> with_arc_maps_view<views::graph_all_t<G>, std::decay_t<Fs>...>;
 
 template <typename G, typename... Fs>
 inline constexpr bool enable_borrowed_graph<with_arc_maps_view<G, Fs...>> =
@@ -287,7 +248,7 @@ public:
         if constexpr(_served<T, Role>)
             return this->template _provided_map<T, Role>();
         else
-            return melon::create_edge_map<T, Role>(this->_wrapped());
+            return melon::create_edge_map<T, Role>(this->wrapped());
     }
     template <typename T, typename Role>
         requires _served<T, Role> || has_edge_map<Graph, T, Role>
@@ -295,16 +256,16 @@ public:
         const T & default_value) const {
         if constexpr(_served<T, Role>)
             return this->template _provided_map<T, Role>(
-                melon::edges(this->_wrapped()), default_value);
+                melon::edges(this->wrapped()), default_value);
         else
-            return melon::create_edge_map<T, Role>(this->_wrapped(),
+            return melon::create_edge_map<T, Role>(this->wrapped(),
                                                    default_value);
     }
 };
 
 template <typename G, typename... Fs>
 with_edge_maps_view(G &&, Fs &&...)
-    -> with_edge_maps_view<detail::any_graph_all_t<G>, std::decay_t<Fs>...>;
+    -> with_edge_maps_view<views::graph_all_t<G>, std::decay_t<Fs>...>;
 
 template <typename G, typename... Fs>
 inline constexpr bool enable_borrowed_graph<with_edge_maps_view<G, Fs...>> =
@@ -318,7 +279,8 @@ namespace views {
 // dies.
 struct with_vertex_maps_fn {
     template <typename G, typename... Fs>
-        requires melon::detail::any_graph<G> && requires(G && g, Fs &&... fs) {
+        requires has_vertices<std::remove_cvref_t<G>> && requires(G && g,
+                                                                  Fs &&... fs) {
             with_vertex_maps_view(std::forward<G>(g), std::forward<Fs>(fs)...);
         }
     [[nodiscard]] constexpr auto operator()(G && g, Fs &&... fs) const {
@@ -327,7 +289,7 @@ struct with_vertex_maps_fn {
     }
 
     template <typename F, typename... Fs>
-        requires(!melon::detail::any_graph<F>)
+        requires(!has_vertices<std::remove_cvref_t<F>>)
     [[nodiscard]] constexpr auto operator()(F && f, Fs &&... fs) const {
         return detail::adaptor_partial<with_vertex_maps_fn, std::decay_t<F>,
                                        std::decay_t<Fs>...>(
@@ -348,7 +310,7 @@ struct with_arc_maps_fn {
     }
 
     template <typename F, typename... Fs>
-        requires(!melon::detail::any_graph<F>)
+        requires(!has_vertices<std::remove_cvref_t<F>>)
     [[nodiscard]] constexpr auto operator()(F && f, Fs &&... fs) const {
         return detail::adaptor_partial<with_arc_maps_fn, std::decay_t<F>,
                                        std::decay_t<Fs>...>(
@@ -370,7 +332,7 @@ struct with_edge_maps_fn {
     }
 
     template <typename F, typename... Fs>
-        requires(!melon::detail::any_graph<F>)
+        requires(!has_vertices<std::remove_cvref_t<F>>)
     [[nodiscard]] constexpr auto operator()(F && f, Fs &&... fs) const {
         return detail::adaptor_partial<with_edge_maps_fn, std::decay_t<F>,
                                        std::decay_t<Fs>...>(

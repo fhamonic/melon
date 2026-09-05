@@ -65,7 +65,7 @@ auto build_graph() {
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.4 -- the traits names follow one spelling: <algo>_traits (plural) for the
+// the traits names follow one spelling: <algo>_traits (plural) for the
 // concept, <algo>_default_traits for the struct
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -86,7 +86,7 @@ concept names_the_traits_concepts = requires {
 static_assert(names_the_traits_concepts<G>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.4 -- finished()/current() are const on every generator
+// finished()/current() are const on every generator
 ////////////////////////////////////////////////////////////////////////////////
 
 // The trap sits in the three algorithms whose cursor is a
@@ -140,7 +140,7 @@ GTEST_TEST(api_consistency, const_algorithms_can_still_be_inspected) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.4 -- reset() returns the algorithm, never void
+// reset() returns the algorithm, never void
 ////////////////////////////////////////////////////////////////////////////////
 
 // A void reset() breaks `alg.reset().add_source(s)`, the idiom the docs show.
@@ -173,7 +173,7 @@ static_assert(reset_returns_self<
               kruskal<UG, maps::mapping_all_t<static_map<arc_t<G>, int> &>>>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.5 -- internals stay private, and vertex_t/arc_t is the one handle spelling
+// internals stay private, and vertex_t/arc_t is the one handle spelling
 ////////////////////////////////////////////////////////////////////////////////
 
 // With its three maps public, `ds._parent_map.clear()` compiles and leaves
@@ -236,7 +236,7 @@ static_assert(std::same_as<arc_t<mutable_digraph>, unsigned int>);
 static_assert(std::same_as<vertex_t<static_digraph>, unsigned int>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.6 -- nothing that can throw is marked noexcept; conditional noexcept stays
+// nothing that can throw is marked noexcept; conditional noexcept stays
 // conditional
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -346,7 +346,7 @@ static_assert(!noexcept(melon::arc_target(
     std::declval<const unsigned int &>())));
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.6 -- [[nodiscard]] sits only where a discarded result is a bug
+// [[nodiscard]] sits only where a discarded result is a bug
 ////////////////////////////////////////////////////////////////////////////////
 
 // [[nodiscard]] on a constructor can only diagnose a discarded temporary -- a
@@ -373,7 +373,7 @@ GTEST_TEST(api_consistency, mutating_cpos_may_be_called_for_effect) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.8 -- iterators return a plain prvalue from operator*, never a const one
+// iterators return a plain prvalue from operator*, never a const one
 ////////////////////////////////////////////////////////////////////////////////
 
 // `constexpr const reference operator*() const` returns a *const* prvalue,
@@ -422,7 +422,7 @@ static_assert(
     std::indirectly_readable<std::ranges::iterator_t<star_return::path>>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.8 -- the graph constructors read their members, not the forwarded-from
+// the graph constructors read their members, not the forwarded-from
 // parameters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -449,7 +449,7 @@ GTEST_TEST(api_consistency, graphs_build_correctly_from_rvalue_ranges) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.8 -- single-argument constructors are explicit
+// single-argument constructors are explicit
 ////////////////////////////////////////////////////////////////////////////////
 
 // Without `explicit`, a size or a graph converts implicitly --
@@ -471,7 +471,7 @@ static_assert(std::constructible_from<graphviz_printer<G>, const G &>);
 static_assert(!std::convertible_to<const G &, graphviz_printer<G>>);
 
 ////////////////////////////////////////////////////////////////////////////////
-// 2.8 -- graph views, mapping views and numeric types each live in their own
+// graph views, mapping views and numeric types each live in their own
 // namespace
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -520,13 +520,13 @@ static_assert(melon::mapping<layout::ident, unsigned int>);
 static_assert(melon::mapping_view<layout::map_ref, arc_t<G>>);
 
 // Only the positive direction is checkable: a namespace is not a type, so
-// "melon::views no longer has true_map" cannot be spelled as a constraint --
-// naming a name that is not there is a hard error, not a substitution failure.
-// The assertions above name every moved type at its new home, which is what a
-// drift back would have to contradict.
+// "melon::views has no true_map" cannot be spelled as a constraint -- naming
+// a name that is not there is a hard error, not a substitution failure. The
+// assertions above name every type at its home, which is what a drift would
+// have to contradict.
 
 ////////////////////////////////////////////////////////////////////////////////
-// 3. The algorithm-object lifecycle is one named contract, not a convention:
+// The algorithm-object lifecycle is one named contract, not a convention:
 // every generator-shaped algorithm models melon::traversal_algorithm --
 // reset() restores the constructor's state, run() drains and returns the
 // algorithm, current()/advance() require !finished() -- and the sourced ones
@@ -687,7 +687,7 @@ GTEST_TEST(api_consistency, sourced_competing_dijkstras_needs_no_init) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// 4. Algorithm members are always views -- the std::ranges adaptor rule
+// Algorithm members are always views -- the std::ranges adaptor rule
 // (transform_view<V> requires view<V>), applied to the whole algorithm
 // family. Naming an algorithm with a raw container member is ill-formed
 // (checkable through a requires-expression, where the head constraint is a
@@ -747,7 +747,7 @@ static_assert(!std::is_constructible_v<RefD, G &, SM &&>);
 }  // namespace view_only_storage
 
 ////////////////////////////////////////////////////////////////////////////////
-// 5. The not_self guard is checked *first*. A constrained template parameter's
+// The not_self guard is checked *first*. A constrained template parameter's
 // constraint is conjoined ahead of the trailing requires-clause
 // ([temp.constr.decl]), so `template <graph_for<Graph> G> requires
 // not_self<G, X>` evaluates graph_for first -- and for G = X that asks
@@ -755,9 +755,8 @@ static_assert(!std::is_constructible_v<RefD, G &, SM &&>);
 // the self-dependency outright, so the failure is a hard error at the point of
 // use, not an unsatisfied constraint: without the guard, every one of these
 // pins fails to *compile* rather than returning false. The guard only cuts the
-// recursion off
-// when it is the first conjunct of the trailing clause, which is why no
-// *_for helper may ride on a template parameter.
+// recursion off when it is the first conjunct of the trailing clause, which is
+// why no *_for helper may ride on a template parameter.
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace guard_ordering {

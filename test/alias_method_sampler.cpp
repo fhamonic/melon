@@ -89,8 +89,6 @@ static void assert_distribution(auto & sampler, const auto & items,
     for(auto && item : items) ASSERT_NEAR(count[item], expected[k++], 0.05);
 }
 
-// A vector indexed by the item is a map on its own; the lambda that used to
-// be needed to subscript it is gone.
 GTEST_TEST(alias_method_sampler, vector_as_prob_map) {
     std::vector<double> weight = {0.5, 0.25, 0.125, 0.125};
     auto items = std::views::iota(0ul, weight.size());

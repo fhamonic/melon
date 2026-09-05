@@ -160,7 +160,7 @@ public:
     constexpr bidirectional_dijkstra(Traits, Args &&... args)
         : bidirectional_dijkstra(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr bidirectional_dijkstra(const bidirectional_dijkstra &) = delete;
     constexpr bidirectional_dijkstra(bidirectional_dijkstra &&) = default;
 

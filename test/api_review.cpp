@@ -36,7 +36,6 @@
 #include "melon/views/reverse.hpp"
 #include "melon/views/subgraph.hpp"
 #include "melon/views/undirect.hpp"
-#include "melon/views/undirected_graph_view.hpp"
 
 #include "ranges_test_helper.hpp"
 
@@ -577,12 +576,12 @@ GTEST_TEST(api_review, subgraph_forwards_what_no_filter_can_change) {
     SUCCEED();
 }
 
-// borrowed_graph.hpp names subgraph's captured-`this` filters as the reason it
-// cannot be borrowed -- but with no filters every range forwards straight
-// through, so the view is borrowed exactly when the wrapped one is. What that
-// buys downstream: a traversal over subgraph(g) relocates memberwise and
-// nothrow again, like a traversal over g itself, instead of running the
-// cursor-rebase loop.
+// enable_borrowed_graph's comment in graph.hpp names subgraph's captured-`this`
+// filters as the reason it cannot be borrowed -- but with no filters every
+// range forwards straight through, so the view is borrowed exactly when the
+// wrapped one is. What that buys downstream: a traversal over subgraph(g)
+// relocates memberwise and nothrow again, like a traversal over g itself,
+// instead of running the cursor-rebase loop.
 GTEST_TEST(api_review, filterless_subgraph_is_borrowed) {
     using SD = static_digraph;
     using RefSub = decltype(views::subgraph(std::declval<SD &>()));
@@ -641,10 +640,10 @@ GTEST_TEST(api_review, views_keep_the_num_vertices_guarantee) {
 }
 
 // A private is_noexcept() that re-runs the operator()'s `if constexpr` in a
-// different place drifts from it -- in undirected_graph.hpp the specification
-// then comes from an overload the operator never calls. The CPOs keep the
-// noexcept beside the expression it measures, one constrained overload per
-// protocol. This pins both directions.
+// different place drifts from it -- in the undirected half of graph.hpp the
+// specification then comes from an overload the operator never calls. The CPOs
+// keep the noexcept beside the expression it measures, one constrained overload
+// per protocol. This pins both directions.
 namespace {
 struct throwing_graph {
     std::vector<unsigned> _v{0u, 1u};

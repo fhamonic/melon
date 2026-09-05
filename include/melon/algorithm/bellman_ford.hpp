@@ -115,7 +115,7 @@ public:
     constexpr bellman_ford(Traits, Args &&... args)
         : bellman_ford(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     constexpr bellman_ford(const bellman_ford &) = delete;
     constexpr bellman_ford(bellman_ford &&) = default;
 

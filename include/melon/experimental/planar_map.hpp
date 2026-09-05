@@ -304,10 +304,6 @@ inline namespace cust {
 inline constexpr cpo::bounding_arcs_fn bounding_arcs{};
 }  // namespace cust
 
-template <typename T>
-using bounding_arcs_range_t = decltype(melon::experimental::bounding_arcs(
-    std::declval<const T &>(), std::declval<const face_t<T> &>()));
-
 namespace cpo {
 template <typename T>
 concept has_member_arc_twin = requires(const T & t, const arc_t<T> & a) {
@@ -499,10 +495,6 @@ inline namespace cust {
 template <typename ValueType>
 inline constexpr cpo::create_face_map_fn<ValueType> create_face_map{};
 }  // namespace cust
-
-template <typename T, typename ValueType>
-using face_map_t = decltype(melon::experimental::create_face_map<ValueType>(
-    std::declval<const T &>()));
 
 template <typename T, typename ValueType = std::size_t>
 concept has_face_map =

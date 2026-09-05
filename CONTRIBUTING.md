@@ -243,7 +243,10 @@ implementation block interrupts it; the private blocks themselves stay
 unlabeled. A class omits the sections it lacks. Do not invent section names or
 spread dividers beyond `include/melon/algorithm/`: a divider that can say
 anything, anywhere, is no longer navigation but a comment, and then the
-discriminator above applies to it.
+discriminator above applies to it. The one other place they appear is the two
+protocol headers, `melon/graph.hpp` and `melon/views/graph_view.hpp`, whose
+dividers name the protocol section that follows (`Borrowed graphs`,
+`Undirected protocol`, `Protocol restrictions`), nothing finer.
 
 ## Versioning
 

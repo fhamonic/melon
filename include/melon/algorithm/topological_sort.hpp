@@ -149,7 +149,7 @@ public:
     constexpr topological_sort(Traits, Args &&... args)
         : topological_sort(std::forward<Args>(args)...) {}
 
-    // Move-only; see the melon::traversal_algorithm concept for the ruling.
+    // Move-only; see the melon::traversal_algorithm concept.
     // Moves stay defaulted: _queue_current is an iterator into _queue, whose
     // buffer transfers with the move, and the constructor's reserve() keeps it
     // stable across the push_backs. A copy cannot be defaulted -- it would hand

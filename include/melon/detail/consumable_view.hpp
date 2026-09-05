@@ -427,8 +427,4 @@ public:
 template <std::ranges::viewable_range R>
 consumable_view(R &&) -> consumable_view<std::views::all_t<R>>;
 
-template <typename R>
-using consumable_view_t =
-    std::decay_t<decltype(consumable_view(std::declval<R>()))>;
-
 }  // namespace melon::detail

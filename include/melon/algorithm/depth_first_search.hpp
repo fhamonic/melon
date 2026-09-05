@@ -10,7 +10,6 @@
 #include <variant>
 #include <vector>
 
-#include "melon/borrowed_graph.hpp"
 #include "melon/detail/consumable_view.hpp"
 #include "melon/detail/fill.hpp"
 #include "melon/detail/map_if.hpp"
@@ -130,7 +129,7 @@ public:
     // graphs (and std-borrowed incidence ranges) that loop compiles away
     // entirely, leaving exactly a memberwise move.
     //
-    // Move-only; see the melon::traversal_algorithm concept for the ruling. The
+    // Move-only; see the melon::traversal_algorithm concept. The
     // move cannot be defaulted: a memberwise move leaves the cached ranges
     // pointing at the moved-from object's _graph member, a heap-use-after-free
     // on the next advance().
