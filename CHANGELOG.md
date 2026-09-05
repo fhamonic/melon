@@ -6,6 +6,21 @@ Notable changes to melon. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- macOS support: Apple Clang 21 (Xcode 26.4) with libc++ is in the CI matrix,
+  built through the `appleclang21_c++23` Conan profile. The library's
+  standard-library floor on libc++ is release 20, the first where
+  `std::jthread` is not experimental.
+
+### Fixed
+
+- On libc++, `std::vector<bool>` no longer fails the `mapping_of<…, bool>`
+  concept: its const subscript yields a proxy there, which `mapped_value_t`
+  now reads as `bool`.
+- Two narrowing conversions in `static_filter_map::filter` and
+  `network_simplex` that newer clang releases diagnose.
+
 ## [1.0.0] - 2026-09-05
 
 First stable release. Every header outside `melon/detail/` and

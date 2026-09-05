@@ -84,6 +84,7 @@ melon is header-only and dependency-free: putting `include/` on your include pat
 | --- | --- | --- |
 | GCC | 14 | GCC 14 / C++23, GCC 15 / C++26 |
 | Clang | 18 | Clang 18 / C++23 (libstdc++ 14) |
+| Apple Clang | 21 (Xcode 26.4) | Apple Clang 21 / C++23 (libc++, macOS arm64) |
 | MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
 | MSVC | VS 2022 17.11 | MSVC 17.11 / C++23 (Windows) |
 

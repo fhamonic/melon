@@ -10,8 +10,18 @@ melon is header-only and dependency-free: adding its `include/` directory to you
 | --- | --- | --- |
 | GCC | 14 | GCC 14 / C++23, GCC 15 / C++26 |
 | Clang | 18 | Clang 18 / C++23 (with libstdc++ 14) |
+| Apple Clang | 21 (Xcode 26.4) | Apple Clang 21 / C++23 (libc++, macOS arm64) |
 | MinGW-w64 GCC | 15 | MinGW GCC 15 / C++26 (Windows) |
 | MSVC | VS 2022 17.11 (toolset v14.41) | MSVC 17.11 / C++23 (Windows) |
+
+The compiler floors are really standard-library floors: **libstdc++ 14** or
+**libc++ 20**, whichever the compiler is paired with. Clang against an older
+libstdc++ stops at a single readable `#error` naming the requirement. On
+libc++ the limiting feature is `std::jthread`, which is experimental before
+release 20; Apple Clang 21 (Xcode 26.4) is the first Apple toolchain whose
+libc++ meets it, and the Apple Clang 17 line (Xcode 16.3 to 26.3) does not.
+Linux and Windows clang builds against libc++ 20 or newer are expected to
+work but are not in the CI matrix.
 
 !!! note "MSVC"
 

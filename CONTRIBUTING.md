@@ -6,8 +6,9 @@ build the project, run the tests, and what is expected from a pull request.
 ## Prerequisites
 
 - **GCC 14** (C++23) or **Clang 18** (C++23, with libstdc++ ≥ 14) minimum;
-  **GCC 15** (C++26) is recommended and what the main CI job uses. MinGW-w64
-  GCC 15 and MSVC (VS 2022 17.11, toolset v14.41) are tested on Windows.
+  **GCC 15** (C++26) is recommended and what the main CI job uses. Apple
+  Clang 21 (Xcode 26.4, libc++) is tested on macOS; MinGW-w64 GCC 15 and
+  MSVC (VS 2022 17.11, toolset v14.41) are tested on Windows.
 - **CMake ≥ 3.24** (when using Conan, a suitable CMake is provisioned
   automatically through `tool_requires`).
 - **Conan 2** for the standard workflow (optional — see the CMake-only
