@@ -70,25 +70,29 @@ public:
 
         // Like std::discrete_distribution, the weights need not sum to one;
         // they must be non-negative and not all zero, both asserted.
-        Prob weights_sum = Prob{0};
-        for(auto && [i, item] : std::views::enumerate(_items)) {
-            const Prob w = prob_map[item];
-            assert(w >= Prob{0});
-            _probs[static_cast<index_type>(i)] = w;
-            weights_sum += w;
-        }
-        assert(weights_sum > Prob{0});
-        const Prob scale = static_cast<Prob>(n) / weights_sum;
-        for(index_type i = 0; i < static_cast<index_type>(n); ++i) {
-            const Prob prob = _probs[i] * scale;
-            _probs[i] = prob;
-            // Identity by default: slots the pairing loop below never writes
-            // (exactly-full ones) are still read branchlessly in operator().
-            _aliases[i] = i;
-            *overfull_end = *underfull_end = i;
-            const bool is_underfull = (prob < Prob{1});
-            underfull_end += is_underfull;
-            overfull_end += !is_underfull;
+        {
+            index_type i = 0;
+            Prob weights_sum = Prob{0};
+            for(auto && item : _items) {
+                const Prob w = prob_map[item];
+                assert(w >= Prob{0});
+                _probs[i++] = w;
+                weights_sum += w;
+            }
+            assert(weights_sum > Prob{0});
+            const Prob scale = static_cast<Prob>(n) / weights_sum;
+            for(i = 0; i < static_cast<index_type>(n); ++i) {
+                const Prob prob = _probs[i] * scale;
+                _probs[i] = prob;
+                // Identity by default: slots the pairing loop below never
+                // writes (exactly-full ones) are still read branchlessly in
+                // operator().
+                _aliases[i] = i;
+                *overfull_end = *underfull_end = i;
+                const bool is_underfull = (prob < Prob{1});
+                underfull_end += is_underfull;
+                overfull_end += !is_underfull;
+            }
         }
 
         auto overfull_it = overfull_buckets.get();

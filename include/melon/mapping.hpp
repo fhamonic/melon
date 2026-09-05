@@ -4,6 +4,7 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "melon/detail/movable_box.hpp"
 
@@ -31,9 +32,24 @@ template <typename Map, typename Key>
 using mapped_const_reference_t =
     decltype(std::declval<const Map &>()[std::declval<Key>()]);
 
+namespace detail {
+// libc++'s `const std::vector<bool>` subscript yields a proxy class, not
+// `bool`: decaying it would make `mapping_of<std::vector<bool>, K, bool>`
+// false and give algorithms a proxy as their value type. libstdc++ and the
+// MSVC STL return `bool` there, which leaves this test inert. Spelled through
+// the public `const_reference` typedef, so a wrapper forwarding the proxy is
+// covered too; a vector<bool> with a custom allocator is not.
+template <typename R>
+inline constexpr bool is_vector_bool_const_proxy =
+    !std::same_as<std::vector<bool>::const_reference, bool> &&
+    std::same_as<std::decay_t<R>, std::vector<bool>::const_reference>;
+}  // namespace detail
+
 template <typename Map, typename Key>
     requires detail::subscriptable_with<Map, Key>
-using mapped_value_t = std::decay_t<mapped_const_reference_t<Map, Key>>;
+using mapped_value_t = std::conditional_t<
+    detail::is_vector_bool_const_proxy<mapped_const_reference_t<Map, Key>>,
+    bool, std::decay_t<mapped_const_reference_t<Map, Key>>>;
 
 // A mapping is *readable through a const access*: mapped_value_t goes through
 // mapped_const_reference_t, so its substitution fails for maps whose

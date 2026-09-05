@@ -28,16 +28,14 @@
 
 #else
 
-// melon is not tested against libc++ or the MSVC STL, so rather than invent a
-// version number for them, require the features themselves.
+// libc++ and the MSVC STL publish no release macro comparable to
+// _GLIBCXX_RELEASE, so rather than invent a version floor for them, require
+// the features themselves.
 #if !defined(__cpp_lib_format)
 #error "melon requires std::format (__cpp_lib_format)."
 #endif
 #if !defined(__cpp_lib_ranges_zip)
 #error "melon requires std::views::zip (__cpp_lib_ranges_zip)."
-#endif
-#if !defined(__cpp_lib_ranges_enumerate)
-#error "melon requires std::views::enumerate (__cpp_lib_ranges_enumerate)."
 #endif
 
 #endif

@@ -165,7 +165,10 @@ GTEST_TEST(with_maps, graph_view_shape) {
                                    std::declval<UG>(), arc_vectors)),
                                with_edge_maps_view<UG, AF>>);
 
-#if !defined(_MSC_VER)
+// MSVC ignores [[no_unique_address]], and on libc++ a std::tuple of empty
+// lambdas is not itself an empty class, so the provider box costs a word on
+// both; the size pin holds only where the box can overlap.
+#if !defined(_MSC_VER) && !defined(_LIBCPP_VERSION)
     static_assert(sizeof(V) == sizeof(reverse_view<graph_ref_view<G>>));
 #endif
     static_assert(enable_borrowed_graph<V>);
