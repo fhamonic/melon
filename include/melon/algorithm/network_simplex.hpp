@@ -825,7 +825,7 @@ private:
                     (_flow[e] == value_t(0)) ? STATE_LOWER : STATE_UPPER;
             }
         } else {
-            _state[_in_arc] = -_state[_in_arc];
+            _state[_in_arc] = static_cast<signed char>(-_state[_in_arc]);
         }
     }
 
@@ -903,7 +903,7 @@ private:
             for(vertex u = _u_out, p = _parent[u]; u != _u_in;
                 u = p, p = _parent[u]) {
                 _pred[u] = _pred[p];
-                _pred_dir[u] = -_pred_dir[p];
+                _pred_dir[u] = static_cast<signed char>(-_pred_dir[p]);
                 tmp_sc += _succ_num[u] - _succ_num[p];
                 _succ_num[u] = tmp_sc;
                 _last_succ[p] = tmp_ls;

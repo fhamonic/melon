@@ -454,8 +454,8 @@ public:
                     std::default_sentinel);
             const auto raw_begin = *std::ranges::begin(r);
             using bound_type = std::remove_const_t<decltype(raw_begin)>;
-            const auto raw_end =
-                static_cast<bound_type>(raw_begin + std::ranges::distance(r));
+            const auto raw_end = static_cast<bound_type>(
+                raw_begin + static_cast<bound_type>(std::ranges::distance(r)));
             // Clamp both bounds into [0, _size] before they become span
             // indices -- in the iota's own type first, so a negative signed
             // bound never reaches the unsigned cast.
