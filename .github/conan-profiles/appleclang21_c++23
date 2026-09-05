@@ -1,5 +1,5 @@
 [settings]
-# Xcode 16.3 to 16.4 ship apple-clang 17; the compiler itself comes from
+# Xcode 26.4 and newer ship apple-clang 21; the compiler itself comes from
 # xcode-select, since /usr/bin/clang++ follows the selected Xcode. armv8 is
 # Apple silicon; an Intel Mac needs arch=x86_64.
 os=Macos
@@ -7,5 +7,5 @@ arch=armv8
 build_type=Release
 compiler=apple-clang
 compiler.cppstd=23
-compiler.version=17
+compiler.version=21
 compiler.libcxx=libc++

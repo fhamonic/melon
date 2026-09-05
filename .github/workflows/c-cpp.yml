@@ -446,22 +446,26 @@ jobs:
   # The only libc++ and the only arm64 configuration in the matrix: Apple ships
   # no libstdc++, so this is what every macOS consumer builds against.
   #
-  # Xcode 16.3 is the oldest Xcode shipping Apple clang 17; Xcode 16.0 to 16.2
-  # ship Apple clang 16, which has not been tried against melon. Not
-  # macos-latest: that image carries only Xcode 26, whose Apple clang is newer.
-  macos-appleclang17-build:
-    runs-on: macos-15
+  # melon needs libc++ 20 (see stdlib_check.hpp). Xcode 26.4 is the oldest
+  # Apple clang 21; the Apple clang 17 line (Xcode 16.3 to 26.3) has not been
+  # tried against that floor, and Apple publishes no libc++ release per Xcode,
+  # so the survey step prints it for every Xcode on the image: the log says
+  # whether the pin can move down. Not the image default (26.6) on purpose.
+  macos-appleclang21-build:
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
-      - name: Select Xcode 16.3
-        run: sudo xcode-select -s /Applications/Xcode_16.3.app
-      # Apple does not publish which libc++ ships in an Xcode; this prints the
-      # release melon was actually built against so a failure can be placed.
-      - name: Show the toolchain
+      - name: Select Xcode 26.4.1
+        run: sudo xcode-select -s /Applications/Xcode_26.4.1.app
+      - name: Survey the libc++ release of every installed Xcode
         run: |
+          for x in /Applications/Xcode_*.app; do
+            v=$(printf '#include <version>\nLIBCPP _LIBCPP_VERSION\n' \
+                | DEVELOPER_DIR="$x" clang++ -x c++ -std=c++23 -E - 2>/dev/null \
+                | grep '^LIBCPP' || echo 'LIBCPP unavailable')
+            echo "$(basename "$x"): $v"
+          done
           clang++ --version
-          printf '#include <version>\nLIBCPP _LIBCPP_VERSION\n' \
-            | clang++ -x c++ -std=c++23 -E - | grep LIBCPP
       # The image ships pipx but not Conan. pipx's bin dir is not on the PATH
       # of later steps unless added here; PIPX_BIN_DIR is honoured when the
       # image sets one.
@@ -472,7 +476,7 @@ jobs:
       - name: Build and run unit tests
         run: |
           conan profile detect --name=default
-          make CONAN_PROFILE=.github/conan-profiles/appleclang17_c++23
+          make CONAN_PROFILE=.github/conan-profiles/appleclang21_c++23
 
   windows-mingw15-build:
     runs-on: windows-latest

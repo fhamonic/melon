@@ -6,9 +6,9 @@
 
 // A C++23-capable compiler does not imply a C++23 standard library. Clang 18
 // against libstdc++ 12 accepts -std=c++23 and then fails deep inside melon
-// with hundreds of lines of template diagnostics, because std::views::zip,
-// std::views::enumerate and std::format are missing. These checks turn that
-// into a single readable error.
+// with hundreds of lines of template diagnostics, because std::views::zip and
+// std::format are missing. These checks turn that into a single readable
+// error.
 //
 // This cannot be expressed in the Conan recipe: its compiler.libcxx setting
 // selects the ABI (libstdc++ vs libstdc++11), never the release, so for clang
@@ -26,11 +26,21 @@
 #error "melon requires libstdc++ 14 or newer -- see stdlib_check.hpp"
 #endif
 
+#elif defined(_LIBCPP_VERSION)
+
+// libc++ defines __cpp_lib_ranges_zip only from release 22, when the last
+// piece of P2321R2 landed, although std::views::zip itself is far older;
+// checking the macro would reject every Apple toolchain to date. The floor is
+// the release instead: 20 is the first whose std::jthread and std::stop_token
+// (knapsack_bnb) are not behind -fexperimental-library.
+#if _LIBCPP_VERSION < 200000
+#error "melon requires libc++ 20 or newer -- see stdlib_check.hpp"
+#endif
+
 #else
 
-// libc++ and the MSVC STL publish no release macro comparable to
-// _GLIBCXX_RELEASE, so rather than invent a version floor for them, require
-// the features themselves.
+// The MSVC STL publishes no release macro comparable to _GLIBCXX_RELEASE, so
+// rather than invent a version floor, require the features themselves.
 #if !defined(__cpp_lib_format)
 #error "melon requires std::format (__cpp_lib_format)."
 #endif
