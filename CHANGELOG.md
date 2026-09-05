@@ -28,7 +28,10 @@ following renames. Code written against the earlier snapshot needs:
 `views::graph_all_t` and `graph_for` for their `undirected_graph_*` twins,
 which are gone along with `melon/views/undirected_graph_view.hpp`; and
 `melon/graph.hpp` for `melon/undirected_graph.hpp` and
-`melon/borrowed_graph.hpp`, whose contents now sit in the former.
+`melon/borrowed_graph.hpp`, whose contents now sit in the former; and
+`.r` / `.g` / `.b` for `std::get<0..2>` on `graphviz_printer::color`, an
+aggregate instead of a tuple so that `color{255, 0, 0}` no longer narrows
+inside the standard library.
 
 ### Breaking changes since 1.0.0-alpha.1
 

@@ -106,6 +106,9 @@ if(MSVC)
   # Without this the template-heavy test TUs exceed the default COFF
   # section limit and die with C1128.
   target_compile_options(melon_test PRIVATE /bigobj)
+  # random_ranges_helper.hpp reads MELON_TEST_SEED through std::getenv,
+  # which MSVC deprecates (C4996) in favor of its non-standard _dupenv_s.
+  target_compile_definitions(melon_test PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # ################# Sanitizers ###################

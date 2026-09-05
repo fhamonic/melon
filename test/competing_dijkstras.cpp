@@ -153,9 +153,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                 graphviz_printer printer(graph);
                 printer
                     .set_vertex_color_map(maps::function(
-                        [&](auto && w)
-                            -> std::tuple<unsigned char, unsigned char,
-                                          unsigned char> {
+                        [&](auto && w) -> decltype(printer)::color {
                             if(strong_map[w] && certificate_fiber_map[w])
                                 return {255, 0, 0};
                             else if(certificate_fiber_map[w])
@@ -166,9 +164,7 @@ GTEST_TEST(competing_dijkstras, fuzzy) {
                                 return {255, 255, 255};
                         }))
                     .set_arc_color_map(maps::function(
-                        [&](auto && a)
-                            -> std::tuple<unsigned char, unsigned char,
-                                          unsigned char> {
+                        [&](auto && a) -> decltype(printer)::color {
                             if(a == uv)
                                 return {255, 0, 0};
                             else if(certificat_length_map[a] ==
@@ -323,9 +319,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                 graphviz_printer printer(graph);
                 printer
                     .set_vertex_color_map(maps::function(
-                        [&](auto && w)
-                            -> std::tuple<unsigned char, unsigned char,
-                                          unsigned char> {
+                        [&](auto && w) -> decltype(printer)::color {
                             if(useless_map[w] && certificate_fiber_map[w])
                                 return {255, 0, 0};
                             else if(certificate_fiber_map[w])
@@ -336,9 +330,7 @@ GTEST_TEST(useless_fiber, fuzzy) {
                                 return {255, 255, 255};
                         }))
                     .set_arc_color_map(maps::function(
-                        [&](auto && a)
-                            -> std::tuple<unsigned char, unsigned char,
-                                          unsigned char> {
+                        [&](auto && a) -> decltype(printer)::color {
                             if(a == uv)
                                 return {255, 0, 0};
                             else if(certificat_length_map[a] ==

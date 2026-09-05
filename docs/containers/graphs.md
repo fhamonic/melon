@@ -231,9 +231,8 @@ The three-argument overload takes your generator by reference — the caller own
 
 #include "melon/utility/graphviz_printer.hpp"
 
-using color = std::tuple<unsigned char, unsigned char, unsigned char>;
-
 graphviz_printer printer(graph);
+using color = decltype(printer)::color;  // aggregate {r, g, b}
 printer.set_vertex_label_map(maps::function([](auto && v) { return std::to_string(v); }))
        .set_arc_color_map(maps::function([&](auto && a) -> color {
            return in_tree[a] ? color{255, 0, 0} : color{64, 64, 64};
@@ -241,7 +240,7 @@ printer.set_vertex_label_map(maps::function([](auto && v) { return std::to_strin
        .print(std::ostream_iterator<char>(std::cout));
 ```
 
-Colors are `(r, g, b)` triples of `unsigned char`; vertex positions are `(x, y)` pairs of `double` and are scaled to the page size set by `page_size(width, height)`.
+Colors are `color{r, g, b}` aggregates of `unsigned char`; vertex positions are `(x, y)` pairs of `double` and are scaled to the page size set by `page_size(width, height)`.
 
 !!! note
 

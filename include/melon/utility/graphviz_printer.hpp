@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <compare>
 #include <format>
 #include <functional>
 #include <iterator>
@@ -32,7 +33,16 @@ public:
     using arc = arc_t<G>;
 
     using point2d = std::pair<double, double>;
-    using color = std::tuple<unsigned char, unsigned char, unsigned char>;
+    // An aggregate rather than a tuple of unsigned char: `color{255, 0, 0}`
+    // through std::tuple's converting constructor is an int -> unsigned char
+    // conversion inside the standard library, which MSVC's C4242 flags.
+    struct color {
+        unsigned char r;
+        unsigned char g;
+        unsigned char b;
+        friend constexpr auto operator<=>(const color &,
+                                          const color &) = default;
+    };
 
     static constexpr color default_vertex_color = {255, 255, 255};
     static constexpr color default_arc_color = {0, 0, 0};
@@ -272,9 +282,8 @@ public:
                _vertex_color_map[u] != prev_color.value()) {
                 output = std::format_to(
                     output, "node [fillcolor=\"#{:02x}{:02x}{:02x}\"]\n",
-                    std::get<0>(_vertex_color_map[u]),
-                    std::get<1>(_vertex_color_map[u]),
-                    std::get<2>(_vertex_color_map[u]));
+                    _vertex_color_map[u].r, _vertex_color_map[u].g,
+                    _vertex_color_map[u].b);
                 prev_color.emplace(_vertex_color_map[u]);
             }
             output = std::format_to(output, "{} [width=\"{}\"", u,
@@ -299,9 +308,8 @@ public:
                _arc_color_map[a] != prev_color.value()) {
                 output = std::format_to(
                     output, "edge [color=\"#{:02x}{:02x}{:02x}\"]\n",
-                    std::get<0>(_arc_color_map[a]),
-                    std::get<1>(_arc_color_map[a]),
-                    std::get<2>(_arc_color_map[a]));
+                    _arc_color_map[a].r, _arc_color_map[a].g,
+                    _arc_color_map[a].b);
                 prev_color.emplace(_arc_color_map[a]);
             }
             output = std::format_to(output, "{} -> {} [penwidth=\"{}\"",

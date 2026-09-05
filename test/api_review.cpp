@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <cassert>
 #include <concepts>
 #include <memory>
 #include <ranges>
@@ -1394,8 +1395,16 @@ template <typename V>
 struct plain_map {
     std::vector<V> d;
     // decltype(auto): vector<bool>'s subscript yields a proxy, not a bool &.
-    decltype(auto) operator[](unsigned int k) { return d[k]; }
-    decltype(auto) operator[](unsigned int k) const { return d[k]; }
+    // The bound check is what keeps GCC 14's -Wnull-dereference quiet: an
+    // unguarded d[k] has a path through an empty vector's null buffer.
+    decltype(auto) operator[](unsigned int k) {
+        assert(k < d.size());
+        return d[k];
+    }
+    decltype(auto) operator[](unsigned int k) const {
+        assert(k < d.size());
+        return d[k];
+    }
 };
 struct graph_with_plain_maps {
     unsigned int n = 3;
