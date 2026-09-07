@@ -97,3 +97,7 @@ Header-only and dependency-free. **C++23** is the baseline — GCC 14 and Clang 
 - 📖 Documentation: [fhamonic.github.io/melon](https://fhamonic.github.io/melon/) — sources live under [`docs/`](https://github.com/fhamonic/melon/tree/main/docs).
 - 📊 Benchmarks against Boost.Graph and LEMON: [fhamonic/melon_benchmark](https://github.com/fhamonic/melon_benchmark).
 - ⚖️ Licensed under the [Boost Software License 1.0](https://github.com/fhamonic/melon/blob/main/LICENSE).
+
+## Funding and acknowledgments
+
+melon is grounded in the PhD thesis and postdoctoral positions of François Hamonic, funded by Région Sud - Provence-Alpes-Côte d'Azur, Natural Solutions, the European Research Council grant [SCALED](https://www.scaled-erc.eu/) to Cécile ALBERT (ERC-STG no. 949812), the ANR project [RESILIENCE](https://www.pepr-resilience.eu/index.php) (no. ANR-24-PEVD-0002) and the OASIS project of [ITEM](https://institut-item.univ-amu.fr), an A\*Midex Initiative d'Excellence institute funded under France 2030 (AMX-19-IET-012).

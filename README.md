@@ -144,7 +144,7 @@ Bug reports, feature requests and pull requests are welcome. [CONTRIBUTING.md](C
 
 ## Acknowledgments
 
-This work is grounded in the PhD thesis and postdoctoral positions of François Hamonic, funded by Région Sud - Provence-Alpes-Côte d'Azur, Natural Solutions, the Eurpean Research Council grant SCALED to Cécile ALBERT (ERC-STG no 949812), the ANR project RESILIENCE (no- ANR-24-PEVD-0002) and the OASIS project of Aix-Marseille University's ITEM institute.
+melon is grounded in the PhD thesis and postdoctoral positions of François Hamonic, funded by Région Sud - Provence-Alpes-Côte d'Azur, Natural Solutions, the European Research Council grant [SCALED](https://www.scaled-erc.eu/) to Cécile ALBERT (ERC-STG no. 949812), the ANR project [RESILIENCE](https://www.pepr-resilience.eu/index.php) (no. ANR-24-PEVD-0002) and the OASIS project of [ITEM](https://institut-item.univ-amu.fr), an A\*Midex Initiative d'Excellence institute funded under France 2030 (AMX-19-IET-012).
 
 ## License
 
