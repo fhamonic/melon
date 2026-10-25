@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstddef>
 #include <random>
 #include <ranges>

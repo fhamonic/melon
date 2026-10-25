@@ -5,8 +5,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <initializer_list>
 #include <ranges>
+#include <tuple>
 #include <utility>
 #include <vector>
 

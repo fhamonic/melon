@@ -1,6 +1,9 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <functional>
+#include <iostream>
 #include <random>
 
 #include "melon/container/static_digraph.hpp"

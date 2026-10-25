@@ -490,12 +490,14 @@ jobs:
       - name: Build and run unit tests
         run: make CONAN_PROFILE=.github/conan-profiles/msvc17.11_c++23
 
-  windows-msvc1810-build:
-    # The VS 2026 18.10 image. Unlike the 17.11 job, no toolset is installed:
-    # the profile's 14.51 pin is met by the image's default MSVC, so once an
-    # image update makes 14.52 the default, configure fails to find 14.51 and
-    # the job needs a side-by-side install step like the one above. The
-    # x86.x64 component ID for 14.51 is undocumented; its ARM64 sibling is
+  windows-msvc1811-build:
+    # The VS 2026 image. Image updates move its VS minor without notice, so
+    # the job name follows it by hand; the profile pins the toolset instead.
+    # Unlike the 17.11 job, no toolset is installed: the 14.51 pin is met by
+    # the image's default MSVC, so once an image update makes 14.52 the
+    # default, configure fails to find 14.51 and the job needs a side-by-side
+    # install step like the one above. The x86.x64 component ID for 14.51 is
+    # undocumented; its ARM64 sibling is
     # Microsoft.VisualStudio.Component.VC.14.51.ARM64, with no 18.x infix.
     runs-on: windows-2025
     steps:
@@ -505,4 +507,4 @@ jobs:
       - name: Autodetect a default conan profile
         run: conan profile detect --name=default
       - name: Build and run unit tests
-        run: make CONAN_PROFILE=.github/conan-profiles/msvc18.10_c++23
+        run: make CONAN_PROFILE=.github/conan-profiles/msvc18.11_c++23
