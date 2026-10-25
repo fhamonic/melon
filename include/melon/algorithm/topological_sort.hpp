@@ -42,9 +42,10 @@ struct topological_sort_default_traits {
 };
 
 // has_num_vertices is a real requirement, not an accident: the constructor
-// reserves num_vertices(_graph) and _queue_current is an iterator into _queue
-// whose stability depends on that reserve. Spelled out so a graph without it
-// fails the constraint instead of hard-erroring inside the constructor.
+// reserves num_vertices(_graph), and advance() binds a reference into _queue
+// that only that reserve keeps alive across its push_backs. Spelled out so a
+// graph without it fails the constraint instead of hard-erroring inside the
+// constructor.
 template <graph_view Graph,
           topological_sort_traits Traits = topological_sort_default_traits>
     requires outward_incidence_graph<Graph> && has_num_vertices<Graph> &&
@@ -63,7 +64,10 @@ private:
 private:
     Graph _graph;
     std::vector<vertex> _queue;
-    std::vector<vertex>::iterator _queue_current;
+    // An index, not an iterator: advance() steps the cursor onto end() before
+    // its push_backs, which invalidate end() even within the reserve
+    // ([vector.modifiers]) -- MSVC's checked iterators abort on the next use.
+    std::vector<vertex>::size_type _queue_current;
     reached_map_t _reached_map;
     remaining_in_degree_map_t _remaining_in_degree_map;
 
@@ -117,10 +121,7 @@ private:
         }
         if constexpr(Traits::store_ranks)
             detail::fill(_rank_map, vertices(_graph), 0);
-        // Taken after the push_backs: an iterator grabbed while the vector is
-        // empty sits at the insertion point, which push_back formally
-        // invalidates -- checked-iterator builds flag the traversal.
-        _queue_current = _queue.begin();
+        _queue_current = 0;
     }
 
 public:
@@ -150,11 +151,6 @@ public:
         : topological_sort(std::forward<Args>(args)...) {}
 
     // Move-only; see the melon::traversal_algorithm concept.
-    // Moves stay defaulted: _queue_current is an iterator into _queue, whose
-    // buffer transfers with the move, and the constructor's reserve() keeps it
-    // stable across the push_backs. A copy cannot be defaulted -- it would hand
-    // the new object an iterator into the source's buffer, which the copy then
-    // walks off the end of.
     constexpr topological_sort(const topological_sort &) = delete;
     constexpr topological_sort(topological_sort &&) = default;
 
@@ -184,22 +180,21 @@ public:
 
     // ---- Execution ----------------------------------------------------------
 
-    [[nodiscard]] constexpr bool finished() const
-        noexcept(noexcept(_queue_current == _queue.end())) {
-        return _queue_current == _queue.end();
+    [[nodiscard]] constexpr bool finished() const noexcept {
+        return _queue_current == _queue.size();
     }
 
-    // The noexcept measures the copy the by-value return performs, not just the
-    // dereference.
+    // The noexcept measures the copy the by-value return performs, not just
+    // reaching the element.
     [[nodiscard]] constexpr vertex current() const
-        noexcept(noexcept(vertex(*_queue_current))) {
+        noexcept(noexcept(vertex(_queue[_queue_current]))) {
         assert(!finished());
-        return *_queue_current;
+        return _queue[_queue_current];
     }
 
     constexpr void advance() {
         assert(!finished());
-        const vertex & u = *_queue_current;
+        const vertex & u = _queue[_queue_current];
         ++_queue_current;
         for(auto && a : out_arcs(_graph, u)) {
             const vertex & w = arc_target(_graph, a);

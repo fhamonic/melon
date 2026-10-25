@@ -68,6 +68,27 @@ GTEST_TEST(knapsack_bnb, set_budget_rederives_the_item_filter) {
     ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {0u, 1u, 2u}));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// reset() discards the previous solution, as the constructor's state has none:
+// the solution is iterators into the value/cost pairs reset() rebuilds, so a
+// kept one reads invalidated entries -- MSVC's checked iterators abort there.
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(knapsack_bnb, reset_discards_the_previous_solution) {
+    std::vector<std::size_t> items = {0u, 1u, 2u};
+    std::vector<int> values = {10, 7, 1};
+    std::vector<int> costs = {9, 12, 2};
+
+    auto alg = knapsack_bnb(items, values, costs, 23);
+    ASSERT_EQ(alg.run().solution_value(), 18);
+
+    alg.set_budget(3);
+    ASSERT_TRUE(EMPTY(alg.solution_items()));
+    ASSERT_EQ(alg.solution_value(), 0);
+    ASSERT_EQ(alg.solution_cost(), 0);
+    ASSERT_EQ(alg.run().solution_value(), 1);
+}
+
 // The bound takes the value/cost ratio in double before multiplying by the
 // remaining budget: multiplied in the integer operand types first, this
 // instance overflowed and a wrapped-negative bound pruned the branch holding

@@ -133,7 +133,8 @@ The guarantee rests on a handful of design decisions — algorithms are move-onl
 ## Roadmap
 
 Concepts and containers: tree graphs, planar graphs, bipartite graphs.
-Algorithms: Laplacian combinatorial solver, planar map intersection.
+Algorithms: Push-Relabel maximum flow, Laplacian combinatorial solver, planar map intersection.
+Views: Line graph, Dual graph
 Utility: JSON serialization, SVG printer (the Graphviz printer ships since 1.0).
 
 melon is a young, single-maintainer library: the roadmap lists things that do not exist yet, not things being polished. If you need Boost.Graph's full catalogue (planarity testing, matching, isomorphism) or an older standard, stay with the incumbents.
@@ -144,7 +145,7 @@ Bug reports, feature requests and pull requests are welcome. [CONTRIBUTING.md](C
 
 ## Acknowledgments
 
-melon is grounded in the PhD thesis and postdoctoral positions of François Hamonic, funded by Région Sud - Provence-Alpes-Côte d'Azur, Natural Solutions, the European Research Council grant [SCALED](https://www.scaled-erc.eu/) to Cécile ALBERT (ERC-STG no. 949812), the ANR project [RESILIENCE](https://www.pepr-resilience.eu/index.php) (no. ANR-24-PEVD-0002) and the OASIS project of [ITEM](https://institut-item.univ-amu.fr), an A\*Midex Initiative d'Excellence institute funded under France 2030 (AMX-19-IET-012).
+MELON is grounded in the PhD thesis and postdoctoral positions of François Hamonic, funded by Région Sud - Provence-Alpes-Côte d'Azur, Natural Solutions, the European Research Council grant [SCALED](https://www.scaled-erc.eu/) to Cécile ALBERT (ERC-STG no. 949812), the ANR project [RESILIENCE](https://www.pepr-resilience.eu/index.php) (no. ANR-24-PEVD-0002) and the project OASIS of [ITEM](https://institut-item.univ-amu.fr), an A\*Midex Initiative d'Excellence institute funded under France 2030 (AMX-19-IET-012).
 
 ## License
 

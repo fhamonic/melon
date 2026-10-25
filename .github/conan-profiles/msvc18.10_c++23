@@ -1,0 +1,18 @@
+[settings]
+os=Windows
+arch=x86_64
+build_type=Release
+compiler=msvc
+# 195 + update=1 makes CMakeToolchain pin the "Visual Studio 18 2026"
+# generator toolset to "v145,version=14.51", the MSVC Build Tools that
+# VS 18.10 installs by default. Since VS 2026 the MSVC minor no longer
+# follows the VS minor: 18.6 through 18.10 all default to 14.51.
+# cppstd=23 maps to /std:c++latest, since MSVC has no committed C++23 switch.
+compiler.version=195
+compiler.update=1
+compiler.cppstd=23
+compiler.runtime=dynamic
+compiler.runtime_type=Release
+
+[tool_requires]
+cmake/4.3.2

@@ -67,3 +67,21 @@ GTEST_TEST(unbounded_knapsack_bnb, set_budget_rederives_the_item_filter) {
     ASSERT_EQ(alg.run().solution_value(), 8);
     ASSERT_TRUE(EQ_MULTISETS(alg.solution_items(), {std::pair{1u, 2}}));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// reset() discards the previous solution, as in knapsack_bnb
+////////////////////////////////////////////////////////////////////////////////
+
+GTEST_TEST(unbounded_knapsack_bnb, reset_discards_the_previous_solution) {
+    std::vector<std::size_t> items = {0u, 1u};
+    std::vector<int> values = {5, 4};
+    std::vector<int> costs = {4, 3};
+
+    auto alg = unbounded_knapsack_bnb(items, values, costs, 6);
+    ASSERT_EQ(alg.run().solution_value(), 8);
+
+    alg.set_budget(2);
+    ASSERT_TRUE(EMPTY(alg.solution_items()));
+    ASSERT_EQ(alg.solution_value(), 0);
+    ASSERT_EQ(alg.solution_cost(), 0);
+}

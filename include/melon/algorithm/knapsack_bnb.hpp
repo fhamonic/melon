@@ -178,6 +178,9 @@ public:
     // ---- Setup --------------------------------------------------------------
 
     knapsack_bnb & reset() {
+        // Cleared with the pairs it points into: a kept solution would read
+        // the rebuilt, or reallocated-away, entries.
+        _best_sol.resize(0);
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
         if constexpr(std::ranges::sized_range<ItemRange>) {

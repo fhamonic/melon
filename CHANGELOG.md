@@ -20,6 +20,14 @@ Notable changes to melon. The format follows
   now reads as `bool`.
 - Two narrowing conversions in `static_filter_map::filter` and
   `network_simplex` that newer clang releases diagnose.
+- `topological_sort` no longer trips MSVC's checked iterators in Debug
+  builds: its queue cursor is an index, as in `breadth_first_search`, instead
+  of an iterator that the queue's `push_back` invalidated once it reached
+  `end()`.
+- `knapsack_bnb::reset()` and `unbounded_knapsack_bnb::reset()`, and so
+  `set_budget()`, discard the previous solution. It was kept as iterators
+  into the rebuilt item list, so querying it before the next `run()` read
+  invalidated entries.
 
 ## [1.0.0] - 2026-09-05
 
