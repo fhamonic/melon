@@ -85,6 +85,7 @@ The ready-made [mapping views](../graphs/mappings.md#the-ready-made-maps) beyond
 | `network_simplex.hpp` | [`network_simplex`, `network_simplex_default_traits`, `network_simplex_traits`](../algorithms/flows-and-trees.md#network_simplex) |
 | `kruskal.hpp` | [`kruskal`](../algorithms/flows-and-trees.md#kruskal) |
 | `knapsack_bnb.hpp` | [`knapsack_bnb`](../algorithms/others.md#knapsack) |
+| `knapsack_dp.hpp` | [`knapsack_dp`](../algorithms/others.md#knapsack_dp) |
 | `unbounded_knapsack_bnb.hpp` | [`unbounded_knapsack_bnb`](../algorithms/others.md#knapsack) |
 | `bentley_ottmann.hpp` | [`bentley_ottmann`](../algorithms/others.md#bentley_ottmann) |
 
@@ -135,6 +136,6 @@ The last two remain in the repository but are excluded from both the CMake insta
 The dependency edges worth knowing:
 
 - `melon/graph.hpp` includes `melon/mapping.hpp` and, at the end, `melon/views/graph_view.hpp` — so having a graph gives you the mapping concepts and `views::graph_all`.
-- the algorithm headers include `melon/graph.hpp`, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::function` and the concepts. The pure-mapping ones — both knapsacks and `bentley_ottmann` — include only `melon/mapping.hpp`.
+- the algorithm headers include `melon/graph.hpp`, so `#include "melon/algorithm/dijkstra.hpp"` alone gives you `vertices`, `create_vertex_map`, `maps::function` and the concepts. The pure-mapping ones — the knapsack solvers and `bentley_ottmann` — include only `melon/mapping.hpp`.
 - **container headers do not include `melon/graph.hpp`** — they only need `melon/mapping.hpp`. Including `container/mutable_digraph.hpp` on its own gives you the class but not `create_vertex`, `vertices` or `num_vertices`. Add `melon/graph.hpp` when a container is all you include.
 - no algorithm or view header includes a *graph container* — only `utility/erdos_renyi.hpp`, `utility/make_static_digraph.hpp` and `melon/all.hpp` do — so you must include `melon/container/static_digraph.hpp` yourself to have a graph to run on. (The heap-based algorithms — `dijkstra`, `a_star`, the other Dijkstra variants, `network_voronoi` and `bentley_ottmann` — do pull in `container/d_ary_heap.hpp` for their default traits, and `kruskal` pulls in `container/disjoint_sets.hpp`.)

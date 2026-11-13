@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <concepts>
 #include <cstdint>
 #include <ranges>
@@ -22,6 +23,7 @@
 #include "melon/algorithm/dinitz.hpp"
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/knapsack_bnb.hpp"
+#include "melon/algorithm/knapsack_dp.hpp"
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
@@ -636,9 +638,38 @@ using KB = decltype(melon::knapsack_bnb(
     std::declval<std::vector<std::size_t> &>(),
     std::declval<std::vector<int> &>(), std::declval<std::vector<int> &>(),
     std::declval<int>()));
-static_assert(std::same_as<decltype(std::declval<KB &>().run()), KB &> &&
-              std::same_as<decltype(std::declval<KB &>().reset()), KB &> &&
-              !std::copy_constructible<KB> && std::movable<KB>);
+static_assert(
+    std::same_as<decltype(std::declval<KB &>().run()), KB &> &&
+    std::same_as<decltype(std::declval<KB &>().reset()), KB &> &&
+    std::same_as<decltype(std::declval<KB &>().set_relative_gap(0.0)), KB &> &&
+    !std::copy_constructible<KB> && std::movable<KB>);
+// knapsack_dp is knapsack_bnb's interface over another algorithm: one may be
+// written where the other was.
+using KD = decltype(melon::knapsack_dp(
+    std::declval<std::vector<std::size_t> &>(),
+    std::declval<std::vector<int> &>(), std::declval<std::vector<int> &>(),
+    std::declval<int>()));
+static_assert(
+    std::same_as<decltype(std::declval<KD &>().run()), KD &> &&
+    std::same_as<decltype(std::declval<KD &>().reset()), KD &> &&
+    std::same_as<decltype(std::declval<KD &>().set_budget(0)), KD &> &&
+    std::same_as<decltype(std::declval<KD &>().set_relative_gap(0.0)), KD &> &&
+    std::same_as<decltype(std::declval<KD &>().set_state_limit(0u)), KD &> &&
+    std::same_as<decltype(std::declval<const KD &>().state_limit_reached()),
+                 bool> &&
+    std::same_as<decltype(std::declval<KD &>().run_with_timeout(
+                     std::chrono::seconds(1))),
+                 decltype(std::declval<KB &>().run_with_timeout(
+                     std::chrono::seconds(1)))> &&
+    std::same_as<decltype(std::declval<const KD &>().solution_value()),
+                 decltype(std::declval<const KB &>().solution_value())> &&
+    std::same_as<decltype(std::declval<const KD &>().solution_cost()),
+                 decltype(std::declval<const KB &>().solution_cost())> &&
+    std::same_as<std::ranges::range_value_t<
+                     decltype(std::declval<const KD &>().solution_items())>,
+                 std::ranges::range_value_t<
+                     decltype(std::declval<const KB &>().solution_items())>> &&
+    !std::copy_constructible<KD> && std::movable<KD>);
 using UKB = decltype(melon::unbounded_knapsack_bnb(
     std::declval<std::vector<std::size_t> &>(),
     std::declval<std::vector<int> &>(), std::declval<std::vector<int> &>(),

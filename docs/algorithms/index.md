@@ -80,7 +80,7 @@ An algorithm is a range exactly when it derives from `algorithm_view_interface`,
 | [`kruskal`](flows-and-trees.md#kruskal) | an edge |
 | [`bentley_ottmann`](others.md#bentley_ottmann) | `(point, range of segment ids)` |
 
-The rest produce a single answer rather than a sequence, so they expose `run()` and dedicated accessors instead: [`bidirectional_dijkstra`](shortest-paths.md#bidirectional_dijkstra), [`bellman_ford`](shortest-paths.md#bellman_ford), [`bellman_ford_moore`](shortest-paths.md#bellman_ford_moore), [`edmonds_karp`](flows-and-trees.md#edmonds_karp), [`dinitz`](flows-and-trees.md#dinitz), [`knapsack_bnb`](others.md#knapsack) and [`unbounded_knapsack_bnb`](others.md#knapsack).
+The rest produce a single answer rather than a sequence, so they expose `run()` and dedicated accessors instead: [`bidirectional_dijkstra`](shortest-paths.md#bidirectional_dijkstra), [`bellman_ford`](shortest-paths.md#bellman_ford), [`bellman_ford_moore`](shortest-paths.md#bellman_ford_moore), [`edmonds_karp`](flows-and-trees.md#edmonds_karp), [`dinitz`](flows-and-trees.md#dinitz), [`knapsack_bnb`](others.md#knapsack), [`knapsack_dp`](others.md#knapsack_dp) and [`unbounded_knapsack_bnb`](others.md#knapsack).
 
 Even the range-shaped ones offer `run()` — `while(!finished()) advance();` — for when you want the side effects and the accessors but not the values. It returns the algorithm, like `reset()`, so a run and a query chain: `alg.run().dist(t)`. The `run()`-only algorithms above share that shape — `run()` returns the algorithm, and the answer is read through the accessors afterwards — without being generators at all: they have no `finished()` / `advance()` to drain.
 

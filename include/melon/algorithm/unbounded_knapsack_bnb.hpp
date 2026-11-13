@@ -6,11 +6,11 @@
 #include <cstddef>
 #include <future>
 #include <limits>
-#include <memory>
 #include <numeric>
 #include <ranges>
 #include <stop_token>
 #include <thread>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -26,12 +26,13 @@ namespace melon {
 // take-count below, and a negative value or cost makes the ratio bound
 // unsound, so in release builds run() answers with a suboptimal solution
 // instead of failing. Value must also be wide enough for the instance's
-// optimum plus one item's value: the take-count and dominance products reach
-// that magnitude and overflow -- not saturate -- beyond it.
+// optimum plus one item's value: the take-count and dominance products and
+// the bounds reach that magnitude and overflow -- not saturate -- beyond it.
 //
-// random_access_range, not range: is_dominated() orders iterators with `<`,
-// which only random-access iterators provide -- with a plain range the error
-// surfaces inside the member instead of at the constraint.
+// random_access_range, not range: reset() orders iterators with `<` to keep
+// the first of two identical items, which only random-access iterators
+// provide -- with a plain range the error surfaces inside the member instead
+// of at the constraint.
 template <std::ranges::random_access_range ItemRange,
           mapping_view<std::ranges::range_value_t<ItemRange>> ValueMap,
           mapping_view<std::ranges::range_value_t<ItemRange>> CostMap>
@@ -50,50 +51,131 @@ private:
     CostMap _cost_map;
 
     Cost _budget;
+    // _budget lowered to a multiple of the costs' GCD (integral Cost only).
+    // Searched with _budget itself, a remainder no item can spend keeps
+    // every bound above the optimum and nothing is pruned.
+    Cost _search_budget;
     std::vector<std::ranges::iterator_t<const ItemRange>> _permuted_items;
     std::vector<std::pair<Value, Cost>> _value_cost_pairs;
+    std::vector<double> _bound_ratios;
     std::vector<std::pair<typename decltype(_value_cost_pairs)::const_iterator,
                           std::size_t>>
         _best_sol;
 
 private:
-    double value_cost_ratio(const std::pair<Value, Cost> & p) const {
+    // Rounded upward for an integral Value: the bound truncates
+    // budget_left * ratio, and a product landing one ulp under an exact
+    // integer prunes the branch that attains it.
+    static double bound_ratio(const std::pair<Value, Cost> & p) {
+        double ratio;
         if constexpr(std::numeric_limits<float>::is_iec559) {
-            return p.first / static_cast<double>(p.second);
+            ratio =
+                static_cast<double>(p.first) / static_cast<double>(p.second);
         } else {
-            return (p.second == 0) ? std::numeric_limits<double>::max()
-                                   : (p.first / static_cast<double>(p.second));
+            if(p.second == 0) return std::numeric_limits<double>::max();
+            ratio =
+                static_cast<double>(p.first) / static_cast<double>(p.second);
+        }
+        if constexpr(std::is_integral_v<Value>)
+            ratio *= 1 + 4 * std::numeric_limits<double>::epsilon();
+        return ratio;
+    }
+
+    // Truncated for an integral Value: compared as a real number, a bound a
+    // fraction above `best` keeps its branch alive, and among items of nearly
+    // equal ratio that is every branch.
+    static bool cannot_beat(Value best, Value value, Cost budget_left,
+                            double ratio) {
+        const double fraction = static_cast<double>(budget_left) * ratio;
+        if constexpr(std::is_integral_v<Value>) {
+            return value + static_cast<Value>(fraction) <= best;
+        } else {
+            return static_cast<double>(value) + fraction <=
+                   static_cast<double>(best);
         }
     }
 
-    auto iterative_bnb() {
+    static std::size_t copies_that_fit(Cost budget_left, Cost cost) {
+        if constexpr(std::is_integral_v<Cost>) {
+            return static_cast<std::size_t>(budget_left / cost);
+        } else {
+            // The quotient alone can be one copy off either way: one short
+            // leaves out a copy that fits, one over overdraws the budget.
+            auto copies = static_cast<std::size_t>(budget_left / cost) + 1;
+            while(static_cast<Cost>(copies) * cost > budget_left) --copies;
+            return copies;
+        }
+    }
+
+    // As many copies of `kept` as `cost` pays for. The product needs no
+    // overflow guard -- the copies fit the budget, so it is the value of a
+    // solution -- and comparing by division instead doubles reset().
+    static bool copies_are_worth(const std::pair<Value, Cost> & kept,
+                                 Value value, Cost cost) {
+        return static_cast<Value>(copies_that_fit(cost, kept.second)) *
+                   kept.first >=
+               value;
+    }
+
+    template <typename StopRequested>
+    void search(StopRequested && stop_requested) {
         _best_sol.resize(0);
-        auto it = _value_cost_pairs.cbegin();
+        const auto first = _value_cost_pairs.cbegin();
         const auto end = _value_cost_pairs.cend();
+        auto it = first;
         // Guards the goto: with no feasible item, jumping into the loop body
         // dereferences end.
-        if(it == end) return _best_sol;
+        if(it == end) return;
         std::vector<std::pair<decltype(it), std::size_t>> current_sol;
         Value current_sol_value = 0;
         Value best_sol_value = 0;
-        Cost budget_left = _budget;
+        Cost budget_left = _search_budget;
         goto begin;
     backtrack:
         while(!current_sol.empty()) {
+            if(stop_requested()) return;
             it = current_sol.back().first;
+            // One copy fewer, the freed budget spent at the next ratio at
+            // best: if that cannot beat the best, no lower count can, and the
+            // whole entry goes at once. Copy by copy, a budget of 1e9 on an
+            // item of cost 10 unwinds in 1e8 steps.
+            // Braced: `goto begin` may not jump past an initialized variable.
+            {
+                const auto next = static_cast<std::size_t>(it - first) + 1;
+                if(cannot_beat(
+                       best_sol_value,
+                       static_cast<Value>(current_sol_value - it->first),
+                       static_cast<Cost>(budget_left + it->second),
+                       next < _bound_ratios.size() ? _bound_ratios[next]
+                                                   : 0.0)) {
+                    const std::size_t copies = current_sol.back().second;
+                    current_sol_value = static_cast<Value>(
+                        current_sol_value -
+                        static_cast<Value>(copies) * it->first);
+                    budget_left = static_cast<Cost>(
+                        budget_left + static_cast<Cost>(copies) * it->second);
+                    current_sol.pop_back();
+                    continue;
+                }
+            }
             if(--current_sol.back().second == 0) current_sol.pop_back();
-            current_sol_value -= it->first;
-            budget_left += it->second;
+            current_sol_value =
+                static_cast<Value>(current_sol_value - it->first);
+            budget_left = static_cast<Cost>(budget_left + it->second);
             for(++it; it < end; ++it) {
                 if(budget_left < it->second) continue;
-                if(current_sol_value + budget_left * value_cost_ratio(*it) <=
-                   best_sol_value)
+                if(cannot_beat(
+                       best_sol_value, current_sol_value, budget_left,
+                       _bound_ratios[static_cast<std::size_t>(it - first)]))
                     goto backtrack;
             begin: {
                 const std::size_t num_take =
-                    static_cast<std::size_t>(budget_left / it->second);
-                current_sol_value += static_cast<Value>(num_take) * it->first;
-                budget_left -= static_cast<Cost>(num_take) * it->second;
+                    copies_that_fit(budget_left, it->second);
+                current_sol_value = static_cast<Value>(
+                    current_sol_value +
+                    static_cast<Value>(num_take) * it->first);
+                budget_left = static_cast<Cost>(
+                    budget_left - static_cast<Cost>(num_take) * it->second);
                 current_sol.emplace_back(it, num_take);
             }
             }
@@ -101,45 +183,6 @@ private:
             best_sol_value = current_sol_value;
             _best_sol = current_sol;
         }
-        return _best_sol;
-    }
-
-    auto iterative_bnb_timeout(std::stop_token stoken) {
-        _best_sol.resize(0);
-        auto it = _value_cost_pairs.cbegin();
-        const auto end = _value_cost_pairs.cend();
-        // Guards the goto: with no feasible item, jumping into the loop body
-        // dereferences end.
-        if(it == end) return _best_sol;
-        std::vector<std::pair<decltype(it), std::size_t>> current_sol;
-        Value current_sol_value = 0;
-        Value best_sol_value = 0;
-        Cost budget_left = _budget;
-        goto begin;
-    backtrack:
-        while(!current_sol.empty() && !stoken.stop_requested()) {
-            it = current_sol.back().first;
-            if(--current_sol.back().second == 0) current_sol.pop_back();
-            current_sol_value -= it->first;
-            budget_left += it->second;
-            for(++it; it < end; ++it) {
-                if(budget_left < it->second) continue;
-                if(current_sol_value + budget_left * value_cost_ratio(*it) <=
-                   best_sol_value)
-                    goto backtrack;
-            begin: {
-                const std::size_t num_take =
-                    static_cast<std::size_t>(budget_left / it->second);
-                current_sol_value += static_cast<Value>(num_take) * it->first;
-                budget_left -= static_cast<Cost>(num_take) * it->second;
-                current_sol.emplace_back(it, num_take);
-            }
-            }
-            if(current_sol_value <= best_sol_value) continue;
-            best_sol_value = current_sol_value;
-            _best_sol = current_sol;
-        }
-        return _best_sol;
     }
 
 public:
@@ -160,31 +203,7 @@ public:
         reset();
     }
 
-private:
-    bool is_dominated(auto && item_it) const {
-        const Value item_value = _value_map[*item_it];
-        const Cost item_cost = _cost_map[*item_it];
-        for(auto it = _items_range.begin(); it != _items_range.end(); ++it) {
-            auto && i = *it;
-            if(it == item_it) continue;
-            const Value i_value = _value_map[i];
-            const Cost i_cost = _cost_map[i];
-            // Not covered by reset()'s identical assert: that one fires only
-            // as its loop reaches each item, and this scan runs ahead of it
-            // to divide by the cost of every item.
-            assert(i_cost > static_cast<Cost>(0));
-            if(i_cost == item_cost && i_value == item_value)
-                return (it < item_it);
-            if(i_cost > item_cost) continue;
-            int num_times = static_cast<int>(item_cost / i_cost);
-            if(num_times * i_value > item_value) return true;
-        }
-        return false;
-    }
-
 public:
-    // ---- Construction -------------------------------------------------------
-
     // Move-only; see the melon::traversal_algorithm concept.
     // Moves stay defaulted: _best_sol holds iterators into _value_cost_pairs,
     // whose buffer transfers with the move. A copy would have to rebase them,
@@ -206,6 +225,7 @@ public:
         _best_sol.resize(0);
         _permuted_items.resize(0);
         _value_cost_pairs.resize(0);
+        _bound_ratios.resize(0);
         if constexpr(std::ranges::sized_range<ItemRange>) {
             auto num_items = std::ranges::size(_items_range);
             _permuted_items.reserve(num_items);
@@ -219,15 +239,65 @@ public:
             const Cost cost = _cost_map[i];
             assert(cost > static_cast<Cost>(0));
             if(cost > _budget) continue;
-            if(is_dominated(it)) continue;
             _permuted_items.emplace_back(it);
             _value_cost_pairs.emplace_back(value, cost);
         }
-        auto zip_view = std::views::zip(_permuted_items, _value_cost_pairs);
-        std::ranges::sort(zip_view, [this](auto p1, auto p2) {
-            return value_cost_ratio(std::get<1>(p1)) >
-                   value_cost_ratio(std::get<1>(p2));
-        });
+
+        // An item is dropped when copies of a cheaper one, as many as its
+        // cost pays for, are worth as much. Kept items are enough to compare
+        // with: what dropped an item outdoes what that item would drop.
+        // Range order breaks the last tie, so that the first of identical
+        // items is kept whatever the sort does with equal elements.
+        std::ranges::sort(std::views::zip(_permuted_items, _value_cost_pairs),
+                          [](const auto & p1, const auto & p2) {
+                              const auto & [value1, cost1] = std::get<1>(p1);
+                              const auto & [value2, cost2] = std::get<1>(p2);
+                              if(cost1 != cost2) return cost1 < cost2;
+                              if(value1 != value2) return value1 > value2;
+                              return std::get<0>(p1) < std::get<0>(p2);
+                          });
+        std::size_t num_kept = 0;
+        Value highest_value = 0;
+        for(std::size_t i = 0; i < _value_cost_pairs.size(); ++i) {
+            const auto [value, cost] = _value_cost_pairs[i];
+            if(value <= highest_value) continue;
+            bool dominated = false;
+            for(std::size_t kept = 0; kept < num_kept && !dominated; ++kept)
+                dominated =
+                    copies_are_worth(_value_cost_pairs[kept], value, cost);
+            if(dominated) continue;
+            highest_value = value;
+            _permuted_items[num_kept] = _permuted_items[i];
+            _value_cost_pairs[num_kept] = _value_cost_pairs[i];
+            ++num_kept;
+        }
+        _permuted_items.resize(num_kept);
+        _value_cost_pairs.resize(num_kept);
+
+        for(const auto & p : _value_cost_pairs)
+            _bound_ratios.push_back(bound_ratio(p));
+        // Costlier first among equal ratios: cheaper first, the search backs
+        // out of the small items of a tie before a large one gets its turn --
+        // three times slower on 10 000 items of one ratio.
+        std::ranges::sort(
+            std::views::zip(_permuted_items, _value_cost_pairs, _bound_ratios),
+            [](const auto & p1, const auto & p2) {
+                if(std::get<2>(p1) != std::get<2>(p2))
+                    return std::get<2>(p1) > std::get<2>(p2);
+                return std::get<1>(p1).second > std::get<1>(p2).second;
+            });
+
+        _search_budget = _budget;
+        if constexpr(std::is_integral_v<Cost> && !std::is_same_v<Cost, bool>) {
+            Cost divisor = 0;
+            for(const auto & p : _value_cost_pairs) {
+                divisor = std::gcd(divisor, p.second);
+                if(divisor == 1) break;
+            }
+            // > 1, not != 1: with no item kept the divisor is 0, and % 0 traps.
+            if(divisor > 1)
+                _search_budget = static_cast<Cost>(_budget - _budget % divisor);
+        }
         return *this;
     }
 
@@ -242,14 +312,14 @@ public:
     // ---- Execution ----------------------------------------------------------
 
     unbounded_knapsack_bnb & run() {
-        iterative_bnb();
+        search([] { return false; });
         return *this;
     }
 
     template <typename Rep, typename Period>
     bool run_with_timeout(const std::chrono::duration<Rep, Period> & timeout) {
         std::jthread t([this](std::stop_token stoken) {
-            return iterative_bnb_timeout(stoken);
+            search([&stoken] { return stoken.stop_requested(); });
         });
         // The extra thread exists only to make the join waitable: jthread has
         // no timed join, so the wait_for below needs a future to wait on.
@@ -275,14 +345,16 @@ public:
     [[nodiscard]] auto solution_value() const {
         Value sum = 0;
         for(auto && [it, count] : _best_sol)
-            sum += it->first * static_cast<Value>(count);
+            sum =
+                static_cast<Value>(sum + it->first * static_cast<Value>(count));
         return sum;
     }
 
     [[nodiscard]] auto solution_cost() const {
         Cost sum = 0;
         for(auto && [it, count] : _best_sol)
-            sum += it->second * static_cast<Cost>(count);
+            sum =
+                static_cast<Cost>(sum + it->second * static_cast<Cost>(count));
         return sum;
     }
 };

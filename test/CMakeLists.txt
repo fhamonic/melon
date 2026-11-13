@@ -58,6 +58,7 @@ add_executable(
   kruskal.cpp
   disjoint_sets.cpp
   knapsack_bnb.cpp
+  knapsack_dp.cpp
   unbounded_knapsack_bnb.cpp
   bentley_ottmann.cpp
   bounded_value.cpp

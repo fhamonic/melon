@@ -18,6 +18,7 @@
 #include "melon/algorithm/dinitz.hpp"
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/knapsack_bnb.hpp"
+#include "melon/algorithm/knapsack_dp.hpp"
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
@@ -83,14 +84,33 @@ GTEST_TEST(api_review, kruskal_move_assignment_owns_its_cursor) {
     EXPECT_EQ(n, 2u);
 }
 
-// knapsack_bnb / unbounded_knapsack_bnb keep _best_sol as iterators into their
-// own _value_cost_pairs.
+// knapsack_bnb / knapsack_dp / unbounded_knapsack_bnb keep _best_sol as
+// iterators into their own _value_cost_pairs.
 GTEST_TEST(api_review, knapsack_move_owns_its_solution) {
     std::vector<unsigned> items{0u, 1u, 2u, 3u};
     std::vector<double> value{10.0, 7.0, 5.0, 3.0};
     std::vector<double> cost{5.0, 4.0, 3.0, 2.0};
 
     using knapsack = decltype(knapsack_bnb(items, value, cost, 9.0));
+    auto source = std::make_unique<knapsack>(items, value, cost, 9.0);
+    source->run();
+    const double expected = source->solution_value();
+
+    auto moved = std::move(*source);
+    source.reset();
+    EXPECT_EQ(moved.solution_value(), expected);
+    EXPECT_LE(moved.solution_cost(), 9.0);
+    std::size_t n = 0;
+    for([[maybe_unused]] auto && i : moved.solution_items()) ++n;
+    EXPECT_GT(n, 0u);
+}
+
+GTEST_TEST(api_review, knapsack_dp_move_owns_its_solution) {
+    std::vector<unsigned> items{0u, 1u, 2u, 3u};
+    std::vector<double> value{10.0, 7.0, 5.0, 3.0};
+    std::vector<double> cost{5.0, 4.0, 3.0, 2.0};
+
+    using knapsack = decltype(knapsack_dp(items, value, cost, 9.0));
     auto source = std::make_unique<knapsack>(items, value, cost, 9.0);
     source->run();
     const double expected = source->solution_value();

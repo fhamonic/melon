@@ -12,6 +12,38 @@ Notable changes to melon. The format follows
   built through the `appleclang21_c++23` Conan profile. The library's
   standard-library floor on libc++ is release 20, the first where
   `std::jthread` is not experimental.
+- `knapsack_dp`, a dynamic program behind the interface of `knapsack_bnb`,
+  for the instances the branch and bound enumerates: values tied to the
+  costs by a fixed charge, and classes of items whose costs are multiples of
+  a class unit. It keeps one state per total cost reached, starting from the
+  break solution, with identical items decided in chunks of 1, 2, 4… copies.
+  Its cost type must represent twice the budget and its value type twice the
+  optimum. Its memory follows the number of states it holds:
+  `set_state_limit()` makes the search give up, incumbent kept, rather than
+  hold more, and `state_limit_reached()` tells when it did.
+- `knapsack_bnb::set_relative_gap()`: `run()` may stop at a solution within
+  a relative gap of the optimum, `solution_value() >= optimum / (1 + gap)`.
+  The default, 0, keeps the search exact. Floating-point items of equal
+  value/cost ratio need a positive gap for the search to finish.
+
+### Changed
+
+- `knapsack_bnb` searches identical items as one entry with a count, lowers
+  the budget to a multiple of the costs' greatest common divisor when the
+  cost type is integral, evaluates its bound once per stretch of items taken
+  together, and stops as soon as the incumbent meets the root bound.
+  Instances made of repeated items, or whose costs share a divisor the
+  budget lacks, finish where they previously did not. Among optimal
+  solutions, the one returned may differ from before.
+- `unbounded_knapsack_bnb`, when backing out of an item, gives up all its
+  copies at once as soon as one copy fewer cannot beat the incumbent, instead
+  of one copy at a time: a hundred items under a budget of 10^8 take under a
+  hundredth of a millisecond where they took one. It also truncates its
+  bound for integral values, lowers the budget to a multiple of the costs'
+  greatest common divisor, and filters dominated items in cost order against
+  the items already kept, which makes `reset()` several times faster on
+  large item sets. Among optimal solutions, the one returned may differ from
+  before.
 
 ### Fixed
 
@@ -20,6 +52,10 @@ Notable changes to melon. The format follows
   now reads as `bool`.
 - Two narrowing conversions in `static_filter_map::filter` and
   `network_simplex` that newer clang releases diagnose.
+- `knapsack_bnb` could return a suboptimal solution for integral values: the
+  bound truncated a floating-point product that can land one ulp under an
+  exact integer, and pruned the branch attaining it. Values {6, 7, 28, 25},
+  costs {245, 294, 1372, 1225} and budget 1519 returned 31 instead of 32.
 - `topological_sort` no longer trips MSVC's checked iterators in Debug
   builds: its queue cursor is an index, as in `breadth_first_search`, instead
   of an iterator that the queue's `push_back` invalidated once it reached

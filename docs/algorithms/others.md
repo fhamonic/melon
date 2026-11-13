@@ -34,7 +34,9 @@ auto alg = knapsack_bnb(std::move(items), std::move(values),
                         [&](auto i) { return costs[i]; }, 15);
 ```
 
-`unbounded_knapsack_bnb` has the identical interface and allows each item to be taken any number of times — $x_i \in \mathbb{N}$; it additionally prunes items dominated by a better ratio at no greater cost.
+Two things keep the search short where the bound alone prunes nothing. Identical items — same value, same cost — are searched as one entry with a count, so forty copies of an item are one decision among forty-one counts rather than $2^{40}$ subsets. And when the cost type is integral, the budget is first lowered to a multiple of the costs' greatest common divisor, since the remainder can never be spent and would otherwise keep every bound above the optimum.
+
+`unbounded_knapsack_bnb` has the same interface, minus the gap setting described below, and allows each item to be taken any number of times — $x_i \in \mathbb{N}$. It first drops every item that copies of a cheaper one, as many as its cost pays for, are worth as much as; and when the search backs out of an item, it gives up all its copies at once as soon as one copy fewer cannot beat the incumbent, rather than one copy at a time — with a hundred items under a budget of $10^8$, the difference between a millisecond and a hundredth of one.
 
 ```cpp
 #include "melon/algorithm/unbounded_knapsack_bnb.hpp"
@@ -44,7 +46,7 @@ alg.run();
 alg.solution_value();   // 13
 ```
 
-Both are exact solvers on an NP-hard problem, so the running time is not bounded by anything useful. `run_with_timeout` gives up and returns the incumbent instead of running forever:
+These are exact solvers on an NP-hard problem, so the running time is not bounded by anything useful. `run_with_timeout` gives up and returns the incumbent instead of running forever:
 
 ```cpp
 using namespace std::chrono_literals;
@@ -55,7 +57,54 @@ if(!alg.run_with_timeout(500ms))
 
 It returns `true` when the search completed within the budget and `false` when it was stopped; either way the solution accessors are valid. It spawns a `std::jthread` internally, so a program using it must link a threading library.
 
-Neither is a [range](index.md) — the answer is a single solution, not a sequence.
+`knapsack_bnb` can also trade exactness for termination. With floating-point values, items of equal ratio make exactness itself the obstacle: the subsets that fill the budget differ from the bound, and from each other, in the last digits, and an exact search enumerates them. `set_relative_gap` lets `run()` stop at a solution proven within a relative gap of the optimum:
+
+```cpp
+alg.set_relative_gap(1e-9).run();   // solution_value() >= optimum / (1 + 1e-9)
+```
+
+The gap defaults to 0, an exact search, and survives `reset()` and `set_budget()`.
+
+### `knapsack_dp`
+
+`knapsack_dp` solves the same 0-1 problem through the same interface — the constructor, `set_budget`, `set_relative_gap`, `run`, `run_with_timeout` and the three accessors — so either can be written where the other was:
+
+```cpp
+#include "melon/algorithm/knapsack_dp.hpp"
+
+auto alg = knapsack_dp(items, values, costs, 15);
+alg.run();
+alg.solution_value();   // 12
+```
+
+It is a dynamic program rather than a search. It starts from the *break solution* — the items that fit one after the other in ratio order — and decides the other items outward from it, alternately offering the next item the break solution lacks and dropping the last one it holds. What it carries from one item to the next is a list of *states*: for each total cost reached, the most valuable item set of that cost, kept only as long as its fractional bound can still beat the best solution found. This is the recursion of Pisinger's minknap (*A minimal algorithm for the 0-1 knapsack problem*, Operations Research 45(5), 1997), without its refinements. Identical items are decided in chunks of 1, 2, 4… copies.
+
+The two solvers fail on different instances, which is why there are two:
+
+| instance | `knapsack_bnb` | `knapsack_dp` |
+|---|---|---|
+| values unrelated, or loosely related, to costs | fast | fast |
+| classes of items of nearly equal ratio, costs unrelated within a class | fast | ten to a hundred times slower |
+| costs around $10^6$ and beyond | slower as they grow — a tenth of a second at $10^6$ — but it finishes | time and memory grow with the costs; may not finish |
+| value tied to the cost by a fixed charge — value = cost + constant | may not finish beyond a few hundred items | milliseconds with costs up to $10^3$, slower as they grow |
+| classes whose costs are multiples of a class unit — pack sizes of a product | may not finish | milliseconds |
+| floating-point costs | fine | nothing bounds the number of states |
+
+The branch and bound relies on its bound to discard solutions, and enumerates where the bound cannot tell them apart; the dynamic program relies on item sets sharing a total cost, and keeps one state per cost where they do not.
+
+`knapsack_dp` asks two things `knapsack_bnb` does not. The cost type must represent twice the budget, and the value type twice the optimum: the program works on item sets that overshoot the budget until a later step brings them back under it. And its memory follows the number of states — at most one per total cost an item set can reach, so bounded by twice the budget when costs are integral, but that bound is no comfort with costs around $10^8$, where a search among near-tied classes gathers a hundred million states, gigabytes, within seconds.
+
+`set_state_limit` bounds that memory. The search gives up, keeping its incumbent, at the state that would exceed the limit — about 75 bytes per state of the limit with 64-bit costs and values, so ten million states are some 750 MB:
+
+```cpp
+alg.set_state_limit(10'000'000).run();
+if(alg.state_limit_reached())
+    std::println("gave up; best found so far: {}", alg.solution_value());
+```
+
+`run_with_timeout` returns `false` for a search that gave up at the limit, as for one that ran out of time. There is no limit by default — an exact solver that stops short has to be asked to — and, like the gap, the limit survives `reset()` and `set_budget()`.
+
+None of the three is a [range](index.md) — the answer is a single solution, not a sequence.
 
 ## `bentley_ottmann`
 

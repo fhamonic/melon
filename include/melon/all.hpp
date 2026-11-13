@@ -43,6 +43,7 @@
 #include "melon/algorithm/dinitz.hpp"
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/knapsack_bnb.hpp"
+#include "melon/algorithm/knapsack_dp.hpp"
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
