@@ -8,10 +8,6 @@ Notable changes to melon. The format follows
 
 ### Added
 
-- macOS support: Apple Clang 21 (Xcode 26.4) with libc++ is in the CI matrix,
-  built through the `appleclang21_c++23` Conan profile. The library's
-  standard-library floor on libc++ is release 20, the first where
-  `std::jthread` is not experimental.
 - `knapsack_dp`, a dynamic program behind the interface of `knapsack_bnb`,
   for the instances the branch and bound enumerates: values tied to the
   costs by a fixed charge, and classes of items whose costs are multiples of
@@ -47,11 +43,6 @@ Notable changes to melon. The format follows
 
 ### Fixed
 
-- On libc++, `std::vector<bool>` no longer fails the `mapping_of<…, bool>`
-  concept: its const subscript yields a proxy there, which `mapped_value_t`
-  now reads as `bool`.
-- Two narrowing conversions in `static_filter_map::filter` and
-  `network_simplex` that newer clang releases diagnose.
 - `knapsack_bnb` could return a suboptimal solution for integral values: the
   bound truncated a floating-point product that can land one ulp under an
   exact integer, and pruned the branch attaining it. Values {6, 7, 28, 25},
@@ -71,13 +62,13 @@ First stable release. Every header outside `melon/detail/` and
 `melon/experimental/` is frozen API for the 1.x series — see
 [API stability](https://fhamonic.github.io/melon/getting-started/installation/#api-stability)
 for the exact scope of the guarantee. All changes below are relative to
-`1.0.0-alpha.1`, the last package published on Conan Center.
+`1.0.0-alpha.1`, the previous package published on Conan Center.
 
 The `v1.0.0` tag was first cut on 2026-08-28 and re-pointed on 2026-09-05,
-before any package was published from it, to a revision that also carries the
-following renames. Code written against the earlier snapshot needs:
-`add_arc({u, v}, …)` for `add_arc(u, v, …)` on a builder with properties;
-`maps::identity`, `maps::element<I...>` and `maps::function` for
+before any package was published from it, to a revision that also carries
+macOS support and the following renames. Code written against the earlier
+snapshot needs: `add_arc({u, v}, …)` for `add_arc(u, v, …)` on a builder
+with properties; `maps::identity`, `maps::element<I...>` and `maps::function` for
 `maps::identity_map`, `maps::element_map<I...>` and `maps::map`;
 `melon/maps/constant.hpp` and `melon/maps/element.hpp` for `maps::true_map` /
 `maps::false_map` and `maps::element`; `melon/numeric/` for `semiring.hpp` and
@@ -357,6 +348,14 @@ inside the standard library.
   (`priority_queue` asks `movable` + `default_initializable` instead of
   `semiregular`), and the synthesized `arcs()`/`arcs_entries()` join the
   same incidence direction on an equal-rank tie.
+- macOS support: Apple Clang 21 (Xcode 26.4) with libc++ is in the CI matrix,
+  built through the `appleclang21_c++23` Conan profile. The library's
+  standard-library floor on libc++ is release 20, the first where
+  `std::jthread` is not experimental. On libc++, `std::vector<bool>`
+  satisfies the `mapping_of<…, bool>` concept (its const subscript yields a
+  proxy there, which `mapped_value_t` reads as `bool`), and two narrowing
+  conversions in `static_filter_map::filter` and `network_simplex` that
+  newer clang releases diagnose are gone.
 
 [1.0.0]: https://github.com/fhamonic/melon/compare/v1.0.0-alpha.1...v1.0.0
 [Unreleased]: https://github.com/fhamonic/melon/compare/v1.0.0...HEAD

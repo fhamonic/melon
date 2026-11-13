@@ -78,15 +78,8 @@ CMake 3.24 or later is required for the CMake integration, and Conan 2.0 or late
 
 ## As a Conan package
 
-**From the repository** (the tagged 1.0.0 release — the recommended route):
-
-```console
-$ git clone https://github.com/fhamonic/melon
-$ cd melon
-$ conan create . -u -b=missing -pr=<your_conan_profile>
-```
-
-Then declare the dependency in your own `conanfile.txt`:
+**From Conan Center** (the recommended route) — declare the dependency in
+your own `conanfile.txt` and Conan fetches `melon/1.0.0`:
 
 ```ini
 [requires]
@@ -97,20 +90,15 @@ CMakeDeps
 CMakeToolchain
 ```
 
-**From Conan Center** (latest published release):
+**From the repository** — to package an unreleased revision, or the tagged
+release without going through Conan Center, build it from a clone and declare
+the same requirement:
 
-```ini
-[requires]
-melon/1.0.0-alpha.1
+```console
+$ git clone https://github.com/fhamonic/melon
+$ cd melon
+$ conan create . -u -b=missing -pr=<your_conan_profile>
 ```
-
-!!! warning
-
-    The `1.0.0-alpha.1` package on Conan Center is a pre-1.0 alpha that
-    predates two breaking changes: it still depends on range-v3, and its
-    symbols live in the `fhamonic::melon` namespace rather than `melon`.
-    Prefer the repository / tagged release until the 1.0.0 package lands on
-    Conan Center.
 
 Either way, consume it from CMake with:
 

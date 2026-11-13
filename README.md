@@ -9,7 +9,7 @@
 [![Generic badge](https://img.shields.io/badge/Conan-2.0+-blue.svg?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0ODEiIGhlaWdodD0iNTEyIiBmaWxsPSIjZmZmIiB4bWxuczp2PSJodHRwczovL3ZlY3RhLmlvL25hbm8iPjxwYXRoIGQ9Ik0xMjEuNzQ1IDQyNS43MjRMLjcwNCAzMzkuOTYxVjIyNi42OTkgMTEzLjQzN2wxMDUuNjQtNTAuODYyTDIyMy43MjMgNi4xMDJsMTEuNzQtNS42MTEgNzguNzU4IDM4LjM1MSAxMjIuMjQ2IDU5LjU0MSA0My40ODggMjEuMTktLjAwNCAxMTcuMzM2LS4wMDQgMTE3LjMzNi02Ni4zNzQgNDMuOTk3LTExOC41ODEgNzguNjIxLTUyLjIwOCAzNC42MjR6bTE4Mi4xNDUgMjQuMDc0bDU0LjU4LTM0LjQ0OC4xNzgtMTA1LjEwNS0uNzA0LTEwNC43NjJjLS40ODUuMTg5LTI2LjU1MyAxNC45NDEtNTcuOTI4IDMyLjc4NGwtNTcuMDQ1IDMyLjQ0MS0uMTc4IDEwOC44NDUtLjE3OCAxMDguODQ1IDMuMzQ3LTIuMDc2IDU3LjkyOC0zNi41MjR6bTExOC41NjItNzYuNTM4bDQzLjM2MS0yOC4xNzEuMDI5LTEwMS42NjUtMS4wNjItMTAxLjI0N2MtLjYuMjMtMjEuMzQ0IDEyLjIyOC00Ni4wOTggMjYuNjYxbC00NS4wMDggMjYuMjQzLS4wMzEgMTA0LjgzMS0uMDMxIDEwNC44MzEgMi43MzktMS42NTZjMS41MDctLjkxMSAyMi4yNTItMTQuMzMzIDQ2LjEtMjkuODI3em0tNzEuNzI3LTE3OS4zODlsMTE1LjE0Ni02Ni4wOTVjMC0uMjQ1LTUxLjg3My0yNi41MDktMTE1LjI3My01OC4zNjZMMjM1LjMyNSAxMS40ODkgMjA4LjUxMyAyNC42MiA5Ny4yNzggNzkuMDlsLTg0LjUxMiA0MS45NDJjLS4wNjMuNDI2IDIyMS4wNjUgMTM3LjkyMSAyMjIuNjM1IDEzOC40MzEuMDk3LjAzMiA1MS45OTMtMjkuNDg1IDExNS4zMjMtNjUuNTkyek0yMTQuODAxIDIwNi4zMWMtMjQuMTIyLTQuMDc2LTUxLjEzNi0xNy44MjctNjcuNjA5LTM0LjQxNi0xMS4xNC0xMS4yMTgtMTUuNjMtMTkuNzQ1LTE2LjM0Ny0zMS4wNDItMS4yODItMjAuMjEyIDE2LjQzNi00MC42OTkgNDkuOTk3LTU3LjgxMSAyMS45NzMtMTEuMjA0IDQxLjA1Mi0xNi43ODcgNjMuOTEtMTguNzAyIDQ0LjE2Mi0zLjcgOTMuODM1IDE2LjQ5OSAxMjkuODEgNTIuNzg3bDYuMjMxIDYuMjg1LTkuNzUzIDUuNjI4Yy0xOC4wMDggMTAuMzkxLTQ2LjQ5MyAyNS4zNDEtNDcuMDc5IDI0LjcwOC0uMTExLS4xMi4zOC0yLjQzNyAxLjA5MS01LjE0OCA1LjAzNC0xOS4xOTUtNS4wNi0zNi4yMzItMjcuNzczLTQ2Ljg3Ni0xMi4xNjEtNS42OTktMjYuMjM2LTguNTczLTQxLjk4NC04LjU3NC0xNi4zNC0uMDAxLTI4LjcxNiAyLjc5My00MS41NTIgOS4zOC0xNy44OTQgOS4xODMtMjkuOTk4IDIyLjYzMS0zMi40NzcgMzYuMDgxLTEuNjg5IDkuMTY1IDIuNTAyIDE4LjY5NyAxMC45OTYgMjUuMDEzIDE0LjI1MyAxMC41OTcgMzkuMDc0IDE2LjI1NiA3MS43MzQgMTYuMzU0bDEyLjc3OC4wMzgtMjcuMTE0IDEzLjY1N2MtMTQuOTEzIDcuNTExLTI3LjU5IDEzLjY0Mi0yOC4xNzEgMTMuNjIzcy0zLjU5Mi0uNDYyLTYuNjkxLS45ODV6Ii8+PC9zdmc+)](https://conan.io/index.html)
 [![Generic badge](https://img.shields.io/badge/license-Boost%20Software%20License-blue)](https://www.boost.org/users/license.html)
 
-Graph code in C++ has long forced a choice: [Boost.Graph](https://www.boost.org/doc/libs/release/libs/graph/) is generic, but its genericity predates concepts — traits classes, tag dispatch, external property maps, and template errors nobody wants to read. [LEMON](https://lemon.cs.elte.hu/trac/lemon) is fast and comfortable, but it is unmaintained and does not compile past C++17.
+Graph code in C++ has long forced a choice: [Boost.Graph](https://www.boost.org/doc/libs/release/libs/graph/) is generic, but its genericity predates concepts — traits classes, tag dispatch, external property maps, and template errors nobody wants to read. [LEMON](https://lemon.cs.elte.hu/trac/lemon) is fast and comfortable, but it is unmaintained and needs source patches to build as C++17 or later.
 
 MELON aims for the genericity of the first with the speed and ergonomics of the second, using what C++20 and C++23 finally provide: concepts, ranges and customization point objects. Algorithms are constrained by concepts rather than written against one graph class, so they run on melon's containers, on its zero-cost views, and on **your** graph structure if it models the right concept — no adapter, no wrapper, no copy of your data into a "real" graph first. Data structures and algorithms are benchmarked in [fhamonic/melon_benchmark](https://github.com/fhamonic/melon_benchmark) and shown to outperform both Boost.Graph and LEMON.
 
@@ -90,14 +90,19 @@ melon is header-only and dependency-free: putting `include/` on your include pat
 
 GCC 15 / C++26 is the recommended configuration; GCC 14 / C++23 is supported through a bundled fallback for `std::views::concat`, which costs one view's range category — the [C++23-versus-C++26 note](https://fhamonic.github.io/melon/getting-started/installation/) has the details and the option that checks portability from a C++26 build.
 
-**As a Conan package** — build the tagged release locally, then declare `melon/1.0.0` in your `conanfile.txt`:
+**As a Conan package** — `melon/1.0.0` is on [Conan Center](https://conan.io/center/recipes/melon): declare it in your `conanfile.txt` and Conan fetches it.
+
+```ini
+[requires]
+melon/1.0.0
+```
+
+To package an unreleased revision instead, build it from a clone:
 
 ```sh
 git clone https://github.com/fhamonic/melon && cd melon
 conan create . -u -b=missing -pr=<your_conan_profile>
 ```
-
-The `melon/1.0.0-alpha.1` package on Conan Center predates 1.0 — it still depends on range-v3 and uses the old `fhamonic::melon` namespace — so prefer the route above until 1.0.0 lands there.
 
 **As a CMake subdirectory** — clone or add melon as a submodule under `dependencies/`, then:
 
@@ -141,7 +146,7 @@ melon is a young, single-maintainer library: the roadmap lists things that do no
 
 ## Contributing
 
-Bug reports, feature requests and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers building, running the test suite (including the sanitizer run expected before submitting), the code and comment conventions, and what CI enforces.
+Bug reports, feature requests and pull requests are welcome. Report a bug or ask a usage question through [GitHub Issues](https://github.com/fhamonic/melon/issues). [CONTRIBUTING.md](CONTRIBUTING.md) covers what to include in a report, building, running the test suite (including the sanitizer run expected before submitting), the code and comment conventions, and what CI enforces.
 
 ## Acknowledgments
 

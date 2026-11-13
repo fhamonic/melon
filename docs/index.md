@@ -19,7 +19,7 @@ title: ""
 
 </div>
 
-MELON is a header-only C++23 graph library built on ranges and concepts. It aims to be as pleasant to use as the standard library and as fast as [LEMON](https://lemon.cs.elte.hu/trac/lemon) — which is unmaintained and no longer compiles past C++17 — without the type-erasure and property-map machinery of [Boost.Graph](https://www.boost.org/doc/libs/release/libs/graph/). Algorithms are constrained by concepts rather than written against one graph class, so they run on melon's containers, on its zero-cost views, and on **your** graph structure if it models the right concept.
+MELON is a header-only C++23 graph library built on ranges and concepts. It aims to be as pleasant to use as the standard library and as fast as [LEMON](https://lemon.cs.elte.hu/trac/lemon) — which is unmaintained and needs source patches to build as C++17 or later — without the type-erasure and property-map machinery of [Boost.Graph](https://www.boost.org/doc/libs/release/libs/graph/). Algorithms are constrained by concepts rather than written against one graph class, so they run on melon's containers, on its zero-cost views, and on **your** graph structure if it models the right concept.
 
 ```cpp
 #include <print>

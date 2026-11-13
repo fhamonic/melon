@@ -3,6 +3,14 @@
 Thank you for considering contributing to melon! This document explains how to
 build the project, run the tests, and what is expected from a pull request.
 
+## Reporting issues and getting help
+
+Bug reports, feature requests and usage questions all go through
+[GitHub Issues](https://github.com/fhamonic/melon/issues). For a bug, give
+the compiler and its version, the standard flag (`-std=c++23` or `c++26`) and
+a minimal program that reproduces it; a failing test in the style of `test/`
+is even better.
+
 ## Prerequisites
 
 - **GCC 14** (C++23) or **Clang 18** (C++23, with libstdc++ ≥ 14) minimum;
@@ -269,10 +277,9 @@ in a private file precisely so it cannot be lost between releases:
    for the docs deployment from the tagged commit.
 3. Publish the Conan package: `conan create` from the tag, then submit the
    recipe bump to Conan Center.
-4. Once the package is live on Conan Center, delete the stale
-   pre-1.0 fallback instructions if any remain: the `melon/1.0.0-alpha.1`
-   block in `docs/getting-started/installation.md` and the matching README
-   paragraph were kept only until 1.0.0 landed there.
+4. Once the package is live on Conan Center, bump the `melon/<version>`
+   requirement shown in the README and in
+   `docs/getting-started/installation.md`.
 5. Create the GitHub release from the tag, with the changelog entry as its
    notes.
 
