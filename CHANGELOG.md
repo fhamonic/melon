@@ -8,6 +8,15 @@ Notable changes to melon. The format follows
 
 ### Added
 
+- `onaga`, a generalized maximum flow in lossy networks (gains in (0, 1])
+  by Onaga's augmenting paths, each a Dijkstra search on relabeled gains.
+  `run()` also computes the potentials, an optimal dual certificate, and
+  `advance()` makes one augmentation, so that a caller can bound them and
+  still read a feasible dual. `set_start_labels()` carries labels across
+  `reset()` for many runs against one target. Two traits flags, both on by
+  default: `sparse_reset` makes `reset()` cost what the searches reached,
+  and `flowing_arc_lists` scans only the arcs that took flow for the
+  reverse residual arcs.
 - `knapsack_dp`, a dynamic program behind the interface of `knapsack_bnb`,
   for the instances the branch and bound enumerates: values tied to the
   costs by a fixed charge, and classes of items whose costs are multiples of

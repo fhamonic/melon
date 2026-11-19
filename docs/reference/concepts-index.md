@@ -115,6 +115,9 @@ ranges do not; see [Ownership](../views/ownership.md#relocating-an-algorithm-mov
 | `competing_dijkstras_traits<T>` | `algorithm/competing_dijkstras.hpp` | a `semiring`, an `updatable_priority_queue`, a `(value, is_blue)`-shaped `entry`, and a strict-weak-order `entry_cmp` over it |
 | `bellman_ford_traits<T>` | `algorithm/bellman_ford.hpp` | a `semiring`, `store_paths`, `detect_negative_cycles` |
 | `bellman_ford_moore_traits<T>` | `algorithm/bellman_ford_moore.hpp` | a `semiring`, `store_paths`, `detect_negative_cycles` |
+| `network_simplex_traits<T>` | `algorithm/network_simplex.hpp` | a movable `pivot_rule` constructible from the arc count, `arc_mixing`, `total_cost_type` |
+| `network_simplex_pivot_rule<R, C>` | `algorithm/network_simplex.hpp` | `R` movable and constructible from the arc count, with `find_entering_arc(context)` returning `std::optional<C::arc_type>` |
+| `onaga_traits<T, V>` | `algorithm/onaga.hpp` | an alias template `heap<Compare>` that is an `updatable_priority_queue` for `Compare = std::greater<V>`, the tolerances `arc_full` and `negligible_flow`, and two flags: `sparse_reset`, `flowing_arc_lists` |
 | `alias_method_sampler_traits<T>` | `utility/alias_method_sampler.hpp` | `heuristic_preprocessing` |
 | `bentley_ottmann_traits<T>` | `algorithm/bentley_ottmann.hpp` | `Traits::report_endpoints` convertible to `bool` — the geometric kernel types are members of `bentley_ottmann_default_traits`, not concept requirements |
 | `cartesian_coordinate<T>` | `numeric/geometry.hpp` | an ordered scalar: `==` and `<`, and not itself tuple-like |

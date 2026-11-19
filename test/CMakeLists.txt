@@ -89,6 +89,7 @@ add_executable(
   bellman_ford.cpp
   bellman_ford_moore.cpp
   network_simplex.cpp
+  onaga.cpp
   unify_sources.cpp
   add_virtual_vertices.cpp
   map_if.cpp

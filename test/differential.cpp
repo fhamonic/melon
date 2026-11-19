@@ -13,6 +13,7 @@
 #include "melon/algorithm/dinitz.hpp"
 #include "melon/algorithm/edmonds_karp.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
+#include "melon/algorithm/onaga.hpp"
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/algorithm/topological_sort.hpp"
 #include "melon/container/static_digraph.hpp"
@@ -464,6 +465,29 @@ GTEST_TEST(differential, dinitz_and_edmonds_karp_agree_on_a_valid_flow) {
             ASSERT_EQ(balance[v], 0) << "conservation at " << v;
         }
         ASSERT_EQ(balance[t], dz.flow_value());
+    }
+}
+
+// At gains of 1 a generalized flow is a flow, and a supply above every cut
+// leaves the capacities binding: onaga's value is the maximum flow, exactly,
+// since integral capacities keep every augmentation integral.
+GTEST_TEST(differential, onaga_at_unit_gains_agrees_with_dinitz) {
+    for(std::size_t it = 0; it < NUM_INSTANCES; ++it) {
+        auto in = random_instance();
+        const auto s = static_cast<vertex>(test_rng()() % in.n);
+        const auto t = static_cast<vertex>(test_rng()() % in.n);
+        if(s == t) continue;
+
+        double supply = 1;
+        for(auto && a : out_arcs(in.graph, s)) supply += in.length_map[a];
+        auto generalized = onaga(
+            in.graph, [](const arc_t<static_digraph> &) { return 1.0; },
+            in.length_map, s, t, supply);
+        auto dz = dinitz(in.graph, in.length_map, s, t);
+        generalized.run();
+        dz.run();
+        ASSERT_EQ(generalized.flow_value(), dz.flow_value())
+            << s << " -> " << t;
     }
 }
 

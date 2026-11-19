@@ -102,6 +102,110 @@ for(auto && [s, t] : pairs) {
     [Ownership](../views/ownership.md#getting-a-result-map-out-the-s_map-accessors).
     Extraction is terminal: call nothing else on the algorithm afterwards.
 
+## Generalized maximum flow
+
+### `onaga`
+
+```cpp
+#include "melon/algorithm/onaga.hpp"
+
+std::vector<double> gain = ...;       // one per arc, in (0, 1]
+std::vector<double> capacity = ...;   // one per arc, infinity for none
+
+onaga alg(graph, gain, capacity, s, t, supply);
+alg.run();
+
+std::println("flow reaching t = {}", alg.flow_value());
+for(auto && v : vertices(graph)) std::print(" {}", alg.potential(v));
+```
+
+The requirements of [maximum flow](#maximum-flow) hold here too: `outward_incidence_graph`, `inward_incidence_graph`, `has_vertex_map` and `has_arc_map`. The gain and capacity maps model `mapping_view` over the arcs, and their `std::common_type` must be a floating-point type. Flows are fractional whatever the capacities, so integral capacities pass with floating-point gains, and an integral common type is rejected at the constraint.
+
+A *lossy* network gives each arc $a = (u, v)$ a gain $0 < g(a) \le 1$ next to its capacity $c(a) \ge 0$. The flow $f(a)$ is measured at $u$, and $g(a)\, f(a)$ of it arrives at $v$. The source $s$ sends at most its supply $b$, the other vertices may keep flow but not create it, and the value is the flow that reaches $t$:
+
+$$
+\begin{aligned}
+\max_{f} \quad & \sum_{a \in \delta^-(t)} g(a)\, f(a) - \sum_{a \in \delta^+(t)} f(a) \\
+\text{s.t.} \quad & \sum_{a \in \delta^+(v)} f(a) \le \sum_{a \in \delta^-(v)} g(a)\, f(a) && \forall v \in V \setminus \{s, t\}, \\
+& \sum_{a \in \delta^+(s)} f(a) - \sum_{a \in \delta^-(s)} g(a)\, f(a) \le b, \\
+& 0 \le f(a) \le c(a) && \forall a \in A.
+\end{aligned}
+$$
+
+Onaga's algorithm (K. Onaga, *Dynamic programming of optimum flows in lossy communication nets*, IEEE Trans. Circuit Theory, 1966) augments along a highest-gain residual path from $s$ to $t$ until the supply is sent or no path remains. The residual network carries each arc with capacity $c(a) - f(a)$ and gain $g(a)$, and its reverse, while $f(a) > 0$, with gain $1 / g(a) > 1$. A gain above 1 rules out Dijkstra's algorithm on the gains themselves, so each search runs on gains relabeled by vertex labels $p$, $g(a)\, p(v) / p(u) \le 1$, and rescales the vertices it settled so that the labels stay feasible and the path found is tight (É. Tardos and K. D. Wayne, *Simple generalized maximum flow algorithms*, IPCO 1998). The number of augmentations can be exponential. `advance()` makes one, so a caller can bound them.
+
+The result comes with its certificate. `potential(v)` is the gain $\pi(v)$ of a best residual path from $v$ to $t$, 0 if there is none. With the arc duals $(g(a)\, \pi(v) - \pi(u))^+$ on the arcs of finite capacity, the potentials are an optimal dual solution once `run()` has converged, and `flow_value()` equals their value:
+
+$$
+\pi(s)\, b + \sum_{a = (u, v) \,:\, c(a) < \infty} c(a)\, \big(g(a)\, \pi(v) - \pi(u)\big)^+ .
+$$
+
+After a run cut short by bounding the `advance()` calls, `compute_potentials()` gives a feasible dual of the residual network reached, whose value, `flow_value() + potential(s) * remaining_supply()`, bounds the maximum from above.
+
+| Member | Effect |
+| --- | --- |
+| `onaga(graph, gains, capacities)` / `onaga(graph, gains, capacities, s, t, supply)` | construct; the gain and capacity maps are read live |
+| `set_source(s, supply)` / `set_target(t)` | change the terminals; both keep the flow |
+| `set_start_labels(labels)` | the labels each run starts from, 1 by default; kept by `reset()` |
+| `reset()` | zero the flow, keep the graph, the maps, the terminals and the start labels |
+| `finished()` / `advance()` | whether the run is over; one augmentation, or none and `finished()` |
+| `run()` | augment until finished, then compute the potentials; idempotent |
+| `compute_potentials()` | the last search, for a run driven by `advance()` |
+| `flow_value()` / `remaining_supply()` | the flow that reached $t$; the supply not sent |
+| `flow(a)` / `flows_map()` | the flow of an arc, measured at its source |
+| `potential(v)` / `potentials_map()` | the dual; valid until the next `advance()`, `reset()` or setter |
+
+An infinite capacity is unbounded, and a capacity of 0 removes its arc, so a run on a subgraph needs no copy of the graph: zero the capacities of the arcs outside it. The maps are read live, like those of [`network_simplex`](#network_simplex). Change them between runs, then call `reset()`. A change during a run leaves flows over their capacities.
+
+Many sources against one target is the pattern the start labels exist for. Labels feasible for every run are set once, and each search then starts close to tight. The potentials of a run with a supply of 0 are such labels: the best gains to $t$ over the arcs of positive capacity.
+
+```cpp
+onaga probe(graph, gain, capacity, s0, t, 0.0);
+probe.run();
+
+onaga alg(graph, gain, capacity);
+alg.set_start_labels(probe.potentials_map());
+for(auto && [s, supply] : sources) {
+    alg.reset().set_source(s, supply).set_target(t).run();
+    record(s, alg.flow_value(), alg.potential(s));
+}
+```
+
+!!! warning "Preconditions no concept can check"
+
+    - **Gains in $(0, 1]$.** A gain above 1 can close a flow-generating cycle,
+      which augmenting paths never cancel: the flow returned is then not
+      maximum, without a word.
+    - **Feasible start labels:** $p(t) = 1$ and $p(u) \ge g(a)\, p(v)$ on every
+      arc of positive capacity. Infeasible labels let a vertex settle before
+      its best path is known. On an object that carries flow,
+      `set_start_labels()` must be followed by `reset()` before the next
+      search, in either order, as asserted: start labels need not be feasible
+      for the arcs that carry flow backward.
+    - **A finite supply.** The tolerances are relative to it, and an infinite
+      supply sends nothing; it is asserted.
+    - **`potential(v)` after `compute_potentials()`**, which `run()` calls,
+      and before the next `advance()`, `reset()` or setter; it is asserted.
+      `run()` spends one search on the potentials: a caller that needs only
+      the flow drives `while(!alg.finished()) alg.advance();` instead.
+
+The traits, passed as a leading constructor argument (`onaga(my_traits{}, graph, gain, capacity, s, t, supply)`), carry the heap and four constants:
+
+- `heap<Compare>`, an alias template. The algorithm instantiates it with `std::greater<value>`, a **max**-heap on the relabeled gains, since a min-heap would settle the worst paths first: the traits choose the structure, never the order. The default is a 4-ary `updatable_d_ary_heap`, and a binary one is spelled
+  ```cpp
+  struct binary_heap_traits : onaga_default_traits<static_digraph, double> {
+      template <std::strict_weak_order<double, double> Compare>
+      using heap = updatable_d_ary_heap<
+          2, std::pair<vertex_t<static_digraph>, double>, Compare,
+          vertex_map_t<static_digraph, std::size_t, onaga_roles::heap_index>,
+          maps::element<1>, maps::element<0>>;
+  };
+  ```
+- `arc_full` and `negligible_flow`, relative tolerances: an arc is full within `arc_full` of its capacity, and a flow under `negligible_flow` times the supply is none. At 0, the rounding residue of a push that fills an arc leaves it open, and the searches go on augmenting along it. The defaults are $10^{-11}$ and $10^{-12}$ at `double`, scaled by the type's epsilon for `float` and `long double`.
+- `sparse_reset`, on by default: `reset()` restores only what the searches since the last `reset()` reached, instead of every vertex and arc. Runs that end with the potentials search reach most of the graph and gain little, within 1%; runs of a single short search on a large graph gain the most, 5 ms against 480 ms for 20,000 one-search runs on a 300 × 300 grid.
+- `flowing_arc_lists`, on by default: the arcs that took flow are kept in per-vertex lists, and the searches find the reverse residual arcs there rather than among every in-arc (from $s$) and out-arc (from $t$). Single runs measured 13% faster on random and grid networks. Ties between equal gains break in another order, so a run cut short may follow another of the best paths; a converged run reaches the same optimum, up to rounding.
+
+
 ## Minimum-cost flow
 
 ### `network_simplex`

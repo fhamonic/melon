@@ -27,6 +27,7 @@
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
+#include "melon/algorithm/onaga.hpp"
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/algorithm/topological_sort.hpp"
 #include "melon/algorithm/traversal_forest.hpp"
@@ -590,6 +591,16 @@ static_assert(std::same_as<decltype(std::declval<NS &>().run()), NS &> &&
               requires(const NS & alg) {
                   { alg.finished() } -> std::same_as<bool>;
               });
+// onaga shares network_simplex's vocabulary; its maps must be floating-point.
+using DLM = melon::mapping_ref_view<melon::static_map<unsigned int, double>>;
+using ONAGA = melon::onaga<RG, DLM, DLM>;
+static_assert(
+    std::same_as<decltype(std::declval<ONAGA &>().run()), ONAGA &> &&
+    std::same_as<decltype(std::declval<ONAGA &>().reset()), ONAGA &> &&
+    !std::copy_constructible<ONAGA> && std::movable<ONAGA> &&
+    requires(const ONAGA & alg) {
+        { alg.finished() } -> std::same_as<bool>;
+    });
 static_assert(
     melon::traversal_algorithm<melon::strongly_connected_components<RG>>);
 using UG = melon::undirect_view<RG>;

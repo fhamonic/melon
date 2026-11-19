@@ -83,6 +83,7 @@ The ready-made [mapping views](../graphs/mappings.md#the-ready-made-maps) beyond
 | `edmonds_karp.hpp` | [`edmonds_karp`](../algorithms/flows-and-trees.md#edmonds_karp) |
 | `dinitz.hpp` | [`dinitz`](../algorithms/flows-and-trees.md#dinitz) |
 | `network_simplex.hpp` | [`network_simplex`, `network_simplex_default_traits`, `network_simplex_traits`](../algorithms/flows-and-trees.md#network_simplex) |
+| `onaga.hpp` | [`onaga`, `onaga_default_traits`, `onaga_traits`](../algorithms/flows-and-trees.md#onaga) |
 | `kruskal.hpp` | [`kruskal`](../algorithms/flows-and-trees.md#kruskal) |
 | `knapsack_bnb.hpp` | [`knapsack_bnb`](../algorithms/others.md#knapsack) |
 | `knapsack_dp.hpp` | [`knapsack_dp`](../algorithms/others.md#knapsack_dp) |

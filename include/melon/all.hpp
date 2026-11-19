@@ -47,6 +47,7 @@
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
+#include "melon/algorithm/onaga.hpp"
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/algorithm/topological_sort.hpp"
 #include "melon/algorithm/traversal_forest.hpp"

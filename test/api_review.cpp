@@ -22,6 +22,7 @@
 #include "melon/algorithm/kruskal.hpp"
 #include "melon/algorithm/network_simplex.hpp"
 #include "melon/algorithm/network_voronoi.hpp"
+#include "melon/algorithm/onaga.hpp"
 #include "melon/algorithm/strongly_connected_components.hpp"
 #include "melon/algorithm/topological_sort.hpp"
 #include "melon/algorithm/traversal_forest.hpp"
@@ -1065,6 +1066,13 @@ GTEST_TEST(api_review, stored_maps_are_exposed_as_map_views) {
         { alg.potential(v) } -> std::convertible_to<int>;
         { alg.potentials_map()[v] } -> std::convertible_to<int>;
     });
+    static_assert(
+        requires(const onaga<RV, LM, LM> & alg, const A & a, const V & v) {
+            { alg.flow(a) } -> std::convertible_to<double>;
+            { alg.flows_map()[a] } -> std::convertible_to<double>;
+            { alg.potential(v) } -> std::convertible_to<double>;
+            { alg.potentials_map()[v] } -> std::convertible_to<double>;
+        });
     static_assert(requires(
         const dijkstra<RV, LM, distance_dijkstra_traits> & alg, const V & v) {
         { alg.dists_map()[v] } -> std::convertible_to<double>;
