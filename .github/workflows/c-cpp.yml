@@ -57,12 +57,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update
+        run: sudo apt-get update
       - name: Install GCC-15
-        run: apt-get install -y gcc-15 g++-15
+        run: sudo apt-get install -y gcc-15 g++-15
       - name: Install Conan 2.0
         run: |
-          apt install -y pipx
+          sudo apt-get install -y pipx
           pipx install conan
           echo "/github/home/.local/bin" >> $GITHUB_PATH
       - name: Build and run unit tests
@@ -75,12 +75,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update
+        run: sudo apt-get update
       - name: Install GCC-14
-        run: apt-get install -y gcc-14 g++-14
+        run: sudo apt-get install -y gcc-14 g++-14
       - name: Install Conan 2.0
         run: |
-          apt-get install -y pipx
+          sudo apt-get install -y pipx
           pipx install conan
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Build and run unit tests
@@ -93,12 +93,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update
+        run: sudo apt-get update
       - name: Install Clang-18, libstdc++-14
-        run: apt-get install -y clang-18 libstdc++-14-dev
+        run: sudo apt-get install -y clang-18 libstdc++-14-dev
       - name: Install Conan 2.0
         run: |
-          apt-get install -y pipx
+          sudo apt-get install -y pipx
           pipx install conan
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Build and run unit tests
@@ -118,9 +118,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update
+        run: sudo apt-get update
       - name: Install GCC-15 and CMake
-        run: apt-get install -y gcc-15 g++-15 cmake
+        run: sudo apt-get install -y gcc-15 g++-15 cmake
       # -std=c++26 with MELON_PORTABLE_RANGE_SHAPES=ON is the only sanitized
       # run of the C++23 concat fallback on a library that has
       # std::views::concat; dropping either leaves that path unsanitized.
@@ -141,9 +141,9 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
+        run: sudo apt-get update
       - name: Install GCC-15 and CMake
-        run: apt-get install -y gcc-15 g++-15 cmake
+        run: sudo apt-get install -y gcc-15 g++-15 cmake
       - uses: actions/checkout@v7
         with:
           path: consumer/external/melon
@@ -209,9 +209,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update
+        run: sudo apt-get update
       - name: Install GCC-15 and CMake
-        run: apt-get install -y gcc-15 g++-15 cmake
+        run: sudo apt-get install -y gcc-15 g++-15 cmake
       # MELON_BUILD_TESTS defaults to ON when melon is the top-level project;
       # without OFF the configure downloads GTest through FetchContent for
       # nothing.
@@ -307,12 +307,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update
+        run: sudo apt-get update
       - name: Install GCC-15 and CMake
-        run: apt-get install -y gcc-15 g++-15 cmake
+        run: sudo apt-get install -y gcc-15 g++-15 cmake
       - name: Install Conan 2.0
         run: |
-          apt-get install -y pipx
+          sudo apt-get install -y pipx
           pipx install conan
           echo "/github/home/.local/bin" >> $GITHUB_PATH
       - name: Create the package
