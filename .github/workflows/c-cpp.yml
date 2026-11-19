@@ -53,15 +53,13 @@ jobs:
             | xargs clang-format --dry-run -Werror
 
   linux-gcc15-build:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:25.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
-      - name: Install GCC-15 and CMake
-        run: apt-get install -y gcc-15 g++-15 cmake
+        run: apt-get update
+      - name: Install GCC-15
+        run: apt-get install -y gcc-15 g++-15
       - name: Install Conan 2.0
         run: |
           apt install -y pipx
@@ -73,15 +71,13 @@ jobs:
           make CONAN_PROFILE=.github/conan-profiles/gcc15_c++26
 
   linux-gcc14-build:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
-      - name: Install GCC-14 and CMake
-        run: apt-get install -y gcc-14 g++-14 cmake
+        run: apt-get update
+      - name: Install GCC-14
+        run: apt-get install -y gcc-14 g++-14
       - name: Install Conan 2.0
         run: |
           apt-get install -y pipx
@@ -93,15 +89,13 @@ jobs:
           make CONAN_PROFILE=.github/conan-profiles/gcc14_c++23
 
   linux-clang18-build:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
-      - name: Install Clang-18, libstdc++-14 and CMake
-        run: apt-get install -y clang-18 libstdc++-14-dev cmake
+        run: apt-get update
+      - name: Install Clang-18, libstdc++-14
+        run: apt-get install -y clang-18 libstdc++-14-dev
       - name: Install Conan 2.0
         run: |
           apt-get install -y pipx
@@ -117,16 +111,14 @@ jobs:
   # optimiser elides the very UB being hunted and ASan's reports lose their
   # line precision.
   linux-gcc15-sanitize:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:25.04
+    runs-on: ubuntu-26.04
     env:
       CC: gcc-15
       CXX: g++-15
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
+        run: apt-get update
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
       # -std=c++26 with MELON_PORTABLE_RANGE_SHAPES=ON is the only sanitized
@@ -146,9 +138,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
   linux-cmake-submodule:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:25.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Update APT
         run: apt-get update && apt-get upgrade -y
@@ -212,16 +202,14 @@ jobs:
           ./consumer/build/melon_consumer
 
   linux-cmake-install:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:25.04
+    runs-on: ubuntu-26.04
     env:
       CC: gcc-15
       CXX: g++-15
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
+        run: apt-get update
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
       # MELON_BUILD_TESTS defaults to ON when melon is the top-level project;
@@ -312,16 +300,14 @@ jobs:
   # build` never runs package() or package_info(), so the recipe's packaging
   # half is checked only here, by consuming the created package.
   linux-conan-create:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:25.04
+    runs-on: ubuntu-26.04
     env:
       CC: gcc-15
       CXX: g++-15
     steps:
       - uses: actions/checkout@v7
       - name: Update APT
-        run: apt-get update && apt-get upgrade -y
+        run: apt-get update
       - name: Install GCC-15 and CMake
         run: apt-get install -y gcc-15 g++-15 cmake
       - name: Install Conan 2.0
